@@ -2,8 +2,18 @@ name: DepthAI Core HIL Testing Nightly
 
 on:
   workflow_dispatch:
+    inputs:
+      build_and_bom:
+        description: Build the Python wheels; when all of them are uploaded, run the BOM tests at the same time as the HIL tests, also if the Python tests fail (the nightly develop build)
+        type: boolean
+        default: false
+      bom:
+        description: Run the BOM tests with the wheels that an earlier run uploaded for this commit (the nightly develop build when develop did not change)
+        type: boolean
+        default: false
 
 permissions:
+  actions: read
   contents: read
 
 # Only allow latest nightly run on same branch to be tested
@@ -12,15 +22,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build_wheels:
+    if: inputs.build_and_bom
+    uses: ./.github/workflows/python-main.yml
+    with:
+      concurrency_suffix: nightly
+      # python-main.yml starts the BOM tests when all wheels are uploaded; the Python test results do not matter.
+      dispatch_bom: true
+    secrets: inherit
+
   run_ci_and_ci_nightly_tests:
+    needs: build_wheels
+    if: ${{ !cancelled() }}
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
       job_prefix: "vanilla-ci-nightly"
       rvc2_protocol: "all"
       test_label: "ci|ci_nightly"
-      luxonis_os_versions_to_test: "['1.33.0']"
-      luxonis_os_versions_to_test_usb: "['1.33.0']"
+      luxonis_os_versions_to_test: "['1.44.0']"
+      luxonis_os_versions_to_test_ffc: "['1.44.0']"
+      luxonis_os_versions_to_test_usb: "['1.44.0']"
+      usb_link_speed_sanity: true
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -30,3 +53,10 @@ jobs:
       INFLUXDB_ORG: ${{ secrets.INFLUXDB_ORG }}
       INFLUXDB_TOKEN: ${{ secrets.INFLUXDB_TOKEN }}
       INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
+
+  # The BOM tests of a night without a build: the wheels of this commit are uploaded already. With build_and_bom,
+  # build_wheels starts the BOM tests itself.
+  dispatch_bom_tests:
+    if: ${{ inputs.bom && !inputs.build_and_bom }}
+    uses: ./.github/workflows/bom_dispatch.yml
+    secrets: inherit

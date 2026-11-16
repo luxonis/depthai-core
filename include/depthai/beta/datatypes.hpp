@@ -7,7 +7,7 @@
 #include "datatype/Clusters.hpp"
 #include "datatype/FastSAMParserConfig.hpp"
 #include "datatype/HRNetParserConfig.hpp"
-#include "datatype/ImgDetectionsFilterConfig.hpp"
+#include "datatype/ImgDetectionsFilterConfig.hpp"  // deprecated alias, see the header
 #include "datatype/Keypoints.hpp"
 #include "datatype/Lines.hpp"
 #include "datatype/MLSDParserConfig.hpp"

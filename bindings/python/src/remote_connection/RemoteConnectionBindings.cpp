@@ -59,8 +59,10 @@ void RemoteConnectionBindings::bind(pybind11::module& m, void* pCallstack) {
                 self.registerBinaryService(serviceName, [callback](const std::vector<uint8_t>& data) -> std::vector<uint8_t> {
                     py::gil_scoped_acquire acquire;
                     py::object result = callback(py::bytes(reinterpret_cast<const char*>(data.data()), data.size()));
-                    py::buffer_info buf(py::buffer(result).request());
-                    return std::vector<uint8_t>(static_cast<uint8_t*>(buf.ptr), static_cast<uint8_t*>(buf.ptr) + buf.size);
+                    auto bytes = py::reinterpret_steal<py::bytes>(PyObject_Bytes(result.ptr()));
+                    if(!bytes) throw py::error_already_set();
+                    std::string payload = bytes;
+                    return std::vector<uint8_t>(payload.begin(), payload.end());
                 });
             },
             py::arg("serviceName"),

@@ -12,7 +12,7 @@ try:
     from setuptools.command.bdist_wheel import bdist_wheel
 except ImportError:  # setuptools < 70.1
     from wheel.bdist_wheel import bdist_wheel
-from distutils.version import LooseVersion
+from packaging.version import Version
 from pathlib import Path
 
 ### NAME
@@ -215,8 +215,8 @@ class CMakeBuild(build_ext):
                                ", ".join(e.name for e in self.extensions))
 
         if platform.system() == "Windows":
-            cmake_version = LooseVersion(re.search(r'version\s*([\d.]+)', out.decode()).group(1))
-            if cmake_version < '3.2.0':
+            cmake_version = Version(re.search(r'version\s*([\d.]+)', out.decode()).group(1))
+            if cmake_version < Version('3.2.0'):
                 raise RuntimeError("CMake >= 3.2.0 is required on Windows")
 
         for ext in self.extensions:
@@ -303,6 +303,10 @@ class CMakeBuild(build_ext):
         cmake_args += ['-DPIP_TEMP_LIB_FOLDER=' + os.path.abspath(os.path.join(self.build_temp, cfg))]
         cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
         cmake_args += ['-DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF']
+        # Do not export the symbols of the static dependencies from depthai-core (Linux)
+        cmake_args += ['-DDEPTHAI_EXCLUDE_ARCHIVE_LIBS_SYMBOLS=ON']
+        # Remove unused code from depthai-core (Linux); needs the option above to remove much
+        cmake_args += ['-DDEPTHAI_LINK_GC_SECTIONS=ON']
         build_args += ['--config', cfg]
         if not self.debug:
             rootDirectory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -374,12 +378,19 @@ class CMakeBuild(build_ext):
         # Add additional cmake args from environment
         if 'CMAKE_ARGS' in os.environ:
             cmake_args += [os.environ['CMAKE_ARGS']]
+        if ("free-threading build" in sys.version):
+            cmake_args += ["-DDEPTHAI_PYTHON_GIL_FREE=ON"]
 
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
 
         # Configure and build
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
+        if os.environ.get('DEPTHAI_CONFIGURE_ONLY') == '1':
+            # CI warms the vcpkg binary cache with the exact dependency set of the wheel build; the
+            # configure step installs the dependencies, so stop here (.github/workflows/vcpkg_cache_warm.yml).
+            print('DEPTHAI_CONFIGURE_ONLY=1: dependencies installed and project configured, not building')
+            return
         subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp, env=env)
         _generate_wheel_license_notices(self.build_temp)
         _generate_wheel_sbom(self.build_temp)
@@ -413,7 +424,6 @@ setup(
         "Intended Audience :: Education",
         "Intended Audience :: Information Technology",
         "Intended Audience :: Science/Research",
-        "License :: OSI Approved :: MIT License",
         "Operating System :: MacOS",
         "Operating System :: Microsoft :: Windows",
         "Operating System :: Unix",
@@ -425,6 +435,7 @@ setup(
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
         "Programming Language :: Python :: 3.14",
+        "Programming Language :: Python :: 3.15",
         "Programming Language :: C++",
         "Programming Language :: Python :: Implementation :: CPython",
         "Topic :: Scientific/Engineering",

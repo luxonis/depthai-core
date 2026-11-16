@@ -2,6 +2,7 @@
 #include <stdexcept>
 
 #include "depthai/common/ImgTransformations.hpp"
+#include "depthai/utility/matrixOps.hpp"
 
 using namespace dai;
 
@@ -86,4 +87,27 @@ TEST_CASE("ImgTransformation composes rotation and translation while rebasing") 
     REQUIRE(result.rotationMatrix[0][1] == Catch::Approx(-1.0f));
     REQUIRE(result.rotationMatrix[1][0] == Catch::Approx(1.0f));
     REQUIRE(result.rotationMatrix[1][1] == Catch::Approx(0.0f));
+}
+
+TEST_CASE("rebaseTransformation composes the bridge after the local pose") {
+    // source -> local: rotate 90 degrees about Z, then move 1 unit along X.
+    const std::array<std::array<float, 4>, 4> sourceToLocal = {
+        {{0.0f, -1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}};
+    // local -> target: pure translation along Y.
+    const std::array<std::array<float, 4>, 4> localToTarget = {
+        {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 2.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}};
+
+    const auto sourceToTarget = matrix::rebaseTransformation(sourceToLocal, localToTarget);
+
+    // The rotation is untouched and the translations add up: (1, 0, 0) then (0, 2, 0).
+    REQUIRE(sourceToTarget[0][1] == Catch::Approx(-1.0f));
+    REQUIRE(sourceToTarget[1][0] == Catch::Approx(1.0f));
+    REQUIRE(sourceToTarget[0][3] == Catch::Approx(1.0f));
+    REQUIRE(sourceToTarget[1][3] == Catch::Approx(2.0f));
+    REQUIRE(sourceToTarget[2][3] == Catch::Approx(0.0f));
+
+    // The opposite order would rotate the bridge translation into (-2, 0, 0), so the order is pinned.
+    const auto wrongOrder = matrix::matMul(sourceToLocal, localToTarget);
+    REQUIRE(wrongOrder[0][3] == Catch::Approx(-1.0f));
+    REQUIRE(wrongOrder[1][3] == Catch::Approx(0.0f));
 }

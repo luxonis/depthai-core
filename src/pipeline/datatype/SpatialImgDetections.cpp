@@ -62,10 +62,21 @@ void SpatialImgDetection::setBoundingBox(const RotatedRect boundingBox) {
     ymax = outerPoints[3];
 }
 
+void SpatialImgDetection::setBoundingBox(const RotatedRect boundingBox, unsigned int width, unsigned int height) {
+    this->boundingBox = boundingBox;
+
+    const auto outerPoints = this->boundingBox->getOuterRectInFrame(width, height);
+    xmin = outerPoints[0];
+    ymin = outerPoints[1];
+    xmax = outerPoints[2];
+    ymax = outerPoints[3];
+}
+
 RotatedRect SpatialImgDetection::getBoundingBox() const {
     if(boundingBox.has_value()) {
         return boundingBox.value();
-    } else if(xmin == 0.f && xmax == 0.f && ymin == 0.f && ymax == 0.f) {
+    }
+    if(xmin == 0.f && xmax == 0.f && ymin == 0.f && ymax == 0.f) {
         throw std::runtime_error("All bounding box values are zero, no bounding box can be built.");
     }
 
@@ -84,6 +95,16 @@ void SpatialImgDetection::setOuterBoundingBox(const float xmin, const float ymin
     Point2f bottomRight{xmax, ymax};
 
     this->boundingBox = RotatedRect{Rect{topLeft, bottomRight}};
+}
+
+std::array<float, 4> SpatialImgDetection::getOuterBoundingBox() const {
+    if(!(xmin == 0.f && xmax == 0.f && ymin == 0.f && ymax == 0.f)) {
+        return {xmin, ymin, xmax, ymax};
+    }
+    if(boundingBox.has_value()) {
+        return boundingBox->getOuterRect();
+    }
+    throw std::runtime_error("All bounding box values are zero, no bounding box can be built.");
 }
 
 void SpatialImgDetection::setKeypoints(const SpatialKeypointsList kp) {
@@ -109,6 +130,12 @@ void SpatialImgDetection::setSpatialCoordinate(Point3f spatialCoordinates) {
 
 dai::ImgDetection SpatialImgDetection::getImgDetection() const {
     dai::ImgDetection imgDetection(getBoundingBox(), labelName, confidence, label);
+    if(!(xmin == 0.f && xmax == 0.f && ymin == 0.f && ymax == 0.f)) {
+        imgDetection.xmin = xmin;
+        imgDetection.ymin = ymin;
+        imgDetection.xmax = xmax;
+        imgDetection.ymax = ymax;
+    }
 
     if(keypoints.has_value()) {
         dai::KeypointsList converted;
@@ -208,12 +235,16 @@ void SpatialImgDetection::transform(const ImgTransformation& source, const ImgTr
     float depth = spatialCoordinates.z * getDistanceUnitScale(LengthUnit::MILLIMETER, lengthUnit);
     RotatedRect rect = getBoundingBox();
 
+    // The bounding box is the minimum outer rotated rectangle of the mapped corners; the bounds enclose it.
+    const auto size = target.getSize();
+    const auto width = static_cast<unsigned int>(size.first);
+    const auto height = static_cast<unsigned int>(size.second);
     if(depth > 0) {
         const auto transMatrix = source.getExtrinsicsTransformationMatrixTo(target, false, lengthUnit);
-        setBoundingBox(source.projectRectTo(target, rect, depth));
+        setBoundingBox(source.projectRectTo(target, rect, depth), width, height);
         setSpatialCoordinate(matrix::transformPoint3f(transMatrix, spatialCoordinates));
     } else {
-        setBoundingBox(source.remapRectTo(target, rect));
+        setBoundingBox(source.remapRectTo(target, rect), width, height);
     }
 
     if(keypoints.has_value()) {

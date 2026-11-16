@@ -5,7 +5,6 @@ A Camera on device A is linked directly to an ImageManip running on device B.
 The pipeline inserts the host relay automatically at build time (visible as one
 info log line); no manual forwarding is needed.
 """
-import os
 import sys
 
 import cv2
@@ -32,15 +31,11 @@ with dai.Pipeline(False) as pipeline:
 
     queue = manip.out.createOutputQueue()
     pipeline.start()
-    print(f"Camera on {deviceA.getDeviceId()} -> ImageManip on {deviceB.getDeviceId()}")
 
-    display = bool(os.environ.get("DISPLAY"))
     while pipeline.isRunning():
         frame = queue.get()
         if frame is None:
             continue
-        print(f"Frame processed on device B: {frame.getWidth()}x{frame.getHeight()}")
-        if display:
-            cv2.imshow("device_to_device_relay", frame.getCvFrame())
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
+        cv2.imshow("device_to_device_relay", frame.getCvFrame())
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break

@@ -31,15 +31,16 @@ void OpenVINOBindings::bind(pybind11::module& m, void* pCallstack) {
     openvino.def_static("getVersions", &OpenVINO::getVersions, DOC(dai, OpenVINO, getVersions))
         .def_static("getVersionName", &OpenVINO::getVersionName, py::arg("version"), DOC(dai, OpenVINO, getVersionName))
         .def_static("parseVersionName", &OpenVINO::parseVersionName, py::arg("versionString"), DOC(dai, OpenVINO, parseVersionName))
+        .def_static("getBlobVersion", &OpenVINO::getBlobVersion, py::arg("majorVersion"), py::arg("minorVersion"), DOC(dai, OpenVINO, getBlobVersion))
         .def_static("getBlobSupportedVersions",
                     &OpenVINO::getBlobSupportedVersions,
                     py::arg("majorVersion"),
-                    py::arg("majorVersion"),
+                    py::arg("minorVersion"),
                     DOC(dai, OpenVINO, getBlobSupportedVersions))
         .def_static("getBlobLatestSupportedVersion",
                     &OpenVINO::getBlobLatestSupportedVersion,
                     py::arg("majorVersion"),
-                    py::arg("majorVersion"),
+                    py::arg("minorVersion"),
                     DOC(dai, OpenVINO, getBlobLatestSupportedVersion))
         .def_static(
             "areVersionsBlobCompatible", &OpenVINO::areVersionsBlobCompatible, py::arg("v1"), py::arg("v2"), DOC(dai, OpenVINO, areVersionsBlobCompatible));

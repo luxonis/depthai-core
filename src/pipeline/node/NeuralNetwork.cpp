@@ -30,11 +30,18 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera
                                                     const Model& model,
                                                     std::optional<float> fps,
                                                     std::optional<dai::ImgResizeMode> resizeMode) {
-    ImgFrameCapability cap;
+    decodeModel(model);
+    ImgFrameCapability cap = getFrameCapability(*nnArchive);
     if(fps.has_value()) cap.fps.value = *fps;
-    if(resizeMode.has_value()) cap.resizeMode = *resizeMode;
-
-    return build(input, model, cap);
+    if(resizeMode.has_value()) {
+        cap.resizeMode = *resizeMode;
+    } else {
+        cap.resizeMode = nnArchive->getInputResizeMode().value_or(ImgResizeMode::CROP);
+    }
+    auto* camInput = input->requestOutput(cap, false);
+    DAI_CHECK_V(camInput != nullptr, "Camera does not have output with requested capabilities");
+    camInput->link(this->input);
+    return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 
 std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input, const Model& model, const ImgFrameCapability& capability) {
@@ -115,6 +122,7 @@ ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive,
             DAI_CHECK_V(false, "Unsupported platform");
         }
     }
+
     auto cap = ImgFrameCapability();
     if(expectedCapability.has_value()) {
         cap = *expectedCapability;

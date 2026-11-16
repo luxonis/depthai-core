@@ -92,6 +92,7 @@ std::map<std::string, dai::Node::Output*> buildPipeline(dai::Pipeline& pipeline,
 
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::FAST_ACCURACY);
+    stereo->setExtendedDisparity(true);
     stereo->setRectification(false);
     vpp->leftOut.link(stereo->left);
     vpp->rightOut.link(stereo->right);
@@ -122,9 +123,11 @@ int main(int argc, char** argv) {
     while(pipeline.isRunning()) {
         for(const auto& entry : queues) {
             if(auto frame = entry.second->tryGet<dai::ImgFrame>()) {
-                auto img = frame->getCvFrame();
+                cv::Mat img;
                 if(entry.first == "tof_depth" || entry.first == "aligned_depth" || entry.first == "fused_depth") {
-                    cv::convertScaleAbs(img, img, 255.0 / options.maxDepth);
+                    img = dai::utility::colorizeDepthFrame(*frame, 100.0f, options.maxDepth).getCvFrame();
+                } else {
+                    img = frame->getCvFrame();
                 }
                 cv::imshow(entry.first, img);
             }

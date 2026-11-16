@@ -5,5 +5,11 @@ cmake_minimum_required(VERSION 3.10)
 ## function: dai_set_example_test_labels(example_name ...)
 
 dai_add_example(multi_device_frame_sync multi_device_frame_sync.cpp OFF OFF)
-dai_add_example(multi_device_host_node multi_device_host_node.cpp OFF OFF)
+dai_add_example(multi_device_stream multi_device_stream.cpp OFF OFF)
 dai_add_example(device_to_device_relay device_to_device_relay.cpp OFF OFF)
+
+# Loading a cross-device calibration JSON uses the beta calibration handler.
+if(DEPTHAI_BUILD_BETA)
+    dai_add_example(multi_device_stitching_panorama multi_device_stitching_panorama.cpp OFF OFF)
+    dai_add_example(multi_device_stitching_planar_projection multi_device_stitching_planar_projection.cpp OFF OFF)
+endif()

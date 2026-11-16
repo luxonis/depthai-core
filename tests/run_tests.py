@@ -25,6 +25,11 @@ class ResultThread(threading.Thread):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            encoding="utf-8",
+            # Test output can contain bytes that are not valid UTF-8 (e.g. Catch2 prints
+            # uint8_t image data as raw chars). A strict decode would kill this thread and
+            # abort the whole run, so escape such bytes instead.
+            errors="backslashreplace",
         )
 
         for output in process.stdout:
@@ -154,6 +159,12 @@ if __name__ == "__main__":
     )
     
     parser.add_argument(
+        "--rvc4ffc",
+        action="store_true",
+        required=False,
+    )
+
+    parser.add_argument(
         "--rvc4usb",
         action="store_true",
         required=False,
@@ -217,6 +228,7 @@ if __name__ == "__main__":
             "name": "RVC4 - USB",
             "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "usb"},
             "labels": ["rvc4"],
+            "excluded_labels": ["nousb"],
         },
         {
             "name": "RVC4 - Fsync",
@@ -234,9 +246,19 @@ if __name__ == "__main__":
             "labels": ["rvc4rgb"],
         },
         {
+            "name": "RVC4 - FFC",
+            "env": {
+                "DEPTHAI_PLATFORM": "rvc4",
+                "DEPTHAI_PROTOCOL": "tcpip",
+                "DEPTHAI_AUTOCALIBRATION": "OFF",
+            },
+            "labels": ["rvc4ffc"],
+        },
+        {
             "name": "RVC2 - USB",
             "env": {"DEPTHAI_PLATFORM": "rvc2", "DEPTHAI_PROTOCOL": "usb"},
             "labels": ["rvc2", "usb"],
+            "excluded_labels": ["nousb"],
         },
         {
             "name": "RVC2 - POE",
@@ -266,6 +288,8 @@ if __name__ == "__main__":
         test_configs = [config for config in all_configs if "rvc2" in config.get("labels", []) or "onhost" in config.get("labels", [])]
     elif args.rvc4rgb:
         test_configs = [config for config in all_configs if "rvc4rgb" in config.get("labels", [])]
+    elif args.rvc4ffc:
+        test_configs = [config for config in all_configs if "rvc4ffc" in config.get("labels", [])]
     elif args.fsync:
         enableUARTonAllDevices(False)
         atexit.register(enableUARTonAllDevices, True)
@@ -287,7 +311,7 @@ if __name__ == "__main__":
         name = config["name"]
         env_vars = config["env"]
         labels = config.get("labels")
-        excluded_labels = replay_excluded_labels if args.rvc4replay or args.rvc2replay else []
+        excluded_labels = config.get("excluded_labels", []) + (replay_excluded_labels if args.rvc4replay or args.rvc2replay else [])
 
         print(f"Running tests for configuration: {name}, on platform: {env_vars['DEPTHAI_PLATFORM'] if 'DEPTHAI_PLATFORM' in env_vars else 'HOST'}, on protocol: {env_vars['DEPTHAI_PROTOCOL'] if 'DEPTHAI_PROTOCOL' in env_vars else 'HOST'}, with labels: {",".join(labels) if labels is not None else ""}")
         resultThread = run_ctest(env_vars, labels, args.test_label, args.timeout, excluded_labels=excluded_labels, blocking=False, name=name)
@@ -298,7 +322,7 @@ if __name__ == "__main__":
     for name, resultThread in resultThreads:
         resultThread.join()
         result = resultThread.result
-        if result.returncode != 0:
+        if result is None or result.returncode != 0:
             print(f"Tests failed for configuration: {name}")
             any_failures = True
         else:

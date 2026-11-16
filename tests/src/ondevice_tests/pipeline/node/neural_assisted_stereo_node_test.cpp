@@ -1,5 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
 
 #include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -82,17 +83,21 @@ TEST_CASE("[NeuralAssistedStereo] Case without rectification") {
     auto cameraRightOut = cameraRight->requestFullResolutionOutput();
 
     auto nn = p.create<dai::node::NeuralAssistedStereo>()->build(*cameraLeftOut, *cameraRightOut, dai::DeviceModelZoo::NEURAL_DEPTH_NANO, false);
+    auto outputDepthQueue = nn->depth.createOutputQueue(1, false);
     auto outputRectifiedLeftQueue = nn->rectifiedLeft.createOutputQueue();
     auto outputRectifiedRightQueue = nn->rectifiedRight.createOutputQueue();
 
     // Start pipeline
     p.start();
 
-    for(int i = 0; i < 100; i++) {
-        auto leftOut = outputRectifiedLeftQueue->tryGet<dai::ImgFrame>();
-        auto rightOut = outputRectifiedRightQueue->tryGet<dai::ImgFrame>();
-        REQUIRE(leftOut == nullptr);
-        REQUIRE(rightOut == nullptr);
-    }
+    bool timedOut = false;
+    auto depthGot = outputDepthQueue->get<dai::ImgFrame>(std::chrono::seconds(60), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(depthGot != nullptr);
+
+    // Observe both queues after depth production starts so slow startup cannot hide unexpected rectified frames.
+    REQUIRE_FALSE(dai::MessageQueue::waitAny({*outputRectifiedLeftQueue, *outputRectifiedRightQueue}, std::chrono::seconds(5)));
+    REQUIRE_FALSE(outputRectifiedLeftQueue->isClosed());
+    REQUIRE_FALSE(outputRectifiedRightQueue->isClosed());
     p.stop();
 }

@@ -8,20 +8,56 @@ permissions:
   contents: read
 
 jobs:
+  find_wheels:
+    runs-on: ubuntu-24.04
+    outputs:
+      run_id: ${{ steps.find.outputs.run_id }}
+    steps:
+      - name: Find the newest successful develop wheel build
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          since=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          # develop is built in hil_testing_nightly.yml (job build_wheels). The HIL and BOM results of that run
+          # do not matter here, so require the report job of the wheel build to have passed.
+          run_id=""
+          for id in $(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/hil_testing_nightly.yml/runs" \
+                        -f branch=develop -f status=completed -f "created=>=$since" -F per_page=20 \
+                        --jq '.workflow_runs[].id' 2>/dev/null || true); do
+            if gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs" --paginate \
+                 --jq '.jobs[] | select(.name == "build_wheels / Required Python CI report" and .conclusion == "success") | .id' 2>/dev/null | grep -q . \
+               && gh api -X GET "repos/$GITHUB_REPOSITORY/actions/runs/$id/artifacts" \
+                 -f name=audited-wheels-combined-linux-x86_64 \
+                 --jq '.artifacts[] | select(.expired == false) | .id' 2>/dev/null | grep -q .; then
+              run_id=$id
+              break
+            fi
+          done
+          if [[ -n "$run_id" ]]; then
+            echo "Reusing the wheels of run https://github.com/$GITHUB_REPOSITORY/actions/runs/$run_id"
+            echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          else
+            echo "No successful develop wheel build with artifacts in the last 7 days; building the wheels"
+          fi
+
   build_wheels:
+    needs: find_wheels
+    if: needs.find_wheels.outputs.run_id == ''
     uses: ./.github/workflows/python-main.yml
     with:
       concurrency_suffix: weekly-stability
     secrets: inherit
 
   dispatch_stability:
-    needs: build_wheels
-    runs-on: ubuntu-latest
+    needs: [find_wheels, build_wheels]
+    if: always() && needs.find_wheels.result == 'success' && (needs.build_wheels.result == 'success' || needs.build_wheels.result == 'skipped')
+    runs-on: ubuntu-24.04
     steps:
       - name: Trigger weekly stability runs
         env:
           GH_TOKEN: ${{ github.token }}
-          WHEEL_RUN_ID: ${{ github.run_id }}
+          WHEEL_RUN_ID: ${{ needs.find_wheels.outputs.run_id || github.run_id }}
         run: |
           gh workflow run stability.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop -f wheel_run_id="$WHEEL_RUN_ID" -f protocol=tcpip -f timeout=168
           gh workflow run stability.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop -f wheel_run_id="$WHEEL_RUN_ID" -f protocol=usb -f timeout=168

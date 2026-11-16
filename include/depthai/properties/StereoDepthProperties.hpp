@@ -36,7 +36,7 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
          */
         uint16_t stepHeight = 16;
 
-        DEPTHAI_SERIALIZE(RectificationMesh, meshLeftUri, meshRightUri, meshSize, stepWidth, stepHeight);
+        DEPTHAI_SERIALIZE_DECL(RectificationMesh, meshLeftUri, meshRightUri, meshSize, stepWidth, stepHeight);
     };
 
     /// Initial stereo config
@@ -198,28 +198,30 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
     ~StereoDepthProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(StereoDepthProperties,
-                      initialConfig,
-                      depthAlignCamera,
-                      enableRectification,
-                      rectifyEdgeFillColor,
-                      width,
-                      height,
-                      outWidth,
-                      outHeight,
-                      outKeepAspectRatio,
-                      mesh,
-                      enableRuntimeStereoModeSwitch,
-                      numFramesPool,
-                      numPostProcessingShaves,
-                      numPostProcessingMemorySlices,
-                      focalLengthFromCalibration,
-                      useHomographyRectification,
-                      enableFrameSync,
-                      baseline,
-                      focalLength,
-                      disparityToDepthUseSpecTranslation,
-                      rectificationUseSpecTranslation,
-                      depthAlignmentUseSpecTranslation,
-                      alphaScaling);
+DEPTHAI_SERIALIZE_EXT_DECL(StereoDepthProperties,
+                           initialConfig,
+                           depthAlignCamera,
+                           enableRectification,
+                           rectifyEdgeFillColor,
+                           width,
+                           height,
+                           outWidth,
+                           outHeight,
+                           outKeepAspectRatio,
+                           mesh,
+                           enableRuntimeStereoModeSwitch,
+                           numFramesPool,
+                           numPostProcessingShaves,
+                           numPostProcessingMemorySlices,
+                           focalLengthFromCalibration,
+                           useHomographyRectification,
+                           enableFrameSync,
+                           baseline,
+                           focalLength,
+                           disparityToDepthUseSpecTranslation,
+                           rectificationUseSpecTranslation,
+                           depthAlignmentUseSpecTranslation,
+                           alphaScaling);
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::StereoDepthProperties>;

@@ -40,6 +40,6 @@ struct Point2f {
     }
 };
 
-DEPTHAI_SERIALIZE_EXT(Point2f, x, y, normalized, hasNormalized);
+DEPTHAI_SERIALIZE_EXT_DECL(Point2f, x, y, normalized, hasNormalized);
 
 }  // namespace dai

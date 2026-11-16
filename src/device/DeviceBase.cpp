@@ -9,6 +9,7 @@
 #include <cctype>
 #include <chrono>
 #include <cstdlib>
+#include <exception>
 #include <iomanip>
 #include <iostream>
 #include <mutex>
@@ -34,6 +35,7 @@
 
 // project
 #include "DeviceLogger.hpp"
+#include "depthai/build/version.hpp"
 #include "depthai/device/EepromError.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
@@ -49,6 +51,7 @@
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
+#include "utility/StartupNotifications.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 // libraries
@@ -156,6 +159,19 @@ bool isLoopbackDeviceName(std::string name) {
     return name == "localhost" || name == "::1" || name == "[::1]" || name.rfind("127.", 0) == 0;
 }
 
+std::optional<std::chrono::milliseconds> waitForDestroyedSessionExit(dai::DeviceGate& gate, std::chrono::milliseconds timeout) {
+    using namespace std::chrono;
+    constexpr auto pollInterval = milliseconds(20);
+    const auto start = steady_clock::now();
+    while(gate.getState() == dai::DeviceGate::SessionState::DESTROYED) {
+        if(steady_clock::now() - start >= timeout) {
+            return std::nullopt;
+        }
+        std::this_thread::sleep_for(pollInterval);
+    }
+    return duration_cast<milliseconds>(steady_clock::now() - start);
+}
+
 }  // namespace
 
 namespace dai {
@@ -166,6 +182,7 @@ const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "868632271";
 constexpr int DEVICE_SEARCH_FIRST_TIMEOUT_MS = 30;
 
 const unsigned int DEFAULT_CRASHDUMP_TIMEOUT_MS = 9000;
+constexpr std::chrono::milliseconds GATE_SESSION_EXIT_TIMEOUT{5000};
 const unsigned int DEFAULT_RPC_READ_TIMEOUT = 10000;
 const unsigned int DEFAULT_RPC_WRITE_TIMEOUT = 0;  // 0 means blocking
 
@@ -382,6 +399,10 @@ HealthCheckMetrics DeviceBase::performHealthCheck(const DeviceInfo& devInfo, con
     return DeviceHealthCheck::run(devInfo, config);
 }
 
+HealthCheckMetrics DeviceBase::performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config, const std::function<bool()>& shouldStop) {
+    return DeviceHealthCheck::run(devInfo, config, shouldStop);
+}
+
 /*
 std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices(){
     return XLinkConnection::getAllConnectedDevices();
@@ -404,6 +425,13 @@ class DeviceBase::Impl {
     std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> stdoutColorSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     // Device Logger
     DeviceLogger logger{"host", stdoutColorSink};
+
+    std::thread startupNotificationsThread;
+
+    // Telemetry ID of the pipeline started on this device. A copy: telemetry events are sent from
+    // device threads, which must not own the pipeline.
+    mutable std::mutex activeTelemetryPipelineIdMtx;
+    std::string activeTelemetryPipelineId;
 
     // RPC
     std::mutex rpcMutex;
@@ -761,6 +789,10 @@ void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
             return;
         }
 
+        // Retrieval succeeded. Callback or archive failures must not cause this
+        // crash dump to be retrieved and delivered again.
+        crashDumpHandled.store(true);
+
         decltype(crashdumpCallback) callbackCopy;
 
         // Create a copy of the callback function to avoid race conditions
@@ -779,7 +811,6 @@ void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
         } else {
             logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
         }
-        crashDumpHandled.store(true);
     }
 }
 
@@ -803,7 +834,25 @@ void DeviceBase::waitForGateAndCollectCrashDump() {
     pimpl->logger.warn("FW crashed - trying to get out the crash dump");
     std::this_thread::sleep_for(std::chrono::seconds(5));  // Allow for the generation of the crash dump and the log file
     pimpl->logger.warn("Getting the crash dump out - this can take up to a minute, because it first needs to be compressed.");
-    collectAndLogCrashDump();
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(getCrashdumpTimeout(deviceInfo.protocol));
+    // A CRASHED session does not guarantee its core dump is available yet. The
+    // gate can return 404 while the dump is being generated; do not reconnect
+    // and replace the session after a single unsuccessful retrieval.
+    do {
+        try {
+            collectAndLogCrashDump();
+        } catch(const std::exception& ex) {
+            if(crashDumpHandled.load()) {
+                pimpl->logger.warn("Crash dump was retrieved, but callback delivery or archive persistence failed: {}", ex.what());
+                return;
+            }
+            pimpl->logger.debug("Crash dump retrieval attempt failed: {}", ex.what());
+        }
+        if(crashDumpHandled.load() || !isCrashDumpCollectionEnabled()) return;
+        if(std::chrono::steady_clock::now() >= deadline) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    } while(std::chrono::steady_clock::now() < deadline);
+    pimpl->logger.warn("Crash dump was not available before the collection timeout");
 }
 
 void DeviceBase::waitForRebootAndCollectCrashDump() {
@@ -937,6 +986,7 @@ void DeviceBase::closeImpl() {
     if(loggingThread.joinable()) loggingThread.join();
     // And at the end stop profiling thread
     if(profilingThread.joinable()) profilingThread.join();
+    if(pimpl->startupNotificationsThread.joinable()) pimpl->startupNotificationsThread.join();
 
     // If the device was operated through gate, wait for the session to end
     if(gate && waitForGate) {
@@ -944,6 +994,16 @@ void DeviceBase::closeImpl() {
             waitForGateAndCollectCrashDump();
         } else {
             gate->waitForSessionEnd();
+        }
+    } else if(gate) {
+        try {
+            if(auto waited = waitForDestroyedSessionExit(*gate, GATE_SESSION_EXIT_TIMEOUT)) {
+                pimpl->logger.debug("Destroyed gate session ended after {} ms", waited->count());
+            } else {
+                pimpl->logger.warn("Destroyed gate session did not end within {} ms", GATE_SESSION_EXIT_TIMEOUT.count());
+            }
+        } catch(const std::exception& ex) {
+            pimpl->logger.debug("Waiting for the destroyed gate session failed: {}", ex.what());
         }
     }
 
@@ -1216,12 +1276,17 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
         // Create and start session
         // TODO Tie create and start session together. Split for now, since in some cases starting the session works, even if creating failed.
+        std::string createError;
         if(!gate->createSession()) {
+            createError = gate->getLastError();
             spdlog::error("Could not create the session on gate!");
         }
 
         if(!gate->startSession()) {
-            spdlog::error("Could not start the session on gate!");
+            std::string reason = gate->getLastError();
+            if(!createError.empty()) reason = createError + "; " + reason;
+            throw std::runtime_error(
+                fmt::format("Device '{}' is reachable, but its gate could not start the DepthAI firmware session ({}). ", deviceInfo.name, reason));
         }
         // Connect with XLinkConnection (skip checking if booted)
         connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_ANY_STATE);
@@ -1232,6 +1297,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
     {
         std::lock_guard<std::mutex> lock(deviceInfoMtx);
         deviceInfo.state = expectedBootState;
+        deviceInfo.protocol = connection->getDeviceInfo().protocol;
     }
 
     // prepare rpc for both attached and host controlled mode
@@ -1252,12 +1318,14 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             pimpl->logger.trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
         }
 
+        bool writeTimedOut = false;
         try {
             // Send request to device
             auto writeTimeout = getRPCWriteTimeout();
             if(writeTimeout > 0) {
                 auto success = rpcStream->write(std::move(request), std::chrono::milliseconds(writeTimeout));
                 if(!success) {
+                    writeTimedOut = true;
                     throw std::runtime_error("RPC write timed out in " + std::to_string(writeTimeout) + "ms");
                 }
             } else {
@@ -1274,6 +1342,10 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
         } catch(const std::exception& e) {
             // If any exception is thrown, log it and rethrow
             pimpl->logger.debug("RPC error: {}", e.what());
+            // A write timeout does not mean that the link dropped
+            if(writeTimedOut) {
+                throw std::system_error(std::make_error_code(std::errc::timed_out), e.what());
+            }
             throw std::system_error(std::make_error_code(std::errc::io_error), "Device already closed or disconnected");
         }
     });
@@ -1328,6 +1400,12 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
         try {
             auto level = spdlogLevelToLogLevel(logger::get_level());
             setLogLevel(config.logLevel.value_or(level));
+
+            if(config.dangerousIrPowerOverride) {
+                if(getPlatform() != Platform::RVC2) throw std::invalid_argument("dangerousIrPowerOverride is only supported on RVC2");
+                pimpl->rpcCallCheckedVoid("enableDangerousIrPowerOverride");
+                pimpl->logger.warn("DANGEROUS: IR dot/flood shared power budget disabled. Full power can cause power instability and device crashes.");
+            }
 
             // Sets system inforation logging rate. By default 1s
             setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
@@ -1499,6 +1577,34 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             // Rethrow original exception
             throw;
         }
+
+        // Handle startup notifications
+#ifdef DEPTHAI_ENABLE_CURL
+        if(!reconnect) {
+            try {
+                const auto disableNotificationsEnv = utility::getEnvAs<std::string>("DEPTHAI_DISABLE_STARTUP_NOTIFICATIONS", "");
+                if(disableNotificationsEnv != "1" && disableNotificationsEnv != "true") {
+                    pimpl->startupNotificationsThread = std::thread([this, platform = getPlatform(), protocol = getProtocol()]() {
+                        try {
+                            if(isClosing) return;
+                            // getOSVersion() locks closedMtx, which close() holds while joining this thread.
+                            const auto osVersion = pimpl->rpcCallChecked<std::string>("getOSVersion");
+                            if(isClosing) return;
+                            const auto deviceSKU = getProductName();
+                            if(isClosing) return;
+                            utility::printStartupNotifications(build::VERSION, platform, protocol, osVersion, deviceSKU, &isClosing);
+                        } catch(const std::exception& ex) {
+                            if(!isClosing) {
+                                pimpl->logger.debug("Startup notification print failed: {}", ex.what());
+                            }
+                        }
+                    });
+                }
+            } catch(const std::exception& ex) {
+                pimpl->logger.debug("Startup notification print failed: {}", ex.what());
+            }
+        }
+#endif
     }
 }
 
@@ -1701,8 +1807,6 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
     } catch(const std::exception& ex) {
         pimpl->logger.info("Monitor thread exception caught: {}", ex.what());
     }
-    // Device is gone for good: idle its streams; the pipeline stops only when this
-    // was the last device or a fatal one (a device consuming other devices' streams)
     notifyPipelineDeviceState(DeviceState::FAILED);
 }
 
@@ -1730,10 +1834,16 @@ std::string DeviceBase::getTemporaryTelemetryDeviceId() const {
 }
 
 std::optional<std::string> DeviceBase::getActiveTelemetryPipelineId() const {
-    if(auto pipeline = pipelinePtr.lock()) {
-        return pipeline->telemetryPipelineId;
+    std::lock_guard<std::mutex> lock(pimpl->activeTelemetryPipelineIdMtx);
+    if(pimpl->activeTelemetryPipelineId.empty()) {
+        return std::nullopt;
     }
-    return std::nullopt;
+    return pimpl->activeTelemetryPipelineId;
+}
+
+void DeviceBase::setActiveTelemetryPipelineId(std::string telemetryPipelineId) {
+    std::lock_guard<std::mutex> lock(pimpl->activeTelemetryPipelineIdMtx);
+    pimpl->activeTelemetryPipelineId = std::move(telemetryPipelineId);
 }
 
 std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
@@ -2622,19 +2732,46 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
 
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
-        std::thread t1([this, &streamAssetStorage, &assetStorage]() {
-            XLinkStream stream(connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
-            int64_t offset = 0;
-            do {
-                int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));
-                stream.write(&assetStorage[offset], toTransfer);
-                offset += toTransfer;
-            } while(offset < static_cast<int64_t>(assetStorage.size()));
+        // An exception that leaves a std::thread calls std::terminate, so the writer
+        // stores it here and the calling thread rethrows it after join
+        std::exception_ptr writeError;
+        std::thread t1([this, &streamAssetStorage, &assetStorage, &writeError]() {
+            try {
+                XLinkStream stream(connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
+                int64_t offset = 0;
+                do {
+                    int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));
+                    stream.write(&assetStorage[offset], toTransfer);
+                    offset += toTransfer;
+                } while(offset < static_cast<int64_t>(assetStorage.size()));
+            } catch(const std::exception& e) {
+                logger::debug("Asset storage write failed: {}", e.what());
+                writeError = std::current_exception();
+            } catch(...) {
+                writeError = std::current_exception();
+            }
         });
 
         logger::trace("Transfering assets of size {} with no timeout.", assetStorage.size());
         try {
             pimpl->rpcCallCheckedVoid(std::chrono::milliseconds(0), "readAssetStorageFromXLink", streamAssetStorage, assetStorage.size());
+        } catch(const std::system_error& e) {
+            if(t1.joinable()) {
+                t1.join();
+            }
+            logger::debug("Asset storage transfer RPC failed: {}", e.what());
+            // The RPC transport reports a dropped link as io_error; a timeout or a closed device is not a lost connection
+            auto deviceId = getDeviceInfo().getDeviceId();
+            auto sizeMiB = assetStorage.size() / (1024.0 * 1024.0);
+            std::string msg;
+            if(e.code() == std::errc::io_error) {
+                msg =
+                    fmt::format("Connection to device {} was lost during the asset storage transfer ({:.1f} MiB). Pipeline start aborted.", deviceId, sizeMiB);
+            } else {
+                msg = fmt::format("Asset storage transfer to device {} failed ({:.1f} MiB): {}. Pipeline start aborted.", deviceId, sizeMiB, e.what());
+            }
+            logger::error("{}", msg);
+            throw std::runtime_error(msg);
         } catch(const std::exception& e) {
             if(t1.joinable()) {
                 t1.join();
@@ -2644,6 +2781,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
             return false;
         }
         t1.join();
+        if(writeError) std::rethrow_exception(writeError);
     }
 
     // // print assets on device side for test
@@ -2699,6 +2837,10 @@ Platform DeviceBase::getPlatform() const {
 
 std::string DeviceBase::getPlatformAsString() const {
     return platform2string(this->getPlatform());
+}
+
+XLinkProtocol_t DeviceBase::getProtocol() const {
+    return getDeviceInfo().protocol;
 }
 
 }  // namespace dai

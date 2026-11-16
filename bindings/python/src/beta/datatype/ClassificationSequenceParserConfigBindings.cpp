@@ -5,10 +5,7 @@
 void bind_beta_classificationsequenceparserconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::ClassificationSequenceParserConfig,
-               Py<beta::ClassificationSequenceParserConfig>,
-               Buffer,
-               std::shared_ptr<beta::ClassificationSequenceParserConfig>>
+    py::class_<beta::ClassificationSequenceParserConfig, Py<beta::ClassificationSequenceParserConfig>, Buffer, py::smart_holder>
         config(betaModule, "ClassificationSequenceParserConfig", DOC(dai, beta, ClassificationSequenceParserConfig));
 
     Callstack* callstack = (Callstack*)pCallstack;

@@ -71,6 +71,11 @@ struct PreprocessingBlock {
      * was trained on.
      */
     std::optional<std::vector<double>> scale;
+    /**
+     * Image resize policy: CROP (center crop), STRETCH, or LETTERBOX (aspect-preserving padding).
+     * Unspecified leaves the policy to the consumer. Camera-based build methods default to CROP.
+     */
+    std::optional<std::string> resizeMode;
 };
 }  // namespace v1
 }  // namespace nn_archive

@@ -23,8 +23,6 @@
 namespace dai {
 namespace beta {
 
-RFDETRParserProperties::~RFDETRParserProperties() = default;
-
 namespace node {
 
 RFDETRParser::RFDETRParser(std::unique_ptr<Properties> props)
@@ -296,7 +294,7 @@ void RFDETRParser::run() {
                                                                          detections.maskWidth,
                                                                          detections.maskHeight);
         if(nnData->transformation.has_value()) {
-            message->setTransformation(*nnData->transformation);
+            utilities::DetectionUtils::setTransformationAndBounds(*message, *nnData->transformation);
         }
         message->setBufferMetadataFrom(nnData);
 

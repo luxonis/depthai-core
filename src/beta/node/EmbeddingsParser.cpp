@@ -14,8 +14,6 @@
 namespace dai {
 namespace beta {
 
-EmbeddingsParserProperties::~EmbeddingsParserProperties() = default;
-
 namespace node {
 
 NNArchive EmbeddingsParser::createNNArchive(NNModelDescription& modelDesc) {

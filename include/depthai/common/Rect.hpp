@@ -158,6 +158,6 @@ struct Rect {
     bool normalized = false;
     bool hasNormalized = false;
 };
-DEPTHAI_SERIALIZE_EXT(Rect, x, y, width, height, normalized, hasNormalized);
+DEPTHAI_SERIALIZE_EXT_DECL(Rect, x, y, width, height, normalized, hasNormalized);
 
 }  // namespace dai

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "common/ExternalFrameSyncRoles.hpp"
+#include "depthai/beta/device/LocalCalibrationOrigin.hpp"
 #include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "device/Platform.hpp"
@@ -176,7 +177,7 @@ nlohmann::json makeTelemetryNodePropertiesJson(const nlohmann::json& properties)
     return nlohmann::json::object();
 }
 
-void emitTelemetryNodeCreatedEvents(const Pipeline& pipeline, const nlohmann::json& telemetrySchema) {
+void emitTelemetryNodeCreatedEvents(const PipelineImpl& pipeline, const nlohmann::json& telemetrySchema) {
     for(const auto& node : telemetrySchema.at("nodes")) {
         const auto& nodeInfo = node.at(1);
         dai::utility::Telemetry::getInstance().event(pipeline,
@@ -375,27 +376,15 @@ void PipelineImpl::applyMultiDeviceCalibration(const std::optional<std::vector<M
     if(handler.has_value()) {
         for(size_t i = 0; i < devices.size(); ++i) {
             const auto& deviceId = deviceIds[i];
-            const auto localSocket = handler->getDeviceSocket(deviceId);
-            if(!localSocket.has_value()) {
+            if(!handler->getDeviceSocket(deviceId).has_value()) {
                 continue;
             }
-            if(!isCalibrationDataAvailable(devices[i])) {
-                throw std::runtime_error(fmt::format("Multi-device calibration requires local calibration data for device '{}'.", deviceId));
+            std::optional<EepromData> calibration;
+            if(isCalibrationDataAvailable(devices[i])) {
+                calibration = getCalibrationData(devices[i]).getEepromData();
             }
-            const auto calibration = getCalibrationData(devices[i]);
-            if(!calibration.hasCameraCalibration(*localSocket)) {
-                throw std::runtime_error(
-                    fmt::format("Multi-device calibration requires local calibration socket {} on device '{}'.", toString(*localSocket), deviceId));
-            }
-            CameraBoardSocket discoveredOrigin = CameraBoardSocket::AUTO;
-            calibration.getExtrinsicsToOrigin(*localSocket, false, discoveredOrigin);
-            if(discoveredOrigin != *localSocket) {
-                throw std::runtime_error(
-                    fmt::format("Multi-device calibration local origin mismatch for device '{}': graph expects socket {}, local calibration resolves to {}.",
-                                deviceId,
-                                toString(*localSocket),
-                                toString(discoveredOrigin)));
-            }
+            // The origin rule follows the device platform so this check matches the firmware's own.
+            handler->validateLocalOrigin(deviceId, beta::describeLocalCalibration(calibration, devices[i]->getPlatform()));
         }
     }
 
@@ -1765,9 +1754,9 @@ void PipelineImpl::build() {
 }
 
 void PipelineImpl::start() {
-    // A stop triggered by a device loss may still be finishing on its own thread - it must
-    // complete before the pipeline is started again (it takes stateMtx itself)
-    joinDeviceLossStop();
+    // A stop triggered by a device loss or by Node::stopPipeline() may still be finishing on its
+    // own thread - it must complete before the pipeline is started again (it takes stateMtx itself)
+    joinAsyncStop();
     std::lock_guard<std::mutex> lock(stateMtx);
     // TODO(themarpe) - add mutex and set running up ahead
 
@@ -1800,13 +1789,15 @@ void PipelineImpl::start() {
             pipelineDevices.push_back(device);
         }
     }
-    // Add pointer to the pipeline to every device before device-side startup, so that
-    // device-side telemetry can resolve the pipeline and a disconnect during another
-    // device's (slow) startup still finds the pipeline for reconnection.
+    // Add pointer to the pipeline to every device before device-side startup, so that a
+    // disconnect during another device's (slow) startup still finds the pipeline for
+    // reconnection. Device-side telemetry gets a copy of the pipeline telemetry ID: it runs on
+    // device threads, which must not own the pipeline.
     {
         const auto weak = std::weak_ptr<PipelineImpl>(shared_from_this());
         for(const auto& device : pipelineDevices) {
             device->pipelinePtr = weak;
+            device->setActiveTelemetryPipelineId(telemetryPipelineId);
         }
     }
 
@@ -1828,6 +1819,10 @@ void PipelineImpl::start() {
                 masterDevices.push_back(d);
             } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
                 slaveDevices.push_back(d);
+            } else if(role == dai::ExternalFrameSyncRole::AUTO_DETECT) {
+                // This should not happen, but bugs on depthai-device can
+                // leak this role. treat them as independent masters
+                masterDevices.push_back(d);
             } else {
                 throw std::runtime_error("Unknown external frame sync role");
             }
@@ -1966,10 +1961,9 @@ void PipelineImpl::start() {
 
     telemetryPipelineStartedAt = std::chrono::steady_clock::now();
 
-    const auto pipeline = Pipeline(shared_from_this());
     const auto telemetrySchema = makeTelemetrySchemaJson(getPipelineSchema(SerializationType::JSON, false));
-    emitTelemetryNodeCreatedEvents(pipeline, telemetrySchema);
-    dai::utility::Telemetry::getInstance().event(pipeline,
+    emitTelemetryNodeCreatedEvents(*this, telemetrySchema);
+    dai::utility::Telemetry::getInstance().event(*this,
                                                  "depthai_pipeline_start",
                                                  nlohmann::json{
                                                      {"host_only", isHostOnly()},
@@ -2080,10 +2074,12 @@ void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
 
     bool shouldStop = false;
     const bool fatal = fatalDevices.count(devicePtr.get()) > 0;
+    const bool strict = stopOnDeviceLoss;
     if(state == DeviceState::FAILED) {
-        // Fatal device (consumes other devices' streams) or last device running any node ->
-        // stop. A device that carries no node (added with addDevice but unused, or the
-        // implicit device of a host-only pipeline) does not affect the streams.
+        // Fatal device (consumes other devices' streams), last device running any node or
+        // any device running a node in strict mode -> stop. A device that carries no node
+        // (added with addDevice but unused, or the implicit device of a host-only pipeline)
+        // does not affect the streams.
         const auto assignedDevices = getAllAssignedDevices();
         bool carriesNodes = false;
         bool anyAlive = false;
@@ -2097,7 +2093,7 @@ void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
                 }
             }
         }
-        shouldStop = fatal || (carriesNodes && !anyAlive);
+        shouldStop = fatal || (carriesNodes && (strict || !anyAlive));
     }
     if(callback) {
         try {
@@ -2109,21 +2105,12 @@ void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
     if(shouldStop) {
         Logging::getInstance().logger.warn("Stopping pipeline - device {} is gone for good and was {}",
                                            devicePtr->getDeviceInfo().getDeviceId(),
-                                           fatal ? "a fatal device" : "the last device alive");
+                                           fatal    ? "a fatal device"
+                                           : strict ? "running nodes with stopOnDeviceLoss set"
+                                                    : "the last device alive");
         // Stop from a separate thread: this runs on the device's monitor thread, which
-        // stop() joins indirectly when closing the devices. The thread owns no reference to
-        // the pipeline - wait(), start() and the destructor join it - so the pipeline can
-        // never be destroyed on it.
-        std::lock_guard<std::mutex> lock(deviceLossStopMtx);
-        if(!deviceLossStopThread.joinable()) {
-            deviceLossStopThread = std::thread([this]() {
-                try {
-                    stop();
-                } catch(const std::exception& ex) {
-                    Logging::getInstance().logger.error("Failed to stop pipeline after device loss: {}", ex.what());
-                }
-            });
-        }
+        // stop() joins indirectly when closing the devices
+        stopAsync();
     }
 }
 
@@ -2149,24 +2136,41 @@ void PipelineImpl::wait() {
             node->wait();
         }
     }
-    // A stop triggered by a device loss runs on its own thread - waiting for the pipeline
-    // includes waiting for that teardown (device close) to finish
-    joinDeviceLossStop();
+    // A stop triggered by a device loss or by Node::stopPipeline() runs on its own thread -
+    // waiting for the pipeline includes waiting for that teardown (device close) to finish
+    joinAsyncStop();
 }
 
-void PipelineImpl::joinDeviceLossStop() {
+void PipelineImpl::stopAsync() {
+    // The thread owns no reference to the pipeline - wait(), start() and the destructor join it -
+    // so the pipeline can never be destroyed on it and no teardown outlives run()
+    std::lock_guard<std::mutex> lock(asyncStopMtx);
+    if(!asyncStopThread.joinable()) {
+        asyncStopThread = std::thread([this]() {
+            try {
+                stop();
+            } catch(const std::exception& ex) {
+                Logging::getInstance().logger.error("Failed to stop pipeline: {}", ex.what());
+            } catch(...) {
+                Logging::getInstance().logger.error("Failed to stop pipeline: unknown exception");
+            }
+        });
+    }
+}
+
+void PipelineImpl::joinAsyncStop() {
     std::thread thread;
     {
-        std::lock_guard<std::mutex> lock(deviceLossStopMtx);
-        if(!deviceLossStopThread.joinable()) {
+        std::lock_guard<std::mutex> lock(asyncStopMtx);
+        if(!asyncStopThread.joinable()) {
             return;
         }
-        if(deviceLossStopThread.get_id() == std::this_thread::get_id()) {
-            // Called on the loss-stop thread itself - it cannot join itself; let it run out
-            deviceLossStopThread.detach();
+        if(asyncStopThread.get_id() == std::this_thread::get_id()) {
+            // Called on the stop thread itself - it cannot join itself; let it run out
+            asyncStopThread.detach();
             return;
         }
-        thread = std::move(deviceLossStopThread);
+        thread = std::move(asyncStopThread);
     }
     thread.join();
 }
@@ -2207,10 +2211,17 @@ void PipelineImpl::stop() {
         telemetryPipelineStartedAt.reset();
     }
 
-    // Stops the pipeline execution
+    // Stops the pipeline execution. A node that fails to stop is logged and skipped: the other nodes,
+    // the queues and the devices below must still be stopped, or run() and wait() never return
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {
-            node->stop();
+            try {
+                node->stop();
+            } catch(const std::exception& ex) {
+                Logging::getInstance().logger.error("Failed to stop node {} (id {}): {}", node->getName(), node->id, ex.what());
+            } catch(...) {
+                Logging::getInstance().logger.error("Failed to stop node {} (id {}): unknown exception", node->getName(), node->id);
+            }
         }
     }
 
@@ -2254,7 +2265,7 @@ void PipelineImpl::stop() {
 }
 
 PipelineImpl::~PipelineImpl() {
-    joinDeviceLossStop();
+    joinAsyncStop();
     stop();
     wait();
 

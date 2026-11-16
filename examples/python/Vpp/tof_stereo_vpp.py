@@ -25,7 +25,7 @@ FPS = 30
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--show-all", action="store_true",
+    parser.add_argument("--show-all", action="store_true", default=False,
                         help="stream ToF, aligned depth, and VPP images as well as fused depth; this can reduce FPS")
     parser.add_argument("--size", choices=("1280x800", "640x400"), default="1280x800",
                         help="stereo processing size (default: 1280x800)")
@@ -77,6 +77,7 @@ def main():
 
         stereo = pipeline.create(dai.node.StereoDepth)
         stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.FAST_ACCURACY)
+        stereo.setExtendedDisparity(True)
         stereo.setRectification(False)
 
         vpp.leftOut.link(stereo.left)
@@ -98,11 +99,11 @@ def main():
             for name, queue in queues.items():
                 frame = queue.tryGet()
                 if frame is not None:
-                    img = frame.getCvFrame()
                     if name in ("tof_depth", "aligned_depth", "fused_depth"):
-                        # Fixed scale: outliers cannot change the brightness of the whole frame.
-                        # Invalid zero depth stays black; depths beyond the limit saturate to white.
-                        img = cv2.convertScaleAbs(img, alpha=255.0 / args.max_depth)
+                        img = dai.utility.colorizeDepthFrame(
+                            frame, minDepth=100, maxDepth=args.max_depth).getCvFrame()
+                    else:
+                        img = frame.getCvFrame()
                     cv2.imshow(name, img)
             if cv2.waitKey(1) == ord("q"):
                 break

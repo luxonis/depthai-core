@@ -160,6 +160,17 @@ std::shared_ptr<dai::ImgDetections> createDetectionMessage(const std::vector<std
     return message;
 }
 
+void setTransformationAndBounds(dai::ImgDetections& message, const dai::ImgTransformation& transformation) {
+    message.setTransformation(transformation);
+    const auto size = transformation.getSize();
+    if(size.first == 0 || size.second == 0) {
+        return;
+    }
+    for(auto& detection : message.detections) {
+        detection.setBoundingBox(detection.getBoundingBox(), static_cast<unsigned int>(size.first), static_cast<unsigned int>(size.second));
+    }
+}
+
 }  // namespace DetectionUtils
 }  // namespace utilities
 }  // namespace beta

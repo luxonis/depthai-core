@@ -17,6 +17,6 @@ struct PipelineSchema {
     std::vector<std::pair<int64_t, int64_t>> bridges;
 };
 
-DEPTHAI_SERIALIZE_EXT(PipelineSchema, connections, globalProperties, nodes, bridges);
+DEPTHAI_SERIALIZE_EXT_DECL(PipelineSchema, connections, globalProperties, nodes, bridges);
 
 }  // namespace dai

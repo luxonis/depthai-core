@@ -52,6 +52,16 @@ void ImgDetection::setBoundingBox(const RotatedRect boundingBox) {
     ymax = outerPoints[3];
 }
 
+void ImgDetection::setBoundingBox(const RotatedRect boundingBox, unsigned int width, unsigned int height) {
+    this->boundingBox = boundingBox;
+
+    const auto outerPoints = this->boundingBox->getOuterRectInFrame(width, height);
+    xmin = outerPoints[0];
+    ymin = outerPoints[1];
+    xmax = outerPoints[2];
+    ymax = outerPoints[3];
+}
+
 RotatedRect ImgDetection::getBoundingBox() const {
     if(boundingBox.has_value()) {
         return boundingBox.value();
@@ -78,13 +88,13 @@ void ImgDetection::setOuterBoundingBox(const float xmin, const float ymin, const
 }
 
 std::array<float, 4> ImgDetection::getOuterBoundingBox() const {
+    if(!(xmin == 0.f && xmax == 0.f && ymin == 0.f && ymax == 0.f)) {
+        return {xmin, ymin, xmax, ymax};
+    }
     if(boundingBox.has_value()) {
         return boundingBox->getOuterRect();
     }
-    if(xmin == 0.f && xmax == 0.f && ymin == 0.f && ymax == 0.f) {
-        throw std::runtime_error("All bounding box values are zero, no bounding box can be built.");
-    }
-    return {xmin, ymin, xmax, ymax};
+    throw std::runtime_error("All bounding box values are zero, no bounding box can be built.");
 }
 
 void ImgDetection::setKeypoints(const KeypointsList kp) {
@@ -165,7 +175,9 @@ float ImgDetection::getAngle() const {
 }
 
 void ImgDetection::transform(const ImgTransformation& source, const ImgTransformation& target) {
-    setBoundingBox(source.remapRectTo(target, getBoundingBox()));
+    // The bounding box is the minimum outer rotated rectangle of the mapped corners; the bounds enclose it.
+    const auto size = target.getSize();
+    setBoundingBox(source.remapRectTo(target, getBoundingBox()), static_cast<unsigned int>(size.first), static_cast<unsigned int>(size.second));
     if(keypoints.has_value()) {
         keypoints = keypoints->transformTo(source, target);
     }

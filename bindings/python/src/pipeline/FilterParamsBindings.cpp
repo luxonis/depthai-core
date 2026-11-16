@@ -8,12 +8,13 @@ void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
     py::module_ params = filters.def_submodule("params", "Parameters for filters");
 
     // -- Median Filter --
+    // Keep the built-in enum __str__ ("MedianFilter.KERNEL_3x3"). pybind11 v3 runs a custom enum __str__
+    // first, and one that formats self calls itself again.
     py::enum_<dai::filters::params::MedianFilter> medianFilter(params, "MedianFilter");
     medianFilter.value("MEDIAN_OFF", dai::filters::params::MedianFilter::MEDIAN_OFF)
         .value("KERNEL_3x3", dai::filters::params::MedianFilter::KERNEL_3x3)
         .value("KERNEL_5x5", dai::filters::params::MedianFilter::KERNEL_5x5)
-        .value("KERNEL_7x7", dai::filters::params::MedianFilter::KERNEL_7x7)
-        .def("__str__", [](const dai::filters::params::MedianFilter& self) { return py::str("MedianFilter({})").format(self); });
+        .value("KERNEL_7x7", dai::filters::params::MedianFilter::KERNEL_7x7);
 
     // -- Spatial Filter --
     py::class_<dai::filters::params::SpatialFilter> spatialFilter(params, "SpatialFilter");

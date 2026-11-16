@@ -15,11 +15,25 @@ using dai::node::StereoDepth;
 namespace dai::node {
 
 struct DepthTestAccess {
+    // Test the optional-output contract without connecting a device or building a backend.
+    static void setWiredOutputs(Depth& depth, Depth::Algorithm algorithm, Node::Output& depthOutput, Node::Output* left, Node::Output* right) {
+        depth.graphBuilt_ = true;
+        depth.resolved_.algorithm = algorithm;
+        depth.depthOut_ = &depthOutput;
+        depth.rectifiedLeftOut_ = left;
+        depth.rectifiedRightOut_ = right;
+    }
+
     static std::pair<Depth::Algorithm, Depth::Config> selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                                                     float targetFps,
                                                                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
                                                                     const std::vector<DeviceModelZoo>& modelFilter = {}) {
-        const auto selection = Depth::selectBackend(resolution, targetFps, supportedAlgorithms, modelFilter);
+        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter);
+        return {selection.algorithm, selection.config};
+    }
+
+    static std::pair<Depth::Algorithm, Depth::Config> selectNonRvc4Backend(const std::vector<Depth::Algorithm>& supportedAlgorithms) {
+        const auto selection = Depth::selectBackend(Platform::RVC2, std::nullopt, 30.f, supportedAlgorithms);
         return {selection.algorithm, selection.config};
     }
 };
@@ -51,6 +65,40 @@ Selection select(std::optional<std::pair<uint32_t, uint32_t>> res,
 }
 
 }  // namespace
+
+TEST_CASE("Depth::getSupportedAlgorithms requires a non-null device", "[Depth]") {
+    REQUIRE_THROWS_WITH(Depth::getSupportedAlgorithms(nullptr), Catch::Matchers::ContainsSubstring("requires a device"));
+}
+
+TEST_CASE("Depth::getDefaultAlgorithm requires a non-null device", "[Depth]") {
+    REQUIRE_THROWS_WITH(Depth::getDefaultAlgorithm(nullptr), Catch::Matchers::ContainsSubstring("requires a device"));
+}
+
+TEST_CASE("Depth::selectBackend prefers ToF on non-RVC4 devices without requiring stereo", "[Depth]") {
+    for(const auto& supported : {std::vector{Depth::Algorithm::TOF}, std::vector{Depth::Algorithm::STEREO, Depth::Algorithm::TOF}}) {
+        const auto selected = dai::node::DepthTestAccess::selectNonRvc4Backend(supported);
+        REQUIRE(selected.first == Depth::Algorithm::TOF);
+        REQUIRE(std::holds_alternative<std::monostate>(selected.second));
+    }
+}
+
+TEST_CASE("Depth::selectBackend preserves stereo selection on non-RVC4 devices without ToF", "[Depth]") {
+    const auto selected = dai::node::DepthTestAccess::selectNonRvc4Backend(kStereoOnly);
+    REQUIRE(selected.first == Depth::Algorithm::STEREO);
+    REQUIRE(std::get<StereoDepth::PresetMode>(selected.second) == StereoDepth::PresetMode::FAST_ACCURACY);
+}
+
+TEST_CASE("Depth::selectBackend selects ToF on RVC4 without stereo", "[Depth]") {
+    const auto sel = select(std::nullopt, 30.f, {Depth::Algorithm::TOF});
+    REQUIRE(sel.algorithm == Depth::Algorithm::TOF);
+    REQUIRE(std::holds_alternative<std::monostate>(sel.config));
+}
+
+TEST_CASE("Depth::selectBackend preserves RVC4 stereo selection when ToF is also available", "[Depth]") {
+    const auto sel = select(std::make_pair(640u, 400u), 30.f, {Depth::Algorithm::STEREO, Depth::Algorithm::TOF});
+    REQUIRE(sel.algorithm == Depth::Algorithm::STEREO);
+    REQUIRE(std::get<StereoDepth::PresetMode>(sel.config) == StereoDepth::PresetMode::FAST_ACCURACY);
+}
 
 TEST_CASE("Depth::selectBackend picks NeuralDepth model whose tensor band fits the user resolution", "[Depth]") {
     struct Case {
@@ -142,4 +190,35 @@ TEST_CASE("Depth::selectBackend honors supportedModels filter for NEURAL rows", 
     const auto sel = select(std::make_pair(640u, 400u), 30.f, kAllRvc4Backends, only);
     REQUIRE(sel.algorithm == Depth::Algorithm::NEURAL);
     REQUIRE(std::get<DeviceModelZoo>(sel.config) == DeviceModelZoo::NEURAL_DEPTH_480X300);
+}
+
+TEST_CASE("Depth rectified outputs require a wired backend", "[Depth][RectifiedOutputs]") {
+    auto depth = Depth::create();
+    REQUIRE_THROWS_WITH(depth->hasRectifiedOutputs(), Catch::Matchers::ContainsSubstring("attach the node to a pipeline"));
+    REQUIRE_THROWS(depth->rectifiedLeft());
+    REQUIRE_THROWS(depth->rectifiedRight());
+}
+
+TEST_CASE("Depth ToF has no rectified pair and keeps its depth output usable", "[Depth][RectifiedOutputs]") {
+    auto depth = Depth::create();
+    auto stereo = StereoDepth::create();  // Only owns dummy outputs; no hardware connection.
+    dai::node::DepthTestAccess::setWiredOutputs(*depth, Depth::Algorithm::TOF, stereo->depth, nullptr, nullptr);
+    REQUIRE_FALSE(depth->hasRectifiedOutputs());
+    REQUIRE_THROWS_WITH(depth->rectifiedLeft(), Catch::Matchers::ContainsSubstring("unavailable for the TOF backend"));
+    REQUIRE_THROWS_WITH(depth->rectifiedRight(), Catch::Matchers::ContainsSubstring("unavailable for the TOF backend"));
+    REQUIRE(depth->getRequestedAlgorithm() == Depth::Algorithm::AUTO);
+    REQUIRE(depth->getResolvedAlgorithm() == Depth::Algorithm::TOF);
+    REQUIRE(&depth->depth() == &stereo->depth);
+    REQUIRE(depth->getNodeMap().empty());  // Querying did not create extra stereo nodes.
+}
+
+TEST_CASE("Depth rectified access forwards backend outputs and locks configuration", "[Depth][RectifiedOutputs]") {
+    auto depth = Depth::create();
+    auto stereo = StereoDepth::create();
+    dai::node::DepthTestAccess::setWiredOutputs(*depth, Depth::Algorithm::STEREO, stereo->depth, &stereo->rectifiedLeft, &stereo->rectifiedRight);
+    REQUIRE(depth->hasRectifiedOutputs());
+    REQUIRE(&depth->rectifiedLeft() == &stereo->rectifiedLeft);
+    REQUIRE(&depth->rectifiedRight() == &stereo->rectifiedRight);
+    REQUIRE(&depth->depth() == &stereo->depth);
+    REQUIRE_THROWS(depth->setAlgorithm(Depth::Algorithm::TOF));
 }

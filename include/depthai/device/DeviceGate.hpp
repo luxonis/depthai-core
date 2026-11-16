@@ -4,6 +4,7 @@
 #include <XLink/XLinkPublicDefines.h>
 
 #include <cstdint>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <type_traits>
@@ -42,7 +43,9 @@ class DeviceGate {
     bool destroySession();
     SessionState getState();
 
-    // Waits for the gate session to end
+    std::string getLastError() const;
+
+    // Waits for the gate session to end, at most 30 s
     void waitForSessionEnd();
 
     std::optional<CrashDump> getCrashDump();
@@ -58,6 +61,7 @@ class DeviceGate {
     class GateImpl {
        public:
         virtual ~GateImpl();
+        std::string lastError;
         virtual bool isOkay() = 0;
         virtual bool createSession(std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) = 0;
         virtual bool startSession(std::string sessionId) = 0;
@@ -88,6 +92,8 @@ class DeviceGate {
        private:
         DeviceInfo deviceInfo;
         int timeout;
+        // One request and its response use the same USB endpoints; keep exchanges from different threads apart
+        std::mutex mtx;
     };
 
     class HTTPImpl : public GateImpl {

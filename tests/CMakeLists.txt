@@ -304,7 +304,11 @@ endif()
 
 set(test_env
     # Misc
-    "UBSAN_OPTIONS=halt_on_error=1"
+    "UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1"
+    # vcpkg dependencies are built without ASan: protobuf containers then give false container-overflow
+    # reports (inline code from instrumented objects annotates memory that libprotobuf.a then writes)
+    # TODO: remove when the vcpkg dependencies are built with ASan
+    "ASAN_OPTIONS=detect_container_overflow=0"
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=30000"
     "DEPTHAI_RECONNECT_TIMEOUT=0"
@@ -322,6 +326,36 @@ include(CMakeParseArguments)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
+# Almost every test is one source file that includes catch2 and depthai.hpp. All tests reuse one
+# precompiled header, so these headers are parsed once and not once per test.
+option(DEPTHAI_TESTS_PCH "Share one precompiled header between the tests" ON)
+if(DEPTHAI_TESTS_PCH)
+    set(DEPTHAI_TESTS_PCH_TARGET depthai_tests_pch)
+    file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${DEPTHAI_TESTS_PCH_TARGET}.cpp" CONTENT "")
+    # An executable (main comes from Catch2WithMain), so that its PIE flags match the tests that reuse its header.
+    add_executable(${DEPTHAI_TESTS_PCH_TARGET} "${CMAKE_CURRENT_BINARY_DIR}/${DEPTHAI_TESTS_PCH_TARGET}.cpp")
+    add_default_flags(${DEPTHAI_TESTS_PCH_TARGET} LEAN)
+    set(_pch_depthai_target depthai::core)
+    if(NOT DEPTHAI_MERGED_TARGET AND TARGET depthai::opencv)
+        set(_pch_depthai_target depthai::opencv)
+    endif()
+    target_link_libraries(${DEPTHAI_TESTS_PCH_TARGET} PRIVATE ${_pch_depthai_target} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog trompeloeil)
+    target_precompile_headers(${DEPTHAI_TESTS_PCH_TARGET} PRIVATE
+        <catch2/catch_all.hpp>
+        <depthai/depthai.hpp>
+        <algorithm>
+        <chrono>
+        <memory>
+        <optional>
+        <string>
+        <thread>
+        <vector>
+    )
+    if(COMMAND add_sanitizers)
+        add_sanitizers(${DEPTHAI_TESTS_PCH_TARGET})
+    endif()
+endif()
+
 # Function for adding new tests
 function(dai_add_test test_name test_src)
     # Parse arguments
@@ -330,6 +364,9 @@ function(dai_add_test test_name test_src)
     # Create test executable
     add_executable(${test_name} ${test_src})
     add_default_flags(${test_name} LEAN)
+    if(DEPTHAI_TESTS_PCH AND (NOT DAT_CXX_STANDARD OR DAT_CXX_STANDARD STREQUAL "17") AND NOT DAT_CONFORMING)
+        target_precompile_headers(${test_name} REUSE_FROM ${DEPTHAI_TESTS_PCH_TARGET})
+    endif()
 
     # Set compiler C++ standard if specified
     if(DAT_CXX_STANDARD)
@@ -365,6 +402,9 @@ function(dai_add_test test_name test_src)
     # Add test
     add_test(NAME ${test_name} COMMAND ${test_name})
     set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_env}")
+    # Catch2 returns 4 when every selected test case is skipped. Preserve that
+    # result in CTest without hiding assertion failures or empty selections.
+    set_tests_properties(${test_name} PROPERTIES SKIP_RETURN_CODE 4)
 
 
     # Copy over required DLLs (Windows)
@@ -403,6 +443,8 @@ function(dai_set_test_labels test_name)
         elseif(label STREQUAL "noreplayci")
             # Exclude these tests from the replay-enabled CI job.
             list(APPEND expanded_labels ${label})
+        elseif(label STREQUAL "nousb")
+            list(APPEND expanded_labels ${label})
         else()
             list(APPEND expanded_labels ${label})
         endif()
@@ -436,6 +478,10 @@ target_include_directories(test_wrapper PRIVATE ${CMAKE_CURRENT_LIST_DIR}/includ
 target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads spdlog::spdlog)
 target_compile_definitions(test_wrapper PRIVATE DEVICE_SEARCH_TIMEOUT_SECONDS=${DEPTHAI_TEST_DEVICE_SEARCH_TIMEOUT})
 
+add_executable(tcp_host_disconnect_test_child src/ondevice_tests/regression/tcp_host_disconnect_child.cpp)
+add_default_flags(tcp_host_disconnect_test_child LEAN)
+target_link_libraries(tcp_host_disconnect_test_child PRIVATE depthai::core Threads::Threads spdlog::spdlog)
+
 add_executable(telemetry_test_child src/ondevice_tests/telemetry_test_child.cpp)
 add_default_flags(telemetry_test_child LEAN)
 target_link_libraries(telemetry_test_child PRIVATE depthai::core Threads::Threads spdlog::spdlog)
@@ -445,6 +491,10 @@ add_default_flags(telemetry_multi_device_test_child LEAN)
 target_link_libraries(telemetry_multi_device_test_child PRIVATE depthai::core Threads::Threads spdlog::spdlog)
 
 ### On-host tests #############################################################
+
+# Exercise Catch2's all-skipped exit code through the shared CTest registration.
+dai_add_test(catch2_skip_test src/onhost_tests/catch2_skip_test.cpp)
+dai_set_test_labels(catch2_skip_test onhost ci)
 
 # Superblob test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -478,6 +528,14 @@ dai_set_test_labels(xlink_in_host_test onhost ci)
 # Multi-device pipeline API test (host only)
 dai_add_test(multi_device_pipeline_test src/onhost_tests/pipeline/multi_device_pipeline_test.cpp)
 dai_set_test_labels(multi_device_pipeline_test onhost)
+
+# Node::stopPipeline() test (host only)
+dai_add_test(stop_pipeline_test src/onhost_tests/pipeline/stop_pipeline_test.cpp)
+dai_set_test_labels(stop_pipeline_test onhost ci)
+
+# Public NNArchive head serialization (no downloaded model required)
+dai_add_test(nn_archive_head_test src/onhost_tests/nn_archive/head_test.cpp)
+dai_set_test_labels(nn_archive_head_test onhost ci)
 
 # NNArchive test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -540,6 +598,10 @@ dai_set_test_labels(bootloader_version_test onhost ci)
 dai_add_test(bootloader_config_test src/onhost_tests/bootloader_config_test.cpp)
 dai_set_test_labels(bootloader_config_test onhost ci)
 
+# Crash dump serialization test
+dai_add_test(crash_dump_serialization_test src/onhost_tests/crash_dump_serialization_test.cpp)
+dai_set_test_labels(crash_dump_serialization_test onhost ci)
+
 # Environment test
 dai_add_test(env_test src/onhost_tests/utility/env_test.cpp)
 dai_set_test_labels(env_test onhost ci)
@@ -554,6 +616,14 @@ dai_add_test(platform_test src/onhost_tests/utility/platform_test.cpp)
 dai_set_test_labels(platform_test onhost ci)
 target_compile_definitions(platform_test PRIVATE FSLOCK_DUMMY_PATH="$<TARGET_FILE:fslock_dummy>")
 add_dependencies(platform_test fslock_dummy)
+
+# Startup notification filtering
+if(DEPTHAI_ENABLE_CURL)
+    dai_add_test(startup_notifications_test src/onhost_tests/utility/startup_notifications_test.cpp)
+    target_link_libraries(startup_notifications_test PRIVATE httplib::httplib)
+    target_compile_definitions(startup_notifications_test PRIVATE DEPTHAI_ENABLE_CURL)
+    dai_set_test_labels(startup_notifications_test onhost ci)
+endif()
 
 # Telemetry fork safety test
 dai_add_test(telemetry_fork_test src/onhost_tests/utility/telemetry_fork_test.cpp)
@@ -577,6 +647,11 @@ dai_set_test_labels(pipeline_debugging_host_test onhost ci)
 dai_add_test(nndata_test src/onhost_tests/pipeline/datatype/nndata_test.cpp)
 dai_set_test_labels(nndata_test onhost ci)
 
+if(DEPTHAI_XTENSOR_SUPPORT)
+    dai_add_test(nndata_strides_device_test src/ondevice_tests/nndata_strides_device_test.cpp)
+    dai_set_test_labels(nndata_strides_device_test ondevice rvc2_all rvc4 ci)
+endif()
+
 #ImgDetections tests
 dai_add_test(imgdetections_test src/onhost_tests/pipeline/datatype/imgdetections_test.cpp)
 dai_set_test_labels(imgdetections_test onhost ci)
@@ -584,6 +659,10 @@ dai_set_test_labels(imgdetections_test onhost ci)
 #ImgFrame tests
 dai_add_test(imgframe_test src/onhost_tests/pipeline/datatype/imgframe_test.cpp)
 dai_set_test_labels(imgframe_test onhost ci)
+
+# ToF configuration transport tests
+dai_add_test(tofconfig_device_test src/ondevice_tests/tofconfig_device_test.cpp)
+dai_set_test_labels(tofconfig_device_test ondevice rvc2_all rvc4 ci)
 
 # PointCloudData / PointCloudConfig / PointCloudProperties datatype tests
 dai_add_test(pointclouddata_test src/onhost_tests/pipeline/datatype/pointclouddata_test.cpp)
@@ -593,6 +672,14 @@ dai_set_test_labels(pointclouddata_test onhost ci)
 dai_add_test(point_cloud_test src/onhost_tests/point_cloud_test.cpp)
 dai_set_test_labels(point_cloud_test onhost ci)
 
+# PointCloud node multi-stream (merged) tests
+dai_add_test(point_cloud_multi_stream_test src/onhost_tests/pipeline/node/point_cloud_multi_stream_test.cpp)
+dai_set_test_labels(point_cloud_multi_stream_test onhost ci)
+
+# Model zoo settings tests (also valid without libcurl)
+dai_add_test(model_zoo_settings_test src/onhost_tests/model_zoo_settings_test.cpp)
+dai_set_test_labels(model_zoo_settings_test onhost ci)
+
 # Model description tests
 dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
 dai_set_test_labels(model_slug_test onhost ci)
@@ -601,21 +688,19 @@ dai_set_test_labels(model_slug_test onhost ci)
 dai_add_test(gpu_stereo_node_test src/onhost_tests/pipeline/node/gpu_stereo_node_test.cpp)
 dai_set_test_labels(gpu_stereo_node_test onhost ci)
 
-if(DEPTHAI_BUILD_BETA)
-    # Stitching device-node configuration tests (must not require host OpenCV support)
-    dai_add_test(stitching_device_node_test src/onhost_tests/pipeline/node/stitching_device_node_test.cpp)
-    dai_set_test_labels(stitching_device_node_test onhost ci)
+# Stitching device-node configuration tests (must not require host OpenCV support)
+dai_add_test(stitching_device_node_test src/onhost_tests/pipeline/node/stitching_device_node_test.cpp)
+dai_set_test_labels(stitching_device_node_test onhost ci)
 
-    if(DEPTHAI_HAVE_OPENCV_STITCHING AND DEPTHAI_FETCH_ARTIFACTS)
-        dai_add_test(stitching_node_test src/onhost_tests/pipeline/node/stitching_node_test.cpp)
-        target_compile_definitions(stitching_node_test PRIVATE KITCHEN_IMAGE_PATH="${kitchen_image}")
-        dai_set_test_labels(stitching_node_test onhost ci)
-    endif()
+if(DEPTHAI_HAVE_OPENCV_STITCHING AND DEPTHAI_FETCH_ARTIFACTS)
+    dai_add_test(stitching_node_test src/onhost_tests/pipeline/node/stitching_node_test.cpp)
+    target_compile_definitions(stitching_node_test PRIVATE KITCHEN_IMAGE_PATH="${kitchen_image}")
+    dai_set_test_labels(stitching_node_test onhost ci)
+endif()
 
-    if(DEPTHAI_HAVE_OPENCV_STITCHING)
-        dai_add_test(planar_stitching_node_test src/onhost_tests/pipeline/node/planar_stitching_node_test.cpp)
-        dai_set_test_labels(planar_stitching_node_test onhost ci)
-    endif()
+if(DEPTHAI_HAVE_OPENCV_STITCHING)
+    dai_add_test(planar_stitching_node_test src/onhost_tests/pipeline/node/planar_stitching_node_test.cpp)
+    dai_set_test_labels(planar_stitching_node_test onhost ci)
 endif()
 
 # Remote connection tests
@@ -625,13 +710,22 @@ if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
 endif()
 ### On-device tests ###########################################################
 
+# CBA EEPROM shared-bus regression
+dai_add_test(cba_eeprom_access_test src/ondevice_tests/cba_eeprom_access_test.cpp)
+dai_set_test_labels(cba_eeprom_access_test ondevice rvc2 usb ci cba_eeprom noreplayci)
+
+# Sustained device load test (nightly only)
+dai_add_test(stress_test src/ondevice_tests/stress_test.cpp)
+dai_set_test_labels(stress_test ondevice rvc2_all rvc4 rvc4rgb ci_nightly noreplayci)
+set_tests_properties(stress_test PROPERTIES TIMEOUT 600)
+
 # Camera stream restart test
 dai_add_test(camera_stream_restart_test src/ondevice_tests/camera_stream_restart_test.cpp)
-dai_set_test_labels(camera_stream_restart_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(camera_stream_restart_test ondevice rvc2_all rvc4 rvc4rgb ci noreplayci)  # Replay ignores camera stop/start controls
 
 # DepthAI logging test
 dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
-dai_set_test_labels(logging_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(logging_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci)
 
 # Telemetry redirect test
 dai_add_test(telemetry_test src/ondevice_tests/telemetry_test.cpp)
@@ -639,7 +733,7 @@ target_include_directories(telemetry_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/incl
 target_link_libraries(telemetry_test PRIVATE httplib::httplib)
 target_compile_definitions(telemetry_test PRIVATE DEPTHAI_TELEMETRY_TEST_CHILD_PATH="$<TARGET_FILE:telemetry_test_child>")
 add_dependencies(telemetry_test telemetry_test_child)
-dai_set_test_labels(telemetry_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(telemetry_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci noreplayci)  # A replayed camera starts no sensor, so no sensor-mode event
 
 # Telemetry redirect test across multiple devices
 dai_add_test(telemetry_multi_device_test src/ondevice_tests/telemetry_multi_device_test.cpp)
@@ -648,7 +742,7 @@ target_link_libraries(telemetry_multi_device_test PRIVATE httplib::httplib)
 target_compile_definitions(telemetry_multi_device_test PRIVATE
     DEPTHAI_TELEMETRY_MULTI_DEVICE_TEST_CHILD_PATH="$<TARGET_FILE:telemetry_multi_device_test_child>")
 add_dependencies(telemetry_multi_device_test telemetry_multi_device_test_child)
-dai_set_test_labels(telemetry_multi_device_test ondevice rvc2_all rvc4 rvc4rgb)
+dai_set_test_labels(telemetry_multi_device_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb)
 
 # OpenVINO blob test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -688,7 +782,7 @@ dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibratio
 dai_set_test_labels(dynamic_calibration_onhost_test onhost)
 
 dai_add_test(flash_eeprom_fields_test src/ondevice_tests/flash_eeprom_fields_test.cpp)
-dai_set_test_labels(flash_eeprom_fields_test ondevice rvc2_all rvc4)
+dai_set_test_labels(flash_eeprom_fields_test ondevice rvc2_all rvc4 rvc4ffc)
 
 # Neural network test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -728,7 +822,7 @@ dai_set_test_labels(device_usbspeed_test_20 ondevice rvc2 usb ci)
 
 # Device Properties test
 dai_add_test(device_properties_test src/ondevice_tests/device_properties_test.cpp)
-dai_set_test_labels(device_properties_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(device_properties_test ondevice rvc2_all rvc4 rvc4ffc ci)
 
 # Filesystem test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -747,15 +841,19 @@ endif()
 
 # Encoded frame test
 dai_add_test(encoded_frame_test src/ondevice_tests/encoded_frame_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(encoded_frame_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(encoded_frame_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci)
 
 # MessageGroup tests
 dai_add_test(message_group_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(message_group_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(message_group_test ondevice rvc2_all rvc4 rvc4ffc ci)
 
 # Pointcloud test
 dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
 dai_set_test_labels(pointcloud_test ondevice rvc2_all ci)
+dai_add_test(pointcloud_gpu_test src/ondevice_tests/pointcloud_gpu_test.cpp)
+dai_set_test_labels(pointcloud_gpu_test ondevice rvc4)
+dai_add_test(pointcloud_multi_stream_device_test src/ondevice_tests/pointcloud_multi_stream_device_test.cpp)
+dai_set_test_labels(pointcloud_multi_stream_device_test ondevice rvc4 rvc4ffc ci)
 
 # RGBD test
 dai_add_test(rgbd_test src/ondevice_tests/rgbd_test.cpp)
@@ -763,7 +861,7 @@ dai_set_test_labels(rgbd_test ondevice rvc2_all rvc4 ci)
 
 # Input/Output naming test
 dai_add_test(input_output_naming_test src/ondevice_tests/input_output_naming_test.cpp)
-dai_set_test_labels(input_output_naming_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(input_output_naming_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci)
 
 # Resolutions test
 dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
@@ -789,6 +887,10 @@ if(DEPTHAI_BUILD_BETA)
     dai_add_test(multi_device_calibration_result_test src/onhost_tests/multi_device_calibration_result_test.cpp)
     dai_set_test_labels(multi_device_calibration_result_test onhost ci)
 
+    # One RVC2 device with a RAM-only calibration whose chain root is not the lowest socket.
+    dai_add_test(multi_device_calibration_origin_test src/ondevice_tests/multi_device_calibration_origin_test.cpp)
+    dai_set_test_labels(multi_device_calibration_origin_test ondevice rvc2_all ci noreplayci)  # Replayed frames keep their recorded extrinsics
+
     dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
     dai_set_test_labels(beta_parser_config_test onhost ci)
 
@@ -804,11 +906,11 @@ endif()
 
 # GPU availability test
 dai_add_test(gpu_availability_test src/ondevice_tests/gpu_availability_test.cpp)
-dai_set_test_labels(gpu_availability_test ondevice rvc4)
+dai_set_test_labels(gpu_availability_test ondevice rvc4 rvc4ffc)
 
 # Subnode test
 dai_add_test(subnode_test src/ondevice_tests/pipeline/subnode_test.cpp)
-dai_set_test_labels(subnode_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(subnode_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci)
 
 dai_add_test(depth_node_test src/ondevice_tests/pipeline/node/depth_node_test.cpp)
 dai_set_test_labels(depth_node_test ondevice rvc2_all rvc4 ci)
@@ -834,7 +936,7 @@ if(DEPTHAI_XTENSOR_SUPPORT)
     dai_set_test_labels(detection_parser_runtime_test onhost ci)
     dai_add_test(detection_parser_runtime_device_test src/onhost_tests/detection_parser_runtime_test.cpp)
     target_compile_definitions(detection_parser_runtime_device_test PRIVATE DETECTION_PARSER_TEST_DEVICE)
-    dai_set_test_labels(detection_parser_runtime_device_test ondevice rvc2_all rvc4 ci)
+    dai_set_test_labels(detection_parser_runtime_device_test ondevice rvc2_all rvc4 rvc4ffc ci)
 endif()
 
 # DetectionParser test
@@ -856,29 +958,33 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_GROUND_TRUTH="${yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt_v2}"
         YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_NN_DATA="${yolo_v8_seg_640x352_kitchen_dai}"
     )
-    dai_set_test_labels(detection_parser_test ondevice rvc4 ci)
+    dai_set_test_labels(detection_parser_test ondevice rvc4 rvc4ffc ci)
 endif()
 
 # SegmentationParser test
 dai_add_test(segmentation_parser_test src/ondevice_tests/pipeline/node/segmentation_parser_test.cpp)
-dai_set_test_labels(segmentation_parser_test ondevice rvc4 ci)
+dai_set_test_labels(segmentation_parser_test ondevice rvc4 rvc4ffc ci)
 
 # Spatial detection network test
 dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp)
 dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 ci)
 
+dai_add_test(neural_network_nnarchive_behavior_test src/ondevice_tests/pipeline/node/neural_network_nnarchive_behavior_test.cpp)
+target_link_libraries(neural_network_nnarchive_behavior_test PRIVATE LibArchive::LibArchive liblzma::liblzma BZip2::BZip2)
+dai_set_test_labels(neural_network_nnarchive_behavior_test ondevice rvc4 ci)
+
 # NeuralNetwork node test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(neural_network_node_test src/ondevice_tests/pipeline/node/neural_network_node_test.cpp)
     target_compile_definitions(neural_network_node_test PRIVATE LENNA_PATH="${lenna_png}")
-    dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 ci noreplayci)
+    dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 rvc4ffc ci noreplayci)
 endif()
 
 # ImgTransformations tests
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(img_transformation_test src/ondevice_tests/img_transformation_test.cpp CXX_STANDARD 17)
     target_compile_definitions(img_transformation_test PRIVATE TRANSFORMATION_TEST_DATA="${img_transformations_test_data}")
-    dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci)
+    dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci noreplayci)  # Replayed frames have no extrinsics device ID
 endif()
 
 
@@ -888,17 +994,25 @@ dai_set_test_labels(eeprom_undistortion_test ondevice rvc2_all ci)
 
 # Regression tests for encountered bugs
 dai_add_test(regression_camera_concurrency_test src/ondevice_tests/regression/camera_concurrency.cpp)
-dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci noreplayci)
+dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 rvc4ffc ci noreplayci)
 
 dai_add_test(regression_message_group_test src/ondevice_tests/regression/message_group.cpp)
-dai_set_test_labels(regression_message_group_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(regression_message_group_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci)
+
+# A killed PoE host must not leave queued system logs refreshing the watchdog.
+dai_add_test(tcp_host_disconnect_test src/ondevice_tests/regression/tcp_host_disconnect.cpp)
+target_include_directories(tcp_host_disconnect_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
+target_compile_definitions(tcp_host_disconnect_test PRIVATE DEPTHAI_TCP_DISCONNECT_TEST_CHILD_PATH="$<TARGET_FILE:tcp_host_disconnect_test_child>")
+add_dependencies(tcp_host_disconnect_test tcp_host_disconnect_test_child)
+dai_set_test_labels(tcp_host_disconnect_test ondevice rvc2 poe ci noreplayci)
+set_tests_properties(tcp_host_disconnect_test PROPERTIES TIMEOUT 150)
 
 dai_add_test(regression_boot_test src/ondevice_tests/regression/boot.cpp)
-dai_set_test_labels(regression_boot_test ondevice rvc2 rvc4 usb ci noreplayci)
+dai_set_test_labels(regression_boot_test ondevice rvc2 rvc4 rvc4ffc usb ci noreplayci)
 
 # Sync test
 dai_add_test(sync_test src/ondevice_tests/pipeline/node/sync_test.cpp)
-dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(sync_test ondevice rvc2_all rvc4 rvc4ffc ci)
 
 # Fsync test
 dai_add_test(fsync_test src/ondevice_tests/pipeline/node/fsync_test.cpp)
@@ -918,7 +1032,7 @@ dai_set_test_labels(multi_device_ptp_test ondevice rvc4ptp ci noreplayci)
 ## Large messages tests
 dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
 # Only test on RVC4, as RVC2 is not yet supported to auto-increase the max stream capacity
-dai_set_test_labels(bridge_large_messages ondevice rvc4 rvc4rgb ci)
+dai_set_test_labels(bridge_large_messages ondevice rvc4 rvc4ffc rvc4rgb ci)
 # ImageAlign test
 dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
 dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
@@ -927,21 +1041,36 @@ dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
 dai_add_test(align_node_test src/ondevice_tests/align_node_test.cpp)
 dai_set_test_labels(align_node_test ondevice rvc4 ci)
 
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    # Shared ImageAlign/Align bounds checks and synthetic rotated depth coverage.
+    dai_add_test(align_coverage_test src/ondevice_tests/align_coverage_test.cpp)
+    target_include_directories(align_coverage_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../src)
+    dai_set_test_labels(align_coverage_test ondevice rvc2_all rvc4 ci)
+endif()
+
 # Align device execution test (device-side Align is only available on RVC4)
 dai_add_test(align_node_device_test src/ondevice_tests/align_node_device_test.cpp)
 dai_set_test_labels(align_node_device_test ondevice rvc4 ci)
 
 # Common Script node test
 dai_add_test(script_node_test src/ondevice_tests/script_node_test.cpp)
-dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci)
 
 # RVC4 specific Script node test
 dai_add_test(script_node_rvc4_test src/ondevice_tests/script_node_rvc4_test.cpp)
-dai_set_test_labels(script_node_rvc4_test ondevice rvc4 rvc4rgb ci)
+dai_set_test_labels(script_node_rvc4_test ondevice rvc4 rvc4ffc rvc4rgb ci)
 
 # StereoDepth test
 dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)
 dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
+
+# Pixel geometry regression: synthetic inputs through on-device stereo and alignment.
+dai_add_test(stereo_depth_alignment_test src/ondevice_tests/stereo_depth_alignment_test.cpp)
+dai_set_test_labels(stereo_depth_alignment_test ondevice rvc2_all rvc4 ci)
+
+# Shared color-conversion implementation, including RVC4's CPU fallback.
+dai_add_test(image_manip_mono_color_test src/onhost_tests/image_manip_mono_color_test.cpp)
+dai_set_test_labels(image_manip_mono_color_test onhost ci)
 
 # ImageManip test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -951,36 +1080,40 @@ if(DEPTHAI_FETCH_ARTIFACTS)
 
     dai_add_test(image_manip_optimization_test src/ondevice_tests/pipeline/node/image_manip_optimization_test.cpp)
     target_compile_definitions(image_manip_optimization_test PRIVATE LENNA_PATH="${lenna_png}")
-    dai_set_test_labels(image_manip_optimization_test ondevice rvc4 rvc4rgb ci)
+    dai_set_test_labels(image_manip_optimization_test ondevice rvc4 rvc4ffc rvc4rgb ci)
 endif()
 
 # Benchmark tests
 dai_add_test(benchmark_test src/ondevice_tests/pipeline/node/benchmark_test.cpp)
-dai_set_test_labels(benchmark_test ondevice rvc2_all rvc4 rvc4rgb ci noreplayci)
+dai_set_test_labels(benchmark_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci noreplayci)
 
 # SystemLogger test
 dai_add_test(system_logger_test src/ondevice_tests/pipeline/node/system_logger_test.cpp)
-dai_set_test_labels(system_logger_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(system_logger_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci)
 
 # Manual focus test
 dai_add_test(manual_focus_test src/ondevice_tests/manual_focus_test.cpp)
-dai_set_test_labels(manual_focus_test rvc2_all rvc4 rvc4rgb ci noreplayci)
+dai_set_test_labels(manual_focus_test rvc2_all rvc4 rvc4ffc rvc4rgb ci noreplayci)
 
 # IMU tests
 dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
-dai_set_test_labels(imu_test ondevice rvc4 rvc4rgb ci) # Many RVC2 devices do not have an IMU which supports the whole test suite
+dai_set_test_labels(imu_test ondevice rvc4 rvc4ffc rvc4rgb ci noreplayci) # Many RVC2 devices do not have an IMU which supports the whole test suite; replayed IMU data skips the runtime calibration
 
 # ObjectTracker tests
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    dai_add_test(object_tracker_host_test src/onhost_tests/pipeline/node/object_tracker_test.cpp)
+    dai_set_test_labels(object_tracker_host_test onhost ci)
+endif()
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(object_tracker_test src/ondevice_tests/pipeline/node/object_tracker_test.cpp)
-    dai_set_test_labels(object_tracker_test ondevice rvc2 rvc4 ci)
+    dai_set_test_labels(object_tracker_test ondevice rvc2 rvc4 rvc4ffc ci)
     target_compile_definitions(object_tracker_test PRIVATE VIDEO_PATH="${construction_vest}")
 endif()
 
 # Record & Replay tests
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(record_replay_test src/ondevice_tests/pipeline/node/record_replay_test.cpp)
-    dai_set_test_labels(record_replay_test ondevice rvc2_all rvc4) # TODO(Morato) add to CI once the test is stable
+    dai_set_test_labels(record_replay_test ondevice rvc2_all rvc4 rvc4ffc) # TODO(Morato) add to CI once the test is stable
     target_compile_definitions(record_replay_test PRIVATE RECORDING_PATH="${recording_path}")
     dai_add_test(replay_test src/onhost_tests/replay_test.cpp)
     dai_set_test_labels(replay_test onhost ci)
@@ -994,25 +1127,28 @@ endif()
 
 # Camera tests
 dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
-dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci noreplayci)
+dai_set_test_labels(camera_test ondevice rvc2_all rvc4 rvc4ffc ci noreplayci)
+
+dai_add_test(camera_test_rvc4 src/ondevice_tests/pipeline/node/camera_test_rvc4.cpp)
+dai_set_test_labels(camera_test_rvc4 ondevice rvc4 ci noreplayci)
 
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
-dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci_nightly noreplayci)
+dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 rvc4ffc ci_nightly noreplayci)
 set_property(TEST camera_fps_config_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
 # VideoEncoder test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(video_encoder_test src/ondevice_tests/video_encoder_test.cpp)
-    dai_set_test_labels(video_encoder_test ondevice rvc2 usb rvc4 rvc4rgb ci)
+    dai_set_test_labels(video_encoder_test ondevice rvc2 usb rvc4 rvc4ffc rvc4rgb ci)
     target_compile_definitions(video_encoder_test PRIVATE VIDEO_PATH="${construction_vest}")
 endif()
 
 dai_add_test(video_encoder_latency_test src/ondevice_tests/video_encoder_latency_test.cpp)
-dai_set_test_labels(video_encoder_latency_test ondevice rvc4 rvc4rgb ci noreplayci)
+dai_set_test_labels(video_encoder_latency_test ondevice rvc4 rvc4ffc rvc4rgb ci noreplayci)
 
 # XLinkIn test
 dai_add_test(xlink_test src/ondevice_tests/xlink_test.cpp)
-dai_set_test_labels(xlink_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(xlink_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci)
 
 # runtime_calibration_test test
 dai_add_test(runtime_calibration_test src/ondevice_tests/runtime_calibration_test.cpp)
@@ -1036,7 +1172,7 @@ dai_set_test_labels(neural_assisted_stereo_node_test ondevice rvc4 ci)
 
 # Gate tests
 dai_add_test(gate_node_test src/ondevice_tests/pipeline/node/gate_node_tests.cpp)
-dai_set_test_labels(gate_node_test ondevice rvc4 rvc2_all ci noreplayci)
+dai_set_test_labels(gate_node_test ondevice rvc4 rvc4ffc rvc2_all ci noreplayci)
 
 # AutoCalibration test
 dai_add_test(auto_calibration_test src/ondevice_tests/pipeline/node/auto_calibration_test.cpp)
@@ -1044,4 +1180,42 @@ dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)
 
 # Crashdump test
 dai_add_test(crashdump_test src/ondevice_tests/crashdump_test.cpp)
-dai_set_test_labels(crashdump_test ondevice rvc2_all rvc4 ci noreplayci)
+dai_set_test_labels(crashdump_test ondevice rvc2_all rvc4 rvc4ffc ci noreplayci)
+
+set(FILTER_TEST_DIR src/onhost_tests/pipeline/node)
+dai_add_test(img_detections_filter_helpers_test ${FILTER_TEST_DIR}/img_detections_filter_helpers_test.cpp)
+dai_set_test_labels(img_detections_filter_helpers_test onhost ci)
+set_tests_properties(img_detections_filter_helpers_test PROPERTIES FIXTURES_SETUP img_detections_filter_fixtures)
+
+foreach(name img_detections_filter_test img_detections_filter_panorama_test img_detections_filter_errors_test)
+    dai_add_test(${name} ${FILTER_TEST_DIR}/${name}.cpp)
+    dai_set_test_labels(${name} onhost ci)
+    set_tests_properties(${name} PROPERTIES FIXTURES_REQUIRED img_detections_filter_fixtures)
+endforeach()
+
+# Stitching is public (not beta) in this tree; this fixture needs no downloaded assets.
+if(DEPTHAI_HAVE_OPENCV_STITCHING)
+    dai_add_test(img_detections_filter_stitching_test ${FILTER_TEST_DIR}/img_detections_filter_stitching_test.cpp)
+    dai_set_test_labels(img_detections_filter_stitching_test onhost ci)
+    set_tests_properties(img_detections_filter_stitching_test PROPERTIES FIXTURES_REQUIRED img_detections_filter_fixtures)
+endif()
+
+dai_add_test(img_detections_filter_device_test src/ondevice_tests/pipeline/node/img_detections_filter_device_test.cpp)
+dai_set_test_labels(img_detections_filter_device_test ondevice rvc2_all rvc4 rvc4ffc ci)
+set_tests_properties(img_detections_filter_device_test PROPERTIES FIXTURES_REQUIRED img_detections_filter_fixtures)
+
+# Explicit Align interpolation on host and on RVC4
+dai_add_test(align_interpolation_test src/ondevice_tests/align_interpolation_test.cpp)
+dai_set_test_labels(align_interpolation_test ondevice rvc4 rvc4ffc ci)
+
+# Link drop during the asset storage transfer (RVC4 over TCP/IP, local proxy uses POSIX sockets)
+if(UNIX)
+    dai_add_test(asset_storage_link_drop_test src/ondevice_tests/asset_storage_link_drop_test.cpp)
+    dai_set_test_labels(asset_storage_link_drop_test ondevice rvc4 rvc4ffc ci noreplayci nousb)
+endif()
+
+# PoE link reset: the host must close its XLink socket (RVC2 PoE and RVC4 over TCP/IP, connect(AF_UNSPEC) resets a TCP socket only on Linux)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    dai_add_test(poe_link_reset_test src/ondevice_tests/poe_link_reset_test.cpp)
+    dai_set_test_labels(poe_link_reset_test ondevice rvc2 poe rvc4 rvc4ffc ci noreplayci nousb)
+endif()

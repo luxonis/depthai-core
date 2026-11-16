@@ -4,7 +4,6 @@ on:
   push:
     branches:
     - main
-    - develop
     tags:
     - 'v3*'
 jobs:
@@ -13,9 +12,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm]
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             arch: amd64
           - os: ubuntu-24.04-arm
             arch: armv8
@@ -25,11 +24,11 @@ jobs:
         with:
           args: /bin/sh -c "rm -rf /github/workspace/.* || rm -rf /github/workspace/*"
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_PASS }}
@@ -44,7 +43,7 @@ jobs:
         run: echo "LUXONIS_IMAGE_TAG=${GITHUB_REF#refs/*/}-${{ matrix.arch }}" >> $GITHUB_ENV
 
       - name: Build and push
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v7
         with:
           push: true
           file: ci/Dockerfile
@@ -56,18 +55,18 @@ jobs:
   upload:
     needs: [build]
     name: Combine into a single multi-arch image and upload tags
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
 
       - name: Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_PASS }}
 
       - name: Get Version
         id: vars
-        run: echo ::set-output name=short_ref::${GITHUB_REF#refs/*/}
+        run: echo "short_ref=${GITHUB_REF#refs/*/}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push (development)
         if: startsWith(github.ref, 'refs/tags/v') != true

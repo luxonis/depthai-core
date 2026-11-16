@@ -21,7 +21,7 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public Hos
     using TimestampSource = SyncProperties::TimestampSource;
 
     /**
-     * A map of inputs
+     * A map of inputs. Inputs that exist but are never linked are left out of the synchronization.
      */
     InputMap inputs{*this, "inputs", {"", DEFAULT_GROUP, false, 10, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 

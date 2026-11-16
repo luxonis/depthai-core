@@ -1,10 +1,67 @@
 #include <catch2/catch_all.hpp>
 #include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <thread>
 
 #include "depthai/depthai.hpp"
 #include "depthai/log/LogLevel.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
+
+// Run explicitly on a 63D board with updated firmware: logging_test '[.dangerous]'.
+TEST_CASE("63D IR shared power budget can be bypassed explicitly", "[.dangerous]") {
+    const bool dangerous = GENERATE(false, true);
+    std::mutex logMutex;
+    std::condition_variable logCv;
+    bool capped = false;
+    bool matchedCurrent = false;
+    dai::Device::Config config;
+    config.logLevel = dai::LogLevel::WARN;
+    config.board.logDevicePrints = true;
+    dai::DeviceInfo deviceInfo;
+    {
+        dai::Device probe(config);
+        if(probe.getPlatform() != dai::Platform::RVC2) {
+            SKIP("Requires an RVC2 device");
+        }
+        const auto properties = probe.getProperties();
+        if(!properties.calibData.has_value()) {
+            SKIP("Requires board calibration data to identify supported hardware");
+        }
+        const auto& eeprom = properties.calibData.value();
+        const bool limitedBoard = (eeprom.boardName == "EL2086" && eeprom.boardRev == "R6M5E6" && eeprom.boardConf == "IR-C59M00-00")
+                                  || (eeprom.boardName == "EL2086-ASM" && eeprom.boardConf == "IR-C59M07-00");
+        if(!limitedBoard) {
+            SKIP("Requires a 63D board with the shared IR power budget");
+        }
+        deviceInfo.deviceId = probe.getDeviceId();
+    }
+    config.dangerousIrPowerOverride = dangerous;
+    dai::Device device(config, deviceInfo);
+
+    // Calibration reads redo board lookups and must not cancel the explicit override.
+    device.readCalibrationOrDefault();
+    device.readFactoryCalibrationOrDefault();
+
+    const int callbackId = device.addLogCallback([&](dai::LogMessage message) {
+        std::lock_guard<std::mutex> lock(logMutex);
+        if(message.payload.find("combined power budget") != std::string::npos) capped = true;
+        if(message.payload.find(dangerous ? "flood: 450.00 mA" : "flood: 337.50 mA") != std::string::npos) matchedCurrent = true;
+        logCv.notify_all();
+    });
+
+    // Cross the normal 45% shared budget without requesting maximum emitter power.
+    REQUIRE(device.setIrLaserDotProjectorIntensity(0.3f));
+    REQUIRE(device.setIrFloodLightIntensity(0.3f));
+    REQUIRE(device.setIrLaserDotProjectorIntensity(0.0f));
+    REQUIRE(device.setIrFloodLightIntensity(0.0f));
+    {
+        std::unique_lock<std::mutex> lock(logMutex);
+        REQUIRE(logCv.wait_for(lock, std::chrono::seconds(2), [&]() { return matchedCurrent && (dangerous || capped); }));
+    }
+    REQUIRE(device.removeLogCallback(callbackId));
+    REQUIRE(capped == !dangerous);
+}
 
 class LoggingTestFixture {
    public:

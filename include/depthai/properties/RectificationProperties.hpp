@@ -11,6 +11,8 @@ struct RectificationProperties : PropertiesSerializable<Properties, Rectificatio
     ~RectificationProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(RectificationProperties, outputWidth, outputHeight, enableRectification);
+DEPTHAI_SERIALIZE_EXT_DECL(RectificationProperties, outputWidth, outputHeight, enableRectification);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::RectificationProperties>;

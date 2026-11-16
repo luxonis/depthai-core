@@ -12,7 +12,7 @@ void bind_beta_map2d(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::Map2D, Py<beta::Map2D>, Buffer, Transformable, std::shared_ptr<beta::Map2D>> map2D(betaModule, "Map2D", DOC(dai, beta, Map2D));
+    py::class_<beta::Map2D, Py<beta::Map2D>, Buffer, Transformable, py::smart_holder> map2D(betaModule, "Map2D", DOC(dai, beta, Map2D));
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -50,6 +50,10 @@ void bind_beta_map2d(pybind11::module& m, void* pCallstack) {
                 py::array_t<float, py::array::c_style | py::array::forcecast> contiguous(map);
                 const auto height = static_cast<size_t>(contiguous.shape(0));
                 const auto width = static_cast<size_t>(contiguous.shape(1));
+                if(self.data.use_count() > 1) {
+                    const auto previous = self.getData();
+                    self.setData(std::vector<std::uint8_t>(previous.begin(), previous.end()));
+                }
                 self.setMap(dai::span<const float>(contiguous.data(), height * width), width, height);
             },
             py::arg("map"),

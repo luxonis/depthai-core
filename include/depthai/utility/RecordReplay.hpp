@@ -82,23 +82,25 @@ struct adl_serializer<dai::RecordConfig> {
     static void from_json(const json& j, dai::RecordConfig& p) {  // NOLINT this is a specialization, naming conventions don't apply
         std::string profile;
         j.at("videoEncoding").at("enabled").get_to(p.videoEncoding.enabled);
-        j.at("videoEncoding").at("bitrate").get_to(p.videoEncoding.bitrate);
-        j.at("videoEncoding").at("profile").get_to(profile);
-        j.at("videoEncoding").at("lossless").get_to(p.videoEncoding.lossless);
-        j.at("videoEncoding").at("quality").get_to(p.videoEncoding.quality);
-        std::transform(profile.begin(), profile.end(), profile.begin(), ::tolower);
+        if(p.videoEncoding.enabled) {
+            j.at("videoEncoding").at("bitrate").get_to(p.videoEncoding.bitrate);
+            j.at("videoEncoding").at("profile").get_to(profile);
+            j.at("videoEncoding").at("lossless").get_to(p.videoEncoding.lossless);
+            j.at("videoEncoding").at("quality").get_to(p.videoEncoding.quality);
+            std::transform(profile.begin(), profile.end(), profile.begin(), ::tolower);
 
-        p.videoEncoding.profile = dai::RecordConfig::Profile::MJPEG;
-        if(profile == "h264_baseline" || profile == "avc_baseline") {
-            p.videoEncoding.profile = dai::RecordConfig::Profile::H264_BASELINE;
-        } else if(profile == "h264_high" || profile == "avc_high") {
-            p.videoEncoding.profile = dai::RecordConfig::Profile::H264_HIGH;
-        } else if(profile == "h264_main" || profile == "avc_main" || profile == "h264" || profile == "avc") {
-            p.videoEncoding.profile = dai::RecordConfig::Profile::H264_MAIN;
-        } else if(profile == "h265_main" || profile == "hevc_main" || profile == "h265" || profile == "hevc") {
-            p.videoEncoding.profile = dai::RecordConfig::Profile::H265_MAIN;
-        } else if(profile == "mjpeg") {
             p.videoEncoding.profile = dai::RecordConfig::Profile::MJPEG;
+            if(profile == "h264_baseline" || profile == "avc_baseline") {
+                p.videoEncoding.profile = dai::RecordConfig::Profile::H264_BASELINE;
+            } else if(profile == "h264_high" || profile == "avc_high") {
+                p.videoEncoding.profile = dai::RecordConfig::Profile::H264_HIGH;
+            } else if(profile == "h264_main" || profile == "avc_main" || profile == "h264" || profile == "avc") {
+                p.videoEncoding.profile = dai::RecordConfig::Profile::H264_MAIN;
+            } else if(profile == "h265_main" || profile == "hevc_main" || profile == "h265" || profile == "hevc") {
+                p.videoEncoding.profile = dai::RecordConfig::Profile::H265_MAIN;
+            } else if(profile == "mjpeg") {
+                p.videoEncoding.profile = dai::RecordConfig::Profile::MJPEG;
+            }
         }
 
         j.at("compressionLevel").get_to(p.compressionLevel);

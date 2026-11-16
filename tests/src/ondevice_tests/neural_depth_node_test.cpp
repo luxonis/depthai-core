@@ -4,7 +4,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/generators/catch_generators_range.hpp>
+#include <chrono>
 #include <magic_enum/magic_enum.hpp>
+#include <thread>
 
 #include "depthai/depthai.hpp"
 
@@ -45,6 +47,8 @@ constexpr std::array<LiveCameraTestCase, kNeuralDepthModels.size()> kLiveCameraT
     {dai::DeviceModelZoo::NEURAL_DEPTH_192X120, 55.0f},
 }};
 
+// constexpr auto kDeviceRestartDelay = std::chrono::milliseconds(200);
+
 bool isModelSupported(const std::shared_ptr<dai::DeviceBase>& device, dai::DeviceModelZoo model) {
     const auto supportedModels = device->getSupportedDeviceModels();
     return std::find(supportedModels.begin(), supportedModels.end(), model) != supportedModels.end();
@@ -53,6 +57,7 @@ bool isModelSupported(const std::shared_ptr<dai::DeviceBase>& device, dai::Devic
 void testNeuralDepthModelBasic(dai::DeviceModelZoo model, float minFps) {
     constexpr float kFpsTolerance = 0.2f;
 
+    // std::this_thread::sleep_for(kDeviceRestartDelay);
     dai::Pipeline pipeline;
     auto device = pipeline.getDefaultDevice();
     if(!isModelSupported(device, model)) {
@@ -139,6 +144,7 @@ DepthStats computeDepthStats(const std::shared_ptr<dai::ImgFrame>& depthFrame) {
 }
 
 TEST_CASE("NeuralDepth replay produces expected results") {
+    // std::this_thread::sleep_for(kDeviceRestartDelay);
     dai::Pipeline pipeline;
     auto device = pipeline.getDefaultDevice();
 
@@ -196,6 +202,7 @@ TEST_CASE("NeuralDepth replay produces expected results") {
 }
 
 TEST_CASE("NeuralDepth replay aligns with StereoDepth medians") {
+    // std::this_thread::sleep_for(kDeviceRestartDelay);
     dai::Pipeline pipeline;
     auto device = pipeline.getDefaultDevice();
 

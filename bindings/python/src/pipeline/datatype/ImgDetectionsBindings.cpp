@@ -20,7 +20,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     // py::class_<RawImgDetections, RawBuffer, std::shared_ptr<RawImgDetections>> rawImgDetections(m, "RawImgDetections", DOC(dai, RawImgDetections));
-    py::class_<ImgDetections, Py<ImgDetections>, Buffer, ProtoSerializable, Transformable, std::shared_ptr<ImgDetections>> imgDetections(
+    py::class_<ImgDetections, Py<ImgDetections>, Buffer, ProtoSerializable, Transformable, py::smart_holder> imgDetections(
         m, "ImgDetections", DOC(dai, ImgDetections));
     py::class_<ImgDetection> imgDetection(m, "ImgDetection", DOC(dai, ImgDetection));
 
@@ -64,7 +64,13 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def_readwrite("ymin", &ImgDetection::ymin)
         .def_readwrite("xmax", &ImgDetection::xmax)
         .def_readwrite("ymax", &ImgDetection::ymax)
-        .def("setBoundingBox", &ImgDetection::setBoundingBox, py::arg("boundingBox"))
+        .def("setBoundingBox", py::overload_cast<RotatedRect>(&ImgDetection::setBoundingBox), py::arg("boundingBox"), DOC(dai, ImgDetection, setBoundingBox))
+        .def("setBoundingBox",
+             py::overload_cast<RotatedRect, unsigned int, unsigned int>(&ImgDetection::setBoundingBox),
+             py::arg("boundingBox"),
+             py::arg("width"),
+             py::arg("height"),
+             DOC(dai, ImgDetection, setBoundingBox, 2))
         .def("getBoundingBox", &ImgDetection::getBoundingBox)
         .def("setOuterBoundingBox", &ImgDetection::setOuterBoundingBox, py::arg("xmin"), py::arg("ymin"), py::arg("xmax"), py::arg("ymax"))
         .def("getOuterBoundingBox", &ImgDetection::getOuterBoundingBox, DOC(dai, ImgDetection, getOuterBoundingBox))

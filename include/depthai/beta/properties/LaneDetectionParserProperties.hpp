@@ -24,7 +24,9 @@ struct LaneDetectionParserProperties : PropertiesSerializable<Properties, LaneDe
     ~LaneDetectionParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(LaneDetectionParserProperties, outputLayerName, rowAnchors, gridingNum, clsNumPerLane, inputSize);
+DEPTHAI_SERIALIZE_EXT_DECL(LaneDetectionParserProperties, outputLayerName, rowAnchors, gridingNum, clsNumPerLane, inputSize);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::LaneDetectionParserProperties>;

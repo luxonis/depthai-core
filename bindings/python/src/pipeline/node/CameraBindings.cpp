@@ -20,7 +20,12 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
 
     // Actual bindings
-    camera.def_readonly("inputControl", &Camera::inputControl, DOC(dai, node, Camera, inputControl))
+    camera.def("getMaxWidth", &dai::node::Camera::getMaxWidth, DOC(dai, node, Camera, getMaxWidth))
+        .def("getMaxHeight", &dai::node::Camera::getMaxHeight, DOC(dai, node, Camera, getMaxHeight))
+        .def("getMaxRequestedFps", &dai::node::Camera::getMaxRequestedFps, DOC(dai, node, Camera, getMaxRequestedFps))
+        .def("getMaxRequestedWidth", &dai::node::Camera::getMaxRequestedWidth, DOC(dai, node, Camera, getMaxRequestedWidth))
+        .def("getMaxRequestedHeight", &dai::node::Camera::getMaxRequestedHeight, DOC(dai, node, Camera, getMaxRequestedHeight))
+        .def_readonly("inputControl", &Camera::inputControl, DOC(dai, node, Camera, inputControl))
         .def_readonly("initialControl", &Camera::initialControl, DOC(dai, node, Camera, initialControl))
         .def_readonly("mockIsp", &Camera::mockIsp, DOC(dai, node, Camera, mockIsp))
         .def_readonly("raw", &Camera::raw, DOC(dai, node, Camera, raw))

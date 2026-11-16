@@ -34,7 +34,7 @@ else:
         print("At least two devices are required for this example.")
         raise SystemExit(0)
 
-sockets = (dai.CameraBoardSocket.CAM_B, dai.CameraBoardSocket.CAM_C)
+stereoSockets = (dai.CameraBoardSocket.CAM_B, dai.CameraBoardSocket.CAM_C)
 
 with dai.Pipeline(createImplicitDevice=False) as pipeline:
     calibration = pipeline.create(dai.beta.node.MultiDeviceCalibration)
@@ -44,7 +44,14 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
     for info in deviceInfos:
         device = pipeline.addDevice(info)
         deviceId = device.getDeviceId()
-        print(f"Using device {deviceId}")
+        connectedSockets = device.getConnectedCameras()
+        if all(socket in connectedSockets for socket in stereoSockets):
+            sockets = stereoSockets
+        elif dai.CameraBoardSocket.CAM_A in connectedSockets:
+            sockets = (dai.CameraBoardSocket.CAM_A,)
+        else:
+            raise RuntimeError(f"Device {deviceId} needs CAM_A or CAM_B/CAM_C; connected sockets: {connectedSockets}")
+        print(f"Using device {deviceId}: {', '.join(socket.name for socket in sockets)}")
 
         for socket in sockets:
             camera = pipeline.create(dai.node.Camera, device).build(socket, sensorFps=5)

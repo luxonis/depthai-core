@@ -45,14 +45,24 @@ PointCloudConfig& PointCloudConfig::setLengthUnit(LengthUnit unit) {
 }
 
 PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(CameraBoardSocket targetCamera) {
-    coordSystemType = CoordinateSystemType::CAMERA_SOCKET;
-    targetCameraSocket = targetCamera;
-    return *this;
+    return setTargetCoordinateSystem(std::string{}, targetCamera);
 }
 
 PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateSystem housingCS) {
+    return setTargetCoordinateSystem(std::string{}, housingCS);
+}
+
+PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(const std::string& deviceId, CameraBoardSocket targetCamera) {
+    coordSystemType = CoordinateSystemType::CAMERA_SOCKET;
+    targetCameraSocket = targetCamera;
+    targetDeviceId = deviceId;
+    return *this;
+}
+
+PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(const std::string& deviceId, HousingCoordinateSystem housingCS) {
     coordSystemType = CoordinateSystemType::HOUSING;
     targetHousingCS = housingCS;
+    targetDeviceId = deviceId;
     return *this;
 }
 
@@ -62,6 +72,7 @@ PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(CameraBoardSocket 
         "Use PointCloudConfig::setTargetCoordinateSystem(CameraBoardSocket) instead.");
     coordSystemType = CoordinateSystemType::CAMERA_SOCKET;
     targetCameraSocket = targetCamera;
+    targetDeviceId.clear();
     useSpecTranslation = useSpec;
     return *this;
 }
@@ -72,6 +83,7 @@ PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateS
         "Use PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateSystem) instead.");
     coordSystemType = CoordinateSystemType::HOUSING;
     targetHousingCS = housingCS;
+    targetDeviceId.clear();
     useSpecTranslation = useSpec;
     return *this;
 }
@@ -90,6 +102,10 @@ HousingCoordinateSystem PointCloudConfig::getTargetHousingCS() const {
 
 bool PointCloudConfig::getUseSpecTranslation() const {
     return useSpecTranslation;
+}
+
+std::string PointCloudConfig::getTargetDeviceId() const {
+    return targetDeviceId;
 }
 
 }  // namespace dai

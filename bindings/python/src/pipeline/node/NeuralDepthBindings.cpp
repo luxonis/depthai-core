@@ -21,6 +21,10 @@ void bind_neuraldepth(pybind11::module& m, void* pCallstack) {
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
+    properties.def(py::init<>());
+
+    properties.def_readwrite("initialConfig", &dai::NeuralDepthProperties::initialConfig, DOC(dai, NeuralDepthProperties, initialConfig));
+
     // Actual bindings
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

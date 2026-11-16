@@ -5,6 +5,7 @@ endif()
 
 # Add options
 option(DEPTHAI_PYTHON_TEST_EXAMPLES "Test examples - examples will be ran as a part of the test suite" OFF)
+option(DEPTHAI_PYTHON_INSTALL_EXAMPLE_REQUIREMENTS "Install Python example dependencies and download all models during builds" ON)
 
 # Specify path separator
 set(SYS_PATH_SEPARATOR ";")
@@ -13,15 +14,22 @@ if(UNIX)
 endif()
 
 set(TARGET_NAME "depthai")
+set(DEPTHAI_PYTHON_EXAMPLE_RUNNER "${CMAKE_CURRENT_LIST_DIR}/../../bindings/python/tests/run_example.py")
+set(DEPTHAI_PYTHON_EXAMPLE_RUNNER_ARGS "")
+if(DEPTHAI_PYTHON_TEST_SKIP_MISSING_DEPENDENCIES)
+    list(APPEND DEPTHAI_PYTHON_EXAMPLE_RUNNER_ARGS --skip-missing-dependencies)
+endif()
 
 # Regexes for example test failure
-set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\\\[warning\\\\];\\\\[error\\\\];\\\\[critical\\\\]")
+set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\[warning\\];\\[error\\];\\[critical\\]")
 set(NO_DEVICE_SKIP_REGEX "No device found after .* skipping test")
-set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\\\[error\\\\];\\\\[critical\\\\]")
+set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\[error\\];\\[critical\\]")
 
 # Add a target to install_requirements (added to ALL)
 # For windows we don't install open3d-cpu
-if(WIN32)
+if(NOT DEPTHAI_PYTHON_INSTALL_EXAMPLE_REQUIREMENTS)
+    add_custom_target(install_requirements)
+elseif(WIN32)
     add_custom_target(install_requirements ALL
         COMMAND ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/install_requirements.py" "--skip_depthai"
         DEPENDS ${TARGET_NAME}
@@ -53,14 +61,16 @@ function(add_python_example example_name python_script_path)
         # PATH (dlls)
         "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
         # Python path (to find compiled module)
-        "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
+        "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}${DEPTHAI_PYTHON_TEST_EXTRA_PATH}${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
         "DEPTHAI_SEARCH_TIMEOUT=20000"
         "DEPTHAI_CONNECT_TIMEOUT=10000"
         "DEPTHAI_RECONNECT_TIMEOUT=0"
         # ASAN in case of sanitizers
         "${ASAN_ENVIRONMENT_VARS}"
+        ${DEPTHAI_PYTHON_TEST_ENVIRONMENT}
         # Example
-        ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/${python_script_path} ${ARGN}
+        ${PYTHON_EXECUTABLE} ${DEPTHAI_PYTHON_EXAMPLE_RUNNER} ${DEPTHAI_PYTHON_EXAMPLE_RUNNER_ARGS}
+        ${CMAKE_CURRENT_LIST_DIR}/${python_script_path} ${ARGN}
         DEPENDS ${TARGET_NAME} install_requirements
         VERBATIM
         COMMAND_EXPAND_LISTS
@@ -72,11 +82,12 @@ function(add_python_example example_name python_script_path)
         add_test(NAME ${example_name} COMMAND
             ${CMAKE_COMMAND} -E env
             "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
-            "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
+            "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}${DEPTHAI_PYTHON_TEST_EXTRA_PATH}${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
             "DEPTHAI_SEARCH_TIMEOUT=20000"
             "DEPTHAI_CONNECT_TIMEOUT=10000"
             "DEPTHAI_RECONNECT_TIMEOUT=0"
             ${ASAN_ENVIRONMENT_VARS}
+            ${DEPTHAI_PYTHON_TEST_ENVIRONMENT}
 
             ${CMAKE_COMMAND}
             -DFORCE_TIMEOUT_SECONDS=300
@@ -85,6 +96,8 @@ function(add_python_example example_name python_script_path)
             40 # A timeout to terminate the test when sucessful
             ${PYTHON_EXECUTABLE}
             -Werror
+            ${DEPTHAI_PYTHON_EXAMPLE_RUNNER}
+            ${DEPTHAI_PYTHON_EXAMPLE_RUNNER_ARGS}
             "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}"
             ${arguments}
         )
@@ -92,9 +105,13 @@ function(add_python_example example_name python_script_path)
         add_dependencies(${example_name} test_wrapper)
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
-        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION ${STRICT_EXAMPLE_TEST_FAIL_REGEX})
+        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "${STRICT_EXAMPLE_TEST_FAIL_REGEX}")
 
-        set_tests_properties (${example_name} PROPERTIES SKIP_REGULAR_EXPRESSION "${NO_DEVICE_SKIP_REGEX}")
+        set_tests_properties (${example_name} PROPERTIES
+            SKIP_REGULAR_EXPRESSION "${NO_DEVICE_SKIP_REGEX};SKIP: optional Python dependency"
+            LABELS "python_example"
+            TIMEOUT 310
+        )
 
     endif()
 
@@ -123,7 +140,7 @@ function(dai_set_example_test_labels example_name)
     set_tests_properties(${example_name} PROPERTIES LABELS "${expanded_labels}")
 endfunction()
 
-if(DEPTHAI_PYTHON_TEST_EXAMPLES)
+if(DEPTHAI_PYTHON_TEST_EXAMPLES AND DEPTHAI_PYTHON_INSTALL_EXAMPLE_REQUIREMENTS)
 
     # Adds install requirements test with 5 minute timeout
     add_test(NAME install_requirements COMMAND
@@ -435,13 +452,17 @@ dai_set_example_test_labels(pointcloud_showcase ondevice rvc4 ci)
 add_python_example(pointcloud_visualizer PointCloud/point_cloud_visualizer.py)
 dai_set_example_test_labels(pointcloud_visualizer ondevice rvc4 ci nowindows)
 
+# Needs at least two devices and a multi-device calibration: registered without labels so it never runs in CI
+if(DEPTHAI_BUILD_BETA)
+    add_python_example(multi_device_point_cloud PointCloud/multi_device_point_cloud.py)
+endif()
+
 # Multi-device examples: registered without labels so they never run in CI
 # (they need at least two devices; the CI test wrapper pins to a single device)
 add_python_example(multi_device_cam_sync MultiDevice/multi_device_cam_sync.py)
 add_python_example(multi_device_frame_sync MultiDevice/multi_device_frame_sync.py --ptp-sync)
-add_python_example(multi_device_host_node MultiDevice/multi_device_host_node.py)
+add_python_example(multi_device_stream MultiDevice/multi_device_stream.py)
 add_python_example(device_to_device_relay MultiDevice/device_to_device_relay.py)
-add_python_example(multi_device_system_logger MultiDevice/multi_device_system_logger.py)
 
 # Multi-device calibration examples: also multi-device, so no CI labels
 if(DEPTHAI_BUILD_BETA AND DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)

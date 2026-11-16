@@ -28,7 +28,8 @@ void bind_align(pybind11::module& m, void* pCallstack) {
 
     // Properties
     alignProperties.def_readwrite("initialConfig", &AlignProperties::initialConfig, DOC(dai, AlignProperties, initialConfig))
-        .def_readwrite("numFramesPool", &AlignProperties::numFramesPool, DOC(dai, AlignProperties, numFramesPool));
+        .def_readwrite("numFramesPool", &AlignProperties::numFramesPool, DOC(dai, AlignProperties, numFramesPool))
+        .def_readwrite("interpolation", &AlignProperties::interpolation, DOC(dai, AlignProperties, interpolation));
 
     // Node
     align.def_readonly("initialConfig", &Align::initialConfig, DOC(dai, node, Align, initialConfig))
@@ -38,6 +39,7 @@ void bind_align(pybind11::module& m, void* pCallstack) {
         .def_readonly("passthroughInput", &Align::passthroughInput, DOC(dai, node, Align, passthroughInput))
         .def_readonly("outputAligned", &Align::outputAligned, DOC(dai, node, Align, outputAligned))
         .def("setNumFramesPool", &Align::setNumFramesPool, py::arg("numFramesPool"), DOC(dai, node, Align, setNumFramesPool))
+        .def("setInterpolation", &Align::setInterpolation, py::arg("interpolation"), DOC(dai, node, Align, setInterpolation))
         .def("setRunOnHost", &Align::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, Align, setRunOnHost))
         .def("runOnHost", &Align::runOnHost, DOC(dai, node, Align, runOnHost));
 

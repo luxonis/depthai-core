@@ -13,6 +13,7 @@ void CapabilityBindings::bind(pybind11::module& m, void* pCallstack) {
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
+    capability.def("getName", &dai::Capability::getName, py::return_value_policy::reference_internal, DOC(dai, Capability, getName));
 
     // NO actual bindings as it's a pure virtual class
 }

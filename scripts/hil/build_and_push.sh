@@ -84,5 +84,8 @@ fi
 echo "🚀 Tagging and pushing image to ${REGISTRY}..."
 docker tag "${IMAGE_NAME}" "${FULL_IMAGE_NAME}"
 docker push "${FULL_IMAGE_NAME}"
-docker buildx prune --builder "${BUILDER_NAME}" -f --filter "until=12h"
+# Drop build layers older than 12h but keep the cache mounts (vcpkg binary cache, vcpkg downloads,
+# ccache, pip)
+docker buildx prune --builder "${BUILDER_NAME}" -f --filter "until=12h" --filter "type!=exec.cachemount" \
+  || { echo "⚠️  buildx prune with type!=exec.cachemount failed; pruning cache mounts too"; docker buildx prune --builder "${BUILDER_NAME}" -f --filter "until=12h"; }
 echo "✅ Done."

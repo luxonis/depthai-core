@@ -16,7 +16,7 @@ class NodeEventAggregationConfig {
     std::optional<std::vector<std::string>> others;
     bool events = false;
 
-    DEPTHAI_SERIALIZE(NodeEventAggregationConfig, nodeId, inputs, outputs, others, events);
+    DEPTHAI_SERIALIZE_DECL(NodeEventAggregationConfig, nodeId, inputs, outputs, others, events);
 };
 
 /// PipelineEventAggregationConfig configuration structure
@@ -34,7 +34,7 @@ class PipelineEventAggregationConfig : public Buffer {
         return DatatypeEnum::PipelineEventAggregationConfig;
     }
 
-    DEPTHAI_SERIALIZE(PipelineEventAggregationConfig, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, nodes, repeatIntervalSeconds);
+    DEPTHAI_SERIALIZE_DECL(PipelineEventAggregationConfig, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, nodes, repeatIntervalSeconds);
 };
 
 }  // namespace dai

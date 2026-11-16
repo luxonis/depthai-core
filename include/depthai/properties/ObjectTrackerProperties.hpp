@@ -92,19 +92,21 @@ struct ObjectTrackerProperties : PropertiesSerializable<Properties, ObjectTracke
     ~ObjectTrackerProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ObjectTrackerProperties,
-                      trackerThreshold,
-                      maxObjectsToTrack,
-                      detectionLabelsToTrack,
-                      trackerType,
-                      trackerIdAssignmentPolicy,
-                      trackingPerClass,
-                      occlusionRatioThreshold,
-                      trackletMaxLifespan,
-                      trackletBirthThreshold,
-                      spatialAssociation,
-                      spatialAssociationWeight,
-                      spatialDistanceThreshold,
-                      spatialDepthAwareScale);
+DEPTHAI_SERIALIZE_EXT_DECL(ObjectTrackerProperties,
+                           trackerThreshold,
+                           maxObjectsToTrack,
+                           detectionLabelsToTrack,
+                           trackerType,
+                           trackerIdAssignmentPolicy,
+                           trackingPerClass,
+                           occlusionRatioThreshold,
+                           trackletMaxLifespan,
+                           trackletBirthThreshold,
+                           spatialAssociation,
+                           spatialAssociationWeight,
+                           spatialDistanceThreshold,
+                           spatialDepthAwareScale);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::ObjectTrackerProperties>;

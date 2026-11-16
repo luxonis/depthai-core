@@ -72,13 +72,16 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
                   }),
                   py::arg("archivePath"),
                   py::arg("compression") = NNArchiveEntry::Compression::AUTO,
-                  DOC(dai, NNArchive, NNArchive));
+                  DOC(dai, NNArchive, NNArchive),
+                  py::call_guard<py::gil_scoped_release>());
     nnArchive.def(py::init<const std::filesystem::path&, NNArchiveOptions>(),
                   py::arg("archivePath"),
                   py::arg("options") = NNArchiveOptions(),
-                  DOC(dai, NNArchive, NNArchive));
+                  DOC(dai, NNArchive, NNArchive),
+                  py::call_guard<py::gil_scoped_release>());
+    nnArchive.def("getVersionedConfig", &NNArchive::getVersionedConfig, py::return_value_policy::reference_internal, DOC(dai, NNArchive, getVersionedConfig));
     nnArchive.def("getBlob", &NNArchive::getBlob, DOC(dai, NNArchive, getBlob));
-    nnArchive.def("getSuperBlob", &NNArchive::getSuperBlob, DOC(dai, NNArchive, getBlob));
+    nnArchive.def("getSuperBlob", &NNArchive::getSuperBlob, DOC(dai, NNArchive, getSuperBlob));
     nnArchive.def(
         "getOtherModelFormat",
         [](const NNArchive& archive) -> py::object {
@@ -93,6 +96,7 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     nnArchive.def("getInputSize", &NNArchive::getInputSize, py::arg("index") = 0, DOC(dai, NNArchive, getInputSize));
     nnArchive.def("getInputWidth", &NNArchive::getInputWidth, py::arg("index") = 0, DOC(dai, NNArchive, getInputWidth));
     nnArchive.def("getInputHeight", &NNArchive::getInputHeight, py::arg("index") = 0, DOC(dai, NNArchive, getInputHeight));
+    nnArchive.def("getInputResizeMode", &NNArchive::getInputResizeMode, py::arg("index") = 0, DOC(dai, NNArchive, getInputResizeMode));
     nnArchive.def("getHeadConfig", &NNArchive::getHeadConfig, py::arg("index") = 0, DOC(dai, NNArchive, getHeadConfig));
     nnArchive.def("getSupportedPlatforms", &NNArchive::getSupportedPlatforms, DOC(dai, NNArchive, getSupportedPlatforms));
 
@@ -152,6 +156,8 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1model.def_readwrite("outputs", &v1::Model::outputs, DOC(dai, nn_archive, v1, Model, outputs));
 
     v1head.def(py::init<>());
+    v1head.def(py::pickle([](const v1::Head& value) { return nlohmann::json(value).dump(); },
+                          [](const std::string& state) { return nlohmann::json::parse(state).get<v1::Head>(); }));
     v1head.def_readwrite("name", &v1::Head::name, DOC(dai, nn_archive, v1, Head, name));
     v1head.def_readwrite("metadata", &v1::Head::metadata, DOC(dai, nn_archive, v1, Head, metadata));
     v1head.def_readwrite("outputs", &v1::Head::outputs, DOC(dai, nn_archive, v1, Head, outputs));
@@ -185,6 +191,8 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1input.def_readwrite("shape", &v1::Input::shape, DOC(dai, nn_archive, v1, Input, shape));
 
     v1metadata.def(py::init<>());
+    v1metadata.def(py::pickle([](const v1::Metadata& value) { return nlohmann::json(value).dump(); },
+                              [](const std::string& state) { return nlohmann::json::parse(state).get<v1::Metadata>(); }));
     v1metadata.def_readwrite("postprocessorPath", &v1::Metadata::postprocessorPath, DOC(dai, nn_archive, v1, Metadata, postprocessorPath));
     v1metadata.def_readwrite("anchors", &v1::Metadata::anchors, DOC(dai, nn_archive, v1, Metadata, anchors));
     v1metadata.def_readwrite("classes", &v1::Metadata::classes, DOC(dai, nn_archive, v1, Metadata, classes));
@@ -226,4 +234,5 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
         "reverseChannels", &v1::PreprocessingBlock::reverseChannels, DOC(dai, nn_archive, v1, PreprocessingBlock, reverseChannels));
     v1preprocessingBlock.def_readwrite("scale", &v1::PreprocessingBlock::scale, DOC(dai, nn_archive, v1, PreprocessingBlock, scale));
     v1preprocessingBlock.def_readwrite("daiType", &v1::PreprocessingBlock::daiType, DOC(dai, nn_archive, v1, PreprocessingBlock, daiType));
+    v1preprocessingBlock.def_readwrite("resizeMode", &v1::PreprocessingBlock::resizeMode, DOC(dai, nn_archive, v1, PreprocessingBlock, resizeMode));
 }

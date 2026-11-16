@@ -59,6 +59,19 @@ try:
     # Add py.typed
     open(f'{DIRECTORY}/depthai/py.typed', 'a').close()
 
+    # The beta modules resolve the names that left beta in v3.12 with a module __getattr__
+    # (see NodeBindings.cpp). A __getattr__ in a stub makes type checkers accept any name in
+    # the module, so remove it. The deprecated names stay out of the stubs.
+    module_getattr = re.compile(r'^def __getattr__\(.*\):.*(?:\n[ \t]+\S.*)*\n?', re.MULTILINE)
+    for root, _, files in os.walk(f'{DIRECTORY}/{MODULE_NAME}/beta'):
+        for file_name in files:
+            if file_name.endswith('.pyi'):
+                stub_path = os.path.join(root, file_name)
+                with open(stub_path, 'r') as file:
+                    contents = file.read()
+                with open(stub_path, 'w') as file:
+                    file.write(module_getattr.sub('', contents))
+
     # imports and overloads
     with open(f'{DIRECTORY}/depthai/__init__.pyi' ,'r+') as file:
         # Read

@@ -34,6 +34,6 @@ struct PoolProperties : PropertiesSerializable<Properties, PoolProperties> {
     ~PoolProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(PoolProperties, numMessages, maxMessageSize, datatype, processor);
+DEPTHAI_SERIALIZE_EXT_DECL(PoolProperties, numMessages, maxMessageSize, datatype, processor);
 
 }  // namespace dai

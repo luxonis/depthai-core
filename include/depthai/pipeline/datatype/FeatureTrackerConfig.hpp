@@ -111,7 +111,7 @@ class FeatureTrackerConfig : public Buffer {
              * by multiplying its value with this factor.
              */
             float increaseFactor = 1.1f;
-            DEPTHAI_SERIALIZE(Thresholds, initialValue, min, max, decreaseFactor, increaseFactor);
+            DEPTHAI_SERIALIZE_DECL(Thresholds, initialValue, min, max, decreaseFactor, increaseFactor);
         };
 
         /**
@@ -120,7 +120,7 @@ class FeatureTrackerConfig : public Buffer {
          */
         Thresholds thresholds;
 
-        DEPTHAI_SERIALIZE(CornerDetector, type, cellGridDimension, numTargetFeatures, numMaxFeatures, thresholds, enableSobel, enableSorting);
+        DEPTHAI_SERIALIZE_DECL(CornerDetector, type, cellGridDimension, numTargetFeatures, numMaxFeatures, thresholds, enableSobel, enableSorting);
     };
 
     /**
@@ -189,7 +189,7 @@ class FeatureTrackerConfig : public Buffer {
              */
             std::int32_t maxIterations = 9;
 
-            DEPTHAI_SERIALIZE(OpticalFlow, pyramidLevels, searchWindowWidth, searchWindowHeight, epsilon, maxIterations);
+            DEPTHAI_SERIALIZE_DECL(OpticalFlow, pyramidLevels, searchWindowWidth, searchWindowHeight, epsilon, maxIterations);
         };
 
         /**
@@ -198,7 +198,7 @@ class FeatureTrackerConfig : public Buffer {
          */
         OpticalFlow opticalFlow;
 
-        DEPTHAI_SERIALIZE(MotionEstimator, enable, type, opticalFlow);
+        DEPTHAI_SERIALIZE_DECL(MotionEstimator, enable, type, opticalFlow);
     };
 
     /**
@@ -233,7 +233,7 @@ class FeatureTrackerConfig : public Buffer {
          */
         float trackedFeatureThreshold = 200000;
 
-        DEPTHAI_SERIALIZE(FeatureMaintainer, enable, minimumDistanceBetweenFeatures, lostFeatureErrorThreshold, trackedFeatureThreshold);
+        DEPTHAI_SERIALIZE_DECL(FeatureMaintainer, enable, minimumDistanceBetweenFeatures, lostFeatureErrorThreshold, trackedFeatureThreshold);
     };
 
     /**
@@ -321,7 +321,7 @@ class FeatureTrackerConfig : public Buffer {
         return DatatypeEnum::FeatureTrackerConfig;
     }
 
-    DEPTHAI_SERIALIZE(FeatureTrackerConfig, cornerDetector, motionEstimator, featureMaintainer);
+    DEPTHAI_SERIALIZE_DECL(FeatureTrackerConfig, cornerDetector, motionEstimator, featureMaintainer);
 };
 
 }  // namespace dai
