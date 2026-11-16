@@ -5,6 +5,34 @@
 
 #include "../../../src/pipeline/node/DynamicCalibrationTransforms.hpp"
 
+#if defined(DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT) && defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    #include "../../../src/pipeline/node/DynamicCalibrationUtils.hpp"
+
+TEST_CASE("DynamicCalibration packs strided image views", "[DynamicCalibrationImages]") {
+    const auto channels = GENERATE(1, 3);
+    cv::Mat storage(4, 5, CV_MAKETYPE(CV_8U, channels), cv::Scalar(99, 98, 97));
+    auto view = storage(cv::Rect(1, 1, 2, 2));
+    for(int index = 0; index < 4; ++index) {
+        if(channels == 1)
+            view.at<std::uint8_t>(index / 2, index % 2) = static_cast<std::uint8_t>(index + 1);
+        else
+            view.at<cv::Vec3b>(index / 2, index % 2) =
+                cv::Vec3b(static_cast<std::uint8_t>(index + 1), static_cast<std::uint8_t>(index + 11), static_cast<std::uint8_t>(index + 21));
+    }
+    REQUIRE_FALSE(view.isContinuous());
+
+    const auto image = dai::node::DclUtils::cvMatToImageData(view);
+
+    const std::vector<std::uint8_t> expected =
+        channels == 1 ? std::vector<std::uint8_t>{1, 2, 3, 4} : std::vector<std::uint8_t>{1, 11, 21, 2, 12, 22, 3, 13, 23, 4, 14, 24};
+    REQUIRE(image.data == expected);
+    REQUIRE(image.width == 2);
+    REQUIRE(image.height == 2);
+    REQUIRE(image.format == (channels == 1 ? dcl::DCL_8UC1 : dcl::DCL_8UC3));
+}
+
+#endif
+
 namespace {
 using Socket = dai::CameraBoardSocket;
 using Transform = std::vector<std::vector<float>>;
