@@ -472,7 +472,8 @@ dcl::ImageData DclUtils::cvMatToImageData(const cv::Mat& mat) {
         default:
             throw std::runtime_error("Unsupported cv::Mat type: " + std::to_string(type));
     }
-    img.data.assign(mat.data, mat.data + mat.total() * mat.elemSize());
+    const auto contiguous = mat.isContinuous() ? mat : mat.clone();
+    img.data.assign(contiguous.data, contiguous.data + contiguous.total() * contiguous.elemSize());
 
     return img;
 }
@@ -683,7 +684,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
 
     CalibrationQuality::Data qualityData{};
     if(!connectedSensors.empty()) {
-        const auto& referenceSensor = connectedSensors.front();
+        const auto& referenceSensor = connectedSensors.at(pimplDCL->tofDepthMode ? pimplDCL->cameraIndex : 0);
         const auto sampsonErrorScalePixels = sampsonErrorScalePx(currentHandler, referenceSensor.socket, referenceSensor.resolution);
         qualityData.sampsonErrorCurrent = sampsonErrorToPixels(static_cast<float>(dclResult.value.sampsonErrorCurrent), sampsonErrorScalePixels);
         qualityData.sampsonErrorNew = sampsonErrorToPixels(static_cast<float>(dclResult.value.sampsonErrorNew), sampsonErrorScalePixels);

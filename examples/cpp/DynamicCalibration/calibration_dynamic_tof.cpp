@@ -13,8 +13,9 @@
 
 int main(int argc, char** argv) {
     argparse::ArgumentParser program("calibration_dynamic_tof");
-    program.add_description("Native ToF depth/amplitude extrinsic refinement against CAM_B");
+    program.add_description("Native ToF depth/amplitude extrinsic refinement against a camera");
     program.add_argument("--device").default_value(std::string()).help("Device IP or ID; defaults to the first available device");
+    program.add_argument("--camera").default_value(std::string("CAM_C")).choices("CAM_B", "CAM_C").help("Target camera (default: CAM_C)");
     try {
         program.parse_args(argc, argv);
     } catch(const std::runtime_error& error) {
@@ -22,6 +23,8 @@ int main(int argc, char** argv) {
         return 1;
     }
     const auto deviceId = program.get<std::string>("--device");
+    const auto cameraName = program.get<std::string>("--camera");
+    const auto cameraSocket = cameraName == "CAM_B" ? dai::CameraBoardSocket::CAM_B : dai::CameraBoardSocket::CAM_C;
 
     using DCC = dai::DynamicCalibrationControl;
     auto device = deviceId.empty() ? std::make_shared<dai::Device>() : std::make_shared<dai::Device>(dai::DeviceInfo(deviceId));
@@ -29,21 +32,33 @@ int main(int argc, char** argv) {
     pipeline.setAutoCalibrationMode(dai::Pipeline::AutoCalibrationMode::OFF);
     constexpr float FPS = 15.0f;
     auto tof = pipeline.create<dai::node::ToF>()->build(dai::CameraBoardSocket::AUTO, dai::ToFConfig::Profile::MID_RANGE, FPS);
-    auto left = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
-    auto* leftOut = left->requestOutput({640, 400}, dai::ImgFrame::Type::GRAY8, dai::ImgResizeMode::CROP, FPS, false);
+    auto camera = pipeline.create<dai::node::Camera>()->build(cameraSocket);
+    auto* cameraOut = camera->requestOutput({640, 400}, dai::ImgFrame::Type::GRAY8, dai::ImgResizeMode::CROP, FPS, false);
 
     auto dyn = pipeline.create<dai::node::DynamicCalibration>();
     dyn->setRunOnHost(true);
     dyn->sync->setSyncThreshold(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<float>(0.5f / FPS)));
     // Depth is an auxiliary measurement from the ToF sensor.
     tof->amplitude.link(dyn->inputs["tof"]);
-    leftOut->link(dyn->left);
+    cameraOut->link(dyn->left);
     tof->depth.link(dyn->tofDepth);
 
     const std::map<std::string, std::shared_ptr<dai::MessageQueue>> previews = {
         {"ToF amplitude", tof->amplitude.createOutputQueue(1, false)},
-        {"CAM_B", leftOut->createOutputQueue(1, false)},
+        {cameraName, cameraOut->createOutputQueue(1, false)},
     };
+    // ImageAlign produces undistorted depth; pair it with an undistorted preview.
+    auto* previewCamera = camera->requestOutput({640, 400}, dai::ImgFrame::Type::GRAY8, dai::ImgResizeMode::CROP, FPS, true);
+    auto align = pipeline.create<dai::node::ImageAlign>();
+    align->setRunOnHost(true);
+    tof->depth.link(align->input);
+    previewCamera->link(align->inputAlignTo);
+    auto previewSync = pipeline.create<dai::node::Sync>();
+    previewSync->setRunOnHost(true);
+    previewSync->setSyncThreshold(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<float>(0.5f / FPS)));
+    previewCamera->link(previewSync->inputs["camera"]);
+    align->outputAligned.link(previewSync->inputs["depth"]);
+    auto overlayQueue = previewSync->out.createOutputQueue(1, false);
     auto coverageQueue = dyn->coverageOutput.createOutputQueue(4, false);
     auto calibrationQueue = dyn->calibrationOutput.createOutputQueue(4, false);
     auto control = dyn->inputControl.createInputQueue();
@@ -72,6 +87,18 @@ int main(int argc, char** argv) {
                 }
                 cv::imshow(name, image);
             }
+        }
+
+        if(auto overlay = overlayQueue->tryGet<dai::MessageGroup>()) {
+            cv::Mat gray;
+            cv::cvtColor(overlay->get<dai::ImgFrame>("camera")->getCvFrame(), gray, cv::COLOR_GRAY2BGR);
+            const auto depth = overlay->get<dai::ImgFrame>("depth")->getCvFrame();
+            cv::Mat scaled, colors, blended;
+            depth.convertTo(scaled, CV_8U, 255.0 / 4000.0);
+            cv::applyColorMap(scaled, colors, cv::COLORMAP_TURBO);
+            cv::addWeighted(gray, 0.5, colors, 0.5, 0, blended);
+            gray.copyTo(blended, depth == 0);
+            cv::imshow("Depth -> " + cameraName + " (runtime calibration)", blended);
         }
 
         if(auto coverage = coverageQueue->tryGet<dai::CoverageData>()) {
