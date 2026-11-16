@@ -35,9 +35,6 @@ struct BoardConfig {
 
     /// Network configuration
     struct Network {
-        /// Initialize Ethernet hardware while the device communicates over USB.
-        /// Used by production tests to inspect the physical link.
-        bool forceEnable = false;
         /// Network MTU, 0 is auto (usually 1500 for Ethernet) or forwarded
         /// from bootloader (not yet implemented there).
         /// Note: not advised to increase past 1500 for now
@@ -45,6 +42,9 @@ struct BoardConfig {
         /// Sets the `TCP_NODELAY` option for XLink TCP sockets (disable Nagle's algorithm),
         /// reducing latency at the expense of a small hit for max throughput. Default is `true`
         bool xlinkTcpNoDelay = true;
+        /// Initialize Ethernet hardware while the device communicates over USB.
+        /// Used by production tests to inspect the physical link.
+        bool forceEnable = false;
     };
 
     Network network;
@@ -103,10 +103,6 @@ struct BoardConfig {
     /// eMMC config
     std::optional<bool> emmc;
 
-    /// Override EEPROM data in memory before RVC2 board and camera initialization.
-    /// Does not write to the physical EEPROM.
-    std::optional<EepromData> eepromData;
-
     /// log path
     std::optional<std::string> logPath;
 
@@ -162,6 +158,10 @@ struct BoardConfig {
     };
     std::optional<UVC> uvc;
     std::unordered_map<std::string, Extrinsics> defaultImuExtr;
+
+    /// Override EEPROM data in memory before RVC2 board and camera initialization.
+    /// Does not write to the physical EEPROM.
+    std::optional<EepromData> eepromData;
 };
 
 DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::USB, vid, pid, flashBootedVid, flashBootedPid, maxSpeed, productName, manufacturer);
