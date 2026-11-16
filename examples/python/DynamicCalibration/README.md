@@ -44,6 +44,8 @@ This folder contains minimal, end-to-end examples that use **`dai.node.DynamicCa
 
 Run `python3 examples/python/DynamicCalibration/calibration_dynamic_tof.py --device <IP-or-ID> --camera CAM_C`.
 Use `--camera CAM_B` to select the other camera. The C++ example accepts the same arguments.
+If the camera image is washed out, try `--exposure-us 1000` (ISO 100); the default
+uses auto exposure. Check that both previews show common edges before collecting.
 It links native ToF amplitude/depth and the selected camera to host DynamicCalibration:
 
 ```python
@@ -85,6 +87,17 @@ with the SDK's ToF support in PR #2185; an older DCL binary cannot supply the ov
 The image-based `computeMetrics()` confidence scores are unavailable for ToF and
 remain zero. Use the calibration result and independent depth alignment checks;
 the reported Sampson error is a diagnostic, rather than a physical accuracy score.
+
+To run the hardware integration test with a known runtime perturbation:
+
+```sh
+python tests/hardware/tof_dynamic_calibration.py --device <IP-or-ID> --camera CAM_C --pitch-deg -0.5 --output /tmp/tof-result.json
+```
+
+Use a static scene with common edges at several depths. The test requires an
+accepted candidate, checks fixed-camera poses and intrinsics, applies the candidate,
+then restores the original runtime calibration in a `finally` block and checks
+EEPROM is unchanged. It supports `--exposure-us 1000` and fails on rejected data.
 
 ## Extrinsics for cameras outside calibration
 

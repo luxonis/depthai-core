@@ -17,14 +17,23 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--device", help="Device IP or ID; defaults to the first available device")
     parser.add_argument("--camera", choices=["CAM_B", "CAM_C"], default="CAM_C", help="Target camera (default: CAM_C)")
+    parser.add_argument("--exposure-us", type=int, default=0, help="Manual camera exposure at ISO 100; 0 keeps auto exposure")
     args = parser.parse_args()
 
     device = dai.Device(dai.DeviceInfo(args.device)) if args.device else dai.Device()
     with device, dai.Pipeline(device) as pipeline:
+        features = device.getConnectedCameraFeatures()
+        cameraSocket = getattr(dai.CameraBoardSocket, args.camera)
+        if not any(dai.CameraSensorType.TOF in feature.supportedTypes for feature in features):
+            raise RuntimeError("This device has no ToF sensor; use the image-based calibration example")
+        if not any(feature.socket == cameraSocket for feature in features):
+            raise RuntimeError(f"This device has no {args.camera} camera")
         pipeline.setAutoCalibrationMode(dai.Pipeline.AutoCalibrationMode.OFF)
         fps = 15
         tof = pipeline.create(dai.node.ToF).build(dai.CameraBoardSocket.AUTO, dai.ToFConfig.Profile.MID_RANGE, fps)
-        camera = pipeline.create(dai.node.Camera).build(getattr(dai.CameraBoardSocket, args.camera))
+        camera = pipeline.create(dai.node.Camera).build(cameraSocket)
+        if args.exposure_us > 0:
+            camera.initialControl.setManualExposure(args.exposure_us, 100)
         cameraOut = camera.requestOutput((640, 400), type=dai.ImgFrame.Type.GRAY8, fps=fps, enableUndistortion=False)
 
         dyn = pipeline.create(dai.node.DynamicCalibration)

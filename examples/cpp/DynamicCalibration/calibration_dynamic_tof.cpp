@@ -16,6 +16,7 @@ int main(int argc, char** argv) {
     program.add_description("Native ToF depth/amplitude extrinsic refinement against a camera");
     program.add_argument("--device").default_value(std::string()).help("Device IP or ID; defaults to the first available device");
     program.add_argument("--camera").default_value(std::string("CAM_C")).choices("CAM_B", "CAM_C").help("Target camera (default: CAM_C)");
+    program.add_argument("--exposure-us").default_value(0).scan<'i', int>().help("Manual camera exposure at ISO 100; 0 keeps auto exposure");
     try {
         program.parse_args(argc, argv);
     } catch(const std::runtime_error& error) {
@@ -28,11 +29,24 @@ int main(int argc, char** argv) {
 
     using DCC = dai::DynamicCalibrationControl;
     auto device = deviceId.empty() ? std::make_shared<dai::Device>() : std::make_shared<dai::Device>(dai::DeviceInfo(deviceId));
+    const auto features = device->getConnectedCameraFeatures();
+    if(!std::any_of(features.begin(), features.end(), [](const auto& feature) {
+           return std::find(feature.supportedTypes.begin(), feature.supportedTypes.end(), dai::CameraSensorType::TOF) != feature.supportedTypes.end();
+       })) {
+        std::cerr << "This device has no ToF sensor; use the image-based calibration example\n";
+        return 1;
+    }
+    if(!std::any_of(features.begin(), features.end(), [&](const auto& feature) { return feature.socket == cameraSocket; })) {
+        std::cerr << "This device has no " << cameraName << " camera\n";
+        return 1;
+    }
     dai::Pipeline pipeline(device);
     pipeline.setAutoCalibrationMode(dai::Pipeline::AutoCalibrationMode::OFF);
     constexpr float FPS = 15.0f;
     auto tof = pipeline.create<dai::node::ToF>()->build(dai::CameraBoardSocket::AUTO, dai::ToFConfig::Profile::MID_RANGE, FPS);
     auto camera = pipeline.create<dai::node::Camera>()->build(cameraSocket);
+    const auto exposureUs = program.get<int>("--exposure-us");
+    if(exposureUs > 0) camera->initialControl.setManualExposure(exposureUs, 100);
     auto* cameraOut = camera->requestOutput({640, 400}, dai::ImgFrame::Type::GRAY8, dai::ImgResizeMode::CROP, FPS, false);
 
     auto dyn = pipeline.create<dai::node::DynamicCalibration>();
