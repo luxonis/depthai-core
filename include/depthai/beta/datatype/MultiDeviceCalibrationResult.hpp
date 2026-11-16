@@ -84,7 +84,7 @@ struct MultiDeviceCalibrationResult : public Buffer {
         return DatatypeEnum::MultiDeviceCalibrationResult;
     }
 
-    DEPTHAI_SERIALIZE(MultiDeviceCalibrationResult, graph, passed, dataConfidence, sampsonError, info);
+    DEPTHAI_SERIALIZE_DECL(MultiDeviceCalibrationResult, graph, passed, dataConfidence, sampsonError, info);
 };
 
 }  // namespace beta

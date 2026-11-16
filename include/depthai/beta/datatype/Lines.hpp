@@ -32,7 +32,7 @@ struct Line {
      */
     float confidence = 0.0f;
 
-    DEPTHAI_SERIALIZE(Line, startPoint, endPoint, confidence);
+    DEPTHAI_SERIALIZE_DECL(Line, startPoint, endPoint, confidence);
 };
 
 /**
@@ -92,7 +92,7 @@ class Lines : public Buffer, public TransformableCRTP<Lines> {
         return DatatypeEnum::Lines;
     }
 
-    DEPTHAI_SERIALIZE(Lines, sequenceNum, ts, tsDevice, tsSystem, transformation, lines);
+    DEPTHAI_SERIALIZE_DECL(Lines, sequenceNum, ts, tsDevice, tsSystem, transformation, lines);
 };
 
 }  // namespace beta

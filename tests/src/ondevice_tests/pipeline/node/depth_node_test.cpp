@@ -377,12 +377,22 @@ void requireUserAndDepthFrameSizes(const std::shared_ptr<Device>& device,
         if(resolved == node::Depth::Algorithm::NEURAL) {
             const auto [expectedW, expectedH] = node::NeuralDepth::getInputSize(std::get<DeviceModelZoo>(depth->getResolvedConfig()));
             requireDepthSingleBackendChild(*depth, "NeuralDepth");
+            REQUIRE(depth->hasRectifiedOutputs());
+            const auto rectifiedBackend = std::dynamic_pointer_cast<node::NeuralDepth>(depth->getNodeMap().front());
+            REQUIRE(rectifiedBackend != nullptr);
+            REQUIRE(&depth->rectifiedLeft() == &rectifiedBackend->rectification->output1);
+            REQUIRE(&depth->rectifiedRight() == &rectifiedBackend->rectification->output2);
             REQUIRE((depthFrame->getWidth() != static_cast<int>(kUserStereoSensorResolution.first)
                      || depthFrame->getHeight() != static_cast<int>(kUserStereoSensorResolution.second)));
             REQUIRE(depthFrame->getWidth() == expectedW);
             REQUIRE(depthFrame->getHeight() == expectedH);
         } else if(resolved == node::Depth::Algorithm::NEURAL_ASSISTED_STEREO) {
             requireDepthSingleBackendChild(*depth, "NeuralAssistedStereo");
+            REQUIRE(depth->hasRectifiedOutputs());
+            const auto rectifiedBackend = std::dynamic_pointer_cast<node::NeuralAssistedStereo>(depth->getNodeMap().front());
+            REQUIRE(rectifiedBackend != nullptr);
+            REQUIRE(&depth->rectifiedLeft() == &rectifiedBackend->rectification->output1);
+            REQUIRE(&depth->rectifiedRight() == &rectifiedBackend->rectification->output2);
             REQUIRE(depthFrame->getWidth() > 0);
             REQUIRE(depthFrame->getHeight() > 0);
         } else {
@@ -643,6 +653,11 @@ TEST_CASE("Depth: fusion validates existing camera FPS before adding a backend",
     depth->build(node::Depth::Algorithm::TOF_STEREO_FUSION, 15.f);
     REQUIRE_NOTHROW((void)depth->depth());
     requireDepthSingleBackendChild(*depth, "ToFStereoFusion");
+    REQUIRE(depth->hasRectifiedOutputs());
+    const auto rectifiedBackend = std::dynamic_pointer_cast<dai::beta::node::ToFStereoFusion>(depth->getNodeMap().front());
+    REQUIRE(rectifiedBackend != nullptr);
+    REQUIRE(&depth->rectifiedLeft() == &rectifiedBackend->neuralDepth->rectification->output1);
+    REQUIRE(&depth->rectifiedRight() == &rectifiedBackend->neuralDepth->rectification->output2);
 }
 
 TEST_CASE("Depth: fusion streams depth and confidence continuously", "[fusion]") {
@@ -671,6 +686,11 @@ TEST_CASE("Depth: fusion streams depth and confidence continuously", "[fusion]")
     auto confidenceQueue = depth->confidence().createOutputQueue(4, false);
     REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::TOF_STEREO_FUSION);
     requireDepthSingleBackendChild(*depth, "ToFStereoFusion");
+    REQUIRE(depth->hasRectifiedOutputs());
+    const auto rectifiedBackend = std::dynamic_pointer_cast<dai::beta::node::ToFStereoFusion>(depth->getNodeMap().front());
+    REQUIRE(rectifiedBackend != nullptr);
+    REQUIRE(&depth->rectifiedLeft() == &rectifiedBackend->neuralDepth->rectification->output1);
+    REQUIRE(&depth->rectifiedRight() == &rectifiedBackend->neuralDepth->rectification->output2);
     PipelineStopGuard guard(pipeline);
     pipeline.start();
     auto previousDepth = requireStreamFrame(depthQueue, kDepthFrameTimeout);
@@ -724,6 +744,10 @@ TEST_CASE("Depth: TOF confidence output maps to ToF confidence output") {
     REQUIRE(tof != nullptr);
     REQUIRE(&depth->confidence() == &tof->confidence);
     REQUIRE(&depth->confidence() != &tof->amplitude);
+    REQUIRE_FALSE(depth->hasRectifiedOutputs());
+    REQUIRE_THROWS_WITH(depth->rectifiedLeft(), Catch::Matchers::ContainsSubstring("unavailable for the TOF backend"));
+    REQUIRE_THROWS_WITH(depth->rectifiedRight(), Catch::Matchers::ContainsSubstring("unavailable for the TOF backend"));
+    REQUIRE(&depth->confidence() == &tof->confidence);
 }
 
 TEST_CASE("Depth: GPU_STEREO requires RVC4") {
@@ -812,6 +836,11 @@ TEST_CASE("Depth: explicit NEURAL wires NeuralDepth when device supports it") {
     auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::NEURAL);
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "NeuralDepth");
+    REQUIRE(depth->hasRectifiedOutputs());
+    const auto rectifiedBackend = std::dynamic_pointer_cast<node::NeuralDepth>(depth->getNodeMap().front());
+    REQUIRE(rectifiedBackend != nullptr);
+    REQUIRE(&depth->rectifiedLeft() == &rectifiedBackend->rectification->output1);
+    REQUIRE(&depth->rectifiedRight() == &rectifiedBackend->rectification->output2);
 }
 
 TEST_CASE("Depth: NEURAL_ASSISTED_STEREO rejected off RVC4") {
@@ -838,6 +867,11 @@ TEST_CASE("Depth: NEURAL_ASSISTED_STEREO wires NeuralAssistedStereo on RVC4") {
     auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO);
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "NeuralAssistedStereo");
+    REQUIRE(depth->hasRectifiedOutputs());
+    const auto rectifiedBackend = std::dynamic_pointer_cast<node::NeuralAssistedStereo>(depth->getNodeMap().front());
+    REQUIRE(rectifiedBackend != nullptr);
+    REQUIRE(&depth->rectifiedLeft() == &rectifiedBackend->rectification->output1);
+    REQUIRE(&depth->rectifiedRight() == &rectifiedBackend->rectification->output2);
 }
 
 TEST_CASE("Depth: TOF algorithm wires ToF backend when ToF sensor present") {
@@ -872,6 +906,13 @@ TEST_CASE("Depth: GPU_STEREO wires GPUStereo on RVC4 when build and device allow
     }
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "GPUStereo");
+    REQUIRE(depth->hasRectifiedOutputs());
+    const auto backend = std::dynamic_pointer_cast<node::GPUStereo>(depth->getNodeMap().front());
+    REQUIRE(backend != nullptr);
+    REQUIRE(backend->rectification != nullptr);
+    auto& rectification = *backend->rectification;
+    REQUIRE(&depth->rectifiedLeft() == &rectification->output1);
+    REQUIRE(&depth->rectifiedRight() == &rectification->output2);
 }
 
 TEST_CASE("Depth: stereo cameras created after Depth still reuse pipeline cameras") {
@@ -968,6 +1009,11 @@ TEST_CASE("Depth: RVC4 AUTO selects neural model from size and fps") {
     REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::NEURAL);
     REQUIRE(std::get<DeviceModelZoo>(depth->getResolvedConfig()) == std::get<DeviceModelZoo>(expected.second));
     requireDepthSingleBackendChild(*depth, "NeuralDepth");
+    REQUIRE(depth->hasRectifiedOutputs());
+    const auto rectifiedBackend = std::dynamic_pointer_cast<node::NeuralDepth>(depth->getNodeMap().front());
+    REQUIRE(rectifiedBackend != nullptr);
+    REQUIRE(&depth->rectifiedLeft() == &rectifiedBackend->rectification->output1);
+    REQUIRE(&depth->rectifiedRight() == &rectifiedBackend->rectification->output2);
 }
 
 TEST_CASE("Depth: RVC4 AUTO uses requested output size from existing stereo cameras") {
@@ -1001,4 +1047,31 @@ TEST_CASE("Depth: RVC4 AUTO uses requested output size from existing stereo came
     REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::NEURAL);
     REQUIRE(std::get<DeviceModelZoo>(depth->getResolvedConfig()) == std::get<DeviceModelZoo>(expected.second));
     requireDepthSingleBackendChild(*depth, "NeuralDepth");
+    REQUIRE(depth->hasRectifiedOutputs());
+    const auto rectifiedBackend = std::dynamic_pointer_cast<node::NeuralDepth>(depth->getNodeMap().front());
+    REQUIRE(rectifiedBackend != nullptr);
+    REQUIRE(&depth->rectifiedLeft() == &rectifiedBackend->rectification->output1);
+    REQUIRE(&depth->rectifiedRight() == &rectifiedBackend->rectification->output2);
+}
+
+TEST_CASE("Depth STEREO rectified access wires and streams the backend pair", "[Depth][RectifiedOutputs]") {
+    Pipeline pipeline;
+    auto device = requireDefaultDevice(pipeline);
+    (void)requireFirstStereoPairForTest(device);
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::STEREO, 5.f, std::make_pair(640U, 400U));
+    // The capability query is the first access and must resolve/wire the backend.
+    REQUIRE(depth->hasRectifiedOutputs());
+    REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::STEREO);
+    const auto backend = std::dynamic_pointer_cast<node::StereoDepth>(depth->getNodeMap().front());
+    REQUIRE(backend != nullptr);
+    REQUIRE(&depth->rectifiedLeft() == &backend->rectifiedLeft);
+    REQUIRE(&depth->rectifiedRight() == &backend->rectifiedRight);
+    auto leftQueue = depth->rectifiedLeft().createOutputQueue();
+    auto rightQueue = depth->rectifiedRight().createOutputQueue();
+    PipelineStopGuard guard(pipeline);
+    pipeline.start();
+    const auto left = requireStreamFrame(leftQueue, std::chrono::seconds(15));
+    const auto right = requireStreamFrame(rightQueue, std::chrono::seconds(15));
+    REQUIRE(left->getWidth() == 640);
+    REQUIRE(right->getHeight() == 400);
 }

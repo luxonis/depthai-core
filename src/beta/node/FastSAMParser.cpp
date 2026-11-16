@@ -20,8 +20,6 @@
 namespace dai {
 namespace beta {
 
-FastSAMParserProperties::~FastSAMParserProperties() = default;
-
 namespace node {
 
 FastSAMParser::FastSAMParser(std::unique_ptr<Properties> props)

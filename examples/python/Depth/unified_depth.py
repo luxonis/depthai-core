@@ -104,6 +104,7 @@ def buildParser() -> argparse.ArgumentParser:
         epilog="""\
 Examples:
   %(prog)s
+  %(prog)s --algorithm stereo --rectified
   %(prog)s --fps 30
   %(prog)s --width 640 --height 480
   %(prog)s --algorithm neural --config NEURAL_DEPTH_LARGE --fps 8
@@ -111,6 +112,11 @@ Examples:
   %(prog)s --user-cameras --width 1280 --height 800 --fps 30
   %(prog)s --ip 192.168.1.10
 """,
+    )
+    parser.add_argument(
+        "--rectified",
+        action="store_true",
+        help="Show the active backend's rectified pair when available (unavailable for ToF).",
     )
     parser.add_argument(
         "--ip",
@@ -170,6 +176,20 @@ def main() -> int:
     depthQueue = depthNode.depth.createOutputQueue()
     confidenceQueue = depthNode.confidence.createOutputQueue()
 
+    rectifiedQueues = None
+    if args.rectified:
+        # Resolves AUTO but never switches a ToF selection to stereo.
+        if depthNode.hasRectifiedOutputs():
+            rectifiedQueues = (
+                depthNode.rectifiedLeft.createOutputQueue(maxSize=2, blocking=False),
+                depthNode.rectifiedRight.createOutputQueue(maxSize=2, blocking=False),
+            )
+        else:
+            print(
+                "Rectified stereo images unavailable for:",
+                depthNode.getResolvedAlgorithm(),
+            )
+
     pipeline.build()
 
     print("Resolved algorithm:", depthNode.getResolvedAlgorithm())
@@ -185,6 +205,14 @@ def main() -> int:
             confidenceFrame = confidenceQueue.get()
             assert isinstance(confidenceFrame, dai.ImgFrame)
             cv2.imshow("confidence", colorizeConfidence(confidenceFrame.getFrame()))
+
+            if rectifiedQueues is not None:
+                for name, queue in zip(
+                    ("Rectified left", "Rectified right"), rectifiedQueues
+                ):
+                    frame = queue.tryGet()
+                    if frame is not None:
+                        cv2.imshow(name, frame.getCvFrame())
 
             if cv2.waitKey(1) == ord("q"):
                 pipeline.stop()

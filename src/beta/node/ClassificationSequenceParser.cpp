@@ -16,8 +16,6 @@
 namespace dai {
 namespace beta {
 
-ClassificationSequenceParserProperties::~ClassificationSequenceParserProperties() = default;
-
 namespace node {
 
 ClassificationSequenceParser::ClassificationSequenceParser(std::unique_ptr<Properties> props)

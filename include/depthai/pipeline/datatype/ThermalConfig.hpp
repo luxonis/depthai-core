@@ -42,7 +42,8 @@ class ThermalConfig : public Buffer {
 
         /// Gain mode, low or high.
         std::optional<ThermalGainMode> gainMode;
-        DEPTHAI_SERIALIZE(ThermalAmbientParams, distance, reflectionTemperature, atmosphericTemperature, targetEmissivity, atmosphericTransmittance, gainMode);
+        DEPTHAI_SERIALIZE_DECL(
+            ThermalAmbientParams, distance, reflectionTemperature, atmosphericTemperature, targetEmissivity, atmosphericTransmittance, gainMode);
     };
 
     struct ThermalFFCParams {
@@ -76,16 +77,16 @@ class ThermalConfig : public Buffer {
         std::optional<uint16_t> antiFallProtectionThresholdHighGainMode;
         std::optional<uint16_t> antiFallProtectionThresholdLowGainMode;
 
-        DEPTHAI_SERIALIZE(ThermalFFCParams,
-                          autoFFC,
-                          minFFCInterval,
-                          maxFFCInterval,
-                          autoFFCTempThreshold,
-                          fallProtection,
-                          minShutterInterval,
-                          closeManualShutter,
-                          antiFallProtectionThresholdHighGainMode,
-                          antiFallProtectionThresholdLowGainMode);
+        DEPTHAI_SERIALIZE_DECL(ThermalFFCParams,
+                               autoFFC,
+                               minFFCInterval,
+                               maxFFCInterval,
+                               autoFFCTempThreshold,
+                               fallProtection,
+                               minShutterInterval,
+                               closeManualShutter,
+                               antiFallProtectionThresholdHighGainMode,
+                               antiFallProtectionThresholdLowGainMode);
     };
 
     struct ThermalImageParams {
@@ -106,7 +107,7 @@ class ThermalConfig : public Buffer {
 
         /// Orientation of the image. Computed on the sensor.
         std::optional<ThermalImageOrientation> orientation;
-        DEPTHAI_SERIALIZE(
+        DEPTHAI_SERIALIZE_DECL(
             ThermalImageParams, timeNoiseFilterLevel, spatialNoiseFilterLevel, digitalDetailEnhanceLevel, brightnessLevel, contrastLevel, orientation);
     };
 
@@ -131,7 +132,7 @@ class ThermalConfig : public Buffer {
         return DatatypeEnum::ThermalConfig;
     }
 
-    DEPTHAI_SERIALIZE(ThermalConfig, ambientParams, ffcParams, imageParams);
+    DEPTHAI_SERIALIZE_DECL(ThermalConfig, ambientParams, ffcParams, imageParams);
 };
 
 }  // namespace dai

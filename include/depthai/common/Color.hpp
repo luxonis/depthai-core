@@ -39,6 +39,6 @@ struct Color {
     float r = 0.0f, g = 0.0f, b = 0.0f, a = 0.0f;
 };
 
-DEPTHAI_SERIALIZE_EXT(Color, r, g, b, a);
+DEPTHAI_SERIALIZE_EXT_DECL(Color, r, g, b, a);
 
 }  // namespace dai

@@ -19,6 +19,6 @@ struct Quaterniond {
     double qx = 0, qy = 0, qz = 0, qw = 1;
 };
 
-DEPTHAI_SERIALIZE_EXT(Quaterniond, qx, qy, qz, qw);
+DEPTHAI_SERIALIZE_EXT_DECL(Quaterniond, qx, qy, qz, qw);
 
 }  // namespace dai

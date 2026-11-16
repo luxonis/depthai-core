@@ -53,7 +53,7 @@ class ImgFrameCapability : public CapabilityCRTP<Capability, ImgFrameCapability>
 
     ~ImgFrameCapability() override;
 
-    DEPTHAI_SERIALIZE(ImgFrameCapability, size, fps, type, resizeMode, enableUndistortion, alphaScaling, ispOutput);
+    DEPTHAI_SERIALIZE_DECL(ImgFrameCapability, size, fps, type, resizeMode, enableUndistortion, alphaScaling, ispOutput);
 
    private:
     class Impl;

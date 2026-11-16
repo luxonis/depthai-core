@@ -12,6 +12,7 @@
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/utility/Pimpl.hpp"
 
 namespace dai {
 namespace node {

@@ -36,6 +36,8 @@ struct PointCloudProperties : PropertiesSerializable<Properties, PointCloudPrope
     ~PointCloudProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(PointCloudProperties, initialConfig, numFramesPool, computeMethod, numThreads, gpuDevice);
+DEPTHAI_SERIALIZE_EXT_DECL(PointCloudProperties, initialConfig, numFramesPool, computeMethod, numThreads, gpuDevice);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::PointCloudProperties>;

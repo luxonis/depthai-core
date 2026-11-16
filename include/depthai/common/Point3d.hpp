@@ -19,6 +19,6 @@ struct Point3d {
     double x = 0, y = 0, z = 0;
 };
 
-DEPTHAI_SERIALIZE_EXT(Point3d, x, y, z);
+DEPTHAI_SERIALIZE_EXT_DECL(Point3d, x, y, z);
 
 }  // namespace dai

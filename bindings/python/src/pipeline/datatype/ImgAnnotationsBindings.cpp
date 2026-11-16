@@ -24,7 +24,7 @@ PYBIND11_MAKE_OPAQUE(std::vector<dai::ImgAnnotation>);
 void bind_imageannotations(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<ImgAnnotations, Py<ImgAnnotations>, Buffer, ProtoSerializable, std::shared_ptr<ImgAnnotations>> imageAnnotations(
+    py::class_<ImgAnnotations, Py<ImgAnnotations>, Buffer, ProtoSerializable, py::smart_holder> imageAnnotations(
         m, "ImgAnnotations", DOC(dai, ImgAnnotations));
     py::class_<CircleAnnotation> circleAnnotation(m, "CircleAnnotation", DOC(dai, CircleAnnotation));
     py::enum_<PointsAnnotationType> pointsAnnotationType(m, "PointsAnnotationType", DOC(dai, PointsAnnotationType));
