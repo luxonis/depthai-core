@@ -17,8 +17,10 @@
 #include "depthai/depthai.hpp"
 
 TEST_CASE("Camera ISP intrinsics follow sensor readout geometry", "[camera-sensor-geometry]") {
-    // Extended runs cover every distinct advertised resolution and crop. Bound
-    // host transfers even for large sensors, keeping the sensor mode unchanged.
+    // Extended runs cover each distinct advertised resolution, type, HDR, and HFR
+    // combination. FOV-only variants are skipped and logged because Camera::build
+    // selects the sensor mode by resolution alone. Bound host transfers even for
+    // large sensors, keeping the sensor mode unchanged.
     const bool extendedCoverage = std::getenv("DEPTHAI_GEOMETRY_EXTENDED") != nullptr;
     dai::DeviceInfo deviceInfo;
     std::vector<dai::CameraFeatures> cameras;
