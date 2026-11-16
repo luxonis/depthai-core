@@ -1,0 +1,192 @@
+name: DepthAI Core HIL Aux Soak
+run-name: Aux soak ${{ inputs.depthai_ref }} on ${{ inputs.os_versions }}, ${{ inputs.passes }} passes
+
+# Runs the RVC4 nightly tests (ci|ci_nightly) many times on one DepthAI build to find flaky tests.
+# Each pass is its own job with its own testbed reservation. Never use "Re-run failed jobs" on a soak run:
+# the re-run replaces the failed attempt and hides the flake.
+on:
+  workflow_dispatch:
+    inputs:
+      depthai_ref:
+        description: DepthAI ref to build and test (tag, branch or commit)
+        type: string
+        required: true
+      os_versions:
+        description: RVC4 OS versions as a JSON list, for example ["1.44.0"]
+        type: string
+        required: true
+      rows:
+        description: RVC4 rows as a JSON list of rvc4 (Ethernet) and rvc4usb
+        type: string
+        default: '["rvc4","rvc4usb"]'
+      passes:
+        description: Passes per OS version and row
+        type: number
+        default: 5
+      max_parallel:
+        description: Pass jobs that run at the same time
+        type: number
+        default: 10
+      latest_start:
+        description: UTC time (ISO 8601) after which a pass that has not started is skipped; empty for no limit
+        type: string
+        default: ''
+
+permissions:
+  actions: read
+  contents: read
+
+# A soak run always finishes; a second dispatch on the same branch waits for it.
+concurrency:
+  group: hil-aux-soak-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      night: ${{ steps.plan.outputs.night }}
+      passes: ${{ steps.plan.outputs.passes }}
+    steps:
+    - name: Check the inputs
+      id: plan
+      env:
+        OS_VERSIONS: ${{ inputs.os_versions }}
+        ROWS: ${{ inputs.rows }}
+        PASSES: ${{ inputs.passes }}
+        LATEST_START: ${{ inputs.latest_start }}
+      run: |
+        # OS versions end up in artifact names, reservation names and pass.json, so they stay plain.
+        jq -e 'type == "array" and length > 0 and all(type == "string" and test("^[A-Za-z0-9._+-]+$"))' <<<"$OS_VERSIONS" >/dev/null \
+          || { echo "::error::os_versions must be a JSON list of versions such as [\"1.44.0\"]"; exit 1; }
+        jq -e 'type == "array" and length > 0 and all(. == "rvc4" or . == "rvc4usb")' <<<"$ROWS" >/dev/null \
+          || { echo "::error::rows must be a JSON list of rvc4 and rvc4usb"; exit 1; }
+        [ "$PASSES" -ge 1 ] || { echo "::error::passes must be at least 1"; exit 1; }
+        [[ -z "$LATEST_START" || "$LATEST_START" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2})?Z$ ]] \
+          || { echo "::error::latest_start must look like 2026-11-17T04:30:00Z"; exit 1; }
+        echo "night=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+        echo "passes=$(jq -cn --argjson n "$PASSES" '[range(1; $n + 1)]')" >> "$GITHUB_OUTPUT"
+
+  build_docker_container:
+    needs: plan
+    runs-on: ['self-hosted', 'hil-test-v3']
+    outputs:
+      tag: ${{ steps.build.outputs.tag }}
+      sha: ${{ steps.build.outputs.sha }}
+      device_pin: ${{ steps.build.outputs.device_pin }}
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: ${{ inputs.depthai_ref }}
+
+    - name: Build and push
+      id: build
+      env:
+        CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+        DEPTHAI_REF: ${{ inputs.depthai_ref }}
+      run: |
+        SHA=$(git rev-parse HEAD)
+        # build_and_push.sh skips a tag the registry already has, so the run ID gives every run its own image.
+        TAG="aux-soak_${SHA}_${GITHUB_RUN_ID}"
+        echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+        echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+        echo "device_pin=$(sed -n 's/^set(DEPTHAI_DEVICE_RVC4_VERSION "\(.*\)")/\1/p' cmake/Depthai/DepthaiDeviceRVC4Config.cmake)" >> "$GITHUB_OUTPUT"
+        scripts/hil/build_and_push.sh vanilla "$DEPTHAI_REF" "$CONTAINER_REGISTRY" "$SHA" "$PARALLEL_JOBS" false "$TAG"
+
+  rvc4_pass:
+    name: ${{ matrix.row }} ${{ matrix.rvc4os }} pass ${{ matrix.pass }}
+    needs: [plan, build_docker_container]
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ inputs.max_parallel }}
+      matrix:
+        # pass first: jobs start in matrix order, so all OS versions and rows advance together.
+        pass: ${{ fromJson(needs.plan.outputs.passes) }}
+        rvc4os: ${{ fromJson(inputs.os_versions) }}
+        row: ${{ fromJson(inputs.rows) }}
+    runs-on: ['self-hosted', 'testbed-runner']
+    # A pass takes about three hours; a stuck pass must not hold its testbed into the working day.
+    timeout-minutes: 300
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Run the RVC4 nightly tests
+      env:
+        ROW: ${{ matrix.row }}
+        RVC4_OS: ${{ matrix.rvc4os }}
+        PASS: ${{ matrix.pass }}
+        LATEST_START: ${{ inputs.latest_start }}
+        IMAGE: ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }}
+        HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
+        CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}
+        CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
+      run: |
+        if [ -n "$LATEST_START" ] && [ "$(date -u +%s)" -gt "$(date -u -d "$LATEST_START" +%s)" ]; then
+          printf '{"os": "%s", "row": "%s", "pass": %s, "not_started": "after %s"}\n' "$RVC4_OS" "$ROW" "$PASS" "$LATEST_START" > pass.json
+          echo "Not started: it is after $LATEST_START"
+          exit 0
+        fi
+        printf '{"os": "%s", "row": "%s", "pass": %s}\n' "$RVC4_OS" "$ROW" "$PASS" > pass.json
+        case "$ROW" in
+          rvc4) SANITY_ARGS=() ;;
+          # Skip testbeds with a USB 2.0 link, as the nightly does. The check is destructive, so it needs -d.
+          rvc4usb) SANITY_ARGS=(--sanity usb-link-speed -d) ;;
+        esac
+        source scripts/hil/prepare_hil_framework.sh "$HIL_PAT_TOKEN"
+        # One reservation name per pass: hil_runner hands a testbed to any job that uses the same name.
+        RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#soak-$ROW-$RVC4_OS-p$PASS"
+        set -o pipefail
+        hil_runner --models "oak4_pro or oak4_d" "${SANITY_ARGS[@]}" --reservation-name "$RESERVATION_NAME" --wait \
+          --rvc4-os-version "$RVC4_OS" --docker-image "$IMAGE" \
+          --commands "export DEPTHAI_TELEMETRY_URL='$CI_TELEMETRY_URL'; export DEPTHAI_TELEMETRY_API_KEY='$CI_TELEMETRY_API_KEY'; ./tests/run_tests_entrypoint.sh $ROW --test-label \"ci|ci_nightly\"" \
+          2>&1 | tee soak.log
+
+    - name: Upload the pass log
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: soak-pass-${{ matrix.row }}-${{ matrix.rvc4os }}-p${{ matrix.pass }}
+        path: |
+          pass.json
+          soak.log
+        if-no-files-found: warn
+
+  summary:
+    needs: [plan, build_docker_container, rvc4_pass]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Download the pass logs
+      # A run whose build failed has no pass artifacts; the summary still reports every pass.
+      continue-on-error: true
+      uses: actions/download-artifact@v8
+      with:
+        pattern: soak-pass-*
+        path: passes
+
+    - name: Summarize the passes
+      env:
+        NIGHT: ${{ needs.plan.outputs.night }}
+        DEPTHAI_REF: ${{ inputs.depthai_ref }}
+        DEPTHAI_SHA: ${{ needs.build_docker_container.outputs.sha }}
+        DEVICE_PIN: ${{ needs.build_docker_container.outputs.device_pin }}
+        OS_VERSIONS: ${{ inputs.os_versions }}
+        ROWS: ${{ inputs.rows }}
+        PASSES: ${{ inputs.passes }}
+      run: |
+        mkdir -p passes
+        python3 scripts/ci/soak_summary.py passes --out soak-results.json \
+          --night "${NIGHT:-$(date -u +%F)}" --run-id "$GITHUB_RUN_ID" --run-attempt "$GITHUB_RUN_ATTEMPT" \
+          --soak-ref "$GITHUB_REF_NAME" --depthai-ref "$DEPTHAI_REF" --depthai-sha "$DEPTHAI_SHA" \
+          --device-pin "$DEVICE_PIN" --os-versions "$OS_VERSIONS" --rows "$ROWS" --passes "$PASSES" \
+          >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload the results
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: soak-results
+        path: soak-results.json
+        if-no-files-found: warn
