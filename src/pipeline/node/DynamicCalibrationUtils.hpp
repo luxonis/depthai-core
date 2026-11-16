@@ -4,6 +4,7 @@
 #include <array>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
+#include <depthai/pipeline/datatype/DynamicCalibrationResults.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
 #include <depthai/properties/DynamicCalibrationProperties.hpp>
 #include <deque>
@@ -92,6 +93,17 @@ struct DclUtils {
                                                        const std::deque<MarkerObservationSet>& observationSets,
                                                        const std::function<std::shared_ptr<const dcl::CameraSensorHandle>(CameraBoardSocket)>& sensorForSocket,
                                                        WorldConstraintsSummary* summary = nullptr);
+
+    /**
+     * Marker status of one frame set: which of the markers the constraints refer to were seen by at least two
+     * cameras (observations), which were too small (tooSmallPx, marker id to largest size seen), and whether the
+     * set is accepted, which needs every required marker seen by two cameras. observationSets is the number of
+     * sets kept so far and is copied into the result.
+     */
+    static CoverageData::MarkerCoverage markerCoverage(const WorldConstraints& constraints,
+                                                       const MarkerObservationSet& observations,
+                                                       const std::map<int32_t, float>& tooSmallPx,
+                                                       size_t observationSets);
 };
 
 }  // namespace node

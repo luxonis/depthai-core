@@ -21,6 +21,7 @@ This folder contains minimal, end-to-end examples that use **`dai.node.DynamicCa
   - `dataAcquired: float` — amount of calibration-relevant data gathered [0–1].
   - `coveragePerCell: dict[CameraBoardSocket, list[list[float]]]` - per-sensor coverage matrices keyed by socket [0-1].
   - `coveragePerCellA/B: list[list[float]]` - deprecated aliases for the first two connected sensors.
+  - `markers: CoverageData.MarkerCoverage | None` — marker status of the frame set when world constraints are set: `requiredMarkers`, `seenBy` (socket list per marker), `missingMarkers`, `tooSmallPx`, `markersAcquired` [0–1], `accepted` (the set was loaded) and `observationSets` kept so far. A set is loaded only when every required marker is seen by two cameras.
 
 - **DynamicCalibrationResult** (`calibrationOutput`)
   - `calibrationData.newCalibration: dai.CalibrationHandler` — `CalibrationHandler` with updated parameters.

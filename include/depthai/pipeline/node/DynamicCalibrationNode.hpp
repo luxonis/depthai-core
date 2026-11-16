@@ -14,6 +14,7 @@
 #include "depthai/common/WorldConstraints.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
+#include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #include "depthai/utility/spimpl.h"
 
 namespace spdlog {
@@ -147,8 +148,10 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     /**
      * Refine camera orientations using measured marker distances and printed sizes, preserving the resulting
-     * camera centers and baseline lengths. Markers are detected in every image set the node loads and their
-     * observations are collected (the latest 50 frame sets with markers, cleared by ResetData) and handed to the
+     * camera centers and baseline lengths. Markers are detected in every image set; a set is loaded into the
+     * calibration only when every marker the constraints refer to is seen by at least two cameras, otherwise it
+     * is skipped and the CoverageData message on coverageOutput says which markers are missing (its `markers`
+     * block). The observations of the accepted sets (the latest 50, cleared by ResetData) are handed to the
      * calibration together with the image features. A distance to a socket that is not one of the image
      * inputs uses that socket's current calibration. Set before the pipeline is built.
      */
@@ -181,6 +184,10 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     std::vector<ConnectedSensor> auxiliarySensors;
     /// Marker centers of the loaded image sets, newest last.
     std::deque<MarkerObservationSet> markerObservations;
+    /// Marker status of the last image set that was looked at, accepted or not; attached to the CoverageData messages.
+    std::optional<CoverageData::MarkerCoverage> lastMarkerCoverage;
+    /// The last CoverageData computed by DCL; its numbers are repeated when an image set is rejected for missing markers.
+    std::shared_ptr<CoverageData> lastCoverageMessage;
     std::optional<CameraBoardSocket> leftQueueSocket;
     std::optional<CameraBoardSocket> rightQueueSocket;
 
@@ -196,6 +203,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
         CALIBRATION_DOES_NOT_EXIST = 7,
         STOP_LOADING_IMAGES_DURING_CALIBRATION = 8,
         INVALID_COMMAND = 9,
+        /// World constraints are configured and the image set did not show every required marker to two cameras.
+        MARKERS_NOT_VISIBLE = 10,
     };
 
     /**
@@ -210,6 +219,9 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     ErrorCode runLoadImage(const bool blocking = false);
 #endif
     ErrorCode computeCoverage();
+    /// Sends the CoverageData (last DCL numbers, current marker status) and a DynamicCalibrationResult for an
+    /// image set rejected because of missing markers, so every loaded or skipped set produces both messages.
+    void reportMarkersNotVisible();
 
     ErrorCode initializePipeline(const std::shared_ptr<dai::Device>& daiDevice);
 

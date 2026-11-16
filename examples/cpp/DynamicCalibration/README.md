@@ -21,6 +21,7 @@ This folder contains minimal, end-to-end **C++** examples that use **`dai::node:
   - `dataAcquired` — amount of calibration-relevant data gathered [0–1]
   - `coveragePerCell` — per-sensor 2D coverage matrices keyed by camera socket
   - `coveragePerCellA/B` — deprecated aliases for the first two connected sensors
+  - `markers` — `std::optional<CoverageData::MarkerCoverage>`, marker status of the frame set when world constraints are set: `requiredMarkers`, `seenBy`, `missingMarkers`, `tooSmallPx`, `markersAcquired` [0–1], `accepted` (the set was loaded) and `observationSets` kept so far. A set is loaded only when every required marker is seen by two cameras.
 
 - **`DynamicCalibrationResult`** (`calibrationOutput`)
   - `calibrationData->newCalibration` — `CalibrationHandler` with updated parameters

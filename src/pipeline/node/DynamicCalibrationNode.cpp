@@ -168,6 +168,18 @@ bool isModularCameraBoard(const std::string& productName, const std::string& boa
     return containsFfc(productName) || containsFfc(boardName);
 }
 
+/// "0, 4" for a list of marker ids, "none" when empty.
+std::string joinIds(const std::vector<int32_t>& ids) {
+    if(ids.empty()) {
+        return "none";
+    }
+    std::string joined;
+    for(const auto id : ids) {
+        joined += (joined.empty() ? "" : ", ") + std::to_string(id);
+    }
+    return joined;
+}
+
 }  // namespace
 
 std::vector<std::vector<float>> DclUtils::calibrationHandleToTransform(const std::shared_ptr<const dcl::CameraCalibrationHandle>& calibration) {
@@ -621,6 +633,34 @@ dcl::WorldConstraints DclUtils::buildWorldConstraints(const WorldConstraints& co
     return world;
 }
 
+CoverageData::MarkerCoverage DclUtils::markerCoverage(const WorldConstraints& constraints,
+                                                      const MarkerObservationSet& observations,
+                                                      const std::map<int32_t, float>& tooSmallPx,
+                                                      size_t observationSets) {
+    CoverageData::MarkerCoverage coverage;
+    coverage.requiredMarkers = utility::referencedMarkerIds(constraints);
+    size_t seenByTwo = 0;
+    for(const auto id : coverage.requiredMarkers) {
+        const auto it = observations.centers.find(id);
+        if(it != observations.centers.end()) {
+            auto& sockets = coverage.seenBy[id];
+            for(const auto& [socket, center] : it->second) {
+                sockets.push_back(socket);
+            }
+        }
+        if(it != observations.centers.end() && it->second.size() >= 2) {
+            ++seenByTwo;
+        } else {
+            coverage.missingMarkers.push_back(id);
+        }
+    }
+    coverage.tooSmallPx = tooSmallPx;
+    coverage.markersAcquired = coverage.requiredMarkers.empty() ? 1.0f : static_cast<float>(seenByTwo) / static_cast<float>(coverage.requiredMarkers.size());
+    coverage.accepted = coverage.missingMarkers.empty();
+    coverage.observationSets = static_cast<uint32_t>(observationSets);
+    return coverage;
+}
+
 #define DCL_PERSPECTIVE_DISTORTION_SIZE (14)
 #define DCL_FISHEYE_DISTORTION_SIZE (4)
 
@@ -1029,14 +1069,18 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
         images.emplace_back(sensor.sensorDcl, DclUtils::cvMatToImageData(cvFrame));
     }
 
-    // Collected now, kept only when DCL accepts the image set below.
+    // Collected now, kept only when DCL accepts the image set below. A set that does not show every required
+    // marker to two cameras is not loaded at all: with constraints configured, every accepted set carries them.
     std::optional<MarkerObservationSet> pendingObservations;
     if(properties.worldConstraints) {
         MarkerObservationSet observations;
+        std::map<int32_t, float> tooSmallPx;
         for(size_t idx = 0; idx < images.size(); ++idx) {
             std::map<int32_t, double> tooSmall;
             auto detected = DclUtils::detectConfiguredMarkers(images[idx].second, *properties.worldConstraints, &tooSmall);
             for(const auto& [markerId, sizePx] : tooSmall) {
+                auto& recorded = tooSmallPx[markerId];
+                recorded = std::max(recorded, static_cast<float>(sizePx));
                 // Once per marker: a configured marker that is seen but too small is otherwise a silent loss of constraints.
                 if(markerSizeWarningIssued.insert(markerId).second) {
                     logger->warn(
@@ -1062,16 +1106,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
                 }
             }
         }
-        size_t usableMarkers = 0;
-        for(const auto& [markerId, centers] : observations.centers) {
-            if(centers.size() >= 2) {
-                ++usableMarkers;
-            }
+        lastMarkerCoverage = DclUtils::markerCoverage(*properties.worldConstraints, observations, tooSmallPx, markerObservations.size());
+        if(!lastMarkerCoverage->accepted) {
+            logger->trace("Image set skipped, markers not seen by two cameras: {}", joinIds(lastMarkerCoverage->missingMarkers));
+            return DynamicCalibration::ErrorCode::MARKERS_NOT_VISIBLE;
         }
-        logger->trace("Markers seen by at least two cameras in this image set: {}", usableMarkers);
-        if(usableMarkers > 0) {
-            pendingObservations = std::move(observations);
-        }
+        pendingObservations = std::move(observations);
     }
 
     auto loadResult = pimplDCL->dynCalibImpl.loadImages(images, timestamp);
@@ -1084,6 +1124,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
         while(markerObservations.size() > DclUtils::kMaxMarkerObservationSets) {
             markerObservations.pop_front();
         }
+        lastMarkerCoverage->observationSets = static_cast<uint32_t>(markerObservations.size());
     }
 
     return DynamicCalibration::ErrorCode::OK;
@@ -1129,12 +1170,42 @@ DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
     coverageResult->meanCoverage = coverage.meanCoverage;
     coverageResult->coverageAcquired = coverage.coverageAcquired;
     coverageResult->dataAcquired = coverage.dataAcquired;
+    coverageResult->markers = lastMarkerCoverage;
+    lastCoverageMessage = coverageResult;
 
     logger->trace("Computing coverage");
 
     coverageOutput.send(coverageResult);
 
     return DynamicCalibration::ErrorCode::OK;
+}
+
+void DynamicCalibration::reportMarkersNotVisible() {
+    // The spatial coverage did not change, the set was not loaded: repeat the last numbers with the new marker status.
+    auto coverageResult = std::make_shared<CoverageData>();
+    if(lastCoverageMessage) {
+        coverageResult->coveragePerCellA = lastCoverageMessage->coveragePerCellA;
+        coverageResult->coveragePerCellB = lastCoverageMessage->coveragePerCellB;
+        coverageResult->coveragePerCell = lastCoverageMessage->coveragePerCell;
+        coverageResult->meanCoverage = lastCoverageMessage->meanCoverage;
+        coverageResult->coverageAcquired = lastCoverageMessage->coverageAcquired;
+        coverageResult->dataAcquired = lastCoverageMessage->dataAcquired;
+    }
+    coverageResult->markers = lastMarkerCoverage;
+    coverageOutput.send(coverageResult);
+
+    std::string info = "Image set skipped: markers not seen by two cameras";
+    if(lastMarkerCoverage) {
+        info += ": " + joinIds(lastMarkerCoverage->missingMarkers);
+        if(!lastMarkerCoverage->tooSmallPx.empty()) {
+            std::vector<int32_t> small;
+            for(const auto& [id, sizePx] : lastMarkerCoverage->tooSmallPx) {
+                small.push_back(id);
+            }
+            info += " (too small: " + joinIds(small) + ")";
+        }
+    }
+    calibrationOutput.send(std::make_shared<DynamicCalibrationResult>(info));
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::shared_ptr<dai::Device>& daiDevice) {
@@ -1351,7 +1422,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
         }
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         auto error = runLoadImage(true);
-        computeCoverage();
+        if(error == ErrorCode::MARKERS_NOT_VISIBLE) {
+            reportMarkersNotVisible();
+        } else {
+            computeCoverage();
+        }
         return error;
 #else
         throw std::runtime_error("DynamicCalibrationNode was built without OpenCV support, cannot load images.");
@@ -1395,6 +1470,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
             }
         }
         markerObservations.clear();
+        lastMarkerCoverage.reset();
         return ErrorCode::OK;
     }
     // Set performance mode
@@ -1455,6 +1531,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
 #endif
     }
 
+    if(error == ErrorCode::MARKERS_NOT_VISIBLE) {
+        // Not loaded, but every period still produces its coverage and result messages.
+        reportMarkersNotVisible();
+        previousLoadingAndCalibrationTime = std::chrono::steady_clock::now();
+        return error;
+    }
     if(error != ErrorCode::OK) {  // test progress so far
         return error;
     }

@@ -281,6 +281,48 @@ TEST_CASE("DynamicCalibration assembles world constraints from marker observatio
     REQUIRE(DclUtils::buildWorldConstraints(constraints, single, sensorForSocket).empty());
 }
 
+TEST_CASE("DynamicCalibration accepts a frame set only when every required marker is seen by two cameras", "[WorldConstraints]") {
+    using dai::node::DclUtils;
+    const auto constraints = dai::WorldConstraints::fromJsonString(kWorldJson);  // markers 37 and 43
+
+    dai::MarkerObservationSet complete;
+    complete.centers[37] = {{Socket::CAM_B, {100.f, 200.f}}, {Socket::CAM_C, {80.f, 201.f}}};
+    complete.centers[43] = {{Socket::CAM_B, {600.f, 210.f}}, {Socket::CAM_C, {578.f, 211.f}}};
+    const auto accepted = DclUtils::markerCoverage(constraints, complete, {}, 4);
+    REQUIRE(accepted.accepted);
+    REQUIRE(accepted.requiredMarkers == std::vector<int32_t>{37, 43});
+    REQUIRE(accepted.missingMarkers.empty());
+    REQUIRE(accepted.markersAcquired == Catch::Approx(1.0f));
+    REQUIRE(accepted.observationSets == 4);
+    REQUIRE(accepted.seenBy.at(37).size() == 2);
+
+    // Marker 43 in one camera only: not accepted, half of the markers acquired, the too-small size is reported.
+    dai::MarkerObservationSet partial = complete;
+    partial.centers[43].erase(Socket::CAM_C);
+    const auto rejected = DclUtils::markerCoverage(constraints, partial, {{43, 18.5f}}, 4);
+    REQUIRE_FALSE(rejected.accepted);
+    REQUIRE(rejected.missingMarkers == std::vector<int32_t>{43});
+    REQUIRE(rejected.markersAcquired == Catch::Approx(0.5f));
+    REQUIRE(rejected.seenBy.at(43) == std::vector<Socket>{Socket::CAM_B});
+    REQUIRE(rejected.tooSmallPx.at(43) == Catch::Approx(18.5f));
+
+    // Nothing seen at all.
+    const auto empty = DclUtils::markerCoverage(constraints, dai::MarkerObservationSet{}, {}, 0);
+    REQUIRE_FALSE(empty.accepted);
+    REQUIRE(empty.missingMarkers == std::vector<int32_t>{37, 43});
+    REQUIRE(empty.markersAcquired == Catch::Approx(0.0f));
+    REQUIRE(empty.seenBy.empty());
+
+    // The block travels inside CoverageData.
+    dai::CoverageData coverage;
+    coverage.markers = rejected;
+    nlohmann::json wire = coverage;
+    const auto back = wire.get<dai::CoverageData>();
+    REQUIRE(back.markers.has_value());
+    REQUIRE(back.markers->missingMarkers == std::vector<int32_t>{43});
+    REQUIRE(back.markers->seenBy.at(43) == std::vector<Socket>{Socket::CAM_B});
+}
+
 TEST_CASE("WorldConstraints validates marker sizes", "[WorldConstraints]") {
     using Constraints = dai::WorldConstraints;
     const auto sizesOnly = Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3, "size": 0.1}]})");

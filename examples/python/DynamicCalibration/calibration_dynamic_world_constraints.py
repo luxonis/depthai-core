@@ -49,6 +49,10 @@ with dai.Pipeline() as pipeline:
         coverage = coverageQueue.tryGet()
         if coverage is not None:
             print(f"coverage {coverage.meanCoverage:.1f} %, data {coverage.dataAcquired:.1f} %")
+            markers = coverage.markers
+            if markers is not None:
+                print(f"markers {markers.markersAcquired * 100:.0f} %, missing {markers.missingMarkers}, "
+                      f"sets {markers.observationSets}, accepted {markers.accepted}")
         result = calibrationQueue.tryGet()
         if result is None:
             time.sleep(0.1)

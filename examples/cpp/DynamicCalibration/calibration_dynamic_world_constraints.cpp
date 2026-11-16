@@ -63,6 +63,11 @@ int main(int argc, char** argv) {
     while(pipeline.isRunning()) {
         if(auto coverage = coverageQueue->tryGet<dai::CoverageData>()) {
             std::cout << std::fixed << std::setprecision(1) << "coverage " << coverage->meanCoverage << " %, data " << coverage->dataAcquired << " %\n";
+            if(coverage->markers) {
+                std::cout << "markers " << std::setprecision(0) << coverage->markers->markersAcquired * 100 << " %, missing";
+                for(const auto id : coverage->markers->missingMarkers) std::cout << ' ' << id;
+                std::cout << ", sets " << coverage->markers->observationSets << ", accepted " << (coverage->markers->accepted ? "yes" : "no") << "\n";
+            }
         }
         auto result = calibrationQueue->tryGet<dai::DynamicCalibrationResult>();
         if(!result) {
