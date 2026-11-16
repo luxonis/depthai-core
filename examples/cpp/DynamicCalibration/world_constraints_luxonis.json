@@ -1,7 +1,6 @@
 {
     "markerType": "luxonis",
     "lengthUnit": "m",
-    "markers": [0, 1, 2],
     "markerDistances": [
         {"markers": [0, 1], "distance": 0.80},
         {"markers": [1, 2], "distance": 0.60}

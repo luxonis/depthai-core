@@ -496,7 +496,7 @@ dcl::Result<std::map<int32_t, dcl::MarkerDetection>> DclUtils::detectConfiguredM
         return dcl::Result<Found>::error(detections.errorCode);
     }
     Found found;
-    const auto wanted = constraints.referencedMarkerIds();
+    const auto wanted = utility::referencedMarkerIds(constraints);
     std::set<int32_t> ambiguous;
     for(const auto& detection : detections.value) {
         if(!std::binary_search(wanted.begin(), wanted.end(), detection.id) || ambiguous.count(detection.id) != 0) {
@@ -1082,7 +1082,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
     }
     if(pendingObservations) {
         markerObservations.push_back(std::move(*pendingObservations));
-        while(markerObservations.size() > properties.worldConstraints->maxObservationSets) {
+        while(markerObservations.size() > DclUtils::kMaxMarkerObservationSets) {
             markerObservations.pop_front();
         }
     }
@@ -1263,7 +1263,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializeAuxiliarySensors(con
         logger->error("Invalid marker constraints: {}", ex.what());
         return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
     }
-    for(const auto socket : constraints.referencedSockets()) {
+    for(const auto socket : utility::referencedSockets(constraints)) {
         if(findConnectedSensor(socket) != nullptr) {
             continue;
         }
@@ -1288,7 +1288,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializeAuxiliarySensors(con
         logger->debug("Marker constraints: socket {} is not an image input, using its current pose", toString(socket));
     }
     logger->info("Marker constraints active: {} markers, {} marker distances, {} socket distances, {} auxiliary sockets",
-                 constraints.referencedMarkerIds().size(),
+                 utility::referencedMarkerIds(constraints).size(),
                  constraints.markerDistances.size(),
                  constraints.socketDistances.size(),
                  auxiliarySensors.size());

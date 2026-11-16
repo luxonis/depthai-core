@@ -148,8 +148,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     /**
      * Refine camera orientations using measured marker distances and printed sizes, preserving the resulting
      * camera centers and baseline lengths. Markers are detected in every image set the node loads and their
-     * observations are collected (up to WorldConstraints::maxObservationSets frame sets, cleared by ResetData)
-     * and handed to the calibration together with the image features. A distance to a socket that is not one of the image
+     * observations are collected (the latest 50 frame sets with markers, cleared by ResetData) and handed to the
+     * calibration together with the image features. A distance to a socket that is not one of the image
      * inputs uses that socket's current calibration. Set before the pipeline is built.
      */
     void setWorldConstraints(const WorldConstraints& constraints);

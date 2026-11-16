@@ -392,18 +392,14 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     worldConstraints.def(py::init<>())
         .def_readwrite("markerType", &WorldConstraints::markerType, DOC(dai, WorldConstraints, markerType))
         .def_readwrite("arucoDictionary", &WorldConstraints::arucoDictionary, DOC(dai, WorldConstraints, arucoDictionary))
-        .def_readwrite("markerIds", &WorldConstraints::markerIds, DOC(dai, WorldConstraints, markerIds))
         .def_readwrite("markerDistances", &WorldConstraints::markerDistances, DOC(dai, WorldConstraints, markerDistances))
         .def_readwrite("socketDistances", &WorldConstraints::socketDistances, DOC(dai, WorldConstraints, socketDistances))
         .def_readwrite("markerSizes", &WorldConstraints::markerSizes, DOC(dai, WorldConstraints, markerSizes))
-        .def_readwrite("maxObservationSets", &WorldConstraints::maxObservationSets, DOC(dai, WorldConstraints, maxObservationSets))
         .def_static("fromJson", &WorldConstraints::fromJsonString, py::arg("json"), DOC(dai, WorldConstraints, fromJsonString))
         .def_static("fromFile", &WorldConstraints::fromFile, py::arg("path"), DOC(dai, WorldConstraints, fromFile))
         .def(
             "toJson", [](const WorldConstraints& constraints) { return constraints.toJson().dump(); }, DOC(dai, WorldConstraints, toJson))
         .def("empty", &WorldConstraints::empty, DOC(dai, WorldConstraints, empty))
-        .def("referencedMarkerIds", &WorldConstraints::referencedMarkerIds, DOC(dai, WorldConstraints, referencedMarkerIds))
-        .def("referencedSockets", &WorldConstraints::referencedSockets, DOC(dai, WorldConstraints, referencedSockets))
         .def("validate", &WorldConstraints::validate, DOC(dai, WorldConstraints, validate));
     markerOutline.def(py::init<>())
         .def_readwrite("corners", &MarkerOutline::corners, DOC(dai, MarkerOutline, corners))

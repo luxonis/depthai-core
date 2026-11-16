@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "../../../src/pipeline/node/DynamicCalibrationUtils.hpp"
+#include "../../../src/utility/WorldConstraintsUtils.hpp"
 
 // After the depthai headers: the DCL headers define macros that collide with depthai enumerators.
 #include <DynamicCalibration.hpp>
@@ -16,7 +17,6 @@ const char* kWorldJson = R"({
     "markerType": "aruco",
     "arucoDictionary": "DICT_4X4_50",
     "lengthUnit": "cm",
-    "markers": [37, 43],
     "markerDistances": [{"markers": [37, 43], "distance": 84}],
     "socketDistances": [{"marker": 37, "socket": "CAM_A", "distance": 168}],
     "markerSizes": [{"marker": 43, "size": 15}]
@@ -35,7 +35,6 @@ TEST_CASE("WorldConstraints parses the documented JSON form", "[WorldConstraints
     const auto constraints = dai::WorldConstraints::fromJsonString(kWorldJson);
     REQUIRE(constraints.markerType == dai::MarkerType::ARUCO);
     REQUIRE(constraints.arucoDictionary == dai::ArucoDictionary::DICT_4X4_50);
-    REQUIRE(constraints.markerIds == std::vector<int32_t>{37, 43});
     REQUIRE(constraints.markerDistances.size() == 1);
     REQUIRE(constraints.markerDistances[0].markerA == 37);
     REQUIRE(constraints.markerDistances[0].markerB == 43);
@@ -44,8 +43,9 @@ TEST_CASE("WorldConstraints parses the documented JSON form", "[WorldConstraints
     REQUIRE(constraints.socketDistances[0].marker == 37);
     REQUIRE(constraints.socketDistances[0].socket == Socket::CAM_A);
     REQUIRE(constraints.socketDistances[0].distanceMeters == Catch::Approx(1.68f));
-    REQUIRE(constraints.referencedMarkerIds() == std::vector<int32_t>{37, 43});
-    REQUIRE(constraints.referencedSockets() == std::vector<Socket>{Socket::CAM_A});
+    REQUIRE(dai::utility::referencedMarkerIds(constraints) == std::vector<int32_t>{37, 43});
+    REQUIRE(dai::utility::referencedSockets(constraints) == std::vector<Socket>{Socket::CAM_A});
+    REQUIRE_FALSE(constraints.toJson().contains("markers"));
     REQUIRE_FALSE(constraints.empty());
 
     // Round trip through the documented form and through the wire form.
@@ -70,8 +70,7 @@ TEST_CASE("WorldConstraints parses the documented JSON form", "[WorldConstraints
         R"({"dictionary": "4X4_100", "markerDistances": [{"markerA": 1, "markerB": 2, "distance": 0.5}], "socketDistances": [{"marker": 2, "socket": "b", "distance": 1.0}]})");
     REQUIRE(alternative.markerType == dai::MarkerType::ARUCO);
     REQUIRE(alternative.arucoDictionary == dai::ArucoDictionary::DICT_4X4_100);
-    REQUIRE(alternative.markerIds.empty());
-    REQUIRE(alternative.referencedMarkerIds() == std::vector<int32_t>{1, 2});
+    REQUIRE(dai::utility::referencedMarkerIds(alternative) == std::vector<int32_t>{1, 2});
     REQUIRE(alternative.socketDistances[0].socket == Socket::CAM_B);
 
     // Dictionary names match regardless of case, including the AprilTag names with their lowercase "h", and
@@ -98,7 +97,6 @@ TEST_CASE("WorldConstraints rejects malformed input", "[WorldConstraints]") {
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 1], "distance": 0.5}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 2], "distance": 0}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 2, 3], "distance": 1}]})"), std::invalid_argument);
-    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markers": [1], "markerDistances": [{"markers": [1, 2], "distance": 1}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": "CAM_Z", "distance": 1}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": "AUTO", "distance": 1}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"lengthUnit": "furlong", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
@@ -119,38 +117,27 @@ TEST_CASE("WorldConstraints rejects malformed input", "[WorldConstraints]") {
     // all surface as std::invalid_argument, never as a nlohmann exception.
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": 99, "distance": 1}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [-3, 2], "distance": 1}]})"), std::invalid_argument);
-    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markers": [1.5], "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
-                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1.5, 2], "distance": 1}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markerA": 1, "distance": 1}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 2], "distance": "far"}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString("{not json"), std::invalid_argument);
-    // Enumerators given as numbers are range-checked, as is the observation window.
+    // Enumerators given as numbers are range-checked.
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"arucoDictionary": 99, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
                       std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": 7, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"), std::invalid_argument);
-    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"maxObservationSets": 0, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
-                      std::invalid_argument);
-    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"maxObservationSets": -1, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
-                      std::invalid_argument);
-    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"maxObservationSets": 2.5, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
-                      std::invalid_argument);
     // Integers that do not fit the destination type are rejected instead of being narrowed (4294967296 would become 0).
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [4294967296, 2], "distance": 1}]})"), std::invalid_argument);
-    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markers": [2147483648], "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
-                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerSizes": [{"marker": 2147483648, "size": 0.1}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": 4294967296, "distance": 1}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": 4294967296, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
                       std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"arucoDictionary": 4294967296, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
                       std::invalid_argument);
-    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"maxObservationSets": 4294967296, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
-                      std::invalid_argument);
-    REQUIRE(WorldConstraints::fromJsonString(R"({"markers": [0, 2147483647], "markerDistances": [{"markers": [2147483647, 0], "distance": 1}]})").markerIds[1]
-            == 2147483647);
+    REQUIRE(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [2147483647, 0], "distance": 1}]})").markerDistances[0].markerA == 2147483647);
     // Luxonis Markers only carry ids 0..kLuxonisMarkerIdMax.
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": "luxonis", "markerDistances": [{"markers": [6, 7], "distance": 1}]})"),
                       std::invalid_argument);
-    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": "luxonis", "markers": [0, 9]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": "luxonis", "markerSizes": [{"marker": 9, "size": 0.1}]})"), std::invalid_argument);
     REQUIRE(WorldConstraints::fromJsonString(R"({"markerType": "luxonis", "markerDistances": [{"markers": [0, 5], "distance": 1}]})").markerType
             == dai::MarkerType::LUXONIS);
     {
@@ -159,9 +146,8 @@ TEST_CASE("WorldConstraints rejects malformed input", "[WorldConstraints]") {
         luxonisSizes.markerSizes = {{6, 0.1f}};
         REQUIRE_THROWS_AS(luxonisSizes.validate(), std::invalid_argument);
     }
-    REQUIRE(WorldConstraints::fromJsonString(R"({"maxObservationSets": 3, "arucoDictionary": 4, "markerDistances": [{"markers": [1, 2], "distance": 1}]})")
-                .maxObservationSets
-            == 3);
+    REQUIRE(WorldConstraints::fromJsonString(R"({"arucoDictionary": 4, "markerDistances": [{"markers": [1, 2], "distance": 1}]})").arucoDictionary
+            == static_cast<dai::ArucoDictionary>(4));
     {
         WorldConstraints negative;
         negative.socketDistances.push_back({-1, Socket::CAM_A, 1.0f});
@@ -172,9 +158,6 @@ TEST_CASE("WorldConstraints rejects malformed input", "[WorldConstraints]") {
         WorldConstraints unknownDictionary = WorldConstraints::fromJsonString(kWorldJson);
         unknownDictionary.arucoDictionary = static_cast<dai::ArucoDictionary>(99);
         REQUIRE_THROWS_AS(unknownDictionary.validate(), std::invalid_argument);
-        WorldConstraints noWindow = WorldConstraints::fromJsonString(kWorldJson);
-        noWindow.maxObservationSets = 0;
-        REQUIRE_THROWS_AS(noWindow.validate(), std::invalid_argument);
     }
 
     dai::Pipeline pipeline(false);
@@ -294,13 +277,12 @@ TEST_CASE("WorldConstraints validates marker sizes", "[WorldConstraints]") {
     const auto sizesOnly = Constraints::fromJsonString(R"({"lengthUnit": "mm", "markerSizes": [{"marker": 3, "size": 100}]})");
     REQUIRE_FALSE(sizesOnly.empty());
     REQUIRE(sizesOnly.markerSizes[0].sizeMeters == Catch::Approx(0.1f));
-    REQUIRE(sizesOnly.referencedMarkerIds() == std::vector<int32_t>{3});
+    REQUIRE(dai::utility::referencedMarkerIds(sizesOnly) == std::vector<int32_t>{3});
     REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3, "size": 0}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3, "size": -0.1}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"size": 0.1}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": -1, "size": 0.1}]})"), std::invalid_argument);
-    REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markers": [1], "markerSizes": [{"marker": 3, "size": 0.1}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3, "size": 0.1}, {"marker": 3, "size": 0.2}]})"), std::invalid_argument);
 }
 
@@ -377,7 +359,6 @@ TEST_CASE("DynamicCalibration detects marker centers through DCL", "[WorldConstr
 
     // A marker id that is not part of the constraints is dropped.
     auto others = constraints;
-    others.markerIds = {43};
     others.markerDistances.clear();
     others.socketDistances = {{43, Socket::CAM_A, 1.0f}};
     REQUIRE(markerCenters(image, others).empty());
@@ -431,7 +412,6 @@ TEST_CASE("DynamicCalibration detects Luxonis Marker centers through DCL", "[Wor
         REQUIRE(markerCenters(small, constraints).empty());
     }
     // Ids outside the constraints are dropped, and an ArUco spec sees no Luxonis Marker.
-    constraints.markerIds = {0};
     constraints.socketDistances.clear();
     constraints.markerDistances = {{0, 4, 0.6f}};
     REQUIRE(markerCenters(image, constraints).size() == 2);

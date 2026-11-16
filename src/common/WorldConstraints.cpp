@@ -9,6 +9,7 @@
 #include <stdexcept>
 
 #include "depthai/common/DepthUnit.hpp"
+#include "utility/WorldConstraintsUtils.hpp"
 
 namespace dai {
 
@@ -236,17 +237,6 @@ WorldConstraints WorldConstraints::parseJson(const nlohmann::json& json) {
         break;
     }
     const float toMeters = lengthUnitToMeters(json);
-    if(json.contains("markers")) {
-        constraints.markerIds = markerIdsFromJson(json.at("markers"));
-    }
-    if(json.contains("maxObservationSets")) {
-        const auto& sets = json.at("maxObservationSets");
-        if(!sets.is_number_integer() || (!sets.is_number_unsigned() && sets.get<int64_t>() < 1)
-           || sets.get<uint64_t>() > std::numeric_limits<uint32_t>::max()) {
-            throw std::invalid_argument("WorldConstraints: maxObservationSets must be a positive integer that fits 32 bits, got " + sets.dump());
-        }
-        constraints.maxObservationSets = sets.get<uint32_t>();
-    }
     for(const auto& entry : json.value("markerDistances", nlohmann::json::array())) {
         MarkerDistance distance;
         if(entry.contains("markers")) {
@@ -312,8 +302,6 @@ nlohmann::json WorldConstraints::toJson() const {
         json["arucoDictionary"] = toString(arucoDictionary);
     }
     json["lengthUnit"] = "m";
-    json["markers"] = markerIds;
-    json["maxObservationSets"] = maxObservationSets;
     auto markerDistancesJson = nlohmann::json::array();
     for(const auto& distance : markerDistances) {
         markerDistancesJson.push_back({{"markers", {distance.markerA, distance.markerB}}, {"distance", distance.distanceMeters}});
@@ -336,41 +324,12 @@ bool WorldConstraints::empty() const {
     return markerDistances.empty() && socketDistances.empty() && markerSizes.empty();
 }
 
-std::vector<int32_t> WorldConstraints::referencedMarkerIds() const {
-    std::set<int32_t> ids(markerIds.begin(), markerIds.end());
-    for(const auto& distance : markerDistances) {
-        ids.insert(distance.markerA);
-        ids.insert(distance.markerB);
-    }
-    for(const auto& distance : socketDistances) {
-        ids.insert(distance.marker);
-    }
-    for(const auto& size : markerSizes) {
-        ids.insert(size.marker);
-    }
-    return {ids.begin(), ids.end()};
-}
-
-std::vector<CameraBoardSocket> WorldConstraints::referencedSockets() const {
-    std::set<CameraBoardSocket> sockets;
-    for(const auto& distance : socketDistances) {
-        sockets.insert(distance.socket);
-    }
-    return {sockets.begin(), sockets.end()};
-}
-
 void WorldConstraints::validate() const {
-    const auto markerKnown = [&](int32_t id) { return markerIds.empty() || std::find(markerIds.begin(), markerIds.end(), id) != markerIds.end(); };
     const auto checkDistance = [](float distance, const std::string& what) {
         if(!std::isfinite(distance) || distance <= 0.0f) {
             throw std::invalid_argument("WorldConstraints: " + what + " must be a positive distance");
         }
     };
-    for(const auto& id : markerIds) {
-        if(id < 0) {
-            throw std::invalid_argument("WorldConstraints: marker ids must be non-negative");
-        }
-    }
     for(const auto& distance : markerDistances) {
         const std::string what = "distance between markers " + std::to_string(distance.markerA) + " and " + std::to_string(distance.markerB);
         if(distance.markerA < 0 || distance.markerB < 0) {
@@ -378,9 +337,6 @@ void WorldConstraints::validate() const {
         }
         if(distance.markerA == distance.markerB) {
             throw std::invalid_argument("WorldConstraints: " + what + " refers to the same marker twice");
-        }
-        if(!markerKnown(distance.markerA) || !markerKnown(distance.markerB)) {
-            throw std::invalid_argument("WorldConstraints: " + what + " refers to a marker outside \"markers\"");
         }
         checkDistance(distance.distanceMeters, what);
     }
@@ -392,9 +348,6 @@ void WorldConstraints::validate() const {
         if(!isKnownSocket(distance.socket)) {
             throw std::invalid_argument("WorldConstraints: " + what + " needs a concrete socket (CAM_A..CAM_J)");
         }
-        if(!markerKnown(distance.marker)) {
-            throw std::invalid_argument("WorldConstraints: " + what + " refers to a marker outside \"markers\"");
-        }
         checkDistance(distance.distanceMeters, what);
     }
     std::set<int32_t> sizedMarkers;
@@ -403,16 +356,10 @@ void WorldConstraints::validate() const {
         if(size.marker < 0) {
             throw std::invalid_argument("WorldConstraints: " + what + " needs a non-negative marker id");
         }
-        if(!markerKnown(size.marker)) {
-            throw std::invalid_argument("WorldConstraints: " + what + " refers to a marker outside \"markers\"");
-        }
         if(!sizedMarkers.insert(size.marker).second) {
             throw std::invalid_argument("WorldConstraints: " + what + " is given twice");
         }
         checkDistance(size.sizeMeters, what);
-    }
-    if(maxObservationSets == 0) {
-        throw std::invalid_argument("WorldConstraints: maxObservationSets must be at least 1");
     }
     if(toString(markerType) == "UNKNOWN") {
         throw std::invalid_argument("WorldConstraints: unknown markerType " + std::to_string(static_cast<int32_t>(markerType)));
@@ -421,7 +368,7 @@ void WorldConstraints::validate() const {
         throw std::invalid_argument("WorldConstraints: unknown arucoDictionary " + std::to_string(static_cast<int32_t>(arucoDictionary)));
     }
     if(markerType == MarkerType::LUXONIS) {
-        for(const auto id : referencedMarkerIds()) {
+        for(const auto id : utility::referencedMarkerIds(*this)) {
             if(id > kLuxonisMarkerIdMax) {
                 throw std::invalid_argument("WorldConstraints: Luxonis Marker ids are 0.." + std::to_string(kLuxonisMarkerIdMax) + ", got "
                                             + std::to_string(id));
@@ -430,4 +377,30 @@ void WorldConstraints::validate() const {
     }
 }
 
+namespace utility {
+
+std::vector<int32_t> referencedMarkerIds(const WorldConstraints& constraints) {
+    std::set<int32_t> ids;
+    for(const auto& distance : constraints.markerDistances) {
+        ids.insert(distance.markerA);
+        ids.insert(distance.markerB);
+    }
+    for(const auto& distance : constraints.socketDistances) {
+        ids.insert(distance.marker);
+    }
+    for(const auto& size : constraints.markerSizes) {
+        ids.insert(size.marker);
+    }
+    return {ids.begin(), ids.end()};
+}
+
+std::vector<CameraBoardSocket> referencedSockets(const WorldConstraints& constraints) {
+    std::set<CameraBoardSocket> sockets;
+    for(const auto& distance : constraints.socketDistances) {
+        sockets.insert(distance.socket);
+    }
+    return {sockets.begin(), sockets.end()};
+}
+
+}  // namespace utility
 }  // namespace dai

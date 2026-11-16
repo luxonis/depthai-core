@@ -12,6 +12,7 @@
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "utility/Telemetry.hpp"
+#include "utility/WorldConstraintsUtils.hpp"
 
 namespace dai {
 namespace node {
@@ -139,7 +140,7 @@ void AutoCalibration::logConfig() const {
     logger->info("Flash Calibration:      {}", initialConfig->flashCalibration ? "Yes" : "No");
     if(const auto constraints = dynamicCalibration->getWorldConstraints()) {
         logger->info("Marker Constraints:     {} markers, {} marker distances, {} socket distances ({})",
-                     constraints->referencedMarkerIds().size(),
+                     utility::referencedMarkerIds(*constraints).size(),
                      constraints->markerDistances.size(),
                      constraints->socketDistances.size(),
                      constraints->markerType == MarkerType::ARUCO ? toString(constraints->arucoDictionary) : toString(constraints->markerType));

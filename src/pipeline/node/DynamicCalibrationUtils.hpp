@@ -9,6 +9,8 @@
 #include <deque>
 #include <functional>
 
+#include "utility/WorldConstraintsUtils.hpp"
+
 namespace dai {
 namespace node {
 struct DclUtils {
@@ -55,6 +57,8 @@ struct DclUtils {
     /// Smallest marker the calibration uses, in pixels of the input image: the shortest side of an ArUco marker or
     /// the smallest diameter of a Luxonis Marker ring. Smaller markers give too coarse a center and size.
     static constexpr double kMinMarkerSizePx = 25.0;
+    /// Synchronized frame sets with marker observations kept for the calibration; the oldest set is dropped first.
+    static constexpr size_t kMaxMarkerObservationSets = 50;
     /// Size of a detection as compared with kMinMarkerSizePx; 0 when the detection has no shape.
     static double markerSizePx(MarkerType type, const dcl::MarkerDetection& detection);
 

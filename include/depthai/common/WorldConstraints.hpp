@@ -76,16 +76,15 @@ MarkerType markerTypeFromString(const std::string& name);
  *       "markerType": "aruco",                  // optional, default aruco; "luxonis" for Luxonis Markers
  *       "arucoDictionary": "DICT_4X4_50",       // optional, default DICT_4X4_50 ("dictionary" is accepted too); ARUCO only
  *       "lengthUnit": "m",                      // optional: "m", "cm", "mm" or "in" for every distance below
- *       "markers": [37, 43],                    // optional: markers that belong to the scene (others are ignored)
  *       "markerDistances": [ {"markers": [37, 43], "distance": 0.84} ],
  *       "socketDistances": [ {"marker": 37, "socket": "CAM_A", "distance": 1.68} ],
- *       "markerSizes": [ {"marker": 37, "size": 0.10} ],
- *       "maxObservationSets": 50                // optional: synchronized frame sets with markers kept, default 50
+ *       "markerSizes": [ {"marker": 37, "size": 0.10} ]
  *     }
  *
  * The size of an ArUco marker is the length of a side of its black square, the distance between two neighbouring
  * corners; the size of a Luxonis Marker is the outer diameter of its lens ring. Any of the three lists may be empty;
- * at least one entry is required for the constraints to have an effect. Names are matched regardless of case; the
+ * at least one entry is required for the constraints to have an effect. Only the markers named by an entry are
+ * looked for; any other marker in the scene is ignored. Names are matched regardless of case; the
  * dictionary may omit its "DICT_" prefix, a socket may be given as "A" or its number, "ft" is a lengthUnit too, and
  * a marker distance may name its ends as {"markerA": 37, "markerB": 43, "distance": 0.84}.
  */
@@ -117,13 +116,9 @@ struct WorldConstraints {
     MarkerType markerType = MarkerType::ARUCO;
     /// ARUCO: the dictionary the markers were printed from. Ignored by other marker types.
     ArucoDictionary arucoDictionary = ArucoDictionary::DICT_4X4_50;
-    /// Markers that belong to the scene. Empty means every marker that a distance refers to.
-    std::vector<int32_t> markerIds;
     std::vector<MarkerDistance> markerDistances;
     std::vector<MarkerSocketDistance> socketDistances;
     std::vector<MarkerSize> markerSizes;
-    /// How many synchronized frame sets with marker observations are kept for the calibration (oldest dropped).
-    uint32_t maxObservationSets = 50;
 
     /// Parses the JSON form documented above. Throws std::invalid_argument on malformed input (also for JSON that
     /// does not parse or has a wrong type where a value is expected).
@@ -137,17 +132,13 @@ struct WorldConstraints {
 
     /// True when neither a distance nor a marker size is given.
     bool empty() const;
-    /// markerIds together with every marker a distance or a size refers to, sorted, without duplicates.
-    std::vector<int32_t> referencedMarkerIds() const;
-    /// Sockets referred to by socketDistances, sorted, without duplicates.
-    std::vector<CameraBoardSocket> referencedSockets() const;
     /// Throws std::invalid_argument when a distance or size is not positive, a distance refers to the same marker
-    /// twice, a marker has two sizes, an entry names a marker outside markerIds (when markerIds is given) or the
-    /// AUTO socket, maxObservationSets is 0, markerType / arucoDictionary is not one of the enumerators, or a
-    /// LUXONIS configuration refers to a marker id above kLuxonisMarkerIdMax.
+    /// twice, a marker has two sizes, an entry names a negative marker id or the AUTO socket, markerType /
+    /// arucoDictionary is not one of the enumerators, or a LUXONIS configuration refers to a marker id above
+    /// kLuxonisMarkerIdMax.
     void validate() const;
 
-    DEPTHAI_SERIALIZE_DECL(WorldConstraints, markerType, arucoDictionary, markerIds, markerDistances, socketDistances, markerSizes, maxObservationSets);
+    DEPTHAI_SERIALIZE_DECL(WorldConstraints, markerType, arucoDictionary, markerDistances, socketDistances, markerSizes);
 
    private:
     /// fromJson() without the translation of nlohmann exceptions into std::invalid_argument.

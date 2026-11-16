@@ -153,7 +153,6 @@ Mean Sampson error current    = 0.38 px
     "markerType": "aruco",
     "arucoDictionary": "DICT_4X4_50",
     "lengthUnit": "m",
-    "markers": [37, 43],
     "markerDistances": [{"markers": [37, 43], "distance": 0.84}],
     "socketDistances": [{"marker": 37, "socket": "CAM_A", "distance": 1.68}],
     "markerSizes": [{"marker": 37, "size": 0.15}]
