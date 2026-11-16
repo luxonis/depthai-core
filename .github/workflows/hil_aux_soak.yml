@@ -98,7 +98,7 @@ jobs:
     needs: [plan, build_docker_container]
     strategy:
       fail-fast: false
-      max-parallel: ${{ inputs.max_parallel }}
+      max-parallel: ${{ fromJSON(inputs.max_parallel) }}
       matrix:
         # pass first: jobs start in matrix order, so all OS versions and rows advance together.
         pass: ${{ fromJson(needs.plan.outputs.passes) }}
