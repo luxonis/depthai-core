@@ -638,6 +638,8 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Stop node execution
     virtual void stop() {};
 
+    /// Request a stop of the parent pipeline. Returns at once; safe to call from node threads and pipeline tasks.
+    /// Pipeline::run() and Pipeline::wait() return only after the stop has completed.
     void stopPipeline();
 
     /// Build stages;
