@@ -13,11 +13,11 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ctest_to_junit import ANSI_RE, parse_log
+from ctest_to_junit import ANSI_RE, RESULT_RE, parse_log
 
 OUTCOMES = ("passed", "failed", "timeout", "skipped", "no_device", "not_run")
 FAILING = ("failed", "timeout")
-FAILURE_TAIL_LINES = 40
+FAILURE_LINES = 40
 # A pass whose skips exceed the median of its OS and row by more than this most likely lost its device.
 MASS_SKIP_MARGIN = 10
 
@@ -25,6 +25,9 @@ NO_DEVICE_RE = re.compile(r"No device available|produced the following exit code
 SANITY_RE = re.compile(r"\[INFO\] Checking sanity (?P<testbed>\S+)")
 ERROR_RE = re.compile(r"\[(?:ERROR|CRITICAL)\]\s*(?P<message>.*)$")
 EXCEPTION_RE = re.compile(r"^\w+(?:Exception|Error): ")
+TEST_OUTPUT_RE = re.compile(r"^\[(?P<config>[^\]]+)\]\s+(?P<num>\d+):(?P<text>.*)$")
+CATCH2_RULE = "-" * 79
+CATCH2_FAILED_RE = re.compile(r"^\S.*:\d+: FAILED:$")
 
 
 @dataclass
@@ -81,9 +84,55 @@ class Run:
         return f"{self.core_label}+{os.split('+')[0]}"
 
 
+def read_test_output(log_path):
+    """Each test's output lines and ctest time, by (config, test number).
+
+    parse_log strips the leading whitespace and the blank lines that delimit a Catch2 failure, and
+    keeps no time for a failed test.
+    """
+    output, seconds = defaultdict(list), {}
+    with log_path.open(errors="replace") as handle:
+        for raw in handle:
+            line = ANSI_RE.sub("", raw).rstrip()
+            result = RESULT_RE.search(line)
+            if result:
+                seconds[(result["config"].strip(), result["num"])] = float(result["seconds"])
+                continue
+            match = TEST_OUTPUT_RE.match(line)
+            if match:
+                text = match["text"]
+                output[(match["config"].strip(), match["num"])].append(text.removeprefix(" "))
+    return output, seconds
+
+
+def catch2_failures(lines):
+    """Each Catch2 assertion failure, from its FAILED: line to the blank line after it, under its test case name."""
+    rules = [index for index, line in enumerate(lines) if line == CATCH2_RULE]
+    names = {close: [line.strip() for line in lines[start + 1:close]]
+             for start, close in zip(rules, rules[1:])
+             if 1 < close - start <= 4 and all(lines[start + 1:close])}
+    excerpt, case, shown_case = [], None, None
+    for index, line in enumerate(lines):
+        if index in names:
+            case = names[index]
+        if not CATCH2_FAILED_RE.match(line):
+            continue
+        if case and case != shown_case:
+            excerpt.append(" / ".join(case))
+            shown_case = case
+        end = index
+        while end < len(lines) and lines[end].strip():
+            end += 1
+        excerpt.extend(lines[index:end])
+    return excerpt
+
+
 def failure_text(cause, output_lines):
-    tail = [line for line in output_lines if line.strip()][-FAILURE_TAIL_LINES:]
-    return "\n".join([f"Cause: {cause}", *tail])
+    """The Catch2 failures of a test, or the last lines of its output when it has none."""
+    excerpt = catch2_failures(output_lines)[:FAILURE_LINES]
+    if not excerpt:
+        excerpt = [line for line in output_lines if line.strip()][-FAILURE_LINES:]
+    return "\n".join([f"Cause: {cause}", *excerpt])
 
 
 def read_hil_events(log_path, soak_pass):
@@ -124,6 +173,7 @@ def read_pass(pass_json):
 
     read_hil_events(log_path, soak_pass)
     order, summaries, failures, passes, skips, outputs, _, testbed, _, _ = parse_log(log_path)
+    test_output, test_seconds = read_test_output(log_path)
     soak_pass.testbed = testbed
     for config in order:
         config_outputs = outputs.get(config, {})
@@ -139,7 +189,8 @@ def read_pass(pass_json):
                 soak_pass.tests[name] = TestResult("not_run")
                 continue
             outcome = "timeout" if cause == "Timeout" else "failed"
-            soak_pass.tests[name] = TestResult(outcome, failure=failure_text(cause, config_outputs.get(num, [])))
+            soak_pass.tests[name] = TestResult(outcome, test_seconds.get((config, num)),
+                                               failure_text(cause, test_output.get((config, num), [])))
 
     if not order:
         soak_pass.note = "no ctest output"
