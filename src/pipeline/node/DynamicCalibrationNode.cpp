@@ -570,7 +570,7 @@ dcl::WorldConstraints DclUtils::buildWorldConstraints(const WorldConstraints& co
             if(itA == pointIndexOfMarker.end() || itB == pointIndexOfMarker.end()) {
                 continue;
             }
-            world.pointDistances.push_back({itA->second, itB->second, static_cast<double>(distance.distanceMeters)});
+            world.pointDistances.push_back({itA->second, itB->second, static_cast<double>(distance.distance)});
         }
         for(const auto& distance : constraints.socketDistances) {
             const auto it = pointIndexOfMarker.find(distance.marker);
@@ -578,7 +578,7 @@ dcl::WorldConstraints DclUtils::buildWorldConstraints(const WorldConstraints& co
             if(it == pointIndexOfMarker.end() || !sensor) {
                 continue;
             }
-            world.sensorDistances.push_back({it->second, sensor, static_cast<double>(distance.distanceMeters)});
+            world.sensorDistances.push_back({it->second, sensor, static_cast<double>(distance.distance)});
         }
         for(const auto& size : constraints.markerSizes) {
             const auto it = pointIndexOfMarker.find(size.marker);
@@ -607,8 +607,7 @@ dcl::WorldConstraints DclUtils::buildWorldConstraints(const WorldConstraints& co
                 detection.corners = toPoints(outline.corners);
                 detection.outerEdge = toPoints(outline.outerEdge);
                 detection.innerEdge = toPoints(outline.innerEdge);
-                world.markerSizes.push_back(
-                    {it->second, sensor, toDclMarkerSpec(constraints).type, std::move(detection), static_cast<double>(size.sizeMeters)});
+                world.markerSizes.push_back({it->second, sensor, toDclMarkerSpec(constraints).type, std::move(detection), static_cast<double>(size.size)});
             }
         }
     }

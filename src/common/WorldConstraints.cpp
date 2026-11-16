@@ -102,44 +102,6 @@ CameraBoardSocket socketFromJson(const nlohmann::json& value) {
     throw std::invalid_argument("WorldConstraints: unknown socket \"" + value.get<std::string>() + "\"");
 }
 
-/// The document's "lengthUnit" (meters when absent), accepting the unit's symbol and its singular and plural name in any case.
-/// Throws std::invalid_argument for an unknown unit.
-LengthUnit lengthUnitFromJson(const nlohmann::json& json) {
-    if(!json.contains("lengthUnit")) {
-        return LengthUnit::METER;
-    }
-    static const std::vector<std::pair<const char*, LengthUnit>> names = {
-        {"M", LengthUnit::METER},
-        {"METER", LengthUnit::METER},
-        {"METERS", LengthUnit::METER},
-        {"CM", LengthUnit::CENTIMETER},
-        {"CENTIMETER", LengthUnit::CENTIMETER},
-        {"CENTIMETERS", LengthUnit::CENTIMETER},
-        {"MM", LengthUnit::MILLIMETER},
-        {"MILLIMETER", LengthUnit::MILLIMETER},
-        {"MILLIMETERS", LengthUnit::MILLIMETER},
-        {"IN", LengthUnit::INCH},
-        {"INCH", LengthUnit::INCH},
-        {"INCHES", LengthUnit::INCH},
-        {"FT", LengthUnit::FOOT},
-        {"FOOT", LengthUnit::FOOT},
-        {"FEET", LengthUnit::FOOT},
-    };
-    const auto unit = json.at("lengthUnit").get<std::string>();
-    const auto wanted = upper(unit);
-    for(const auto& [name, value] : names) {
-        if(wanted == name) {
-            return value;
-        }
-    }
-    throw std::invalid_argument("WorldConstraints: unknown lengthUnit \"" + unit + "\"");
-}
-
-/// Factor that turns a distance given in the document's lengthUnit into meters.
-float lengthUnitToMeters(const nlohmann::json& json) {
-    return 1.0f / getLengthUnitMultiplier(lengthUnitFromJson(json));
-}
-
 /// A marker id, which must be a non-negative integer. Throws std::invalid_argument otherwise.
 int32_t markerIdFromJson(const nlohmann::json& value) {
     if(!value.is_number_integer() || (!value.is_number_unsigned() && value.get<int64_t>() < 0)) {
@@ -160,12 +122,12 @@ std::vector<int32_t> markerIdsFromJson(const nlohmann::json& value) {
     return ids;
 }
 
-/// The "distance" of a distance entry converted to meters. Throws std::invalid_argument when it is missing or not a number.
-float distanceFromJson(const nlohmann::json& entry, float toMeters) {
+/// The "distance" of a distance entry, in meters. Throws std::invalid_argument when it is missing or not a number.
+float distanceFromJson(const nlohmann::json& entry) {
     if(!entry.contains("distance") || !entry.at("distance").is_number()) {
         throw std::invalid_argument("WorldConstraints: every distance entry needs a numeric \"distance\"");
     }
-    return entry.at("distance").get<float>() * toMeters;
+    return entry.at("distance").get<float>();
 }
 
 }  // namespace
@@ -236,7 +198,9 @@ WorldConstraints WorldConstraints::parseJson(const nlohmann::json& json) {
                                                              : static_cast<ArucoDictionary>(int32FromJson(dictionary, "arucoDictionary"));
         break;
     }
-    const float toMeters = lengthUnitToMeters(json);
+    if(json.contains("lengthUnit")) {
+        throw std::invalid_argument("WorldConstraints: \"lengthUnit\" is not supported, every distance and size is in meters");
+    }
     for(const auto& entry : json.value("markerDistances", nlohmann::json::array())) {
         MarkerDistance distance;
         if(entry.contains("markers")) {
@@ -250,14 +214,14 @@ WorldConstraints WorldConstraints::parseJson(const nlohmann::json& json) {
             distance.markerA = markerIdFromJson(entry.at("markerA"));
             distance.markerB = markerIdFromJson(entry.at("markerB"));
         }
-        distance.distanceMeters = distanceFromJson(entry, toMeters);
+        distance.distance = distanceFromJson(entry);
         constraints.markerDistances.push_back(distance);
     }
     for(const auto& entry : json.value("socketDistances", nlohmann::json::array())) {
         MarkerSocketDistance distance;
         distance.marker = markerIdFromJson(entry.at("marker"));
         distance.socket = socketFromJson(entry.at("socket"));
-        distance.distanceMeters = distanceFromJson(entry, toMeters);
+        distance.distance = distanceFromJson(entry);
         constraints.socketDistances.push_back(distance);
     }
     for(const auto& entry : json.value("markerSizes", nlohmann::json::array())) {
@@ -266,7 +230,7 @@ WorldConstraints WorldConstraints::parseJson(const nlohmann::json& json) {
         }
         MarkerSize size;
         size.marker = markerIdFromJson(entry.at("marker"));
-        size.sizeMeters = entry.at("size").get<float>() * toMeters;
+        size.size = entry.at("size").get<float>();
         constraints.markerSizes.push_back(size);
     }
     constraints.validate();
@@ -301,24 +265,38 @@ nlohmann::json WorldConstraints::toJson() const {
     if(markerType == MarkerType::ARUCO) {
         json["arucoDictionary"] = toString(arucoDictionary);
     }
-    json["lengthUnit"] = "m";
     auto markerDistancesJson = nlohmann::json::array();
     for(const auto& distance : markerDistances) {
-        markerDistancesJson.push_back({{"markers", {distance.markerA, distance.markerB}}, {"distance", distance.distanceMeters}});
+        markerDistancesJson.push_back({{"markers", {distance.markerA, distance.markerB}}, {"distance", distance.distance}});
     }
     json["markerDistances"] = markerDistancesJson;
     auto socketDistancesJson = nlohmann::json::array();
     for(const auto& distance : socketDistances) {
-        socketDistancesJson.push_back({{"marker", distance.marker}, {"socket", toString(distance.socket)}, {"distance", distance.distanceMeters}});
+        socketDistancesJson.push_back({{"marker", distance.marker}, {"socket", toString(distance.socket)}, {"distance", distance.distance}});
     }
     json["socketDistances"] = socketDistancesJson;
     auto markerSizesJson = nlohmann::json::array();
     for(const auto& size : markerSizes) {
-        markerSizesJson.push_back({{"marker", size.marker}, {"size", size.sizeMeters}});
+        markerSizesJson.push_back({{"marker", size.marker}, {"size", size.size}});
     }
     json["markerSizes"] = markerSizesJson;
     return json;
 }
+
+namespace {
+/// A length given in unit, in meters.
+float toMeters(float value, LengthUnit unit) {
+    return value * getDistanceUnitScale(LengthUnit::METER, unit);
+}
+}  // namespace
+
+WorldConstraints::MarkerDistance::MarkerDistance(int32_t markerA, int32_t markerB, float distance, LengthUnit unit)
+    : markerA(markerA), markerB(markerB), distance(toMeters(distance, unit)) {}
+
+WorldConstraints::MarkerSocketDistance::MarkerSocketDistance(int32_t marker, CameraBoardSocket socket, float distance, LengthUnit unit)
+    : marker(marker), socket(socket), distance(toMeters(distance, unit)) {}
+
+WorldConstraints::MarkerSize::MarkerSize(int32_t marker, float size, LengthUnit unit) : marker(marker), size(toMeters(size, unit)) {}
 
 bool WorldConstraints::empty() const {
     return markerDistances.empty() && socketDistances.empty() && markerSizes.empty();
@@ -338,7 +316,7 @@ void WorldConstraints::validate() const {
         if(distance.markerA == distance.markerB) {
             throw std::invalid_argument("WorldConstraints: " + what + " refers to the same marker twice");
         }
-        checkDistance(distance.distanceMeters, what);
+        checkDistance(distance.distance, what);
     }
     for(const auto& distance : socketDistances) {
         const std::string what = "distance between marker " + std::to_string(distance.marker) + " and " + toString(distance.socket);
@@ -348,7 +326,7 @@ void WorldConstraints::validate() const {
         if(!isKnownSocket(distance.socket)) {
             throw std::invalid_argument("WorldConstraints: " + what + " needs a concrete socket (CAM_A..CAM_J)");
         }
-        checkDistance(distance.distanceMeters, what);
+        checkDistance(distance.distance, what);
     }
     std::set<int32_t> sizedMarkers;
     for(const auto& size : markerSizes) {
@@ -359,7 +337,7 @@ void WorldConstraints::validate() const {
         if(!sizedMarkers.insert(size.marker).second) {
             throw std::invalid_argument("WorldConstraints: " + what + " is given twice");
         }
-        checkDistance(size.sizeMeters, what);
+        checkDistance(size.size, what);
     }
     if(toString(markerType) == "UNKNOWN") {
         throw std::invalid_argument("WorldConstraints: unknown markerType " + std::to_string(static_cast<int32_t>(markerType)));

@@ -100,7 +100,6 @@ This folder contains minimal, end-to-end **C++** examples that use **`dai::node:
 {
     "markerType": "aruco",
     "arucoDictionary": "DICT_4X4_50",
-    "lengthUnit": "m",
     "markerDistances": [{"markers": [37, 43], "distance": 0.84}],
     "socketDistances": [{"marker": 37, "socket": "CAM_A", "distance": 1.68}],
     "markerSizes": [{"marker": 37, "size": 0.15}]

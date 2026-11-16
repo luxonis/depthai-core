@@ -351,44 +351,33 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("DICT_APRILTAG_36h11", ArucoDictionary::DICT_APRILTAG_36h11);
 
     markerDistance.def(py::init<>())
-        .def(py::init([](int32_t markerA, int32_t markerB, float distanceMeters) {
-                 WorldConstraints::MarkerDistance distance;
-                 distance.markerA = markerA;
-                 distance.markerB = markerB;
-                 distance.distanceMeters = distanceMeters;
-                 return distance;
-             }),
+        .def(py::init<int32_t, int32_t, float, LengthUnit>(),
              py::arg("markerA"),
              py::arg("markerB"),
-             py::arg("distanceMeters"))
+             py::arg("distance"),
+             py::arg("unit") = LengthUnit::METER,
+             "The distance between two markers, given in unit (meters by default) and stored in meters.")
         .def_readwrite("markerA", &WorldConstraints::MarkerDistance::markerA)
         .def_readwrite("markerB", &WorldConstraints::MarkerDistance::markerB)
-        .def_readwrite("distanceMeters", &WorldConstraints::MarkerDistance::distanceMeters);
+        .def_readwrite("distance", &WorldConstraints::MarkerDistance::distance, "Meters");
     markerSocketDistance.def(py::init<>())
-        .def(py::init([](int32_t marker, CameraBoardSocket socket, float distanceMeters) {
-                 WorldConstraints::MarkerSocketDistance distance;
-                 distance.marker = marker;
-                 distance.socket = socket;
-                 distance.distanceMeters = distanceMeters;
-                 return distance;
-             }),
+        .def(py::init<int32_t, CameraBoardSocket, float, LengthUnit>(),
              py::arg("marker"),
              py::arg("socket"),
-             py::arg("distanceMeters"))
+             py::arg("distance"),
+             py::arg("unit") = LengthUnit::METER,
+             "The distance between a marker and a camera socket, given in unit (meters by default) and stored in meters.")
         .def_readwrite("marker", &WorldConstraints::MarkerSocketDistance::marker)
         .def_readwrite("socket", &WorldConstraints::MarkerSocketDistance::socket)
-        .def_readwrite("distanceMeters", &WorldConstraints::MarkerSocketDistance::distanceMeters);
+        .def_readwrite("distance", &WorldConstraints::MarkerSocketDistance::distance, "Meters");
     markerSize.def(py::init<>())
-        .def(py::init([](int32_t marker, float sizeMeters) {
-                 WorldConstraints::MarkerSize size;
-                 size.marker = marker;
-                 size.sizeMeters = sizeMeters;
-                 return size;
-             }),
+        .def(py::init<int32_t, float, LengthUnit>(),
              py::arg("marker"),
-             py::arg("sizeMeters"))
+             py::arg("size"),
+             py::arg("unit") = LengthUnit::METER,
+             "The printed size of a marker, given in unit (meters by default) and stored in meters.")
         .def_readwrite("marker", &WorldConstraints::MarkerSize::marker)
-        .def_readwrite("sizeMeters", &WorldConstraints::MarkerSize::sizeMeters);
+        .def_readwrite("size", &WorldConstraints::MarkerSize::size, "Meters");
     worldConstraints.def(py::init<>())
         .def_readwrite("markerType", &WorldConstraints::markerType, DOC(dai, WorldConstraints, markerType))
         .def_readwrite("arucoDictionary", &WorldConstraints::arucoDictionary, DOC(dai, WorldConstraints, arucoDictionary))

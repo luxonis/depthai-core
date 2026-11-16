@@ -16,10 +16,9 @@ using Socket = dai::CameraBoardSocket;
 const char* kWorldJson = R"({
     "markerType": "aruco",
     "arucoDictionary": "DICT_4X4_50",
-    "lengthUnit": "cm",
-    "markerDistances": [{"markers": [37, 43], "distance": 84}],
-    "socketDistances": [{"marker": 37, "socket": "CAM_A", "distance": 168}],
-    "markerSizes": [{"marker": 43, "size": 15}]
+    "markerDistances": [{"markers": [37, 43], "distance": 0.84}],
+    "socketDistances": [{"marker": 37, "socket": "CAM_A", "distance": 1.68}],
+    "markerSizes": [{"marker": 43, "size": 0.15}]
 })";
 
 std::shared_ptr<dcl::CameraCalibrationHandle> dclCalibration(double x) {
@@ -38,31 +37,38 @@ TEST_CASE("WorldConstraints parses the documented JSON form", "[WorldConstraints
     REQUIRE(constraints.markerDistances.size() == 1);
     REQUIRE(constraints.markerDistances[0].markerA == 37);
     REQUIRE(constraints.markerDistances[0].markerB == 43);
-    REQUIRE(constraints.markerDistances[0].distanceMeters == Catch::Approx(0.84f));
+    REQUIRE(constraints.markerDistances[0].distance == Catch::Approx(0.84f));
     REQUIRE(constraints.socketDistances.size() == 1);
     REQUIRE(constraints.socketDistances[0].marker == 37);
     REQUIRE(constraints.socketDistances[0].socket == Socket::CAM_A);
-    REQUIRE(constraints.socketDistances[0].distanceMeters == Catch::Approx(1.68f));
+    REQUIRE(constraints.socketDistances[0].distance == Catch::Approx(1.68f));
     REQUIRE(dai::utility::referencedMarkerIds(constraints) == std::vector<int32_t>{37, 43});
     REQUIRE(dai::utility::referencedSockets(constraints) == std::vector<Socket>{Socket::CAM_A});
     REQUIRE_FALSE(constraints.toJson().contains("markers"));
+    REQUIRE_FALSE(constraints.toJson().contains("lengthUnit"));
+
+    // Entries built in code may give their length in another unit; it is stored in meters.
+    REQUIRE(dai::WorldConstraints::MarkerDistance(0, 1, 15.0f, dai::LengthUnit::CENTIMETER).distance == Catch::Approx(0.15f));
+    REQUIRE(dai::WorldConstraints::MarkerSocketDistance(0, Socket::CAM_A, 1200.0f, dai::LengthUnit::MILLIMETER).distance == Catch::Approx(1.2f));
+    REQUIRE(dai::WorldConstraints::MarkerSize(0, 4.0f, dai::LengthUnit::INCH).size == Catch::Approx(0.1016f).epsilon(1e-3));
+    REQUIRE(dai::WorldConstraints::MarkerSize(0, 0.1f).size == Catch::Approx(0.1f));
     REQUIRE_FALSE(constraints.empty());
 
     // Round trip through the documented form and through the wire form.
     const auto roundTrip = dai::WorldConstraints::fromJson(constraints.toJson());
-    REQUIRE(roundTrip.markerDistances[0].distanceMeters == Catch::Approx(0.84f));
+    REQUIRE(roundTrip.markerDistances[0].distance == Catch::Approx(0.84f));
     REQUIRE(roundTrip.markerType == dai::MarkerType::ARUCO);
     REQUIRE(constraints.toJson().at("markerType") == "ARUCO");
     REQUIRE(roundTrip.socketDistances[0].socket == Socket::CAM_A);
     nlohmann::json wire = constraints;
     const auto fromWire = wire.get<dai::WorldConstraints>();
     REQUIRE(fromWire.socketDistances[0].socket == Socket::CAM_A);
-    REQUIRE(fromWire.markerDistances[0].distanceMeters == Catch::Approx(0.84f));
+    REQUIRE(fromWire.markerDistances[0].distance == Catch::Approx(0.84f));
 
     REQUIRE(constraints.markerSizes.size() == 1);
     REQUIRE(constraints.markerSizes[0].marker == 43);
-    REQUIRE(constraints.markerSizes[0].sizeMeters == Catch::Approx(0.15f));
-    REQUIRE(roundTrip.markerSizes[0].sizeMeters == Catch::Approx(0.15f));
+    REQUIRE(constraints.markerSizes[0].size == Catch::Approx(0.15f));
+    REQUIRE(roundTrip.markerSizes[0].size == Catch::Approx(0.15f));
     REQUIRE(fromWire.markerSizes[0].marker == 43);
 
     // Alternative spellings.
@@ -99,7 +105,10 @@ TEST_CASE("WorldConstraints rejects malformed input", "[WorldConstraints]") {
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 2, 3], "distance": 1}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": "CAM_Z", "distance": 1}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": "AUTO", "distance": 1}]})"), std::invalid_argument);
-    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"lengthUnit": "furlong", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+    // Every length is in meters: a unit key is rejected instead of being interpreted.
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"lengthUnit": "cm", "markerDistances": [{"markers": [1, 2], "distance": 100}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"lengthUnit": "m", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
                       std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": "cctag", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
                       std::invalid_argument);
@@ -274,9 +283,9 @@ TEST_CASE("DynamicCalibration assembles world constraints from marker observatio
 
 TEST_CASE("WorldConstraints validates marker sizes", "[WorldConstraints]") {
     using Constraints = dai::WorldConstraints;
-    const auto sizesOnly = Constraints::fromJsonString(R"({"lengthUnit": "mm", "markerSizes": [{"marker": 3, "size": 100}]})");
+    const auto sizesOnly = Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3, "size": 0.1}]})");
     REQUIRE_FALSE(sizesOnly.empty());
-    REQUIRE(sizesOnly.markerSizes[0].sizeMeters == Catch::Approx(0.1f));
+    REQUIRE(sizesOnly.markerSizes[0].size == Catch::Approx(0.1f));
     REQUIRE(dai::utility::referencedMarkerIds(sizesOnly) == std::vector<int32_t>{3});
     REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3, "size": 0}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3, "size": -0.1}]})"), std::invalid_argument);

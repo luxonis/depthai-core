@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/DepthUnit.hpp"
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {
@@ -70,12 +71,12 @@ MarkerType markerTypeFromString(const std::string& name);
  * Luxonis: smallest ring diameter). One constraint set describes markers of one type. Measurements are fitted together and may
  * not be met exactly. Set the constraints before building the pipeline.
  *
- * Distances are stored in meters. The JSON form accepted by fromJson() is:
+ * Every distance and size is in meters, in the struct and in the JSON. The constructors of the entries take an
+ * optional LengthUnit to convert from. The JSON form accepted by fromJson() is:
  *
  *     {
  *       "markerType": "aruco",                  // optional, default aruco; "luxonis" for Luxonis Markers
  *       "arucoDictionary": "DICT_4X4_50",       // optional, default DICT_4X4_50 ("dictionary" is accepted too); ARUCO only
- *       "lengthUnit": "m",                      // optional: "m", "cm", "mm" or "in" for every distance below
  *       "markerDistances": [ {"markers": [37, 43], "distance": 0.84} ],
  *       "socketDistances": [ {"marker": 37, "socket": "CAM_A", "distance": 1.68} ],
  *       "markerSizes": [ {"marker": 37, "size": 0.10} ]
@@ -85,32 +86,41 @@ MarkerType markerTypeFromString(const std::string& name);
  * corners; the size of a Luxonis Marker is the outer diameter of its lens ring. Any of the three lists may be empty;
  * at least one entry is required for the constraints to have an effect. Only the markers named by an entry are
  * looked for; any other marker in the scene is ignored. Names are matched regardless of case; the
- * dictionary may omit its "DICT_" prefix, a socket may be given as "A" or its number, "ft" is a lengthUnit too, and
- * a marker distance may name its ends as {"markerA": 37, "markerB": 43, "distance": 0.84}.
+ * dictionary may omit its "DICT_" prefix, a socket may be given as "A" or its number, and a marker distance may
+ * name its ends as {"markerA": 37, "markerB": 43, "distance": 0.84}. A "lengthUnit" key is rejected.
  */
 struct WorldConstraints {
-    /// Distance between the reference points of two markers.
+    /// Distance between the reference points of two markers, in meters.
     struct MarkerDistance {
+        MarkerDistance() = default;
+        /// distance is given in unit (meters by default) and stored in meters.
+        MarkerDistance(int32_t markerA, int32_t markerB, float distance, LengthUnit unit = LengthUnit::METER);
         int32_t markerA = -1;
         int32_t markerB = -1;
-        float distanceMeters = 0.0f;
-        DEPTHAI_SERIALIZE_DECL(MarkerDistance, markerA, markerB, distanceMeters);
+        float distance = 0.0f;
+        DEPTHAI_SERIALIZE_DECL(MarkerDistance, markerA, markerB, distance);
     };
 
     /// Distance between the reference point of a marker and the optical center of a camera socket. The socket may
     /// be one of the calibrated cameras or any other calibrated socket of the device.
     struct MarkerSocketDistance {
+        MarkerSocketDistance() = default;
+        /// distance is given in unit (meters by default) and stored in meters.
+        MarkerSocketDistance(int32_t marker, CameraBoardSocket socket, float distance, LengthUnit unit = LengthUnit::METER);
         int32_t marker = -1;
         CameraBoardSocket socket = CameraBoardSocket::AUTO;
-        float distanceMeters = 0.0f;
-        DEPTHAI_SERIALIZE_DECL(MarkerSocketDistance, marker, socket, distanceMeters);
+        float distance = 0.0f;
+        DEPTHAI_SERIALIZE_DECL(MarkerSocketDistance, marker, socket, distance);
     };
 
     /// Printed size of a marker: ARUCO the length of a side of the black square, LUXONIS the outer diameter of the ring.
     struct MarkerSize {
+        MarkerSize() = default;
+        /// size is given in unit (meters by default) and stored in meters.
+        MarkerSize(int32_t marker, float size, LengthUnit unit = LengthUnit::METER);
         int32_t marker = -1;
-        float sizeMeters = 0.0f;
-        DEPTHAI_SERIALIZE_DECL(MarkerSize, marker, sizeMeters);
+        float size = 0.0f;
+        DEPTHAI_SERIALIZE_DECL(MarkerSize, marker, size);
     };
 
     MarkerType markerType = MarkerType::ARUCO;
@@ -127,7 +137,7 @@ struct WorldConstraints {
     static WorldConstraints fromJsonString(const std::string& json);
     /// Same as fromJson() for a JSON document read from a file; a file that cannot be opened is a std::invalid_argument too.
     static WorldConstraints fromFile(const std::filesystem::path& path);
-    /// The JSON form documented above, distances in meters.
+    /// The JSON form documented above.
     nlohmann::json toJson() const;
 
     /// True when neither a distance nor a marker size is given.
