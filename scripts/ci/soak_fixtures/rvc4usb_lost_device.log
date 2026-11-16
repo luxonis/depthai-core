@@ -1,0 +1,563 @@
+2026-11-12 20:58:41,725 [INFO] Checking sanity testbed-b1-4pro
+2026-11-12 21:01:26,446 [INFO] Sanity check passed
+2026-11-12 21:01:27,047 [INFO] Using testbed: testbed-b1-4pro
+2026-11-12 21:01:27,047 [INFO] Installing rvc4 os version: 1.44.0
+2026-11-12 21:05:22,426 [INFO] Upgraded OS version matches the requested OS version
+2026-11-12 21:05:43,205 [INFO] Executing hil commands.
+Running tests with args: rvc4usb --test-label ci|ci_nightly
+Running tests for configuration: RVC4 - USB, on platform: rvc4, on protocol: usb, with labels: rvc4
+[RVC4 - USB]   1/189 Test  #31: nndata_strides_device_test ...............   Passed    2.44 sec
+[RVC4 - USB]   2/189 Test  #34: tofconfig_device_test ....................   Passed    1.39 sec
+[RVC4 - USB]   3/189 Test  #46: stress_test ..............................   Passed  304.99 sec
+[RVC4 - USB]   4/189 Test  #47: camera_stream_restart_test ...............   Passed   14.49 sec
+[RVC4 - USB]   5/189 Test  #48: logging_test .............................   Passed   16.43 sec
+[RVC4 - USB]   6/189 Test  #49: telemetry_test ...........................   Passed    3.98 sec
+[RVC4 - USB]   7/189 Test  #52: vpp_test .................................   Passed    7.07 sec
+[RVC4 - USB]   8/189 Test  #53: gpu_stereo_device_test ...................   Passed    2.03 sec
+[RVC4 - USB]   9/189 Test  #54: dynamic_calibration_test .................   Passed   77.14 sec
+[RVC4 - USB]  10/189 Test  #58: spatial_location_calculator_test .........   Passed   15.71 sec
+[RVC4 - USB]  11/189 Test  #61: pipeline_debugging_rvc4_test .............   Passed   18.43 sec
+[RVC4 - USB]  12/189 Test  #66: device_properties_test ...................   Passed    3.18 sec
+[RVC4 - USB]  13/189 Test  #70: encoded_frame_test .......................   Passed   17.87 sec
+[RVC4 - USB]  14/189 Test  #71: message_group_test .......................   Passed    3.94 sec
+[RVC4 - USB]  15/189 Test  #74: pointcloud_multi_stream_device_test ......   Passed    1.58 sec
+[RVC4 - USB]  16/189 Test  #75: rgbd_test ................................   Passed    6.02 sec
+[RVC4 - USB]  17/189 Test  #76: input_output_naming_test .................   Passed    0.67 sec
+[RVC4 - USB]  18/189 Test  #87: subnode_test .............................   Passed    1.16 sec
+[RVC4 - USB]  19/189 Test  #88: depth_node_test ..........................   Passed   36.72 sec
+[RVC4 - USB]  20/189 Test  #89: depth_algorithm_selection_test ...........   Passed    0.02 sec
+[RVC4 - USB]  21/189 Test  #92: detection_parser_runtime_device_test .....   Passed    4.32 sec
+[RVC4 - USB]  22/189 Test  #93: detection_parser_test ....................   Passed  144.12 sec
+[RVC4 - USB]  23/189 Test  #94: segmentation_parser_test .................   Passed   11.07 sec
+[RVC4 - USB]  24/189 Test  #95: spatial_detection_network_test ...........   Passed   18.17 sec
+[RVC4 - USB]  25/189 Test  #96: neural_network_nnarchive_behavior_test ...   Passed    3.46 sec
+[RVC4 - USB]  26/189 Test  #97: neural_network_node_test .................   Passed  120.09 sec
+[RVC4 - USB]  27/189 Test  #98: img_transformation_test ..................   Passed   25.38 sec
+[RVC4 - USB]  28/189 Test #100: regression_camera_concurrency_test .......   Passed   51.29 sec
+[RVC4 - USB]  29/189 Test #101: regression_message_group_test ............   Passed    1.74 sec
+[RVC4 - USB]  30/189 Test #103: regression_boot_test .....................   Passed    8.44 sec
+[RVC4 - USB]  31/189 Test #104: sync_test ................................   Passed    4.80 sec
+[RVC4 - USB]  32/189 Test #105: fsync_test ...............................   Passed   49.21 sec
+[RVC4 - USB]  33/189 Test #108: bridge_large_messages ....................   Passed    3.38 sec
+[RVC4 - USB]  34/189 Test #109: image_align_node_test ....................   Passed   47.36 sec
+[RVC4 - USB]  35/189 Test #110: align_node_test ..........................   Passed   26.58 sec
+[RVC4 - USB]  36/189 Test #111: align_coverage_test ......................   Passed   23.32 sec
+[RVC4 - USB]  37/189 Test #112: align_node_device_test ...................   Passed    2.06 sec
+[RVC4 - USB]  38/189 Test #113: script_node_test .........................   Passed   11.59 sec
+[RVC4 - USB]  39/189 Test #114: script_node_rvc4_test ....................   Passed    1.38 sec
+[RVC4 - USB]  40/189 Test #115: stereo_depth_node_test ...................   Passed   15.24 sec
+[RVC4 - USB]  41/189 Test #116: stereo_depth_alignment_test ..............   Passed   39.58 sec
+[RVC4 - USB]  42/189 Test #118: image_manip_node_test ....................   Passed   42.25 sec
+[RVC4 - USB]  43/189 Test #119: image_manip_optimization_test ............   Passed   25.15 sec
+[RVC4 - USB]  44/189 Test #120: benchmark_test ...........................   Passed   90.17 sec
+[RVC4 - USB]  45/189 Test #121: system_logger_test .......................   Passed   11.31 sec
+[RVC4 - USB]  46/189 Test #122: manual_focus_test ........................   Passed   11.91 sec
+[RVC4 - USB]  47/189 Test #123: imu_test .................................   Passed  257.48 sec
+[RVC4 - USB]  48/189 Test #125: object_tracker_test ......................   Passed   50.30 sec
+[RVC4 - USB]  49/189 Test #128: camera_test ..............................   Passed  113.89 sec
+[RVC4 - USB]  50/189 Test #129: camera_test_rvc4 .........................   Passed    1.66 sec
+[RVC4 - USB]  51/189 Test #130: camera_fps_config_test ...................   Passed  474.89 sec
+[RVC4 - USB]  52/189 Test #131: video_encoder_test .......................   Passed  286.44 sec
+[RVC4 - USB]  53/189 Test #132: video_encoder_latency_test ...............   Passed   15.74 sec
+[RVC4 - USB]  54/189 Test #133: xlink_test ...............................   Passed   16.54 sec
+[RVC4 - USB]  55/189 Test #134: runtime_calibration_test .................   Passed    8.11 sec
+[RVC4 - USB]  56/189 Test #135: neural_depth_node_test ...................   Passed  103.54 sec
+[RVC4 - USB]  57/189 Test #136: neural_assisted_stereo_node_test .........   Passed    8.46 sec
+[RVC4 - USB]  58/189 Test #137: gate_node_test ...........................   Passed   26.40 sec
+[RVC4 - USB]  59/189 Test #138: auto_calibration_test ....................   Passed   32.88 sec
+[RVC4 - USB]  60/189 Test #139: crashdump_test ...........................***Skipped   6.60 sec
+[RVC4 - USB]  61/189 Test #140: img_detections_filter_helpers_test .......   Passed    0.02 sec
+[RVC4 - USB]  62/189 Test #145: img_detections_filter_device_test ........   Passed   17.04 sec
+[RVC4 - USB]  63/189 Test #146: align_interpolation_test .................   Passed    5.58 sec
+[RVC4 - USB]  64/189 Test #149: april_tags ...............................   Passed   53.21 sec
+[RVC4 - USB]  65/189 Test #150: april_tags_12mp ..........................   Passed   53.13 sec
+[RVC4 - USB]  66/189 Test #151: april_tags_replay ........................   Passed   53.13 sec
+[RVC4 - USB]  67/189 Test #152: benchmark_camera .........................   Passed   53.12 sec
+[RVC4 - USB]  68/189 Test #153: benchmark_nn .............................   Passed   53.06 sec
+[RVC4 - USB]  69/189 Test #154: benchmark_simple .........................   Passed   53.15 sec
+[RVC4 - USB]  70/189 Test #155: camera_all ...............................   Passed   53.06 sec
+[RVC4 - USB]  71/189 Test #156: camera_max_resolution ....................   Passed   53.14 sec
+[RVC4 - USB]  72/189 Test #157: camera_multiple_outputs ..................   Passed   53.11 sec
+[RVC4 - USB]  73/189 Test #158: camera_output ............................   Passed   53.11 sec
+[RVC4 - USB]  74/189 Test #159: camera_raw ...............................   Passed   53.15 sec
+[RVC4 - USB]  75/189 Test #160: camera_roi_exposure_focus ................   Passed   53.12 sec
+[RVC4 - USB]  76/189 Test #161: camera_still_max_res .....................   Passed   53.13 sec
+[RVC4 - USB]  77/189 Test #162: camera_undistortion ......................   Passed   53.12 sec
+[RVC4 - USB]  78/189 Test #163: camera_hdr ...............................   Passed   53.64 sec
+[RVC4 - USB]  79/189 Test #165: detection_network ........................   Passed   53.12 sec
+[RVC4 - USB]  80/189 Test #166: detection_network_remap ..................   Passed   53.14 sec
+[RVC4 - USB]  81/189 Test #167: detection_and_segmentation ...............   Passed   53.12 sec
+[RVC4 - USB]  82/189 Test #168: detection_and_keypoints ..................   Passed   53.13 sec
+[RVC4 - USB]  83/189 Test #178: host_node ................................   Passed   53.12 sec
+[RVC4 - USB]  84/189 Test #179: image_manip_host .........................   Passed   54.20 sec
+[RVC4 - USB]  85/189 Test #180: image_manip_color_conversion_host ........   Passed    5.41 sec
+[RVC4 - USB]  86/189 Test #181: display ..................................   Passed   53.14 sec
+[RVC4 - USB]  87/189 Test #182: threaded_host_node .......................   Passed   54.16 sec
+[RVC4 - USB]  88/189 Test #183: host_pipeline_synced_node ................   Passed   53.12 sec
+[RVC4 - USB]  89/189 Test #184: hfr_nn ...................................   Passed   53.63 sec
+[RVC4 - USB]  90/189 Test #185: hfr_save_encoded .........................   Passed   53.10 sec
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Notify ERROR: code=2 (REQUEST), stream=0x0, frame_number=204
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Buffer for frame 204 returned with error status 1, dropping
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Notify ERROR: code=2 (REQUEST), stream=0x0, frame_number=205
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Buffer for frame 205 returned with error status 1, dropping
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Notify ERROR: code=2 (REQUEST), stream=0x0, frame_number=206
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Buffer for frame 206 returned with error status 1, dropping
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Notify ERROR: code=2 (REQUEST), stream=0x0, frame_number=207
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Buffer for frame 207 returned with error status 1, dropping
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Notify ERROR: code=2 (REQUEST), stream=0x0, frame_number=208
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Buffer for frame 208 returned with error status 1, dropping
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Notify ERROR: code=2 (REQUEST), stream=0x0, frame_number=209
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Buffer for frame 209 returned with error status 1, dropping
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Notify ERROR: code=2 (REQUEST), stream=0x0, frame_number=210
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Buffer for frame 210 returned with error status 1, dropping
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Notify ERROR: code=2 (REQUEST), stream=0x0, frame_number=211
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Buffer for frame 211 returned with error status 1, dropping
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Notify ERROR: code=2 (REQUEST), stream=0x0, frame_number=212
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Buffer for frame 212 returned with error status 1, dropping
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Notify ERROR: code=2 (REQUEST), stream=0x0, frame_number=213
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Buffer for frame 213 returned with error status 1, dropping
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Notify ERROR: code=2 (REQUEST), stream=0x0, frame_number=214
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Buffer for frame 214 returned with error status 1, dropping
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Notify ERROR: code=2 (REQUEST), stream=0x0, frame_number=215
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518163.346] [Camera(0)] [warning] Buffer for frame 215 returned with error status 1, dropping
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518167.485] [host] [warning] Monitor thread (device: 838195231 [2.9.1]) - ping was missed, closing the device connection
+[RVC4 - USB] 186: [2026-11-12 21:16:09.486] [depthai] [error] Communication exception - possible device error/misconfiguration. Original message 'Couldn't read data from stream: '__x_3__outTrace' (X_LINK_ERROR)'
+[RVC4 - USB] 186: [2026-11-12 21:16:09.486] [depthai] [error] Communication exception - possible device error/misconfiguration. Original message 'Couldn't read data from stream: '__x_0_dynamicOutputs_0' (X_LINK_ERROR)'
+[RVC4 - USB] 186: [2026-11-12 21:16:09.486] [depthai] [error] Communication exception - possible device error/misconfiguration. Original message 'Couldn't read data from stream: '__x_3__out' (X_LINK_ERROR)'
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518169.490] [host] [warning] FW crashed - trying to get out the crash dump
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518174.490] [host] [warning] Getting the crash dump out - this can take up to a minute, because it first needs to be compressed.
+[RVC4 - USB] 186: [2026-11-12 21:16:16.494] [warning] Could not retrieve file from the device gate
+[RVC4 - USB] 186: [2026-11-12 21:16:16.494] [warning] RVC4 crash detected but gate returned no crash dump
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518176.494] [host] [warning] Device crashed, but no crash dump payload could be extracted.
+[RVC4 - USB] 186: [2026-11-12 21:16:19.495] [warning] The gate version does not support transfering over the crash dump. Current version 0.0.0, required is 0.0.14
+[RVC4 - USB] 186: [2026-11-12 21:16:19.495] [warning] RVC4 crash detected but gate returned no crash dump
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518179.495] [host] [warning] Device crashed, but no crash dump payload could be extracted.
+[RVC4 - USB] 186: [2026-11-12 21:16:22.496] [warning] The gate version does not support transfering over the crash dump. Current version 0.0.0, required is 0.0.14
+[RVC4 - USB] 186: [2026-11-12 21:16:22.496] [warning] RVC4 crash detected but gate returned no crash dump
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518182.496] [host] [warning] Device crashed, but no crash dump payload could be extracted.
+[RVC4 - USB] 186: [2026-11-12 21:16:25.497] [warning] The gate version does not support transfering over the crash dump. Current version 0.0.0, required is 0.0.14
+[RVC4 - USB] 186: [2026-11-12 21:16:25.497] [warning] RVC4 crash detected but gate returned no crash dump
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518185.497] [host] [warning] Device crashed, but no crash dump payload could be extracted.
+[RVC4 - USB] 186: [838195231] [2.9.1] [1794518185.497] [host] [warning] Crash dump was not available before the collection timeout
+[RVC4 - USB] 186: [2026-11-12 21:16:25.497] [depthai] [warning] Stopping pipeline - device 838195231 is gone for good and was the last device alive
+[RVC4 - USB] 186: [2026-11-12 21:16:25.497] [depthai] [warning] XLinkInHost '__x_3__outTrace' stopping - device connection was lost
+[RVC4 - USB] 186: [2026-11-12 21:16:25.497] [depthai] [warning] XLinkInHost '__x_0_dynamicOutputs_0' stopping - device connection was lost
+[RVC4 - USB] 186: [2026-11-12 21:16:25.497] [depthai] [warning] XLinkInHost '__x_3__out' stopping - device connection was lost
+[RVC4 - USB] 186: terminate called after throwing an instance of 'dai::MessageQueue::QueueException'
+[RVC4 - USB] 186:   what():  MessageQueue was closed
+[RVC4 - USB] 186: Devices before: 1
+[RVC4 - USB] 186: Devices now: 0
+[RVC4 - USB] 186: Devices now: 0
+[RVC4 - USB] 186: Devices now: 0
+[RVC4 - USB] 186: Devices now: 0
+[RVC4 - USB] 186: Post-failure crash dump sweep found no pending crash dump.
+[RVC4 - USB] 186: -- After process executed,  produced the following exit code: 6
+[RVC4 - USB] 186: CMake Error at /workspace/examples/cpp/cmake/ExecuteTestTimeout.cmake:50 (message):
+[RVC4 - USB] 186:    produced an error (6) while running
+[RVC4 - USB] 186:
+[RVC4 - USB] 186:
+[RVC4 - USB]  91/189 Test #186: hfr_small_preview ........................***Failed   72.20 sec
+[RVC4 - USB] 187: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 187: -- No device available,  skipped
+[RVC4 - USB]  92/189 Test #187: image_manip_resize .......................***Skipped  35.05 sec
+[RVC4 - USB] 188: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 188: -- No device available,  skipped
+[RVC4 - USB]  93/189 Test #188: image_manip_multi_ops ....................***Skipped  35.05 sec
+[RVC4 - USB] 189: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 189: -- No device available,  skipped
+[RVC4 - USB]  94/189 Test #189: image_manip_all_ops ......................***Skipped  35.05 sec
+[RVC4 - USB] 190: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 190: -- No device available,  skipped
+[RVC4 - USB]  95/189 Test #190: image_manip_remap ........................***Skipped  35.05 sec
+[RVC4 - USB] 191: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 191: -- No device available,  skipped
+[RVC4 - USB]  96/189 Test #191: imu_gyroscope_accelerometer ..............***Skipped  35.05 sec
+[RVC4 - USB] 192: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 192: -- No device available,  skipped
+[RVC4 - USB]  97/189 Test #192: imu_rotation_vector ......................***Skipped  35.05 sec
+[RVC4 - USB] 195: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 195: -- No device available,  skipped
+[RVC4 - USB]  98/189 Test #195: system_logger ............................***Skipped  35.05 sec
+[RVC4 - USB] 197: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 197: -- No device available,  skipped
+[RVC4 - USB]  99/189 Test #197: neural_network ...........................***Skipped  35.05 sec
+[RVC4 - USB] 198: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 198: -- No device available,  skipped
+[RVC4 - USB] 100/189 Test #198: neural_network_multi_input ...............***Skipped  35.06 sec
+[RVC4 - USB] 200: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 200: -- No device available,  skipped
+[RVC4 - USB] 101/189 Test #200: point_remapping ..........................***Skipped  35.05 sec
+[RVC4 - USB] 201: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 201: -- No device available,  skipped
+[RVC4 - USB] 102/189 Test #201: single_cam_remapping .....................***Skipped  35.05 sec
+[RVC4 - USB] 205: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 205: -- No device available,  skipped
+[RVC4 - USB] 103/189 Test #205: depth_preview ............................***Skipped  35.05 sec
+[RVC4 - USB] 206: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 206: -- No device available,  skipped
+[RVC4 - USB] 104/189 Test #206: stereo ...................................***Skipped  35.05 sec
+[RVC4 - USB] 207: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 207: -- No device available,  skipped
+[RVC4 - USB] 105/189 Test #207: stereo_depth_remap .......................***Skipped  35.05 sec
+[RVC4 - USB] 208: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 208: -- No device available,  skipped
+[RVC4 - USB] 106/189 Test #208: script_simple ............................***Skipped  35.05 sec
+[RVC4 - USB] 209: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 209: -- No device available,  skipped
+[RVC4 - USB] 107/189 Test #209: script_switch_all_cameras ................***Skipped  35.05 sec
+[RVC4 - USB] 210: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 210: -- No device available,  skipped
+[RVC4 - USB] 108/189 Test #210: spatial_detection ........................***Skipped  35.05 sec
+[RVC4 - USB] 211: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 211: -- No device available,  skipped
+[RVC4 - USB] 109/189 Test #211: spatial_location_calculator ..............***Skipped  35.05 sec
+[RVC4 - USB] 212: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 212: -- No device available,  skipped
+[RVC4 - USB] 110/189 Test #212: spatial_segmentation .....................***Skipped  35.05 sec
+[RVC4 - USB] 213: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 213: -- No device available,  skipped
+[RVC4 - USB] 111/189 Test #213: sync .....................................***Skipped  35.05 sec
+[RVC4 - USB] 218: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 218: -- No device available,  skipped
+[RVC4 - USB] 112/189 Test #218: warp_mesh ................................***Skipped  35.05 sec
+[RVC4 - USB] 219: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 219: -- No device available,  skipped
+[RVC4 - USB] 113/189 Test #219: depth_align ..............................***Skipped  35.05 sec
+[RVC4 - USB] 220: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 220: -- No device available,  skipped
+[RVC4 - USB] 114/189 Test #220: img_detections_align .....................***Skipped  35.05 sec
+[RVC4 - USB] 221: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 221: -- No device available,  skipped
+[RVC4 - USB] 115/189 Test #221: custom_message_align .....................***Skipped  35.05 sec
+[RVC4 - USB] 226: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 226: -- No device available,  skipped
+[RVC4 - USB] 116/189 Test #226: semantic_segmentation ....................***Skipped  35.05 sec
+[RVC4 - USB] 229: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 229: -- No device available,  skipped
+[RVC4 - USB] 117/189 Test #229: neural_assisted_stereo ...................***Skipped  35.05 sec
+[RVC4 - USB] 230: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 230: -- No device available,  skipped
+[RVC4 - USB] 118/189 Test #230: gpu_stereo ...............................***Skipped  35.05 sec
+[RVC4 - USB] 231: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 231: -- No device available,  skipped
+[RVC4 - USB] 119/189 Test #231: gate_node_example ........................***Skipped  35.05 sec
+[RVC4 - USB] 251: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 251: -- No device available,  skipped
+[RVC4 - USB] 120/189 Test #251: py_camera_output .........................***Skipped  35.06 sec
+[RVC4 - USB] 252: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 252: -- No device available,  skipped
+[RVC4 - USB] 121/189 Test #252: py_camera_all ............................***Skipped  35.05 sec
+[RVC4 - USB] 253: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 253: -- No device available,  skipped
+[RVC4 - USB] 122/189 Test #253: py_camera_multiple_outputs ...............***Skipped  35.06 sec
+[RVC4 - USB] 254: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 254: -- No device available,  skipped
+[RVC4 - USB] 123/189 Test #254: py_camera_raw ............................***Skipped  35.06 sec
+[RVC4 - USB] 255: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 255: -- No device available,  skipped
+[RVC4 - USB] 124/189 Test #255: py_camera_roi_exposure_focus .............***Skipped  35.06 sec
+[RVC4 - USB] 256: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 256: -- No device available,  skipped
+[RVC4 - USB] 125/189 Test #256: py_camera_still_max_res ..................***Skipped  35.06 sec
+[RVC4 - USB] 257: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 257: -- No device available,  skipped
+[RVC4 - USB] 126/189 Test #257: py_camera_max_resolution .................***Skipped  35.06 sec
+[RVC4 - USB] 258: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 258: -- No device available,  skipped
+[RVC4 - USB] 127/189 Test #258: py_camera_undistortion ...................***Skipped  35.06 sec
+[RVC4 - USB] 259: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 259: -- No device available,  skipped
+[RVC4 - USB] 128/189 Test #259: py_camera_hdr ............................***Skipped  35.05 sec
+[RVC4 - USB] 260: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 260: -- No device available,  skipped
+[RVC4 - USB] 129/189 Test #260: py_gpu_stereo_rvc4 .......................***Skipped  35.05 sec
+[RVC4 - USB] 261: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 261: -- No device available,  skipped
+[RVC4 - USB] 130/189 Test #261: py_gpu_stereo_support_rvc4 ...............***Skipped  35.06 sec
+[RVC4 - USB] 262: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 262: -- No device available,  skipped
+[RVC4 - USB] 131/189 Test #262: py_april_tags_12mp .......................***Skipped  35.06 sec
+[RVC4 - USB] 263: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 263: -- No device available,  skipped
+[RVC4 - USB] 132/189 Test #263: py_april_tags ............................***Skipped  35.06 sec
+[RVC4 - USB] 264: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 264: -- No device available,  skipped
+[RVC4 - USB] 133/189 Test #264: py_april_tags_replay .....................***Skipped  35.05 sec
+[RVC4 - USB] 265: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 265: -- No device available,  skipped
+[RVC4 - USB] 134/189 Test #265: py_detection_network .....................***Skipped  35.05 sec
+[RVC4 - USB] 267: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 267: -- No device available,  skipped
+[RVC4 - USB] 135/189 Test #267: py_detection_network_replay_rvc4 .........***Skipped  35.06 sec
+[RVC4 - USB] 269: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 269: -- No device available,  skipped
+[RVC4 - USB] 136/189 Test #269: py_display ...............................***Skipped  35.07 sec
+[RVC4 - USB] 270: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 270: -- No device available,  skipped
+[RVC4 - USB] 137/189 Test #270: py_threaded_host_nodes ...................***Skipped  35.06 sec
+[RVC4 - USB] 271: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 271: -- No device available,  skipped
+[RVC4 - USB] 138/189 Test #271: py_image_manip_multi_ops .................***Skipped  35.06 sec
+[RVC4 - USB] 272: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 272: -- No device available,  skipped
+[RVC4 - USB] 139/189 Test #272: py_image_manip_resize ....................***Skipped  35.05 sec
+[RVC4 - USB] 273: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 273: -- No device available,  skipped
+[RVC4 - USB] 140/189 Test #273: py_image_manip_remap .....................***Skipped  35.06 sec
+[RVC4 - USB] 274: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 274: -- No device available,  skipped
+[RVC4 - USB] 141/189 Test #274: py_reconnect_callback ....................***Skipped  35.06 sec
+[RVC4 - USB] 275: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 275: -- No device available,  skipped
+[RVC4 - USB] 142/189 Test #275: py_health_check ..........................***Skipped  35.06 sec
+[RVC4 - USB] 276: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 276: -- No device available,  skipped
+[RVC4 - USB] 143/189 Test #276: py_get_pipeline_state ....................***Skipped  35.06 sec
+[RVC4 - USB] 277: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 277: -- No device available,  skipped
+[RVC4 - USB] 144/189 Test #277: py_node_pipeline_events ..................***Skipped  35.06 sec
+[RVC4 - USB] 278: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 278: -- No device available,  skipped
+[RVC4 - USB] 145/189 Test #278: py_system_logger .........................***Skipped  35.06 sec
+[RVC4 - USB] 280: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 280: -- No device available,  skipped
+[RVC4 - USB] 146/189 Test #280: py_virtual_patern_projection .............***Skipped  35.06 sec
+[RVC4 - USB] 282: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 282: -- No device available,  skipped
+[RVC4 - USB] 147/189 Test #282: py_rgbd ..................................***Skipped  35.06 sec
+[RVC4 - USB] 283: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 283: -- No device available,  skipped
+[RVC4 - USB] 148/189 Test #283: py_visualizer_rgbd .......................***Skipped  35.05 sec
+[RVC4 - USB] 284: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 284: -- No device available,  skipped
+[RVC4 - USB] 149/189 Test #284: py_visualizer_rgbd_autocreate ............***Skipped  35.05 sec
+[RVC4 - USB] 285: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 285: -- No device available,  skipped
+[RVC4 - USB] 150/189 Test #285: py_rgbd_o3d ..............................***Skipped  35.06 sec
+[RVC4 - USB] 286: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 286: -- No device available,  skipped
+[RVC4 - USB] 151/189 Test #286: py_rgbd_pcl_processing ...................***Skipped  35.06 sec
+[RVC4 - USB] 287: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 287: -- No device available,  skipped
+[RVC4 - USB] 152/189 Test #287: py_person_crop_out .......................***Skipped  35.06 sec
+[RVC4 - USB] 288: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 288: -- No device available,  skipped
+[RVC4 - USB] 153/189 Test #288: py_neural_network ........................***Skipped  35.06 sec
+[RVC4 - USB] 289: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 289: -- No device available,  skipped
+[RVC4 - USB] 154/189 Test #289: py_neural_network_multi_input_combined ...***Skipped  35.05 sec
+[RVC4 - USB] 290: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 290: -- No device available,  skipped
+[RVC4 - USB] 155/189 Test #290: py_neural_network_multi_input ............***Skipped  35.06 sec
+[RVC4 - USB] 291: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 291: -- No device available,  skipped
+[RVC4 - USB] 156/189 Test #291: py_spatial_detection .....................***Skipped  35.06 sec
+[RVC4 - USB] 292: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 292: -- No device available,  skipped
+[RVC4 - USB] 157/189 Test #292: py_stereo ................................***Skipped  35.06 sec
+[RVC4 - USB] 293: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 293: -- No device available,  skipped
+[RVC4 - USB] 158/189 Test #293: py_stereo_depth_from_host ................***Skipped  35.06 sec
+[RVC4 - USB] 294: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 294: -- No device available,  skipped
+[RVC4 - USB] 159/189 Test #294: py_unified_depth .........................***Skipped  35.06 sec
+[RVC4 - USB] 295: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 295: -- No device available,  skipped
+[RVC4 - USB] 160/189 Test #295: py_depth_rgb_align .......................***Skipped  35.06 sec
+[RVC4 - USB] 296: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 296: -- No device available,  skipped
+[RVC4 - USB] 161/189 Test #296: py_video_encoder .........................***Skipped  35.06 sec
+[RVC4 - USB] 297: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 297: -- No device available,  skipped
+[RVC4 - USB] 162/189 Test #297: py_spatial_location_calculator ...........***Skipped  35.06 sec
+[RVC4 - USB] 298: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 298: -- No device available,  skipped
+[RVC4 - USB] 163/189 Test #298: py_depth_align ...........................***Skipped  35.06 sec
+[RVC4 - USB] 299: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 299: -- No device available,  skipped
+[RVC4 - USB] 164/189 Test #299: py_img_detections_align ..................***Skipped  35.06 sec
+[RVC4 - USB] 300: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 300: -- No device available,  skipped
+[RVC4 - USB] 165/189 Test #300: py_custom_message_align ..................***Skipped  35.06 sec
+[RVC4 - USB] 301: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 301: -- No device available,  skipped
+[RVC4 - USB] 166/189 Test #301: py_visualizer_rvc4 .......................***Skipped  35.05 sec
+[RVC4 - USB] 302: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 302: -- No device available,  skipped
+[RVC4 - USB] 167/189 Test #302: py_visualizer_encoded_rvc4 ...............***Skipped  35.06 sec
+[RVC4 - USB] 305: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 305: -- No device available,  skipped
+[RVC4 - USB] 168/189 Test #305: py_custom_services .......................***Skipped  35.06 sec
+[RVC4 - USB] 306: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 306: -- No device available,  skipped
+[RVC4 - USB] 169/189 Test #306: py_script_simple .........................***Skipped  35.06 sec
+[RVC4 - USB] 307: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 307: -- No device available,  skipped
+[RVC4 - USB] 170/189 Test #307: py_script_all_cameras ....................***Skipped  35.06 sec
+[RVC4 - USB] 308: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 308: -- No device available,  skipped
+[RVC4 - USB] 171/189 Test #308: py_benchmark_node ........................***Skipped  35.06 sec
+[RVC4 - USB] 309: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 309: -- No device available,  skipped
+[RVC4 - USB] 172/189 Test #309: py_benchmark_cameras .....................***Skipped  35.06 sec
+[RVC4 - USB] 310: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 310: -- No device available,  skipped
+[RVC4 - USB] 173/189 Test #310: py_benchmark_nn ..........................***Skipped  35.06 sec
+[RVC4 - USB] 311: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 311: -- No device available,  skipped
+[RVC4 - USB] 174/189 Test #311: py_imu_gyroscope_accelerometer ...........***Skipped  35.06 sec
+[RVC4 - USB] 312: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 312: -- No device available,  skipped
+[RVC4 - USB] 175/189 Test #312: py_imu_rotation_vector ...................***Skipped  35.06 sec
+[RVC4 - USB] 313: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 313: -- No device available,  skipped
+[RVC4 - USB] 176/189 Test #313: py_warp_mesh .............................***Skipped  35.06 sec
+[RVC4 - USB] 314: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 314: -- No device available,  skipped
+[RVC4 - USB] 177/189 Test #314: py_feature_tracker .......................***Skipped  35.06 sec
+[RVC4 - USB] 315: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 315: -- No device available,  skipped
+[RVC4 - USB] 178/189 Test #315: py_object_tracker ........................***Skipped  35.06 sec
+[RVC4 - USB] 316: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 316: -- No device available,  skipped
+[RVC4 - USB] 179/189 Test #316: py_object_tracker_replay .................***Skipped  35.05 sec
+[RVC4 - USB] 317: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 317: -- No device available,  skipped
+[RVC4 - USB] 180/189 Test #317: py_object_tracker_remap ..................***Skipped  35.06 sec
+[RVC4 - USB] 318: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 318: -- No device available,  skipped
+[RVC4 - USB] 181/189 Test #318: py_image_filters .........................***Skipped  35.06 sec
+[RVC4 - USB] 319: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 319: -- No device available,  skipped
+[RVC4 - USB] 182/189 Test #319: py_calibration_integration ...............***Skipped  35.06 sec
+[RVC4 - USB] 320: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 320: -- No device available,  skipped
+[RVC4 - USB] 183/189 Test #320: py_calibration_quality_dynamic ...........***Skipped  35.05 sec
+[RVC4 - USB] 321: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 321: -- No device available,  skipped
+[RVC4 - USB] 184/189 Test #321: py_calibration_dynamic ...................***Skipped  35.05 sec
+[RVC4 - USB] 322: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 322: -- No device available,  skipped
+[RVC4 - USB] 185/189 Test #322: py_neural_assisted_stereo ................***Skipped  35.06 sec
+[RVC4 - USB] 323: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 323: -- No device available,  skipped
+[RVC4 - USB] 186/189 Test #323: py_camera_isp ............................***Skipped  35.06 sec
+[RVC4 - USB] 324: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 324: -- No device available,  skipped
+[RVC4 - USB] 187/189 Test #324: py_pointcloud ............................***Skipped  35.06 sec
+[RVC4 - USB] 325: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 325: -- No device available,  skipped
+[RVC4 - USB] 188/189 Test #325: py_pointcloud_showcase ...................***Skipped  35.06 sec
+[RVC4 - USB] 326: -- After process executed,  produced the following exit code: 125
+[RVC4 - USB] 326: -- No device available,  skipped
+[RVC4 - USB] 189/189 Test #326: py_pointcloud_visualizer .................***Skipped  35.06 sec
+[RVC4 - USB] 99% tests passed, 1 tests failed out of 189
+[RVC4 - USB] Total Test time (real) = 7651.62 sec
+[RVC4 - USB] The following tests did not run:
+[RVC4 - USB] 	139 - crashdump_test (Skipped)
+[RVC4 - USB] 	187 - image_manip_resize (Skipped)
+[RVC4 - USB] 	188 - image_manip_multi_ops (Skipped)
+[RVC4 - USB] 	189 - image_manip_all_ops (Skipped)
+[RVC4 - USB] 	190 - image_manip_remap (Skipped)
+[RVC4 - USB] 	191 - imu_gyroscope_accelerometer (Skipped)
+[RVC4 - USB] 	192 - imu_rotation_vector (Skipped)
+[RVC4 - USB] 	195 - system_logger (Skipped)
+[RVC4 - USB] 	197 - neural_network (Skipped)
+[RVC4 - USB] 	198 - neural_network_multi_input (Skipped)
+[RVC4 - USB] 	200 - point_remapping (Skipped)
+[RVC4 - USB] 	201 - single_cam_remapping (Skipped)
+[RVC4 - USB] 	205 - depth_preview (Skipped)
+[RVC4 - USB] 	206 - stereo (Skipped)
+[RVC4 - USB] 	207 - stereo_depth_remap (Skipped)
+[RVC4 - USB] 	208 - script_simple (Skipped)
+[RVC4 - USB] 	209 - script_switch_all_cameras (Skipped)
+[RVC4 - USB] 	210 - spatial_detection (Skipped)
+[RVC4 - USB] 	211 - spatial_location_calculator (Skipped)
+[RVC4 - USB] 	212 - spatial_segmentation (Skipped)
+[RVC4 - USB] 	213 - sync (Skipped)
+[RVC4 - USB] 	218 - warp_mesh (Skipped)
+[RVC4 - USB] 	219 - depth_align (Skipped)
+[RVC4 - USB] 	220 - img_detections_align (Skipped)
+[RVC4 - USB] 	221 - custom_message_align (Skipped)
+[RVC4 - USB] 	226 - semantic_segmentation (Skipped)
+[RVC4 - USB] 	229 - neural_assisted_stereo (Skipped)
+[RVC4 - USB] 	230 - gpu_stereo (Skipped)
+[RVC4 - USB] 	231 - gate_node_example (Skipped)
+[RVC4 - USB] 	251 - py_camera_output (Skipped)
+[RVC4 - USB] 	252 - py_camera_all (Skipped)
+[RVC4 - USB] 	253 - py_camera_multiple_outputs (Skipped)
+[RVC4 - USB] 	254 - py_camera_raw (Skipped)
+[RVC4 - USB] 	255 - py_camera_roi_exposure_focus (Skipped)
+[RVC4 - USB] 	256 - py_camera_still_max_res (Skipped)
+[RVC4 - USB] 	257 - py_camera_max_resolution (Skipped)
+[RVC4 - USB] 	258 - py_camera_undistortion (Skipped)
+[RVC4 - USB] 	259 - py_camera_hdr (Skipped)
+[RVC4 - USB] 	260 - py_gpu_stereo_rvc4 (Skipped)
+[RVC4 - USB] 	261 - py_gpu_stereo_support_rvc4 (Skipped)
+[RVC4 - USB] 	262 - py_april_tags_12mp (Skipped)
+[RVC4 - USB] 	263 - py_april_tags (Skipped)
+[RVC4 - USB] 	264 - py_april_tags_replay (Skipped)
+[RVC4 - USB] 	265 - py_detection_network (Skipped)
+[RVC4 - USB] 	267 - py_detection_network_replay_rvc4 (Skipped)
+[RVC4 - USB] 	269 - py_display (Skipped)
+[RVC4 - USB] 	270 - py_threaded_host_nodes (Skipped)
+[RVC4 - USB] 	271 - py_image_manip_multi_ops (Skipped)
+[RVC4 - USB] 	272 - py_image_manip_resize (Skipped)
+[RVC4 - USB] 	273 - py_image_manip_remap (Skipped)
+[RVC4 - USB] 	274 - py_reconnect_callback (Skipped)
+[RVC4 - USB] 	275 - py_health_check (Skipped)
+[RVC4 - USB] 	276 - py_get_pipeline_state (Skipped)
+[RVC4 - USB] 	277 - py_node_pipeline_events (Skipped)
+[RVC4 - USB] 	278 - py_system_logger (Skipped)
+[RVC4 - USB] 	280 - py_virtual_patern_projection (Skipped)
+[RVC4 - USB] 	282 - py_rgbd (Skipped)
+[RVC4 - USB] 	283 - py_visualizer_rgbd (Skipped)
+[RVC4 - USB] 	284 - py_visualizer_rgbd_autocreate (Skipped)
+[RVC4 - USB] 	285 - py_rgbd_o3d (Skipped)
+[RVC4 - USB] 	286 - py_rgbd_pcl_processing (Skipped)
+[RVC4 - USB] 	287 - py_person_crop_out (Skipped)
+[RVC4 - USB] 	288 - py_neural_network (Skipped)
+[RVC4 - USB] 	289 - py_neural_network_multi_input_combined (Skipped)
+[RVC4 - USB] 	290 - py_neural_network_multi_input (Skipped)
+[RVC4 - USB] 	291 - py_spatial_detection (Skipped)
+[RVC4 - USB] 	292 - py_stereo (Skipped)
+[RVC4 - USB] 	293 - py_stereo_depth_from_host (Skipped)
+[RVC4 - USB] 	294 - py_unified_depth (Skipped)
+[RVC4 - USB] 	295 - py_depth_rgb_align (Skipped)
+[RVC4 - USB] 	296 - py_video_encoder (Skipped)
+[RVC4 - USB] 	297 - py_spatial_location_calculator (Skipped)
+[RVC4 - USB] 	298 - py_depth_align (Skipped)
+[RVC4 - USB] 	299 - py_img_detections_align (Skipped)
+[RVC4 - USB] 	300 - py_custom_message_align (Skipped)
+[RVC4 - USB] 	301 - py_visualizer_rvc4 (Skipped)
+[RVC4 - USB] 	302 - py_visualizer_encoded_rvc4 (Skipped)
+[RVC4 - USB] 	305 - py_custom_services (Skipped)
+[RVC4 - USB] 	306 - py_script_simple (Skipped)
+[RVC4 - USB] 	307 - py_script_all_cameras (Skipped)
+[RVC4 - USB] 	308 - py_benchmark_node (Skipped)
+[RVC4 - USB] 	309 - py_benchmark_cameras (Skipped)
+[RVC4 - USB] 	310 - py_benchmark_nn (Skipped)
+[RVC4 - USB] 	311 - py_imu_gyroscope_accelerometer (Skipped)
+[RVC4 - USB] 	312 - py_imu_rotation_vector (Skipped)
+[RVC4 - USB] 	313 - py_warp_mesh (Skipped)
+[RVC4 - USB] 	314 - py_feature_tracker (Skipped)
+[RVC4 - USB] 	315 - py_object_tracker (Skipped)
+[RVC4 - USB] 	316 - py_object_tracker_replay (Skipped)
+[RVC4 - USB] 	317 - py_object_tracker_remap (Skipped)
+[RVC4 - USB] 	318 - py_image_filters (Skipped)
+[RVC4 - USB] 	319 - py_calibration_integration (Skipped)
+[RVC4 - USB] 	320 - py_calibration_quality_dynamic (Skipped)
+[RVC4 - USB] 	321 - py_calibration_dynamic (Skipped)
+[RVC4 - USB] 	322 - py_neural_assisted_stereo (Skipped)
+[RVC4 - USB] 	323 - py_camera_isp (Skipped)
+[RVC4 - USB] 	324 - py_pointcloud (Skipped)
+[RVC4 - USB] 	325 - py_pointcloud_showcase (Skipped)
+[RVC4 - USB] 	326 - py_pointcloud_visualizer (Skipped)
+[RVC4 - USB] The following tests FAILED:
+[RVC4 - USB] 	186 - hfr_small_preview (Failed)
+[RVC4 - USB] Errors while running CTest
+Tests failed for configuration: RVC4 - USB
+Some tests failed
+2026-11-12 23:14:22,563 [ERROR] 
+ssh  command failed. Stderr should have already been printed above. 
+2026-11-12 23:14:45,734 [INFO] Free reservation

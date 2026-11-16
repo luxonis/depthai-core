@@ -1,0 +1,18 @@
+2026-11-12 17:14:01,783 [INFO] Checking sanity testbed-d1-4pro
+2026-11-12 17:18:13,575 [INFO] Upgraded OS version matches the requested OS version
+2026-11-12 17:20:45,707 [INFO] Sanity check passed
+2026-11-12 17:20:46,269 [INFO] Using testbed: testbed-d1-4pro
+2026-11-12 17:20:46,269 [INFO] Installing rvc4 os version: 1.44.0
+2026-11-12 17:24:42,695 [INFO] Upgraded OS version matches the requested OS version
+2026-11-12 17:25:03,486 [INFO] Executing hil commands.
+Running tests with args: rvc4 --test-label ci|ci_nightly
+Running tests for configuration: RVC4, on platform: rvc4, on protocol: tcpip, with labels: rvc4
+[RVC4]   1/191 Test  #31: nndata_strides_device_test ...............   Passed    2.71 sec
+[RVC4]   2/191 Test  #34: tofconfig_device_test ....................   Passed    1.45 sec
+[RVC4]   3/191 Test  #46: stress_test ..............................   Passed  304.83 sec
+[RVC4]   4/191 Test  #47: camera_stream_restart_test ...............   Passed   14.90 sec
+[RVC4]   5/191 Test  #48: logging_test .............................   Passed   18.77 sec
+[RVC4]   6/191 Test  #49: telemetry_test ...........................   Passed    4.36 sec
+[RVC4]   7/191 Test  #52: vpp_test .................................   Passed    7.95 sec
+[RVC4]   8/191 Test  #53: gpu_stereo_device_test ...................   Passed    2.17 sec
+[RVC4]         Start  54: dynamic_calibration_test
