@@ -40,9 +40,68 @@ This folder contains minimal, end-to-end examples that use **`dai.node.DynamicCa
 
 ---
 
+## ToF depth-assisted calibration
+
+Run `python3 examples/python/DynamicCalibration/calibration_dynamic_tof.py --device <IP-or-ID> --camera CAM_C`.
+Use `--camera CAM_B` to select the other camera. The C++ example accepts the same arguments.
+If the camera image is washed out, try `--exposure-us 1000` (ISO 100); the default
+uses auto exposure. Check that both previews show common edges before collecting.
+It links native ToF amplitude/depth and the selected camera to host DynamicCalibration:
+
+```python
+tof.amplitude.link(dyn.inputs["tof"])
+tof.depth.link(dyn.tofDepth)
+cameraOut.link(dyn.left)
+dyn.setRunOnHost(True)
+```
+
+The node refines the metric ToF pose against camera edges, fixing the other
+camera poses. Use common edges at several depths/orientations and a plausible
+starting calibration. Depth must share the amplitude pixel model. Collection
+progress and edge-error/rejection diagnostics are printed; no SIFT coverage is
+required. Press **a** to apply in memory, **r** to collect again, **q** to quit.
+The overlay shows depth aligned to the selected camera using the active runtime
+calibration, updating after **a** applies a candidate. Calibration uses raw camera
+images; a separate undistorted output matches ImageAlign's undistorted depth for
+the preview. Invalid depth leaves the camera image visible. Check object borders
+at several depths before deciding whether a candidate is useful.
+The example never flashes EEPROM. Device-side execution is not supported yet.
+
+This requires a ToF sensor and a conventional camera with overlapping views.
+The ToF socket is discovered automatically (for example CAM_A on OAK-TOF /
+OAK-D-SR-POE and CAM_D on OAK-4-LITE-TOF). Ordinary stereo-only OAK-4-LITE variants
+must use the image-based example instead. Native depth must be axial Z, rather
+than radial range or an already-aligned image.
+
+Only the ToF extrinsics change. The metric solver detects raw image edges,
+undistorts sparse points/tangents, lifts ToF edges into 3D and minimizes robust
+point-to-edge reprojection with Ceres. The second half of the collected frames
+validates the result; geometry, improvement, visibility and multistart checks
+reject unreliable fits. It refines a plausible prior and cannot guarantee recovery
+from arbitrary corruption. The geometry is inspired by
+[Sun et al.'s ToF–camera edge calibration](https://sunqinxuan.github.io/projects/2023-01-17-extrinsic-calibration),
+implemented independently with DCL's existing processes. The
+[standalone DCL recording example](https://github.com/luxonis/dynamic_calibration/tree/feat/tof-edge-calibration/examples/python/tof_calibration)
+describes the input contract and solver flow. Use a DCL artifact containing PR #110
+with the SDK's ToF support in PR #2185; an older DCL binary cannot supply the overload.
+The image-based `computeMetrics()` confidence scores are unavailable for ToF and
+remain zero. Use the calibration result and independent depth alignment checks;
+the reported Sampson error is a diagnostic, rather than a physical accuracy score.
+
+To run the hardware integration test with a known runtime perturbation:
+
+```sh
+python tests/hardware/tof_dynamic_calibration.py --device <IP-or-ID> --camera CAM_C --pitch-deg -0.5 --output /tmp/tof-result.json
+```
+
+Use a static scene with common edges at several depths. The test requires an
+accepted candidate, checks fixed-camera poses and intrinsics, applies the candidate,
+then restores the original runtime calibration in a `finally` block and checks
+EEPROM is unchanged. It supports `--exposure-us 1000` and fails on rejected data.
+
 ## Extrinsics for cameras outside calibration
 
-The result preserves DCL-produced camera poses relative to housing, when housing
+In image-based mode, the result preserves DCL-produced camera poses relative to housing, when housing
 calibration is available. Cameras that are not calibration inputs are positioned
 using measured factory extrinsics, rather than their previous housing poses.
 Every unobserved camera is anchored to a default stereo-depth reference camera: the

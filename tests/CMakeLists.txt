@@ -780,6 +780,9 @@ endif()
 
 dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibration_test.cpp)
 dai_set_test_labels(dynamic_calibration_onhost_test onhost)
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    target_link_libraries(dynamic_calibration_onhost_test PRIVATE dynamic_calibration_imported)
+endif()
 
 dai_add_test(flash_eeprom_fields_test src/ondevice_tests/flash_eeprom_fields_test.cpp)
 dai_set_test_labels(flash_eeprom_fields_test ondevice rvc2_all rvc4 rvc4ffc)

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <cmath>
 #include <depthai/depthai.hpp>
@@ -31,6 +32,99 @@ TEST_CASE("DynamicCalibration packs strided image views", "[DynamicCalibrationIm
     REQUIRE(image.format == (channels == 1 ? dcl::DCL_8UC1 : dcl::DCL_8UC3));
 }
 
+TEST_CASE("DynamicCalibration preserves metric ToF depth and robust amplitude", "[DynamicCalibrationImages]") {
+    cv::Mat amplitude(10, 10, CV_16UC1, cv::Scalar(100));
+    amplitude.at<std::uint16_t>(9, 9) = 60000;
+    amplitude.at<std::uint16_t>(0, 0) = 50;
+    const cv::Mat depth(10, 10, CV_16UC1, cv::Scalar(1234));
+    const cv::Mat camera(10, 10, CV_8UC1, cv::Scalar(37));
+    const auto observation = dai::node::DclUtils::makeTofObservation(amplitude, depth, camera);
+    REQUIRE(observation.depthMeters.size() == 100);
+    REQUIRE(observation.depthMeters[0] == Catch::Approx(1.234));
+    REQUIRE(observation.amplitude.data[0] == Catch::Approx(128).margin(1));
+    REQUIRE(observation.camera.data[0] == 37);
+    REQUIRE(depth.at<std::uint16_t>(0, 0) == 1234);
+    SECTION("Empty observations are rejected") {
+        REQUIRE_THROWS_AS(dai::node::DclUtils::makeTofObservation({}, {}, {}), std::invalid_argument);
+    }
+    SECTION("Depth cannot be interpreted as 8-bit image data") {
+        REQUIRE_THROWS_AS(dai::node::DclUtils::makeTofObservation(amplitude, camera, camera), std::invalid_argument);
+    }
+}
+
+TEST_CASE("DynamicCalibration packs strided ToF observations", "[DynamicCalibrationImages]") {
+    const auto amplitudeType = GENERATE(CV_8UC1, CV_16UC1);
+    cv::Mat amplitudeStorage(4, 6, amplitudeType, cv::Scalar(9));
+    cv::Mat depthStorage(4, 6, CV_16UC1, cv::Scalar(9999));
+    cv::Mat cameraStorage(4, 5, CV_8UC3, cv::Scalar(99, 98, 97));
+    auto amplitude = amplitudeStorage(cv::Rect(1, 1, 3, 2));
+    auto depth = depthStorage(cv::Rect(1, 1, 3, 2));
+    auto camera = cameraStorage(cv::Rect(1, 1, 2, 2));
+    for(int index = 0; index < 6; ++index) {
+        if(amplitudeType == CV_8UC1)
+            amplitude.at<std::uint8_t>(index / 3, index % 3) = static_cast<std::uint8_t>(10 * (index + 1));
+        else
+            amplitude.at<std::uint16_t>(index / 3, index % 3) = static_cast<std::uint16_t>(100 * index);
+        depth.at<std::uint16_t>(index / 3, index % 3) = static_cast<std::uint16_t>(1000 * index);
+    }
+    camera.at<cv::Vec3b>(0, 0) = {1, 2, 3};
+    camera.at<cv::Vec3b>(0, 1) = {4, 5, 6};
+    camera.at<cv::Vec3b>(1, 0) = {7, 8, 9};
+    camera.at<cv::Vec3b>(1, 1) = {10, 11, 12};
+    REQUIRE_FALSE(amplitude.isContinuous());
+    REQUIRE_FALSE(depth.isContinuous());
+    REQUIRE_FALSE(camera.isContinuous());
+
+    const auto observation = dai::node::DclUtils::makeTofObservation(amplitude, depth, camera);
+
+    const std::vector<std::uint8_t> expectedAmplitude =
+        amplitudeType == CV_8UC1 ? std::vector<std::uint8_t>{10, 20, 30, 40, 50, 60} : std::vector<std::uint8_t>{0, 64, 128, 191, 255, 255};
+    REQUIRE(observation.amplitude.data == expectedAmplitude);
+    REQUIRE(observation.amplitude.width == 3);
+    REQUIRE(observation.amplitude.height == 2);
+    REQUIRE(observation.camera.format == dcl::DCL_8UC3);
+    REQUIRE(observation.camera.width == 2);
+    REQUIRE(observation.camera.height == 2);
+    REQUIRE(observation.camera.data == std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12});
+    REQUIRE(observation.depthMeters.size() == 6);
+    for(std::size_t index = 0; index < 6; ++index) REQUIRE(observation.depthMeters[index] == Catch::Approx(static_cast<float>(index)));
+    REQUIRE(depthStorage.at<std::uint16_t>(0, 0) == 9999);
+    REQUIRE(cameraStorage.at<cv::Vec3b>(0, 0) == cv::Vec3b(99, 98, 97));
+}
+
+TEST_CASE("DynamicCalibration rejects incompatible ToF observations", "[DynamicCalibrationImages]") {
+    const cv::Mat amplitude(2, 3, CV_8UC1, cv::Scalar(37));
+    const cv::Mat depth(2, 3, CV_16UC1, cv::Scalar(1234));
+    const cv::Mat camera(4, 5, CV_8UC3, cv::Scalar(17, 83, 249));
+    SECTION("Unsupported amplitude types") {
+        const auto type = GENERATE(CV_8UC3, CV_16SC1, CV_32FC1);
+        REQUIRE_THROWS_AS(dai::node::DclUtils::makeTofObservation(cv::Mat(2, 3, type), depth, camera), std::invalid_argument);
+    }
+    SECTION("Unsupported depth types") {
+        const auto type = GENERATE(CV_8UC1, CV_16UC3, CV_32FC1);
+        REQUIRE_THROWS_AS(dai::node::DclUtils::makeTofObservation(amplitude, cv::Mat(2, 3, type), camera), std::invalid_argument);
+    }
+    SECTION("Mismatched depth resolution") {
+        REQUIRE_THROWS_AS(dai::node::DclUtils::makeTofObservation(amplitude, cv::Mat(3, 2, CV_16UC1), camera), std::invalid_argument);
+    }
+    SECTION("Each input is required") {
+        REQUIRE_THROWS_AS(dai::node::DclUtils::makeTofObservation({}, depth, camera), std::invalid_argument);
+        REQUIRE_THROWS_AS(dai::node::DclUtils::makeTofObservation(amplitude, {}, camera), std::invalid_argument);
+        REQUIRE_THROWS_AS(dai::node::DclUtils::makeTofObservation(amplitude, depth, {}), std::invalid_argument);
+    }
+    SECTION("Unsupported camera types") {
+        const auto type = GENERATE(CV_16UC1, CV_8UC4);
+        REQUIRE_THROWS_AS(dai::node::DclUtils::makeTofObservation(amplitude, depth, cv::Mat(4, 5, type)), std::runtime_error);
+    }
+}
+
+TEST_CASE("DynamicCalibration preserves 8-bit image data", "[DynamicCalibrationImages]") {
+    const auto channels = GENERATE(1, 3);
+    const cv::Mat input(2, 3, CV_MAKETYPE(CV_8U, channels), cv::Scalar(17, 83, 249));
+    const auto image = dai::node::DclUtils::cvMatToImageData(input);
+    REQUIRE(image.format == (channels == 1 ? dcl::DCL_8UC1 : dcl::DCL_8UC3));
+    REQUIRE(image.data == std::vector<std::uint8_t>(input.data, input.data + input.total() * input.elemSize()));
+}
 #endif
 
 namespace {
@@ -311,6 +405,96 @@ TEST_CASE("Simulated DCL updates preserve factory calibration queries across rel
         REQUIRE(factory.eepromToJson() == factoryJson);
     }
 }
+
+#if defined(DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT) && defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+TEST_CASE("Metric ToF assembly moves only the ToF camera", "[DynamicCalibrationTransforms][MetricTof]") {
+    const auto tofSocket = GENERATE(Socket::CAM_A, Socket::CAM_D);
+    const auto housingOrigin = GENERATE(Socket::CAM_A, Socket::CAM_B, Socket::CAM_C, Socket::CAM_D);
+    const auto housingBase = GENERATE(false, true);
+    const auto chainIndex = GENERATE(0, 1, 2);
+    const auto platform = GENERATE(dai::Platform::RVC2, dai::Platform::RVC4);
+    const std::vector<std::vector<Socket>> chains = {{Socket::CAM_A, Socket::CAM_B, Socket::CAM_C, Socket::CAM_D},
+                                                     {Socket::CAM_B, Socket::CAM_C, Socket::CAM_D, Socket::CAM_A},
+                                                     {Socket::CAM_D, Socket::CAM_C, Socket::CAM_A, Socket::CAM_B}};
+    const auto& chain = chains.at(chainIndex);
+    CAPTURE(tofSocket, housingOrigin, housingBase, chainIndex, platform);
+    auto eeprom = factoryRig(housingOrigin).getEepromData();
+    eeprom.cameraData.clear();
+    eeprom.stereoUseSpecTranslation = false;
+    eeprom.stereoEnableDistortionCorrection = true;
+    eeprom.verticalCameraSocket = Socket::CAM_C;
+    eeprom.miscellaneousData = {7, 9};
+    dai::CalibrationHandler factory(eeprom);
+    for(auto socket : chain) factory.setCameraIntrinsics(socket, {{800, 0, 320}, {0, 810, 240}, {0, 0, 1}}, 640, 480);
+    const std::map<Socket, Transform> poses = {{Socket::CAM_A, pose(.10f, .01f, -.02f, .03f)},
+                                               {Socket::CAM_B, pose(-.05f, .02f, .01f, -.01f)},
+                                               {Socket::CAM_C, pose(.02f, .09f, .01f, -.02f)},
+                                               {Socket::CAM_D, pose(-.03f, .03f, -.03f, .02f)}};
+    // Rebuild the EEPROM chain; physical relative poses do not depend on its order.
+    for(std::size_t index = 0; index < chain.size(); ++index) {
+        const auto socket = chain[index];
+        const auto next = index + 1 < chain.size() ? chain[index + 1] : Socket::AUTO;
+        const auto edge = next == Socket::AUTO ? pose(0, 0, 0, 0) : dai::matrix::matMul(poses.at(next), inverse(poses.at(socket)));
+        auto translation = dai::matrix::extractTranslationVector(edge);
+        for(auto& value : translation) value *= 100;
+        factory.setCameraExtrinsics(socket, next, dai::matrix::extractRotationMatrix(edge), translation, {21, 32, 43});
+        factory.setDistortionCoefficients(socket, {.01f, -.02f, .001f, -.001f, .005f});
+    }
+    factory.setStereoLeft(Socket::CAM_B, dai::matrix::extractRotationMatrix(pose(.03f, 0, 0, 0)));
+    factory.setStereoRight(Socket::CAM_C, dai::matrix::extractRotationMatrix(pose(-.02f, 0, 0, 0)));
+    auto current = factory;
+    // Preserve active user calibration rather than restoring factory links.
+    current.updateCameraExtrinsics(chain.front(), chain[1], dai::matrix::extractRotationMatrix(pose(.08f, 0, 0, 0)), {8, 2, -1});
+    const auto before = current.getEepromData();
+    const auto originalJson = current.eepromToJson();
+    const auto base = housingBase ? std::variant<Socket, dai::HousingCoordinateSystem>(dai::HousingCoordinateSystem::AUTO)
+                                  : std::variant<Socket, dai::HousingCoordinateSystem>(Socket::CAM_C);
+    const auto fixedPose = dai::node::DclUtils::computeBaseToSocketTransform(current, base, Socket::CAM_C);
+    const auto candidate = dai::matrix::matMul(pose(.006f, .002f, -.001f, .003f), dai::node::DclUtils::computeBaseToSocketTransform(current, base, tofSocket));
+    std::map<Socket, Transform> calibrated = {{tofSocket, candidate}, {Socket::CAM_C, fixedPose}};
+    // Model the metric node path: complete unobserved poses from CURRENT calibration.
+    for(auto socket : chain)
+        if(!calibrated.count(socket)) calibrated.emplace(socket, dai::node::DclUtils::computeBaseToSocketTransform(current, base, socket));
+
+    const auto assembled = dai::node::detail::assembleDynamicCalibration(current, {}, chain, calibrated, housingBase, {}, platform);
+    const auto result = dai::CalibrationHandler::fromJson(assembled.eepromToJson());
+
+    for(auto source : chain) {
+        for(auto destination : chain) {
+            if(source == destination) continue;
+            if(source != tofSocket && destination != tofSocket)
+                requireTransform(result.getCameraExtrinsics(source, destination, false, dai::LengthUnit::METER),
+                                 current.getCameraExtrinsics(source, destination, false, dai::LengthUnit::METER));
+            else
+                requireTransform(result.getCameraExtrinsics(source, destination, false, dai::LengthUnit::METER),
+                                 dai::matrix::matMul(calibrated.at(destination), inverse(calibrated.at(source))));
+        }
+        if(housingBase)
+            requireTransform(result.getHousingCalibration(source, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::METER),
+                             inverse(calibrated.at(source)));
+    }
+    REQUIRE(result.getCameraExtrinsics(tofSocket, Socket::CAM_C, false) != current.getCameraExtrinsics(tofSocket, Socket::CAM_C, false));
+    // Mask only estimated transforms: all intrinsics, distortion, design translations,
+    // stereo fields, chain sockets, IMU data and other EEPROM metadata must remain exact.
+    auto metadata = result.getEepromData();
+    for(auto socket : chain) {
+        metadata.cameraData.at(socket).extrinsics.rotationMatrix = before.cameraData.at(socket).extrinsics.rotationMatrix;
+        metadata.cameraData.at(socket).extrinsics.translation = before.cameraData.at(socket).extrinsics.translation;
+    }
+    if(housingBase) {
+        metadata.housingExtrinsics.rotationMatrix = before.housingExtrinsics.rotationMatrix;
+        metadata.housingExtrinsics.translation = before.housingExtrinsics.translation;
+    }
+    const auto canonicalMetadata = [](nlohmann::json json) {
+        // JSON encodes the unordered socket map as an array; reloads can reorder it.
+        auto& cameras = json["cameraData"];
+        std::sort(cameras.begin(), cameras.end(), [](const auto& a, const auto& b) { return a.at(0) < b.at(0); });
+        return json;
+    };
+    REQUIRE(canonicalMetadata(dai::CalibrationHandler(metadata).eepromToJson()) == canonicalMetadata(originalJson));
+    REQUIRE(current.eepromToJson() == originalJson);
+}
+#endif
 
 TEST_CASE("DynamicCalibration - Commands", "[DynamicCalibrationControl]") {
     using DCC = dai::DynamicCalibrationControl;

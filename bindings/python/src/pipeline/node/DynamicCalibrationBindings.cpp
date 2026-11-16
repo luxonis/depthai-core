@@ -30,6 +30,11 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
         .def_readonly("coverageOutput", &DynamicCalibration::coverageOutput, DOC(dai, node, DynamicCalibration, coverageOutput))
         .def_readonly("metricsOutput", &DynamicCalibration::metricsOutput, DOC(dai, node, DynamicCalibration, metricsOutput))
         .def_readonly("calibrationOutput", &DynamicCalibration::calibrationOutput, DOC(dai, node, DynamicCalibration, calibrationOutput))
+        .def_property_readonly(
+            "tofDepth",
+            [](DynamicCalibration& node) { return &node.tofDepth; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, DynamicCalibration, tofDepth))
         .def_readonly("inputControl", &DynamicCalibration::inputControl, DOC(dai, node, DynamicCalibration, inputControl))
         .def_property_readonly(
             "sync", [](DynamicCalibration& node) { return &(*node.sync); }, py::return_value_policy::reference_internal)
