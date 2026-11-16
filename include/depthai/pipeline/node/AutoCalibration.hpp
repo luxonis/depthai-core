@@ -25,6 +25,8 @@ namespace node {
 
 class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoCalibrationProperties>, public HostRunnable {
    private:
+    friend struct AutoCalibrationTestAccess;
+
     Subnode<node::DynamicCalibration> dynamicCalibration{*this, "dynamicCalibration"};
 
     Subnode<node::Sync> sync{*this, "sync"};

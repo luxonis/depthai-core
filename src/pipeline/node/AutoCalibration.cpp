@@ -357,6 +357,10 @@ return calibration from DynamicCalibration node
 **/
 std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsigned int maxNumIteration, Report& report) {
     auto startTime = std::chrono::steady_clock::now();  // Start timer
+    // Validation consumes coverage only, so rejected marker frames can leave informational results behind.
+    // Start with an empty pair of queues before the gate can produce new calibration messages.
+    dynamicCalibrationQueue.tryGetAll<dai::DynamicCalibrationResult>();
+    coverageQueue.tryGetAll<dai::CoverageData>();
     gateControlQueue.send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
     {
         auto& state = *telemetryAggregateState;
