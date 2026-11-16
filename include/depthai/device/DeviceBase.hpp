@@ -1229,15 +1229,27 @@ class DeviceBase {
     void setMaxReconnectionAttempts(int maxAttempts, std::function<void(ReconnectionStatus)> callBack = nullptr);
 
     /**
-     * Sets external frame sync role for the device
+     * Sets external frame sync role for the device.
+     * The device applies the role during this call. Without a call, the device applies AUTO_DETECT when the pipeline starts.
+     * STANDALONE runs on-board frame sync and leaves the FSYNC pin free.
+     * The FSYNC pin is unavailable when another owner holds it, or when the aux connector driver is not running.
+     * With an unavailable pin, AUTO_DETECT runs STANDALONE, logs a warning with the reason, and returns true. MASTER and SLAVE fail.
+     * MASTER, SLAVE, and STANDALONE also fail when the device cannot write the role to its frame sync controller.
+     * After a failed MASTER or SLAVE, the pipeline start throws the same error message until a later call succeeds.
      * @param role External frame sync role to be set, AUTO_DETECT by default
      * @returns Tuple of bool and string. Bool specifies if role was set without failures. String is the error message describing the failure reason.
+     * For a busy FSYNC pin, the message names the holder if the aux connector reports one, such as a process with its pid or a GPIO line with its consumer.
      */
     std::tuple<bool, std::string> setExternalFrameSyncRole(ExternalFrameSyncRole role = ExternalFrameSyncRole::AUTO_DETECT);
 
     /**
-     * Gets external frame sync role for the device
-     * @returns Gets external frame sync role
+     * Gets external frame sync role for the device.
+     * After a role is set or the pipeline starts, returns the role the device applied: MASTER, SLAVE, or STANDALONE.
+     * When the FSYNC pin was unavailable, returns STANDALONE, for AUTO_DETECT and for a failed MASTER or SLAVE.
+     * When the device could not write the role to its frame sync controller, returns the role as if the write had succeeded.
+     * Before any role is set and before the pipeline starts, returns MASTER or SLAVE, the role that AUTO_DETECT picks from the M8 connector state.
+     * The device does not check the FSYNC pin for that read, so AUTO_DETECT can still give STANDALONE when the pipeline starts.
+     * @returns External frame sync role
      */
     ExternalFrameSyncRole getExternalFrameSyncRole();
 
