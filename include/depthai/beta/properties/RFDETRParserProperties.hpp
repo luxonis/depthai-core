@@ -24,7 +24,9 @@ struct RFDETRParserProperties : PropertiesSerializable<Properties, RFDETRParserP
     ~RFDETRParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(RFDETRParserProperties, initialConfig, labelNames, outputLayerNames, inputSize);
+DEPTHAI_SERIALIZE_EXT_DECL(RFDETRParserProperties, initialConfig, labelNames, outputLayerNames, inputSize);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::RFDETRParserProperties>;

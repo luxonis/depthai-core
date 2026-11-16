@@ -21,6 +21,6 @@ struct NodeConnectionSchema {
     }
 };
 
-DEPTHAI_SERIALIZE_EXT(NodeConnectionSchema, node1Id, node1OutputGroup, node1Output, node2Id, node2InputGroup, node2Input);
+DEPTHAI_SERIALIZE_EXT_DECL(NodeConnectionSchema, node1Id, node1OutputGroup, node1Output, node2Id, node2InputGroup, node2Input);
 
 }  // namespace dai

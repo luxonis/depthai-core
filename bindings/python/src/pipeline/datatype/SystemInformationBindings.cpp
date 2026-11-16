@@ -19,7 +19,7 @@ void bind_systeminformation(pybind11::module& m, void* pCallstack) {
 
     // py::class_<RawSystemInformation, RawBuffer, std::shared_ptr<RawSystemInformation>> rawSystemInformation(m, "RawSystemInformation", DOC(dai,
     // RawSystemInformation));
-    py::class_<SystemInformation, Py<SystemInformation>, Buffer, std::shared_ptr<SystemInformation>> systemInformation(
+    py::class_<SystemInformation, Py<SystemInformation>, Buffer, py::smart_holder> systemInformation(
         m, "SystemInformation", DOC(dai, SystemInformation));
 
     ///////////////////////////////////////////////////////////////////////
@@ -77,7 +77,7 @@ void bind_systeminformationRVC4(pybind11::module& m, void* pCallstack) {
 
     // py::class_<RawSystemInformationRVC4, RawBuffer, std::shared_ptr<RawSystemInformationRVC4>> rawSystemInformationRVC4(
     // m, "RawSystemInformationRVC4", DOC(dai, RawSystemInformationRVC4));
-    py::class_<SystemInformationRVC4, Py<SystemInformationRVC4>, Buffer, std::shared_ptr<SystemInformationRVC4>> systemInformationRVC4(
+    py::class_<SystemInformationRVC4, Py<SystemInformationRVC4>, Buffer, py::smart_holder> systemInformationRVC4(
         m, "SystemInformationRVC4", DOC(dai, SystemInformationRVC4));
 
     ///////////////////////////////////////////////////////////////////////

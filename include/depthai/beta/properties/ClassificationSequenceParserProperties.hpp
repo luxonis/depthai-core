@@ -23,7 +23,9 @@ struct ClassificationSequenceParserProperties : PropertiesSerializable<Propertie
     ~ClassificationSequenceParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ClassificationSequenceParserProperties, outputLayerName, classes, nClasses, isSoftmax, initialConfig);
+DEPTHAI_SERIALIZE_EXT_DECL(ClassificationSequenceParserProperties, outputLayerName, classes, nClasses, isSoftmax, initialConfig);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::ClassificationSequenceParserProperties>;

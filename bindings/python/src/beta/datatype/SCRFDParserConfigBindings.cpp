@@ -5,7 +5,7 @@
 void bind_beta_scrfdparserconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::SCRFDParserConfig, Py<beta::SCRFDParserConfig>, Buffer, std::shared_ptr<beta::SCRFDParserConfig>> config(
+    py::class_<beta::SCRFDParserConfig, Py<beta::SCRFDParserConfig>, Buffer, py::smart_holder> config(
         betaModule, "SCRFDParserConfig", DOC(dai, beta, SCRFDParserConfig));
 
     Callstack* callstack = (Callstack*)pCallstack;

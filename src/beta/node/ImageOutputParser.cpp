@@ -20,8 +20,6 @@
 namespace dai {
 namespace beta {
 
-ImageOutputParserProperties::~ImageOutputParserProperties() = default;
-
 namespace node {
 
 namespace {

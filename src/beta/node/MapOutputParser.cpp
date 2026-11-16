@@ -18,8 +18,6 @@
 namespace dai {
 namespace beta {
 
-MapOutputParserProperties::~MapOutputParserProperties() = default;
-
 namespace node {
 
 MapOutputParser::MapOutputParser(std::unique_ptr<Properties> props)

@@ -25,7 +25,7 @@ using namespace dai::node;
     throw;
 }
 
-class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode, false> {
+class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode, false>, public py::trampoline_self_life_support {
     std::string nodeName = ThreadedHostNode::NAME;
 
    public:
@@ -52,7 +52,7 @@ class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode,
     }
 };
 
-class PyHostNode : public NodeCRTP<HostNode, PyHostNode, false> {
+class PyHostNode : public NodeCRTP<HostNode, PyHostNode, false>, public py::trampoline_self_life_support {
     std::string nodeName = ThreadedHostNode::NAME;
 
    public:
@@ -87,11 +87,29 @@ void setPythonNodeName(ThreadedHostNode& node, std::string name) {
     }
 }
 
+struct AddHostNodeToPipeline {};
+
+namespace pybind11 {
+namespace detail {
+template <>
+struct process_attribute<AddHostNodeToPipeline> : process_attribute_default<AddHostNodeToPipeline> {
+    static void postcall(function_call& call, handle) {
+        // The init factory has installed the smart_holder by this point. Its
+        // shared_ptr conversion now establishes Python-retaining ownership,
+        // including the control block used by Node::shared_from_this().
+        // Register before returning from the base initializer so Python node
+        // constructors can immediately use getParentPipeline().
+        getImplicitPipeline()->add(py::cast<std::shared_ptr<dai::Node>>(call.init_self));
+    }
+};
+}  // namespace detail
+}  // namespace pybind11
+
 void bind_hostnode(pybind11::module& m, void* pCallstack) {
     // declare upfront
-    auto threadedHostNode = py::class_<ThreadedHostNode, PyThreadedHostNode, ThreadedNode, std::shared_ptr<ThreadedHostNode>>(
+    auto threadedHostNode = py::class_<ThreadedHostNode, PyThreadedHostNode, ThreadedNode, py::smart_holder>(
         daiNodeModule, "ThreadedHostNode", DOC(dai, node, ThreadedHostNode));
-    auto hostNode = py::class_<HostNode, PyHostNode, ThreadedHostNode, std::shared_ptr<HostNode>>(daiNodeModule, "HostNode", DOC(dai, node, HostNode));
+    auto hostNode = py::class_<HostNode, PyHostNode, ThreadedHostNode, py::smart_holder>(daiNodeModule, "HostNode", DOC(dai, node, HostNode));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -108,13 +126,12 @@ void bind_hostnode(pybind11::module& m, void* pCallstack) {
 
     threadedHostNode
         .def(py::init<>([]() {
-            if(!isCreatingNodeFromPipelineCreate()) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Constructing ThreadedHostNode directly is deprecated. Use pipeline.create(...) instead.", 1);
-            }
-            auto node = std::make_shared<PyThreadedHostNode>();
-            getImplicitPipeline()->add(node);
-            return node;
-        }))
+                 if(!isCreatingNodeFromPipelineCreate()) {
+                     PyErr_WarnEx(PyExc_DeprecationWarning, "Constructing ThreadedHostNode directly is deprecated. Use pipeline.create(...) instead.", 1);
+                 }
+                 return std::make_unique<PyThreadedHostNode>();
+             }),
+             AddHostNodeToPipeline{})
         .def("run", &ThreadedHostNode::run)
         .def("onStart", &ThreadedHostNode::onStart)
         .def("onStop", &ThreadedHostNode::onStop)
@@ -149,13 +166,12 @@ void bind_hostnode(pybind11::module& m, void* pCallstack) {
 
     hostNode
         .def(py::init([]() {
-            if(!isCreatingNodeFromPipelineCreate()) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Constructing HostNode directly is deprecated. Use pipeline.create(...) instead.", 1);
-            }
-            auto node = std::make_shared<PyHostNode>();
-            getImplicitPipeline()->add(node);
-            return node;
-        }))
+                 if(!isCreatingNodeFromPipelineCreate()) {
+                     PyErr_WarnEx(PyExc_DeprecationWarning, "Constructing HostNode directly is deprecated. Use pipeline.create(...) instead.", 1);
+                 }
+                 return std::make_unique<PyHostNode>();
+             }),
+             AddHostNodeToPipeline{})
         .def("processGroup", &HostNode::processGroup)
         .def_property_readonly(
             "inputs", [](HostNode& node) { return &node.inputs; }, py::return_value_policy::reference_internal)

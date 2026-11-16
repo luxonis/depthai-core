@@ -30,16 +30,13 @@ class GateControl : public Buffer {
 
     ~GateControl() override;
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = this->getDatatype();
-    }
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::GateControl;
     }
 
-    DEPTHAI_SERIALIZE(GateControl, open, numMessages, fps);
+    DEPTHAI_SERIALIZE_DECL(GateControl, open, numMessages, fps);
 };
 
 }  // namespace dai

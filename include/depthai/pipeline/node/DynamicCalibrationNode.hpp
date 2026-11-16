@@ -9,7 +9,9 @@
 #include <utility>
 #include <vector>
 
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/StereoPair.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/Platform.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
 #include "depthai/utility/spimpl.h"

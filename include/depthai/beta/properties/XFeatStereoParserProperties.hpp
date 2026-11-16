@@ -26,7 +26,9 @@ struct XFeatStereoParserProperties : PropertiesSerializable<Properties, XFeatSte
     ~XFeatStereoParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(XFeatStereoParserProperties, outputLayerFeats, outputLayerKeypoints, outputLayerHeatmaps, originalSize, inputSize, initialConfig);
+DEPTHAI_SERIALIZE_EXT_DECL(XFeatStereoParserProperties, outputLayerFeats, outputLayerKeypoints, outputLayerHeatmaps, originalSize, inputSize, initialConfig);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::XFeatStereoParserProperties>;

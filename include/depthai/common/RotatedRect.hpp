@@ -171,6 +171,6 @@ struct RotatedRect {
     }
 };
 
-DEPTHAI_SERIALIZE_EXT(RotatedRect, center, size, angle);
+DEPTHAI_SERIALIZE_EXT_DECL(RotatedRect, center, size, angle);
 
 }  // namespace dai

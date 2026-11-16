@@ -15,7 +15,7 @@ struct CameraInfo {
     Extrinsics extrinsics;
     float specHfovDeg = 0.0f;  // fov in deg
     CameraModel cameraType = CameraModel::Perspective;
-    DEPTHAI_SERIALIZE(CameraInfo, cameraType, width, height, specHfovDeg, lensPosition, intrinsicMatrix, distortionCoeff, extrinsics);
+    DEPTHAI_SERIALIZE_DECL(CameraInfo, cameraType, width, height, specHfovDeg, lensPosition, intrinsicMatrix, distortionCoeff, extrinsics);
 };
 
 }  // namespace dai

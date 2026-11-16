@@ -77,7 +77,7 @@ class MLSDParserConfig : public Buffer {
         return DatatypeEnum::MLSDParserConfig;
     }
 
-    DEPTHAI_SERIALIZE(MLSDParserConfig, topK, scoreThreshold, distanceThreshold);
+    DEPTHAI_SERIALIZE_DECL(MLSDParserConfig, topK, scoreThreshold, distanceThreshold);
 };
 
 }  // namespace beta

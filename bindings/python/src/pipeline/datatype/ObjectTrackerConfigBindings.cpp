@@ -17,7 +17,7 @@ void bind_objecttrackerconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     // py::class_<RawPointCloudConfig, RawBuffer, std::shared_ptr<RawPointCloudConfig>> rawConfig(m, "RawPointCloudConfig", DOC(dai, RawPointCloudConfig));
-    py::class_<ObjectTrackerConfig, Py<ObjectTrackerConfig>, Buffer, std::shared_ptr<ObjectTrackerConfig>> config(
+    py::class_<ObjectTrackerConfig, Py<ObjectTrackerConfig>, Buffer, py::smart_holder> config(
         m, "ObjectTrackerConfig", DOC(dai, ObjectTrackerConfig));
 
     ///////////////////////////////////////////////////////////////////////

@@ -20,8 +20,6 @@
 namespace dai {
 namespace beta {
 
-LaneDetectionParserProperties::~LaneDetectionParserProperties() = default;
-
 namespace node {
 
 NNArchive LaneDetectionParser::createNNArchive(NNModelDescription& modelDesc) {

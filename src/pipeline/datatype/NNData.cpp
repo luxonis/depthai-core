@@ -368,4 +368,31 @@ void NNData::deserializeProto(const std::vector<std::uint8_t>& bytes) {
 }
 #endif
 
+#ifdef DEPTHAI_XTENSOR_SUPPORT
+// Not inline in the header: each inline call instantiated the xtensor templates in every unit.
+NNData& NNData::addTensor(const std::string& name, const std::vector<int>& tensor) {
+    return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
+}
+
+NNData& NNData::addTensor(const std::string& name, const std::vector<uint16_t>& tensor) {
+    return addTensor<uint16_t>(name, tensor, dai::TensorInfo::DataType::FP16);
+}
+
+NNData& NNData::addTensor(const std::string& name, const std::vector<float>& tensor) {
+    return addTensor<float>(name, tensor, dai::TensorInfo::DataType::FP32);
+}
+
+NNData& NNData::addTensor(const std::string& name, const std::vector<double>& tensor) {
+    return addTensor<double>(name, tensor, dai::TensorInfo::DataType::FP64);
+}
+
+NNData& NNData::addTensor(const std::string& name, const std::vector<std::int8_t>& tensor) {
+    return addTensor<std::int8_t>(name, tensor, dai::TensorInfo::DataType::I8);
+}
+
+NNData& NNData::addTensor(const std::string& name, const std::vector<std::uint8_t>& tensor) {
+    return addTensor<std::uint8_t>(name, tensor, dai::TensorInfo::DataType::U8F);
+}
+#endif
+
 }  // namespace dai

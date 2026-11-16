@@ -1,7 +1,7 @@
-import cv2
+import pytest
+cv2 = pytest.importorskip("cv2")
 import depthai as dai
 import numpy as np
-import pytest
 import numpy.typing as npt
 
 DEBUG = False

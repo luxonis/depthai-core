@@ -3,7 +3,11 @@
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
+
+#include "depthai/common/json.hpp"
+#include "depthai/common/optional.hpp"
 
 namespace dai {
 namespace nn_archive {
@@ -272,6 +276,82 @@ struct Metadata {
      */
     nlohmann::json extraParams;
 };
+
+/** @brief Read Metadata from its NNArchive JSON representation. */
+inline void from_json(const nlohmann::json& j, Metadata& value) {
+    Metadata metadata;
+    if(j.contains("anchors")) j.at("anchors").get_to(metadata.anchors);
+    if(j.contains("classes")) j.at("classes").get_to(metadata.classes);
+    if(j.contains("conf_threshold")) j.at("conf_threshold").get_to(metadata.confThreshold);
+    if(j.contains("iou_threshold")) j.at("iou_threshold").get_to(metadata.iouThreshold);
+    if(j.contains("max_det")) j.at("max_det").get_to(metadata.maxDet);
+    if(j.contains("n_classes")) j.at("n_classes").get_to(metadata.nClasses);
+    if(j.contains("postprocessor_path")) j.at("postprocessor_path").get_to(metadata.postprocessorPath);
+    if(j.contains("is_softmax")) j.at("is_softmax").get_to(metadata.isSoftmax);
+    if(j.contains("background_class")) j.at("background_class").get_to(metadata.backgroundClass);
+    if(j.contains("boxes_outputs")) j.at("boxes_outputs").get_to(metadata.boxesOutputs);
+    if(j.contains("scores_outputs")) j.at("scores_outputs").get_to(metadata.scoresOutputs);
+    if(j.contains("angles_outputs")) j.at("angles_outputs").get_to(metadata.anglesOutputs);
+    if(j.contains("keypoints_outputs")) j.at("keypoints_outputs").get_to(metadata.keypointsOutputs);
+    if(j.contains("mask_outputs")) j.at("mask_outputs").get_to(metadata.maskOutputs);
+    if(j.contains("n_keypoints")) j.at("n_keypoints").get_to(metadata.nKeypoints);
+    if(j.contains("n_prototypes")) j.at("n_prototypes").get_to(metadata.nPrototypes);
+    if(j.contains("protos_outputs")) j.at("protos_outputs").get_to(metadata.protosOutputs);
+    if(j.contains("subtype")) j.at("subtype").get_to(metadata.subtype);
+    if(j.contains("yolo_outputs")) j.at("yolo_outputs").get_to(metadata.yoloOutputs);
+    if(j.contains("strides")) j.at("strides").get_to(metadata.strides);
+    metadata.extraParams = j;
+    value = std::move(metadata);
+}
+
+/** @brief Write Metadata in NNArchive JSON format, preserving custom metadata fields. */
+inline void to_json(nlohmann::json& j, const Metadata& value) {
+    j = value.extraParams.is_object() ? value.extraParams : nlohmann::json::object();
+    j["anchors"] = value.anchors;
+    j["classes"] = value.classes;
+    j["conf_threshold"] = value.confThreshold;
+    j["iou_threshold"] = value.iouThreshold;
+    j["max_det"] = value.maxDet;
+    j["n_classes"] = value.nClasses;
+    j["postprocessor_path"] = value.postprocessorPath;
+    j["is_softmax"] = value.isSoftmax;
+    j["background_class"] = value.backgroundClass;
+    j["boxes_outputs"] = value.boxesOutputs;
+    j["scores_outputs"] = value.scoresOutputs;
+    j["angles_outputs"] = value.anglesOutputs;
+    j["keypoints_outputs"] = value.keypointsOutputs;
+    j["mask_outputs"] = value.maskOutputs;
+    j["n_keypoints"] = value.nKeypoints;
+    j["n_prototypes"] = value.nPrototypes;
+    j["protos_outputs"] = value.protosOutputs;
+    j["subtype"] = value.subtype;
+    j["yolo_outputs"] = value.yoloOutputs;
+    j["strides"] = value.strides;
+}
+
+NOP_EXTERNAL_STRUCTURE(Metadata,
+                       anchors,
+                       classes,
+                       confThreshold,
+                       iouThreshold,
+                       maxDet,
+                       nClasses,
+                       postprocessorPath,
+                       isSoftmax,
+                       backgroundClass,
+                       boxesOutputs,
+                       scoresOutputs,
+                       anglesOutputs,
+                       keypointsOutputs,
+                       maskOutputs,
+                       nKeypoints,
+                       nPrototypes,
+                       protosOutputs,
+                       subtype,
+                       yoloOutputs,
+                       strides,
+                       extraParams);
+
 }  // namespace v1
 }  // namespace nn_archive
 }  // namespace dai
