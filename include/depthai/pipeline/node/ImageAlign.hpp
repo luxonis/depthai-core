@@ -13,12 +13,13 @@ namespace dai {
 namespace node {
 
 /**
- * @brief ImageAlign node. Calculates spatial location data on a set of ROIs on depth map.
+ * @brief Align an image or depth map to another camera's image geometry.
  */
 class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "ImageAlign";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+    using Backend = dai::Backend;
 
    protected:
     struct ImageAlignInputState {
@@ -39,7 +40,7 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
 
    public:
     /**
-     * Initial config to use when calculating spatial location data.
+     * Initial alignment configuration.
      */
     std::shared_ptr<ImageAlignConfig> initialConfig = std::make_shared<ImageAlignConfig>();
 
@@ -63,6 +64,7 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
 
     /**
      * Outputs ImgFrame message that is aligned to inputAlignTo.
+     * For RAW16 depth, values represent axial Z in the target camera coordinate system; zero remains invalid.
      */
     Output outputAligned{*this, {"outputAligned", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}}}};
 
@@ -96,6 +98,22 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
      * Specify number of frames in the pool
      */
     ImageAlign& setNumFramesPool(int numFramesPool);
+
+    /**
+     * Select the execution backend before starting the pipeline.
+     * CPU uses the host or RVC4 CPU; GPU prefers the RVC4 GPU for supported RAW16
+     * frames and falls back to CPU otherwise. Host execution always uses CPU.
+     * AUTO is the default and preserves the platform's automatic selection.
+     * RVC2 device execution supports only AUTO (hardware remapping and SHAVEs).
+     * This does not change host/device placement; use setRunOnHost() for that.
+     * @param backend CPU, GPU or AUTO
+     * @return This node for chaining
+     * @throws std::invalid_argument for HW or an unknown backend
+     */
+    ImageAlign& setBackend(Backend backend);
+
+    /** Get the configured backend preference; runtime fallback does not change it. */
+    Backend getBackend() const;
 
     /**
      * Specify whether to run on host or device

@@ -97,17 +97,20 @@ void runDepthShiftTest(bool runOnHost) {
     const dai::Extrinsics targetExtrinsics(identity, {0.0f, 0.0f, 0.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
     const dai::ImgTransformation targetTransformation(64, 48, k, dai::CameraModel::Perspective, {}, targetExtrinsics);
     constexpr uint16_t DEPTH = 2000;
+    // Round the projected coordinate, not the signed shift: round(32 - 0.5) = 32.
     for(const auto& [baseline, displacement] : {std::pair<float, int>{0.0f, 0},
                                                 {1.0f, 0},
                                                 {-1.0f, 0},
                                                 {15.3125f, 0},
                                                 {-15.3125f, 0},
                                                 {15.625f, 1},
-                                                {-15.625f, -1},
+                                                {-15.625f, 0},
                                                 {15.9375f, 1},
                                                 {-15.9375f, -1},
                                                 {31.25f, 1},
                                                 {-31.25f, -1},
+                                                {46.875f, 2},
+                                                {-46.875f, -1},
                                                 {140.0f, 4},
                                                 {-140.0f, -4},
                                                 {141.25f, 5},
@@ -387,11 +390,11 @@ TEST_CASE("Test Align preserves distorted depth coverage on device") {
     runRotatedCoverageTest(false, true);
 }
 
-TEST_CASE("Test Align rounds signed shifts and only splats nonzero displacements on host") {
+TEST_CASE("Test Align rounds projected coordinates and only splats nonzero displacements on host") {
     runDepthShiftTest(true);
 }
 
-TEST_CASE("Test Align rounds signed shifts and only splats nonzero displacements on device") {
+TEST_CASE("Test Align rounds projected coordinates and only splats nonzero displacements on device") {
     runDepthShiftTest(false);
 }
 

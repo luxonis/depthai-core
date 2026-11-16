@@ -3,14 +3,17 @@
 #include <algorithm>
 #include <cmath>
 #include <sstream>
+#include <stdexcept>
 #include <unordered_set>
 
+#include "depthai/utility/ImageAlignDepth.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
     #include <opencv2/calib3d.hpp>
     #include <opencv2/imgproc/imgproc.hpp>
 
+    #include "pipeline/utilities/Alignment/ImageAlignCpu.hpp"
     #include "pipeline/utilities/Alignment/RectifiedBounds.hpp"
 #endif
 
@@ -47,6 +50,23 @@ ImageAlign& ImageAlign::setNumShaves(int numShaves) {
 ImageAlign& ImageAlign::setNumFramesPool(int numFramesPool) {
     properties.numFramesPool = numFramesPool;
     return *this;
+}
+
+ImageAlign& ImageAlign::setBackend(Backend backend) {
+    switch(backend) {
+        case Backend::CPU:
+        case Backend::GPU:
+        case Backend::AUTO:
+            properties.backend = backend;
+            return *this;
+        case Backend::HW:
+            throw std::invalid_argument("ImageAlign does not support the HW backend; use AUTO for platform defaults");
+    }
+    throw std::invalid_argument("Unknown ImageAlign backend");
+}
+
+ImageAlign::Backend ImageAlign::getBackend() const {
+    return properties.backend;
 }
 
 void ImageAlign::setRunOnHost(bool runOnHost) {
@@ -110,38 +130,14 @@ std::string matToString(const cv::Mat& mat) {
     return oss.str();
 }
 
-void shiftDepthImg(const cv::Mat& input, cv::Mat& output, const std::array<int, 65536>& depthLut, bool shiftPositive) {
-    const int width = input.cols;
-    const int height = input.rows;
-    output.create(input.size(), input.type());
-
-    for(int i = 0; i < height; i++) {
-        const uint16_t* currentLine = input.ptr<uint16_t>(i);
-        uint16_t* alignedLine = output.ptr<uint16_t>(i);
-
-        memset(alignedLine, 0, width * sizeof(uint16_t));
-
-        for(int j = shiftPositive ? width - 1 : 0; j >= 0 && j < width; j += shiftPositive ? -1 : 1) {
-            const uint16_t depth = currentLine[j];
-            if(depth == 0) continue;
-            if(depthLut[depth] == 0) {
-                alignedLine[j] = depth;
-                continue;
-            }
-            const int u = j + depthLut[depth];
-            for(const int x : {u, u + (shiftPositive ? 1 : -1)}) {
-                if(x >= 0 && x < width) alignedLine[x] = depth;
-            }
-        }
-    }
-}
-
 }  // namespace
 
 void ImageAlign::run() {
     using namespace std::chrono;
     auto& logger = pimpl->logger;
     logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
+
+    if(properties.backend == Backend::GPU) logger->warn("ImageAlign GPU backend is unavailable on host; using CPU");
 
     bool calibrationSet = false;
     std::array<std::array<float, 3>, 3> depthSourceIntrinsics;
@@ -162,7 +158,12 @@ void ImageAlign::run() {
     cv::Mat map_x_2, map_y_2;
 
     cv::Mat depthImgRectifiedFrame, shiftedOutput;
-    std::array<int, 65536> depthShiftLut{};
+    std::array<float, 65536> depthShiftLut{};
+    std::vector<float> rectifiedRayZ, alignedDepthScales;
+    float alignedDepthOffset = 0.0f;
+    std::vector<std::ptrdiff_t> rectifiedOffsets, alignedOffsets;
+    size_t cachedInputStride = 0;
+    bool depthMapsDirty = true;
 
     std::unordered_set<ImgFrame::Type> hwSupportedFrameTypes = {ImgFrame::Type::YUV420p, ImgFrame::Type::NV12, ImgFrame::Type::GRAY8, ImgFrame::Type::RAW8};
     std::unordered_set<ImgFrame::Type> supportedFrameTypes = hwSupportedFrameTypes;
@@ -178,6 +179,7 @@ void ImageAlign::run() {
 
     auto extractCalibrationData = [&](int depthWidth, int depthHeight, int alignWidth, int alignHeight) {
         if(calibrationSet) return;
+        depthMapsDirty = true;
 
         if(depthDistortionCoefficients.empty()) {
             depthDistortionCoefficients.assign(14, 0.0f);
@@ -229,7 +231,7 @@ void ImageAlign::run() {
         }
 
         const float shift = depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0];
-        for(size_t i = 1; i < depthShiftLut.size(); ++i) depthShiftLut[i] = static_cast<int>(std::round(shift / static_cast<float>(i)));
+        for(size_t i = 1; i < depthShiftLut.size(); ++i) depthShiftLut[i] = shift / static_cast<float>(i);
 
         cv::Mat cv_combinedExtrinsics = cv::Mat::eye(4, 4, CV_32F);
         cv_newR.copyTo(cv_combinedExtrinsics(cv::Rect(0, 0, 3, 3)));
@@ -241,6 +243,22 @@ void ImageAlign::run() {
         cv_meshSize = cv::Size(alignWidth, alignHeight);
 
         cv::initUndistortRectifyMap(cv_targetCamMatrix, cv_dNone, cv_R_back, cv_M2, cv_meshSize, CV_32FC1, map_x_2, map_y_2);
+
+        if(inputFrameType == ImgFrame::Type::RAW16) {
+            cv::Mat sourceZFromRectifiedPixel = cv_R1.t() * cv_targetCamMatrix.inv();
+            cv::Mat sourceZFromAlignedPixel = cv_R.t() * cv_M2.inv();
+            cv::Mat sourceTranslation = cv_R.t() * cv_T.t();
+            alignedDepthOffset = sourceTranslation.at<float>(2);
+            rectifiedRayZ = impl::imageAlignDepthScales(
+                rectifiedSize.width,
+                rectifiedSize.height,
+                {sourceZFromRectifiedPixel.at<float>(2, 0), sourceZFromRectifiedPixel.at<float>(2, 1), sourceZFromRectifiedPixel.at<float>(2, 2)},
+                false);
+            alignedDepthScales = impl::imageAlignDepthScales(
+                alignWidth,
+                alignHeight,
+                {sourceZFromAlignedPixel.at<float>(2, 0), sourceZFromAlignedPixel.at<float>(2, 1), sourceZFromAlignedPixel.at<float>(2, 2)});
+        }
 
         logger->debug("R = {}", matToString(cv_R));
         logger->debug("T = {}", matToString(cv_T));
@@ -413,6 +431,7 @@ void ImageAlign::run() {
         int currentShiftFactor = constantShiftFactor - previousShiftFactor;
 
         if(currentShiftFactor != 0) {
+            depthMapsDirty = true;
             shiftMesh(map_x_1, -currentShiftFactor);
         }
 
@@ -426,16 +445,26 @@ void ImageAlign::run() {
         // warp1
         auto inputFrame = inputImg->getFrame();
 
-        if(inputFrameBpp == 1.5f) {
-            if(inputImg->getType() == ImgFrame::Type::NV12) {
-                remapNv12(inputFrame, depthImgRectifiedFrame, map_x_1, map_y_1);
-            } else if(inputImg->getType() == ImgFrame::Type::YUV420p) {
-                remapYuv420(inputFrame, depthImgRectifiedFrame, map_x_1, map_y_1);
-            } else {
-                logger->error("Unsupported frame type for NV12/YUV420 remapping: {}", (int)inputImg->getType());
+        const bool fusedDepth = inputIsDepth && staticDepthPlane == 0;
+        if(fusedDepth) {
+            if(depthMapsDirty || cachedInputStride != inputFrame.step1()) {
+                rectifiedOffsets = detail::nearestDepthOffsets(map_x_1, map_y_1, inputFrame.size(), inputFrame.step1());
+                alignedOffsets = detail::nearestDepthOffsets(map_x_2, map_y_2, map_x_1.size(), map_x_1.cols);
+                cachedInputStride = inputFrame.step1();
+                depthMapsDirty = false;
             }
         } else {
-            cv::remap(inputFrame, depthImgRectifiedFrame, map_x_1, map_y_1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+            if(inputFrameBpp == 1.5f) {
+                if(inputImg->getType() == ImgFrame::Type::NV12) {
+                    remapNv12(inputFrame, depthImgRectifiedFrame, map_x_1, map_y_1);
+                } else if(inputImg->getType() == ImgFrame::Type::YUV420p) {
+                    remapYuv420(inputFrame, depthImgRectifiedFrame, map_x_1, map_y_1);
+                } else {
+                    logger->error("Unsupported frame type for NV12/YUV420 remapping: {}", (int)inputImg->getType());
+                }
+            } else {
+                cv::remap(inputFrame, depthImgRectifiedFrame, map_x_1, map_y_1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+            }
         }
 
         if(PRINT_DEBUG) {
@@ -452,7 +481,8 @@ void ImageAlign::run() {
 
         if(inputIsDepth && staticDepthPlane == 0) {
             auto startProcessing = high_resolution_clock::now();
-            shiftDepthImg(depthImgRectifiedFrame, shiftedOutput, depthShiftLut, depthToAlignExtrinsics[0][3] > 0);
+            detail::remapAndShiftDepth(
+                inputFrame, shiftedOutput, map_x_1.size(), rectifiedOffsets, depthShiftLut, depthToAlignExtrinsics[0][3] > 0, rectifiedRayZ);
 
             auto stopProcessing = high_resolution_clock::now();
 
@@ -503,7 +533,9 @@ void ImageAlign::run() {
         }
 
         auto alignedImgFrame = alignedImg->getFrame();
-        if(inputFrameBpp == 1.5f) {
+        if(fusedDepth) {
+            detail::remapAndConvertDepth(warp2InputFrame, alignedImgFrame, alignedOffsets, alignedDepthScales, alignedDepthOffset);
+        } else if(inputFrameBpp == 1.5f) {
             if(alignedImg->getType() == ImgFrame::Type::NV12) {
                 remapNv12(warp2InputFrame, alignedImgFrame, map_x_2, map_y_2);
             } else if(alignedImg->getType() == ImgFrame::Type::YUV420p) {
@@ -518,6 +550,10 @@ void ImageAlign::run() {
             t2 = steady_clock::now();
             auto elapsed = duration_cast<microseconds>(t2 - t1).count() / 1000.f;
             logger->warn("Align step3 took '{}' ms.", elapsed);
+        }
+
+        if(inputIsDepth && !fusedDepth) {
+            impl::imageAlignConvertDepth(alignedImgFrame.data, alignWidth, alignHeight, alignedImgFrame.step, alignedDepthScales.data(), alignedDepthOffset);
         }
 
         alignedImg->setInstanceNum((uint32_t)alignTo);
