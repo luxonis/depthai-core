@@ -1,0 +1,87 @@
+2026-11-16 12:41:51,752 [INFO] Checking sanity testbed-c1-4pro
+2026-11-16 12:44:39,030 [INFO] Sanity check passed
+2026-11-16 12:44:39,622 [INFO] Using testbed: testbed-c1-4pro
+2026-11-16 12:44:39,623 [INFO] Installing rvc4 os version: aux-con-dev-4+9905f59d3949db3459296f554d5e15145ad585a3
+2026-11-16 12:48:30,013 [INFO] Upgraded OS version matches the requested OS version
+Running tests with args: rvc4usb --test-label ci|ci_nightly
+Running tests for configuration: RVC4 - USB, on platform: rvc4, on protocol: usb, with labels: rvc4
+[RVC4 - USB]         Start 107: fsync_test
+[RVC4 - USB] 107: Test command: /workspace/build/tests/fsync_test
+[RVC4 - USB] 107: Working Directory: /workspace/build/tests
+[RVC4 - USB] 107: Environment variables:
+[RVC4 - USB] 107:  UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1
+[RVC4 - USB] 107:  ASAN_OPTIONS=detect_container_overflow=0
+[RVC4 - USB] 107:  DEPTHAI_SEARCH_TIMEOUT=30000
+[RVC4 - USB] 107:  DEPTHAI_RECONNECT_TIMEOUT=0
+[RVC4 - USB] 107: Test timeout computed to be: 1000
+[RVC4 - USB] 107: Randomness seeded to: 546793918
+[RVC4 - USB] 107:
+[RVC4 - USB] 107: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[RVC4 - USB] 107: fsync_test is a Catch2 v3.8.1 host application.
+[RVC4 - USB] 107: Run with -? for options
+[RVC4 - USB] 107:
+[RVC4 - USB] 107: -------------------------------------------------------------------------------
+[RVC4 - USB] 107: Test Fsync with different FPS values
+[RVC4 - USB] 107: -------------------------------------------------------------------------------
+[RVC4 - USB] 107: /workspace/tests/src/ondevice_tests/pipeline/node/fsync_test.cpp:299
+[RVC4 - USB] 107: ...............................................................................
+[RVC4 - USB] 107:
+[RVC4 - USB] 107: /workspace/tests/src/ondevice_tests/pipeline/node/fsync_test.cpp:269: FAILED:
+[RVC4 - USB] 107:   REQUIRE( diffAll <= thresholds.all )
+[RVC4 - USB] 107: with expansion:
+[RVC4 - USB] 107:   1014533 ns <= 1000000 ns
+[RVC4 - USB] 107: with messages:
+[RVC4 - USB] 107:   fps := 10.0f
+[RVC4 - USB] 107:   i := 0
+[RVC4 - USB] 107:
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830834.713] [BenchmarkIn(4)] [warning] FPS: 12.522239
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830834.713] [BenchmarkIn(4)] [warning] Messages took 1.9964482 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830834.713] [BenchmarkIn(4)] [warning] Average latency: 0.021006854 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830836.713] [BenchmarkIn(4)] [warning] FPS: 12.999082
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830836.713] [BenchmarkIn(4)] [warning] Messages took 1.9232128 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830836.713] [BenchmarkIn(4)] [warning] Average latency: 0.02075838 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830838.713] [BenchmarkIn(4)] [warning] FPS: 13.001042
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830838.713] [BenchmarkIn(4)] [warning] Messages took 1.9229227 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830838.713] [BenchmarkIn(4)] [warning] Average latency: 0.02091693 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830840.713] [BenchmarkIn(4)] [warning] FPS: 13.004181
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830840.713] [BenchmarkIn(4)] [warning] Messages took 1.9224586 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830840.713] [BenchmarkIn(4)] [warning] Average latency: 0.020939497 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830844.018] [BenchmarkIn(4)] [warning] FPS: 17.822744
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830844.018] [BenchmarkIn(4)] [warning] Messages took 1.402702 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830844.018] [BenchmarkIn(4)] [warning] Average latency: 0.021235336 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830845.424] [BenchmarkIn(4)] [warning] FPS: 18.501156
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830845.424] [BenchmarkIn(4)] [warning] Messages took 1.3512669 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830845.424] [BenchmarkIn(4)] [warning] Average latency: 0.021063412 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830846.829] [BenchmarkIn(4)] [warning] FPS: 18.498083
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830846.829] [BenchmarkIn(4)] [warning] Messages took 1.3514915 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830846.829] [BenchmarkIn(4)] [warning] Average latency: 0.02123098 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830848.235] [BenchmarkIn(4)] [warning] FPS: 18.495518
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830848.235] [BenchmarkIn(4)] [warning] Messages took 1.3516788 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830848.235] [BenchmarkIn(4)] [warning] Average latency: 0.021153083 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830850.800] [BenchmarkIn(4)] [warning] FPS: 28.987823
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830850.800] [BenchmarkIn(4)] [warning] Messages took 0.8624311 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830850.800] [BenchmarkIn(4)] [warning] Average latency: 0.021580508 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830851.666] [BenchmarkIn(4)] [warning] FPS: 29.987713
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830851.666] [BenchmarkIn(4)] [warning] Messages took 0.8336748 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830851.666] [BenchmarkIn(4)] [warning] Average latency: 0.021280747 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830852.534] [BenchmarkIn(4)] [warning] FPS: 29.956406
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830852.534] [BenchmarkIn(4)] [warning] Messages took 0.834546 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830852.534] [BenchmarkIn(4)] [warning] Average latency: 0.021418663 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830853.400] [BenchmarkIn(4)] [warning] FPS: 29.993263
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830853.400] [BenchmarkIn(4)] [warning] Messages took 0.83352053 s
+[RVC4 - USB] 107: [648669127] [2.9.1] [1794830853.400] [BenchmarkIn(4)] [warning] Average latency: 0.021238683 s
+[RVC4 - USB] 107: ===============================================================================
+[RVC4 - USB] 107: test cases:    4 |    3 passed | 1 failed
+[RVC4 - USB] 107: assertions: 3097 | 3096 passed | 1 failed
+[RVC4 - USB] 107:
+[RVC4 - USB]  32/189 Test #107: fsync_test ...............................***Failed   49.58 sec
+[RVC4 - USB] 99% tests passed, 1 tests failed out of 189
+[RVC4 - USB] Total Test time (real) = 10070.50 sec
+[RVC4 - USB] The following tests FAILED:
+[RVC4 - USB] 	107 - fsync_test (Failed)
+[RVC4 - USB] Errors while running CTest
+Tests failed for configuration: RVC4 - USB
+Some tests failed
+2026-11-16 15:39:01,499 [ERROR] 
+ssh  command failed. Stderr should have already been printed above. 
+2026-11-16 15:39:24,378 [INFO] Free reservation

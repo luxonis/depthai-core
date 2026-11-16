@@ -10,6 +10,8 @@ lines and the output of failed tests. IP addresses and testbed names are replace
 - rvc4usb_lost_device.log: run 43285928756, USB row. hfr_small_preview failed, the camera was gone
   afterwards and 98 tests skipped with "No device available".
 - rvc4_cancelled.log: run 43248339227, Ethernet row, cancelled during its ninth test.
+- rvc4usb_fsync_failed.log: run 43859876832 of hil_aux_soak.yml, USB row, only fsync_test and the ctest
+  summary. Its Catch2 failure is followed by 36 lines of benchmark warnings.
 """
 import contextlib
 import io
@@ -91,12 +93,32 @@ class SummaryTest(unittest.TestCase):
         self.assertEqual(lost["hfr_small_preview"], "failed")
         self.assertEqual(sum(o == "no_device" for o in lost.values()), 98)
         self.assertEqual(outcomes(results, "rvc4usb", 2)["hfr_small_preview"], "passed")
-        failure = next(r["failure"] for r in results["records"] if r["outcome"] == "failed")
-        self.assertIn("produced an error (6) while running", failure)
+        failed = next(r for r in results["records"] if r["outcome"] == "failed")
+        self.assertIn("produced an error (6) while running", failed["failure"])
+        self.assertEqual(failed["seconds"], 72.2)
         self.assertEqual([pass_of(results, "rvc4usb", n)["mass_skip"] for n in (1, 2, 3)], [True, False, False])
         self.assertEqual(pass_of(results, "rvc4usb", 1)["pairing"], "aux+aux-con-dev-4")
         flaky = page.split("### Flaky tests")[1].split("###")[0]
         self.assertIn("| aux+aux-con-dev-4 | rvc4usb | hfr_small_preview | 2 | 1 | 0 |", flaky)
+
+    def test_catch2_failure_keeps_the_assertion_and_the_time(self):
+        write_pass(self.passes, AUX_OS, "rvc4usb", 1, fixture("rvc4usb_fsync_failed.log"))
+        results, _, _ = summarize(self.root, [AUX_OS], ["rvc4usb"], 1)
+
+        failed = next(r for r in results["records"] if r["test"] == "fsync_test")
+        self.assertEqual(failed["outcome"], "failed")
+        self.assertEqual(failed["seconds"], 49.58)
+        self.assertEqual(failed["failure"], "\n".join([
+            "Cause: Failed",
+            "Test Fsync with different FPS values",
+            "/workspace/tests/src/ondevice_tests/pipeline/node/fsync_test.cpp:269: FAILED:",
+            "  REQUIRE( diffAll <= thresholds.all )",
+            "with expansion:",
+            "  1014533 ns <= 1000000 ns",
+            "with messages:",
+            "  fps := 10.0f",
+            "  i := 0",
+        ]))
 
     def test_cancelled_pass_is_partial_and_missing_tests_are_not_run(self):
         write_pass(self.passes, "1.44.0", "rvc4", 1, fixture("rvc4_completed.log"))
