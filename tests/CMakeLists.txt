@@ -584,6 +584,8 @@ dai_set_test_labels(message_queue_test onhost ci)
 
 # StreamMessageParser tests
 dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_test.cpp)
+# The allocator test uses XLink's private headers, including platform compatibility headers.
+target_include_directories(stream_message_parser_test PRIVATE "$<TARGET_PROPERTY:XLink,INCLUDE_DIRECTORIES>")
 dai_set_test_labels(stream_message_parser_test onhost ci)
 
 # Datatype hierarchy completeness
