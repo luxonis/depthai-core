@@ -76,8 +76,8 @@ endif()
 
 # Create depthai project
 project(depthai VERSION "3.12.1" LANGUAGES CXX C)
-if(DEPTHAI_DYNAMIC_CALIBRATION_STATIC AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    message(FATAL_ERROR "DEPTHAI_DYNAMIC_CALIBRATION_STATIC is supported only on Linux")
+if(DEPTHAI_DYNAMIC_CALIBRATION_STATIC AND WIN32)
+    message(FATAL_ERROR "DEPTHAI_DYNAMIC_CALIBRATION_STATIC is not supported on Windows")
 endif()
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
@@ -1710,6 +1710,9 @@ if(DEPTHAI_INSTALL)
 
     if(DEPTHAI_DYNAMIC_CALIBRATION_STATIC)
         install(FILES "$<TARGET_FILE:dynamic_calibration_imported>" DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+        if(APPLE)
+            install(FILES "${DYNAMIC_CALIBRATION_DIR}/lib/libdynamic_calibration.frameworks" DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+        endif()
         install(DIRECTORY "${DYNAMIC_CALIBRATION_DIR}/include/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/depthai/dcl")
         install(FILES "${DYNAMIC_CALIBRATION_DIR}/LICENSE" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/notices" RENAME dynamic_calibration-LICENSE)
         install(FILES cmake/depthaiDynamicCalibrationStatic.cmake DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")

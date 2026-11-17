@@ -781,10 +781,14 @@ endif()
 dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibration_test.cpp)
 dai_set_test_labels(dynamic_calibration_onhost_test onhost)
 if(DEPTHAI_DYNAMIC_CALIBRATION_STATIC)
-    find_program(DEPTHAI_READELF NAMES readelf llvm-readelf REQUIRED)
+    if(APPLE)
+        find_program(DEPTHAI_DCL_INSPECTOR NAMES otool REQUIRED)
+    else()
+        find_program(DEPTHAI_DCL_INSPECTOR NAMES readelf llvm-readelf REQUIRED)
+    endif()
     add_test(NAME dynamic_calibration_static_link
         COMMAND "${CMAKE_COMMAND}" "-DBINARY=$<TARGET_FILE:dynamic_calibration_onhost_test>"
-            "-DREADELF=${DEPTHAI_READELF}" -P "${CMAKE_CURRENT_SOURCE_DIR}/check_static_dcl.cmake")
+            "-DINSPECTOR=${DEPTHAI_DCL_INSPECTOR}" "-DDCL_MACHO=${APPLE}" -P "${CMAKE_CURRENT_SOURCE_DIR}/check_static_dcl.cmake")
     set_tests_properties(dynamic_calibration_static_link PROPERTIES LABELS onhost)
 endif()
 
