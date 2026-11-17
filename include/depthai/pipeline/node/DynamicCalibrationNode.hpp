@@ -12,7 +12,6 @@
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
-#include "depthai/device/Platform.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
 #include "depthai/utility/spimpl.h"
 
@@ -28,9 +27,8 @@ namespace node {
 /**
  * @brief Dynamic calibration node. Performs calibration check and dynamically calibrates the device
  *
- * On RVC4 the node runs on the device by default, so no camera frames cross the link: the images are
- * consumed by the dynamic calibration library inside the firmware and only control and result messages
- * are exchanged with the host. On RVC2 the node runs on the host. Use setRunOnHost() to override.
+ * The node runs on the host by default. On RVC4 it can run on the device with setRunOnHost(false), so no
+ * camera frames cross the link: only control and result messages are exchanged with the host.
  *
  * Calibrated cameras retain their DCL-produced poses relative to housing when available.
  * Other cameras preserve their measured factory transforms from the default stereo-depth reference camera
@@ -144,18 +142,15 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     /**
      * Specify whether to run on host or device.
-     * By default, the node runs on the host on RVC2 and on the device on RVC4. The Sync subnode follows the
-     * placement of the node.
+     * By default, the node runs on the host. Running on the device is supported only on RVC4.
+     * The Sync subnode follows the placement of the node.
      */
     void setRunOnHost(bool runOnHost);
 
     /**
-     * Whether the node runs on the host. Without an explicit setRunOnHost() call this is decided by the
-     * platform of the assigned device: RVC4 runs on the device, everything else on the host.
+     * Check if the node is set to run on host
      */
     bool runOnHost() const override;
-
-    void buildStage1() override;
 
     void postBuildStage() override;
 
@@ -163,19 +158,15 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     Properties& getProperties() override;
 
     /**
-     * Calibration access used by the node. The host implementation goes through the dai::Device handle; the
-     * RVC4 firmware overrides these to use the device pipeline and the EEPROM directly.
+     * Device access that has no dai::Device equivalent inside the firmware. The host implementation goes
+     * through the dai::Device handle; the RVC4 firmware overrides these to use the EEPROM directly.
      */
-    virtual CalibrationHandler readCurrentCalibration();
     virtual CalibrationHandler readFactoryCalibration();
     virtual std::vector<StereoPair> getStereoPairs();
-    virtual Platform getPlatform() const;
     /// Product and board name as stored in the EEPROM, used to detect modular (FFC) boards.
     virtual std::pair<std::string, std::string> getProductAndBoardName();
     /// Install a calibration at runtime and optionally persist it to the EEPROM user area.
     virtual void applyCalibration(const CalibrationHandler& handler, bool flash);
-    /// Identifier attached to telemetry; empty disables the per-device aggregates.
-    virtual std::string getTelemetryDeviceId();
 
    private:
     struct ConnectedSensor {
@@ -221,8 +212,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     ErrorCode initializePipeline();
 
-    std::shared_ptr<Device> requireDevice() const;
-
     /// Creates the DCL state and logger. Runs from buildInternal() on the host and from run() on the device,
     /// where the firmware constructs the node without calling buildInternal().
     void ensureInitialized();
@@ -267,7 +256,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * - Starting of Calibration
      * - Resetting of data
      */
-    std::optional<bool> runOnHostVar;
+    bool runOnHostVar = true;
 
     // When old calibration is encountered, issue a warning once
     bool oldCalibrationWarningIssued = false;

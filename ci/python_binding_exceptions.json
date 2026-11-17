@@ -218,7 +218,6 @@
   "dai::node::ColorCamera::setVideoSize(int,int)": "Deprecated v3 node; use Camera. Keep existing bindings without extending this API.",
   "dai::node::ColorCamera::still": "Deprecated v3 node; use Camera. Keep existing bindings without extending this API.",
   "dai::node::ColorCamera::video": "Deprecated v3 node; use Camera. Keep existing bindings without extending this API.",
-  "dai::node::DynamicCalibration::buildStage1()": "Internal pipeline build hook called by the runtime; intentionally C++ only.",
   "dai::node::ImgDetectionsFilter::ImgDetectionsFilter()": "Python node construction uses Pipeline.create through ADD_NODE.",
   "dai::node::ImgDetectionsFilter::ImgDetectionsFilter(std::unique_ptr<Properties>)": "Serialized-properties constructor for the C++ device runtime; Python nodes use Pipeline.create.",
   "dai::node::ImgDetectionsFilter::NAME": "C++ node registration identifier; Python exposes the inherited Node.getName().",

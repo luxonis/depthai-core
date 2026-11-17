@@ -12,6 +12,7 @@
 #include <pipeline/ThreadedNodeImpl.hpp>
 #include <string>
 #include <tuple>
+#include <utility/ErrorMacros.hpp>
 #include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -269,65 +270,38 @@ const DynamicCalibration::ConnectedSensor* DynamicCalibration::findConnectedSens
 }
 
 void DynamicCalibration::setRunOnHost(bool runOnHost) {
+    // The dynamic calibration library is shipped only in the RVC4 firmware.
+    if(device && device->getPlatform() != Platform::RVC4 && !runOnHost) {
+        DAI_CHECK_V(false, "DynamicCalibration: running on device is supported only on RVC4");
+    }
     runOnHostVar = runOnHost;
-    // The Sync subnode has to live where the node lives, otherwise every frame would still cross the link.
-    if(sync.operator->() != nullptr) {
-        sync->setRunOnHost(runOnHost);
-    }
+    // The Sync subnode follows the node, otherwise every frame would still cross the link.
+    sync->setRunOnHost(runOnHost);
 }
-
+/**
+ * Check if the node is set to run on host
+ */
 bool DynamicCalibration::runOnHost() const {
-    if(runOnHostVar) {
-        return *runOnHostVar;
-    }
-    // RVC4 firmware ships the dynamic calibration library, RVC2 does not.
-    return !(device != nullptr && device->getPlatform() == Platform::RVC4);
-}
-
-void DynamicCalibration::buildStage1() {
-    if(sync.operator->() != nullptr) {
-        sync->setRunOnHost(runOnHost());
-    }
-}
-
-std::shared_ptr<Device> DynamicCalibration::requireDevice() const {
-    if(!device) {
-        throw std::runtime_error("DynamicCalibration node does not have access to any device");
-    }
-    return device;
-}
-
-CalibrationHandler DynamicCalibration::readCurrentCalibration() {
-    return requireDevice()->getCalibration();
+    return runOnHostVar;
 }
 
 CalibrationHandler DynamicCalibration::readFactoryCalibration() {
-    return requireDevice()->readFactoryCalibration();
+    return device->readFactoryCalibration();
 }
 
 std::vector<StereoPair> DynamicCalibration::getStereoPairs() {
-    return requireDevice()->getStereoPairs();
-}
-
-Platform DynamicCalibration::getPlatform() const {
-    return requireDevice()->getPlatform();
+    return device->getStereoPairs();
 }
 
 std::pair<std::string, std::string> DynamicCalibration::getProductAndBoardName() {
-    auto daiDevice = requireDevice();
-    return {daiDevice->getProductName(), daiDevice->readCalibrationOrDefault().getEepromData().boardName};
+    return {device->getProductName(), device->readCalibrationOrDefault().getEepromData().boardName};
 }
 
 void DynamicCalibration::applyCalibration(const CalibrationHandler& handler, bool flash) {
-    auto daiDevice = requireDevice();
-    daiDevice->setCalibration(handler);
+    device->setCalibration(handler);
     if(flash) {
-        daiDevice->flashCalibration(handler);
+        device->flashCalibration(handler);
     }
-}
-
-std::string DynamicCalibration::getTelemetryDeviceId() {
-    return device ? device->getTemporaryTelemetryDeviceId() : std::string{};
 }
 
 void DynamicCalibration::ensureInitialized() {
@@ -360,7 +334,7 @@ void DynamicCalibration::ensureInitialized() {
 void DynamicCalibration::buildInternal() {
     ensureInitialized();
     sync->out.link(syncInput);
-    sync->setRunOnHost(runOnHost());
+    sync->setRunOnHost(true);
 }
 
 void DynamicCalibration::postBuildStage() {
@@ -518,7 +492,7 @@ float sampsonErrorToPixels(float sampsonErrorNormalized, float sampsonErrorScale
 }
 
 void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash) {
-    logger->trace("Applying calibration to device (flash={})", flash);
+    logger->trace("Applying calibration to device");
     applyCalibration(handler, flash);
     calibrationHandler = handler;
 
@@ -670,7 +644,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
                                                                    calibratedPoses,
                                                                    std::holds_alternative<HousingCoordinateSystem>(daiSocketBase),
                                                                    stereoPairs,
-                                                                   getPlatform());
+                                                                   device ? device->getPlatform() : Platform::RVC4);
     } catch(const std::exception& ex) {
         return reportCalibrationFailure(std::string("Failed to assemble calibration: ") + ex.what());
     }
@@ -847,7 +821,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline() {
         return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
     }
 
-    calibrationHandler = readCurrentCalibration();
+    calibrationHandler = device ? device->getCalibration() : getParentPipeline().getCalibrationData();
     auto eepromData = calibrationHandler.getEepromData();
 
     try {
@@ -908,7 +882,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline() {
 
     logger->trace("Converting dai calibration to dcl");
 
-    auto platform = getPlatform();
+    // Inside the firmware there is no host device handle, the node runs on the RVC4 device.
+    auto platform = device ? device->getPlatform() : Platform::RVC4;
     if(platform == dai::Platform::RVC2 && !eepromData.stereoEnableDistortionCorrection && !oldCalibrationWarningIssued) {
         logger->trace("The calibration on the device is old (distortion correction is disabled), for optimal performance full re-calibration is recommended!");
         oldCalibrationWarningIssued = true;
@@ -1105,25 +1080,26 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
 void DynamicCalibration::run() {
     // The firmware constructs the node without buildInternal(), so the DCL state is created here on the device.
     ensureInitialized();
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    if(!device) {
+        logger->error("Dynamic calibration node does not have access to any device.");
+        return;
+    }
+#endif
 
     auto& telemetryState = *pimplDCL->telemetryAggregateState;
     {
         std::lock_guard<std::mutex> lock(telemetryState.mutex);
-        telemetryState.telemetryDeviceId = getTelemetryDeviceId();
+        // Inside the firmware there is no host device handle: no per-device telemetry aggregates.
+        telemetryState.telemetryDeviceId = device ? device->getTemporaryTelemetryDeviceId() : std::string{};
     }
 
-    logger->trace("DynamicCalibration node started");
+    logger->trace("DynamicCalibration node started ");
 
     auto previousLoadingTimeFloat =
         std::chrono::steady_clock::now() + std::chrono::duration<float>(DynamicCalibrationControl::Commands::StartCalibration{}.calibrationPeriod);
     auto previousLoadingTime = std::chrono::time_point_cast<std::chrono::steady_clock::duration>(previousLoadingTimeFloat);
-    DynamicCalibration::ErrorCode initResult;
-    try {
-        initResult = initializePipeline();
-    } catch(const std::exception& ex) {
-        logger->error("DynamicCalibration initialization failed: {}", ex.what());
-        return;
-    }
+    auto initResult = initializePipeline();
     if(initResult != DynamicCalibration::ErrorCode::OK) {
         logger->error("DynamicCalibration initialization failed with error code {}", static_cast<int>(initResult));
         return;
