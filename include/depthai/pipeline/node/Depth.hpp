@@ -97,15 +97,15 @@ class Depth : public DeviceNodeGroup {
     /**
      * Set algorithm and optional FPS before wiring.
      * @param algorithm Backend to use
-     * @param fps Requested stereo camera FPS
+     * @param fps Requested stereo camera FPS; when set, AUTO selects a backend that can serve it and an explicit algorithm or config that cannot throws
      */
     std::shared_ptr<Depth> build(Algorithm algorithm, std::optional<float> fps = std::nullopt);
 
     /**
-     * Set algorithm, optional FPS, and preferred depth output size before wiring.
+     * Set algorithm, optional FPS, and preferred internal processing size before wiring.
      * @param algorithm Backend to use
-     * @param fps Requested stereo camera FPS
-     * @param size preferred depth output size. Used when no upstream Camera is present
+     * @param fps Requested stereo camera FPS; when set, AUTO selects a backend that can serve it and an explicit algorithm or config that cannot throws
+     * @param size preferred internal processing size; setAlignTo() determines aligned output geometry
      */
     std::shared_ptr<Depth> build(Algorithm algorithm, std::optional<float> fps, std::optional<std::pair<uint32_t, uint32_t>> size);
 
@@ -113,8 +113,8 @@ class Depth : public DeviceNodeGroup {
      * Set algorithm and config before wiring. algorithm must not be AUTO.
      * @param algorithm Backend to use
      * @param config Algorithm-specific configuration
-     * @param fps Requested stereo camera FPS
-     * @param size preferred depth output size. Used when no upstream Camera is present
+     * @param fps Requested stereo camera FPS; when set, AUTO selects a backend that can serve it and an explicit algorithm or config that cannot throws
+     * @param size preferred internal processing size; setAlignTo() determines aligned output geometry
      */
     std::shared_ptr<Depth> build(Algorithm algorithm,
                                  Config config,
