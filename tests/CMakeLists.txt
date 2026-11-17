@@ -781,6 +781,15 @@ endif()
 dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibration_test.cpp)
 dai_set_test_labels(dynamic_calibration_onhost_test onhost)
 
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    dai_add_test(auto_calibration_queue_test src/onhost_tests/auto_calibration_queue_test.cpp)
+    dai_set_test_labels(auto_calibration_queue_test onhost ci)
+
+    dai_add_test(world_constraints_test src/onhost_tests/world_constraints_test.cpp)
+    target_link_libraries(world_constraints_test PRIVATE dynamic_calibration_imported)
+    dai_set_test_labels(world_constraints_test onhost ci)
+endif()
+
 dai_add_test(flash_eeprom_fields_test src/ondevice_tests/flash_eeprom_fields_test.cpp)
 dai_set_test_labels(flash_eeprom_fields_test ondevice rvc2_all rvc4 rvc4ffc)
 
