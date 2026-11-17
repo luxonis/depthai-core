@@ -432,3 +432,13 @@ You can do this by passing the `--parallel` flag with a lower number of jobs to 
 ```
 cmake --build build --parallel 2
 ```
+
+### Static Dynamic Calibration
+
+On Linux, use `-DDEPTHAI_DYNAMIC_CALIBRATION_SUPPORT=ON` and
+`-DDEPTHAI_DYNAMIC_CALIBRATION_STATIC=ON` to link the self-contained DCL archive.
+This option defaults to OFF and is unavailable on Windows and macOS. Until static
+artifacts are published, also set `-DDEPTHAI_DYNAMIC_CALIBRATION_PATH=/path/to/package.zip`.
+Use `-DBUILD_SHARED_LIBS=OFF` for a static core. The archive is installed with
+DepthAI; installed `find_package(depthai)` consumers use that copy without
+fetching DCL. Python modules built against a static core include DCL directly.

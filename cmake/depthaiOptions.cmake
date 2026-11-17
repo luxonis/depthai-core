@@ -29,6 +29,13 @@ option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
 option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
 
 option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ON)
+option(DEPTHAI_DYNAMIC_CALIBRATION_STATIC "Use the self-contained static Dynamic Calibration archive (Linux only)" OFF)
+if(DEPTHAI_DYNAMIC_CALIBRATION_STATIC)
+    if(NOT DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+        message(FATAL_ERROR "DEPTHAI_DYNAMIC_CALIBRATION_STATIC requires DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT=ON")
+    endif()
+endif()
+
 
 # Build Behaviour
 option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)

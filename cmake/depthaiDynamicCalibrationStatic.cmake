@@ -1,0 +1,29 @@
+# The installed package supplies both paths and never enters FetchContent.
+if(NOT TARGET dynamic_calibration_imported)
+    find_package(Threads REQUIRED)
+    if(CONFIG_MODE)
+        set(_dcl_archive "${DEPTHAI_DYNAMIC_CALIBRATION_INSTALLED_LIBRARY}")
+        set(_dcl_include "${DEPTHAI_DYNAMIC_CALIBRATION_INSTALLED_INCLUDE}")
+    else()
+        # find_file deliberately ignores shared libraries and stale find_library caches.
+        unset(_dcl_static_archive)
+        unset(_dcl_static_archive CACHE)
+        find_file(_dcl_static_archive NAMES libdynamic_calibration.a
+            PATHS "${DYNAMIC_CALIBRATION_DIR}/lib" NO_DEFAULT_PATH REQUIRED)
+        set(_dcl_archive "${_dcl_static_archive}")
+        set(_dcl_include "${DYNAMIC_CALIBRATION_DIR}/include")
+    endif()
+    if(NOT EXISTS "${_dcl_archive}")
+        message(FATAL_ERROR "Static Dynamic Calibration archive not found: ${_dcl_archive}")
+    endif()
+    # Preserve the legacy link variables alongside the imported target.
+    set(DYNAMIC_CALIBRATION_RELEASE "${_dcl_archive}")
+    set(DYNAMIC_CALIBRATION_LIB "${_dcl_archive}")
+    add_library(dynamic_calibration_imported STATIC IMPORTED)
+    set_target_properties(dynamic_calibration_imported PROPERTIES
+        IMPORTED_LOCATION "${_dcl_archive}"
+        INTERFACE_INCLUDE_DIRECTORIES "${_dcl_include}"
+        INTERFACE_LINK_LIBRARIES "Threads::Threads;${CMAKE_DL_LIBS}")
+    unset(_dcl_archive)
+    unset(_dcl_include)
+endif()

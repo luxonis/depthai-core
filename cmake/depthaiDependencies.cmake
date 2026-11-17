@@ -218,7 +218,9 @@ if(DEPTHAI_DEPENDENCY_INCLUDE)
     include(${DEPTHAI_DEPENDENCY_INCLUDE} OPTIONAL)
 endif()
 
-if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT AND DEPTHAI_DYNAMIC_CALIBRATION_STATIC AND CONFIG_MODE)
+    include("${CMAKE_CURRENT_LIST_DIR}/depthaiDynamicCalibrationStatic.cmake")
+elseif(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     set(DEPTHAI_DYNAMIC_CALIBRATION_PATH "" CACHE FILEPATH "Override path to local dynamic_calibration .zip file")
 
     if(DEPTHAI_DYNAMIC_CALIBRATION_PATH AND EXISTS "${DEPTHAI_DYNAMIC_CALIBRATION_PATH}")
@@ -232,11 +234,15 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         include(PlatformParsing)
         detect_platform_arch(DEPTHAI_HOST_PLATFORM_ARCH)
         message(STATUS "Platform architecture: ${DEPTHAI_HOST_PLATFORM_ARCH}")
+        set(_dcl_package_suffix "")
+        if(DEPTHAI_DYNAMIC_CALIBRATION_STATIC)
+            set(_dcl_package_suffix "_static")
+        endif()
         # TODO - Add URL_HASH
         message(STATUS "Using remote dynamic_calibration zip")
         FetchContent_Declare(
             dynamic_calibration
-            URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-helper-binaries/dynamic_calibration/${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}/dynamic_calibration_${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}_${DEPTHAI_HOST_PLATFORM_ARCH}.zip"
+            URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-helper-binaries/dynamic_calibration/${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}/dynamic_calibration_${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}_${DEPTHAI_HOST_PLATFORM_ARCH}${_dcl_package_suffix}.zip"
         )
 
         include(DownloadAndChecksum)
@@ -268,7 +274,9 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     message(STATUS "Dynamic calibration extracted to ${dynamic_calibration_SOURCE_DIR}")
     set(DYNAMIC_CALIBRATION_DIR ${dynamic_calibration_SOURCE_DIR})
 
-    if(WIN32)
+    if(DEPTHAI_DYNAMIC_CALIBRATION_STATIC)
+        include("${CMAKE_CURRENT_LIST_DIR}/depthaiDynamicCalibrationStatic.cmake")
+    elseif(WIN32)
         # On Windows, find both .lib (import libraries) and .dll (runtime libraries)
         # Search for the import libraries (.lib files)
         find_library(DYNAMIC_CALIBRATION_RELEASE_LIB dynamic_calibration
@@ -321,7 +329,9 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     endif()
 
     # Create imported target for runtime dependencies
-    add_library(dynamic_calibration_imported SHARED IMPORTED)
+    if(NOT DEPTHAI_DYNAMIC_CALIBRATION_STATIC)
+        add_library(dynamic_calibration_imported SHARED IMPORTED)
+    endif()
     if(WIN32)
         set_target_properties(dynamic_calibration_imported PROPERTIES
             IMPORTED_LOCATION_DEBUG "${DYNAMIC_CALIBRATION_DEBUG_DLL}"
@@ -331,7 +341,7 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
             IMPORTED_CONFIGURATIONS "DEBUG;RELEASE"
             INTERFACE_INCLUDE_DIRECTORIES "${DYNAMIC_CALIBRATION_DIR}/include"
         )
-    else()
+    elseif(NOT DEPTHAI_DYNAMIC_CALIBRATION_STATIC)
         # On non-Windows platforms, use the release library for all configurations
         set_target_properties(dynamic_calibration_imported PROPERTIES
             IMPORTED_LOCATION_DEBUG "${DYNAMIC_CALIBRATION_RELEASE}"
