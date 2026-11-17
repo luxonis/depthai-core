@@ -52,7 +52,7 @@ class Depth : public DeviceNodeGroup {
     };
 
     /**
-     * Algorithm-specific configuration (DeviceModelZoo for NEURAL, StereoDepth::PresetMode for STEREO,
+     * Algorithm-specific configuration (DeviceModelZoo for NEURAL or NEURAL_ASSISTED_STEREO, StereoDepth::PresetMode for STEREO,
      * or std::monostate for backends without a selectable profile).
      */
     using Config = std::variant<std::monostate, DeviceModelZoo, StereoDepth::PresetMode>;
@@ -262,7 +262,8 @@ class Depth : public DeviceNodeGroup {
     StereoWiring ensureStereoOutputs(Pipeline& pipeline,
                                      const StereoPair& pair,
                                      std::optional<std::pair<uint32_t, uint32_t>> frameSize,
-                                     const std::optional<float>& fps);
+                                     const std::optional<float>& fps,
+                                     std::optional<std::pair<uint32_t, uint32_t>> minFrameSize = std::nullopt);
 
     void wireAlignment(Algorithm active, const std::shared_ptr<Device>& device);
 
