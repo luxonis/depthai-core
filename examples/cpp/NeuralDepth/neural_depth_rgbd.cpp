@@ -59,12 +59,13 @@ int main(int argc, char** argv) {
         // NeuralDepth node for stereo processing
         auto stereo = pipeline.create<dai::node::NeuralDepth>();
 
-        // RGBD node to generate a point cloud
-        auto rgbd = pipeline.create<dai::node::RGBD>();
-        rgbd->build();
+        // Generate an organized colored point cloud in the color camera coordinate system.
+        auto pointcloud = pipeline.create<dai::node::PointCloud>();
+        pointcloud->initialConfig->setOrganized(true);
+        pointcloud->setTargetCoordinateSystem(color->getBoardSocket());
 
-        // ImageAlign node to align depth to the color camera's perspective
-        auto align = pipeline.create<dai::node::ImageAlign>();
+        // Align node to align depth to the color camera's perspective
+        auto align = pipeline.create<dai::node::Align>();
 
         // --- Link pipeline nodes ---
 
@@ -82,11 +83,11 @@ int main(int argc, char** argv) {
         // Connect the nodes to form the data flow
         stereo->depth.link(align->input);
         colorOut->link(align->inputAlignTo);
-        align->outputAligned.link(rgbd->inDepth);
-        colorOut->link(rgbd->inColor);
+        align->outputAligned.link(pointcloud->inputDepth);
+        colorOut->link(pointcloud->getColorInput());
 
         // Add the point cloud output as a topic for the remote visualizer
-        remoteConnector.addTopic("pcl", rgbd->pcl, "common");
+        remoteConnector.addTopic("pcl", pointcloud->outputPointCloud, "common");
 
         // Start the pipeline
         pipeline.start();
