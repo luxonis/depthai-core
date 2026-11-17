@@ -38,6 +38,7 @@ set(PYBIND11_TEST_FILES
     "compiler_warning_bindings_roundtrip_test.py"
     "stitching_test.py"
     "img_detections_filter_test.py"
+    "filter_params_test.py"
     "neural_network_model_test.cpp"
     "node_holder_test.cpp"
     "message_holder_test.cpp"

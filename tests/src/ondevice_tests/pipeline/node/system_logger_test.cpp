@@ -1,5 +1,10 @@
+#include <algorithm>
+#include <array>
 #include <catch2/catch_all.hpp>
+#include <cstdlib>
 #include <limits>
+#include <sstream>
+#include <string>
 
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/SystemLogger.hpp"
@@ -83,11 +88,60 @@ void testSystemLoggerNode(const dai::SystemInformationRVC4& info) {
     REQUIRE(isUnavailableOrInRange(info.powerTofWatts, std::numeric_limits<double>::max()));
 }
 
-TEST_CASE("Test SystemLogger Node") {
+namespace {
+
+struct ResourceMetric {
+    const char* name;
+    double dai::SystemInformationRVC4::*value;
+    bool required = false;
+    bool observed = false;
+};
+
+std::array<ResourceMetric, 8> getResourceMetrics(bool requireMetrics) {
+    std::array<ResourceMetric, 8> metrics{{
+        {"gpuUtilizationPercent", &dai::SystemInformationRVC4::gpuUtilizationPercent},
+        {"dspHvxActivityPercent", &dai::SystemInformationRVC4::dspHvxActivityPercent},
+        {"dspHmxActivityPercent", &dai::SystemInformationRVC4::dspHmxActivityPercent},
+        {"dspQ6LoadKcps", &dai::SystemInformationRVC4::dspQ6LoadKcps},
+        {"powerSystemWatts", &dai::SystemInformationRVC4::powerSystemWatts},
+        {"powerProcessorWatts", &dai::SystemInformationRVC4::powerProcessorWatts},
+        {"powerPoeWatts", &dai::SystemInformationRVC4::powerPoeWatts},
+        {"powerTofWatts", &dai::SystemInformationRVC4::powerTofWatts},
+    }};
+    const char* expected = std::getenv("DEPTHAI_TEST_SYSTEM_LOGGER_REQUIRED_METRICS");
+    bool hasRequiredMetrics = false;
+    if(expected != nullptr) {
+        std::istringstream names(expected);
+        std::string name;
+        while(names >> name) {
+            bool found = false;
+            for(auto& metric : metrics) {
+                if(name == metric.name) {
+                    metric.required = true;
+                    found = true;
+                }
+            }
+            INFO("Unknown SystemLogger metric: " << name);
+            REQUIRE(found);
+            hasRequiredMetrics = true;
+        }
+    }
+    if(requireMetrics) {
+        INFO("Set DEPTHAI_TEST_SYSTEM_LOGGER_REQUIRED_METRICS for this camera/OS; see tests/hardware/system_logger.md");
+        REQUIRE(hasRequiredMetrics);
+    }
+
+    return metrics;
+}
+
+void runSystemLoggerTest(bool requireMetrics) {
+    auto metrics = getResourceMetrics(requireMetrics);
+    const bool hasRequiredMetrics = std::any_of(metrics.begin(), metrics.end(), [](const ResourceMetric& metric) { return metric.required; });
     dai::Pipeline p;
     auto logger = p.create<dai::node::SystemLogger>();
     auto loggerQueue = logger->out.createOutputQueue(4, false);
-    auto platform = p.getDefaultDevice()->getPlatform();
+    const auto platform = p.getDefaultDevice()->getPlatform();
+    if(hasRequiredMetrics) REQUIRE(platform == dai::Platform::RVC4);
 
     p.start();
     for(int i = 0; i < 10; i++) {
@@ -99,6 +153,26 @@ TEST_CASE("Test SystemLogger Node") {
             auto sysInfo = loggerQueue->get<dai::SystemInformationRVC4>();
             REQUIRE(sysInfo != nullptr);
             testSystemLoggerNode(*sysInfo);
+            for(auto& metric : metrics) {
+                metric.observed = metric.observed || (*sysInfo).*metric.value >= 0;
+            }
         }
     }
+    // Allow initial unavailable samples, but never accept a missing counter for the whole run.
+    for(const auto& metric : metrics) {
+        if(metric.required) {
+            INFO("Expected SystemLogger metric stayed unavailable: " << metric.name);
+            CHECK(metric.observed);
+        }
+    }
+}
+
+}  // namespace
+
+TEST_CASE("Test SystemLogger Node") {
+    runSystemLoggerTest(false);
+}
+
+TEST_CASE("SystemLogger reports expected RVC4 metrics", "[.][systemlogger-availability]") {
+    runSystemLoggerTest(true);
 }

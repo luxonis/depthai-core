@@ -59,7 +59,7 @@ def main():
     cam = pipeline.create(dai.node.Camera).build(align_socket)
     camOut = cam.requestOutput(CAMERA_SIZE, enableUndistortion=True, fps=FPS)
 
-    align = pipeline.create(dai.node.ImageAlign)
+    align = pipeline.create(dai.node.Align)
     align.setRunOnHost(True)
     tof.depth.link(align.input)
     camOut.link(align.inputAlignTo)

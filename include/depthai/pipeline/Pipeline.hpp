@@ -3,6 +3,7 @@
 
 // standard
 #include <chrono>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <thread>
@@ -24,6 +25,7 @@
 
 // shared
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/WorldConstraints.hpp"
 #include "depthai/device/BoardConfig.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
@@ -145,6 +147,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> getStereoPair(const std::shared_ptr<Device>& device) const;
     bool hasDynamicCalibration() const;
     PipelineAutoCalibrationMode getAutoCalibrationMode() const;
+    void setAutoCalibrationWorldConstraints(const WorldConstraints& constraints);
+    void clearAutoCalibrationWorldConstraints();
+    std::optional<WorldConstraints> getAutoCalibrationWorldConstraints() const;
 
     BoardConfig getBoardConfig() const;
 
@@ -204,6 +209,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Build-time automatic calibration policy for implicit AutoCalibration node creation.
     PipelineAutoCalibrationMode autoCalibrationMode = PipelineAutoCalibrationMode::ON_START;
     bool autoCalibrationModeSetByApi = false;
+    // World constraints handed to the implicit AutoCalibration node, see Pipeline::setAutoCalibrationWorldConstraints().
+    std::optional<WorldConstraints> autoCalibrationWorldConstraints;
 
     // Output queues
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;
@@ -214,12 +221,15 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // set for the duration of stop(): device state transitions reported while the devices
     // are being closed must not re-trigger a stop or user callbacks
     AtomicBool stopping{false};
-    // Thread stopping the pipeline after a device loss. It is spawned from the device's
-    // monitor thread (which stop() joins indirectly) and owns no reference to the pipeline;
-    // wait(), start() and the destructor join it.
-    std::thread deviceLossStopThread;
-    std::mutex deviceLossStopMtx;
-    void joinDeviceLossStop();
+    // Thread stopping the pipeline after a device loss (spawned from the device's monitor thread,
+    // which stop() joins indirectly) or on Node::stopPipeline() (called from node threads and
+    // pipeline tasks). It owns no reference to the pipeline; wait(), start() and the destructor
+    // join it, so run() returns only after the stop has completed.
+    std::thread asyncStopThread;
+    std::mutex asyncStopMtx;
+    // Stops the pipeline on asyncStopThread, unless a stop on it was already requested
+    void stopAsync();
+    void joinAsyncStop();
     std::string telemetryPipelineId{createTelemetryPipelineId()};
     std::optional<std::chrono::steady_clock::time_point> telemetryPipelineStartedAt;
 
@@ -761,6 +771,31 @@ class Pipeline {
     /// Gets implicit automatic calibration policy for this pipeline.
     AutoCalibrationMode getAutoCalibrationMode() const {
         return impl()->getAutoCalibrationMode();
+    }
+
+    /**
+     * Gives the implicit AutoCalibration node (see setAutoCalibrationMode()) a metric reference through markers in
+     * the scene, see node::DynamicCalibration::setWorldConstraints(). Has no effect on nodes the user creates; set
+     * before the pipeline is built.
+     */
+    void setAutoCalibrationWorldConstraints(const WorldConstraints& constraints) {
+        impl()->setAutoCalibrationWorldConstraints(constraints);
+    }
+    /// Same as setAutoCalibrationWorldConstraints() with the JSON form described in WorldConstraints.
+    void setAutoCalibrationWorldConstraintsFromJson(const std::string& json) {
+        impl()->setAutoCalibrationWorldConstraints(WorldConstraints::fromJsonString(json));
+    }
+    /// Same as setAutoCalibrationWorldConstraints() with the JSON form read from a file.
+    void setAutoCalibrationWorldConstraintsFromFile(const std::filesystem::path& path) {
+        impl()->setAutoCalibrationWorldConstraints(WorldConstraints::fromFile(path));
+    }
+    /// Remove the marker constraints of the implicit AutoCalibration node again. Takes effect before the pipeline is built.
+    void clearAutoCalibrationWorldConstraints() {
+        impl()->clearAutoCalibrationWorldConstraints();
+    }
+    /// The marker constraints set with setAutoCalibrationWorldConstraints(), or none.
+    std::optional<WorldConstraints> getAutoCalibrationWorldConstraints() const {
+        return impl()->getAutoCalibrationWorldConstraints();
     }
 
     /// Gets board configuration

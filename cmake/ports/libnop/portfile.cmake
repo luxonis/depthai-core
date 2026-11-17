@@ -11,5 +11,5 @@ vcpkg_cmake_configure(
 
 vcpkg_cmake_install()
 
-vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE" "${CMAKE_CURRENT_LIST_DIR}/LICENSE-Apache-2.0")
 

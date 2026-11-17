@@ -2,6 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <exception>
 #include <memory>
 #include <optional>
 
@@ -66,7 +67,14 @@ void ThreadedNode::wait() {
 }
 
 void ThreadedNode::stop() {
-    onStop();
+    // onStop() can be user code: if it throws, the thread must still be signalled and its inputs
+    // closed, or it never exits and Pipeline::wait() blocks on it. The error is rethrown below.
+    std::exception_ptr onStopError;
+    try {
+        onStop();
+    } catch(...) {
+        onStopError = std::current_exception();
+    }
     // TBD
     // Sets running to false
     running = false;
@@ -77,6 +85,9 @@ void ThreadedNode::stop() {
     // for(auto& rout : getOutputRefs()) {
     // }
     // wait();
+    if(onStopError) {
+        std::rethrow_exception(onStopError);
+    }
 }
 
 void ThreadedNode::setLogLevel(dai::LogLevel level) {
