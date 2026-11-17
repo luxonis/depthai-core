@@ -626,8 +626,6 @@ TEST_CASE("DynamicCalibration: Rejects excessive translation direction change.")
 
     auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
     auto commandInput = dynCalib->inputControl.createInputQueue();
-    // Frames are fed through a queue so the test works for both host and device placement of the node.
-    auto syncInput = dynCalib->syncInput.createInputQueue();
     auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
 
     // Give DCL a baseline direction which differs substantially from the
@@ -637,12 +635,12 @@ TEST_CASE("DynamicCalibration: Rejects excessive translation direction change.")
 
     auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper), calibrationHandler);
     p.start();
-    syncInput->send(group);
+    dynCalib->syncInput.send(group);
     std::this_thread::sleep_for(0.5s);
 
     for(int i = 0; i < 7; ++i) {
         auto frameGroup = stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper), calibrationHandler);
-        syncInput->send(frameGroup);
+        dynCalib->syncInput.send(frameGroup);
         commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
         auto coverage = coverageOutput->get<dai::CoverageData>();
         REQUIRE(coverage->coverageAcquired > 0.0f);
@@ -668,8 +666,6 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data with housing base
 
     auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
     auto commandInput = dynCalib->inputControl.createInputQueue();
-    // Frames are fed through a queue so the test works for both host and device placement of the node.
-    auto syncInput = dynCalib->syncInput.createInputQueue();
     auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
 
     auto calibrationHandler = getHandler(true);
@@ -680,12 +676,12 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data with housing base
 
     auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper), calibrationHandler);
     p.start();
-    syncInput->send(group);
+    dynCalib->syncInput.send(group);
     std::this_thread::sleep_for(0.5s);
 
     for(int i = 0; i < 7; i++) {
         auto frameGroup = stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper), calibrationHandler);
-        syncInput->send(frameGroup);
+        dynCalib->syncInput.send(frameGroup);
         commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
         auto coverage = coverageOutput->get<dai::CoverageData>();
         REQUIRE(coverage->coverageAcquired > 0.0f);
@@ -742,19 +738,17 @@ TEST_CASE("DynamicCalibration: Get metrics with housing base.") {
     auto calibration = getHandler(true);
     auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
     auto commandInput = dynCalib->inputControl.createInputQueue();
-    // Frames are fed through a queue so the test works for both host and device placement of the node.
-    auto syncInput = dynCalib->syncInput.createInputQueue();
     auto metricsOutput = dynCalib->metricsOutput.createOutputQueue();
 
     device->setCalibration(calibration);
     auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper), calibration);
     p.start();
-    syncInput->send(group);
+    dynCalib->syncInput.send(group);
     std::this_thread::sleep_for(0.5s);
 
     for(int i = 0; i < 7; i++) {
         auto frameGroup = stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper), calibration);
-        syncInput->send(frameGroup);
+        dynCalib->syncInput.send(frameGroup);
         commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
         (void)coverageOutput->get<dai::CoverageData>();
     }
@@ -787,20 +781,18 @@ TEST_CASE("DynamicCalibration: Get metrics.") {
     auto calibration = getHandler();
     auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
     auto commandInput = dynCalib->inputControl.createInputQueue();
-    // Frames are fed through a queue so the test works for both host and device placement of the node.
-    auto syncInput = dynCalib->syncInput.createInputQueue();
     auto metricsOutput = dynCalib->metricsOutput.createOutputQueue();
 
     device->setCalibration(calibration);
     auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper), calibration);
     p.start();
-    syncInput->send(group);
+    dynCalib->syncInput.send(group);
     std::this_thread::sleep_for(0.5s);
 
     // load image
     for(int i = 0; i < 7; i++) {
         auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper), calibration);
-        syncInput->send(group);
+        dynCalib->syncInput.send(group);
         commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
         auto coverage = coverageOutput->get<dai::CoverageData>();
     }
@@ -818,6 +810,86 @@ TEST_CASE("DynamicCalibration: Get metrics.") {
     INFO("Waited up to 5 seconds for CalibrationMetrics");
     REQUIRE(!failed);
     REQUIRE(metrics != nullptr);
+
+    p.stop();
+    p.wait();
+}
+
+TEST_CASE("DynamicCalibration: runs on the host by default, on the device only on RVC4") {
+    auto device = std::make_shared<dai::Device>();
+    std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
+    auto p = makePipeline(device, dynCalib, false);
+
+    REQUIRE(dynCalib->runOnHost());
+    REQUIRE(dynCalib->sync->runOnHost());
+
+    if(device->getPlatform() != dai::Platform::RVC4) {
+        REQUIRE_THROWS(dynCalib->setRunOnHost(false));
+        REQUIRE(dynCalib->runOnHost());
+        return;
+    }
+    dynCalib->setRunOnHost(false);
+    REQUIRE_FALSE(dynCalib->runOnHost());
+    REQUIRE_FALSE(dynCalib->sync->runOnHost());
+    dynCalib->setRunOnHost(true);
+    REQUIRE(dynCalib->runOnHost());
+    REQUIRE(dynCalib->sync->runOnHost());
+}
+
+TEST_CASE("DynamicCalibration: calibrates on the RVC4 device") {
+    TestHelper helper;
+
+    auto device = std::make_shared<dai::Device>();
+    if(device->getPlatform() != dai::Platform::RVC4) {
+        SKIP("Running DynamicCalibration on the device requires an RVC4 device");
+    }
+    std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
+    auto p = makePipeline(device, dynCalib, false);
+    dynCalib->setRunOnHost(false);
+
+    // Every message crosses the link: frames, each control command and each result.
+    auto syncInput = dynCalib->syncInput.createInputQueue();
+    auto commandInput = dynCalib->inputControl.createInputQueue();
+    auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
+    auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
+    auto metricsOutput = dynCalib->metricsOutput.createOutputQueue();
+
+    auto calibration = getHandler();
+    device->setCalibration(calibration);
+    p.start();
+    syncInput->send(stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper), calibration));
+    std::this_thread::sleep_for(0.5s);
+
+    for(int i = 0; i < 7; i++) {
+        syncInput->send(stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper), calibration));
+        commandInput->send(dai::DynamicCalibrationControl::loadImage());
+        auto coverage = coverageOutput->get<dai::CoverageData>();
+        REQUIRE(coverage != nullptr);
+        REQUIRE(coverage->coverageAcquired > 0.0f);
+    }
+
+    commandInput->send(dai::DynamicCalibrationControl::computeCalibrationMetrics(calibration));
+    bool timedOut = true;
+    auto metrics = metricsOutput->get<dai::CalibrationMetrics>(5s, timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(metrics != nullptr);
+
+    commandInput->send(dai::DynamicCalibrationControl::calibrate(true));
+    auto result = calibrationOutput->get<dai::DynamicCalibrationResult>(30s, timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(result != nullptr);
+    if(result->calibrationData.has_value()) {
+        // The node read the calibration set from the host through the device pipeline.
+        const auto current = result->calibrationData->currentCalibration.getCameraExtrinsics(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B);
+        const auto expected = calibration.getCameraExtrinsics(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B);
+        for(size_t row = 0; row < 3; ++row) {
+            for(size_t col = 0; col < 4; ++col) {
+                REQUIRE(current[row][col] == Catch::Approx(expected[row][col]).margin(1e-5));
+            }
+        }
+    } else {
+        REQUIRE(result->info == TRANSLATION_DIRECTION_REJECTION_MESSAGE);
+    }
 
     p.stop();
     p.wait();
