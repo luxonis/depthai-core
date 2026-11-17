@@ -48,8 +48,8 @@ def parse_args() -> argparse.Namespace:
         "--private-module-root",
         type=Path,
         default=None,
-        help="Path to the private depthai-device-rvc4-vendor checkout (default: $DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR, then the "
-        "sibling directory of the repository). Forwarded to the collector.",
+        help="Path to the private depthai-device-rvc4-vendor checkout (default: $DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR). Forwarded to "
+        "the collector.",
     )
     parser.add_argument(
         "--license-input",

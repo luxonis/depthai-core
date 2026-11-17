@@ -49,32 +49,79 @@ utility_scripts/        Developer helpers: build, deploy, debug, core dumps, lic
 
 ## Building
 
-The firmware is cross-compiled inside a Docker image that contains the Luxonis OS RVC4 SDK (OpenEmbedded
-toolchain, sysroot with the Qualcomm libraries, Hexagon SDK, gdb). Set `DEPTHAI_DEVICE_SDK_IMAGE` to the image.
+The firmware is cross-compiled in a Docker image on an x86-64 host. These images can build it:
 
-At this time the build needs two things that are not public:
+* the public build images `ghcr.io/luxonis/depthai-device-sdk:<sysroot version>` (for the release firmware) and
+  `:<sysroot version>-dev` (the same plus the sanitizer libraries): Ubuntu 22.04, the Arm GNU Toolchain 11.3.rel1
+  and the public sysroot of Luxonis OS. Anyone can use them, see [Public build container](#public-build-container).
+* the Luxonis OS SDK image: the OpenEmbedded toolchain, the full sysroot and the Hexagon SDK (Luxonis licensees).
 
-* the Luxonis OS SDK image, and
-* the sources of the private module `depthai-device-rvc4-vendor` (licensee-only Qualcomm and ST code, see
-  [What is not in this repository](#what-is-not-in-this-repository)).
+CMake selects the toolchain with `DEPTHAI_DEVICE_RVC4_TOOLCHAIN`: `auto` (default) takes `oe` when the OpenEmbedded
+SDK environment is sourced (the Luxonis OS SDK image), else `gnu` (`toolchains/rvc4-gnu.cmake`). Both use the same
+compile and link flags.
 
-Both are available to Luxonis licensees. A public build container and a prebuilt archive of the private module
-are in preparation.
+The firmware links the vendor module `depthai-device-rvc4-vendor` (licensee-only Qualcomm and ST code of the private
+repository `depthai-device-vendor-fw`, see [What is not in this repository](#what-is-not-in-this-repository)) as a prebuilt
+archive, `depthai-device-rvc4-vendor-<version>[-asan-ubsan|-tsan].tar.xz`:
 
-The private module is the private repository `depthai-device-vendor-fw`. The build scripts look for a checkout of it
-next to the `depthai-core` checkout (`../depthai-device-vendor-fw`), or at the path in `DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR`. They mount it at
-`/depthai-device-rvc4-vendor` in the container and pass that path to CMake (`DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR`).
+* By default the build downloads the archive of `DEPTHAI_DEVICE_RVC4_VENDOR_VERSION` in
+  `cmake/Depthai/DepthaiDeviceRVC4Config.cmake` of depthai-core (`cmake/DepthaiDeviceRvc4VendorDownloader.cmake`) from
+  `artifacts.luxonis.com`, checks its sha256 and keeps it in the build folder.
+* `DEPTHAI_DEVICE_RVC4_VENDOR=<path of an archive>` takes a local archive in place of the download, as
+  `DEPTHAI_DEVICE_RVC4_FWP` takes a local firmware package for depthai-core. The scripts mount it into the container.
+
+The CI of `depthai-device-vendor-fw` builds the module from its sources and publishes the archive: with `DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR` (Luxonis
+licensees) the scripts mount the sources at `/depthai-device-rvc4-vendor` and pass them to CMake as
+`DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR`.
+
+A prebuilt archive was compiled against the public headers of the depthai-core commit of its build. CMake compares every header and
+interface define that it used with this tree, and stops with the list of differences when one differs: a changed
+header can change the binary interface. The configure step checks the headers; the build checks them again, and the
+defines, before the code that uses the archive compiles. With a prebuilt archive the ToF sensor pipeline is a stub
+(the ToF node reports an error).
 
 ```bash
 git clone --recursive https://github.com/luxonis/depthai-core.git
 cd depthai-core/device/rvc4
-export DEPTHAI_DEVICE_SDK_IMAGE=<Luxonis OS RVC4 SDK image>
-./create_deployment_artifacts.sh rvc4          # or rvc4-asan-ubsan, rvc4-tsan
+DEPTHAI_ACCEPT_QUALCOMM_LICENSE=yes ./create_deployment_artifacts.sh rvc4          # or rvc4-asan-ubsan, rvc4-tsan
 ```
 
 `create_deployment_artifacts.sh` mounts the `depthai-core` checkout at `/work` and runs `docker/build.sh` in
-`/work/device/rvc4`. `DEPTHAI_BUILD_JOBS` sets the number of parallel compile jobs. The first configure step
-fetches vcpkg (pinned commit) into `device/rvc4/vcpkg`.
+`/work/device/rvc4`. Without `DEPTHAI_DEVICE_SDK_IMAGE` it pulls the public build image that the target needs: the
+release image for `rvc4`, the dev image for the sanitizer targets. `DEPTHAI_ACCEPT_QUALCOMM_LICENSE=yes` is necessary
+only for the first build with a public image: it lets the script download the parts of the Qualcomm AI Runtime SDK
+that the build uses, see
+[Public build container](#public-build-container). `DEPTHAI_BUILD_JOBS` sets the number of parallel compile jobs. The
+first configure step fetches vcpkg (pinned commit) into `device/rvc4/vcpkg`.
+
+A build of the target `rvc4` compiles 530 source files: depthai-core, its Python bindings (the Script node uses
+them) and the firmware sources. Without help this takes about 10 minutes with 10 compile jobs. Three things make it
+short:
+
+* **Published build cache.** For each commit of the main branches and for each release, a CI job publishes the object
+  files of depthai-core, of its Python bindings and of most firmware sources (a compiler cache, about 60 MB), and the
+  vcpkg dependencies (binary archives, about 45 MB). The build downloads them for the commit of your checkout, or for
+  the nearest of its 10 parent commits that has them, and compiles only the rest. A source that you changed is
+  compiled: an object file of the cache is used only when the source and all its headers are the same. The firmware
+  sources that include headers of the Qualcomm AI Runtime SDK or of FastCV are not in the published cache; your build
+  compiles them. With the published cache of the checkout commit, a first build takes about 70 s.
+  `DEPTHAI_DEVICE_BUILD_CACHE=0` turns the download off.
+* **Caches on the host** that all checkouts share, in `~/.cache/depthai-device-sdk` (or `DEPTHAI_DEVICE_SDK_CACHE`):
+  `ccache`, the compiler cache (`CCACHE_MAXSIZE` sets its size limit, default 10G), `vcpkg`, the binary cache of the
+  vcpkg dependencies, and `build-cache`, the downloads above. A new clone or a new git worktree takes the object
+  files of earlier builds from them. A CI job (environment variable `CI`) keeps its caches in
+  `device/rvc4/build_docker_arm64` and does not use the published build cache.
+* **No debug data.** The target `rvc4` with the prebuilt private module compiles without debug data by default. The
+  firmware package is the same, because it has the stripped binary: its machine code and data are byte-equal. Set
+  `DEPTHAI_DEVICE_DEBUG_INFO=1` when you use a debugger or when you need the file and line of an address in a crash
+  report; the build is then slower (the link step takes 25 s for 9 s, the build folder is 5.9 GB for 0.5 GB) and it
+  does not use the published build cache. The sanitizer targets and a build with the sources of the private module
+  have debug data by default.
+
+A build with no change does no work, and a build after a change compiles only the changed sources and links the
+firmware again. The build time that the firmware reports is the time of the commit (`SOURCE_DATE_EPOCH`), so that two
+builds of one commit give the same binary. A compile job can use 2 GB to 5 GB of memory, so the default of
+`DEPTHAI_BUILD_JOBS` is half of the CPU cores.
 
 The output is the firmware package
 
@@ -84,10 +131,50 @@ device/rvc4/build_docker_arm64_rvc4/RelWithDebInfo/depthai-device-rvc4-fwp.tar.x
 
 together with its license bundle (`depthai-device-rvc4-fwp-LICENSE`) and SBOMs (`.spdx.json`, `.cdx.json`).
 
-The DSP offload (`src/hexagon/`) is built from source with the Qualcomm Hexagon SDK 5.5.0.1; CMake stops when
-`HEXAGON_SDK_ROOT` does not point at a Hexagon SDK. The Luxonis OS SDK image contains the SDK. With an image
-without it, set `HEXAGON_SDK_DIR` to a Hexagon SDK on the host: the scripts mount it at `/opt/hexagon-sdk` and set
-`HEXAGON_SDK_ROOT`.
+The DSP offload (`src/hexagon/`) is built from source when `HEXAGON_SDK_ROOT` points at the Qualcomm Hexagon SDK
+5.5.0.1; the Luxonis OS SDK image contains it. With another image, set `HEXAGON_SDK_DIR` to a Hexagon SDK on the
+host: the scripts mount it at `/opt/hexagon-sdk` and set `HEXAGON_SDK_ROOT`. Without the SDK the DSP offload comes
+from the `dsp/` folder of the prebuilt archive, and CMake checks that `src/hexagon/` is the same as in its build.
+
+### Public build container
+
+Luxonis builds and publishes two images from `docker/Dockerfile.sdk`. You pull them; you do not build them:
+
+| Image | For | Content |
+|---|---|---|
+| `ghcr.io/luxonis/depthai-device-sdk:<sysroot version>` | the release firmware (target `rvc4`) | Ubuntu 22.04, the build tools, the Arm GNU Toolchain without the parts that the firmware build does not use, the public sysroot, the FastCV headers |
+| `ghcr.io/luxonis/depthai-device-sdk:<sysroot version>-dev` | the targets `rvc4-tsan` and `rvc4-asan-ubsan`, and `start_dev_shell.sh` | the same plus the sanitizer libraries of the toolchain |
+
+The images have no Qualcomm software that Luxonis may not redistribute: the sysroot has link stubs of the Qualcomm
+libraries (same names and symbols, no code; the device has the real libraries). Two Qualcomm SDKs give headers to
+the build:
+
+* **FastCV**: its headers are in the images. Qualcomm Innovation Center publishes them under the BSD-3-Clause-Clear
+  license (the license and notice files are in `/opt/rvc4-sysroot/usr/share/licenses/fastcv` of the images).
+* **QAIRT** (Qualcomm AI Runtime SDK, version 2.32.6.250402): not in the images, because Luxonis may not
+  redistribute it. The build scripts keep the parts that the build uses (the SNPE headers and `libSNPE.so` of the
+  device OS target, 22 MB) in a cache on the host, `~/.cache/depthai-device-sdk` (or `DEPTHAI_DEVICE_SDK_CACHE`), and
+  mount them into the sysroot of the container. The first build fills the cache in one of two ways:
+  * `DEPTHAI_ACCEPT_QUALCOMM_LICENSE=yes`: the script downloads these parts from Qualcomm (about 10 MB of the 1.1 GB
+    SDK archive, one time) and checks their checksum. With this value you accept the license terms of Qualcomm for
+    the SDK (`LICENSE.pdf` in the archive; a copy stays in the cache). These terms also apply to the firmware that
+    you build with it.
+  * `DEPTHAI_DEVICE_QAIRT_ARCHIVE=/path/to/v2.32.6.250402.zip`: an archive that you downloaded from Qualcomm.
+
+  An image that has QAIRT in its sysroot (the Luxonis OS SDK image) needs neither.
+
+`install-hexagon-sdk.sh` in the images puts the Qualcomm Hexagon SDK into an image of your own, to build the DSP
+offload from source. `HEXAGON_SDK_DIR` (see above) does the same without a new image.
+
+To build the images yourself (the sysroot tarball is downloaded and its sha256 is checked):
+
+```bash
+docker build -f docker/Dockerfile.sdk --target release -t depthai-device-sdk docker
+docker build -f docker/Dockerfile.sdk --target dev -t depthai-device-sdk:dev docker
+```
+
+`RVC4_SYSROOT_URL` can also be the name of a sysroot tarball in `docker/`; `RVC4_SYSROOT_SHA256` must match it.
+The GitHub workflow `containers_device_rvc4_sdk.yml` builds both images and pushes them when `docker/` changes.
 
 For iteration, do not rebuild from scratch. Start a shell in the SDK container with `./start_dev_shell.sh rvc4`
 and run an incremental build:

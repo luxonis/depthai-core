@@ -1,0 +1,107 @@
+# syntax=docker/dockerfile:1
+#
+# Public build images of the RVC4 firmware: Ubuntu 22.04, the Arm GNU Toolchain 11.3.rel1 (aarch64-none-linux-gnu)
+# and the public sysroot of Luxonis OS at /opt/rvc4-sysroot. The sysroot has link stubs, not the code, of the
+# Qualcomm libraries that the firmware links; the device has the real libraries.
+#
+# This file gives two images (docker build --target <name>):
+#   release  the default image: what the build of the release firmware (target rvc4) needs
+#   dev      release plus the sanitizer libraries of the toolchain (targets rvc4-tsan and rvc4-asan-ubsan)
+# Luxonis publishes both: ghcr.io/luxonis/depthai-device-sdk:<sysroot version> and :<sysroot version>-dev
+# (.github/workflows/containers_device_rvc4_sdk.yml). The build scripts take the one that the target needs.
+#
+# Qualcomm SDKs that the build uses:
+#   FastCV        headers in the images (published by Qualcomm Innovation Center under BSD-3-Clause-Clear, see below)
+#   QAIRT (SNPE)  not in the images: Luxonis may not redistribute it. The build scripts mount it into the sysroot from
+#                 a cache on the host, which sdk/fetch-qairt.sh fills (docker/container-env.sh)
+#   Hexagon SDK   optional, not in the images: builds the DSP offload from source instead of taking it prebuilt
+#                 (sdk/install-hexagon-sdk.sh in a derived image, or HEXAGON_SDK_DIR of the build scripts)
+#
+# Build, with this directory as the build context (without --target the result is the release image):
+#   docker build -f Dockerfile.sdk -t depthai-device-sdk device/rvc4/docker
+# RVC4_SYSROOT_URL can also be the name of a sysroot tarball in the build context; RVC4_SYSROOT_SHA256 must match it.
+FROM ubuntu:22.04 AS base
+
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates curl git cmake ninja-build ccache pkg-config python3 python3-pip \
+        zip unzip tar xz-utils build-essential autoconf automake libtool bison flex file \
+    && rm -rf /var/lib/apt/lists/*
+
+# numpy headers for the Python bindings in the firmware (Script node). The same version as the Luxonis OS SDK.
+ARG NUMPY_VERSION=2.2.6
+RUN pip3 install --no-cache-dir "numpy==${NUMPY_VERSION}"
+
+
+# The cross toolchain in two parts: /toolchain for both images, /toolchain-sanitizers for the dev image only.
+# The checksum is the one that Arm publishes next to the tarball. Not extracted, because the firmware build does not
+# use them: the toolchain's own glibc (the build uses the sysroot of the OS), the debugger, the documentation, the
+# Fortran compiler, the LTO compiler and the static C++ library.
+FROM base AS toolchain
+ARG ARM_TOOLCHAIN_URL=https://developer.arm.com/-/media/Files/downloads/gnu/11.3.rel1/binrel/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-linux-gnu.tar.xz
+ARG ARM_TOOLCHAIN_SHA256=50cdef6c5baddaa00f60502cc8b59cc11065306ae575ad2f51e412a9b2a90364
+RUN curl -fsSL --retry 3 -o /tmp/arm-gnu-toolchain.tar.xz "$ARM_TOOLCHAIN_URL" \
+    && echo "$ARM_TOOLCHAIN_SHA256  /tmp/arm-gnu-toolchain.tar.xz" | sha256sum -c - \
+    && mkdir -p /toolchain /toolchain-sanitizers \
+    && tar -xJf /tmp/arm-gnu-toolchain.tar.xz --strip-components=1 -C /toolchain \
+        --exclude='*/aarch64-none-linux-gnu/libc' --exclude='*/share/doc' --exclude='*/share/info' \
+        --exclude='*/share/man' --exclude='*/share/locale' --exclude='*/bin/*-gdb*' --exclude='*/bin/*-lto-dump' \
+        --exclude='*gfortran*' --exclude='*/f951' --exclude='*/finclude' --exclude='*/libcaf_single*' \
+        --exclude='*/lto1' --exclude='*/libstdc++.a' --exclude='*/libstdc++fs.a' --exclude='*/libsupc++.a' \
+    && rm -f /tmp/arm-gnu-toolchain.tar.xz \
+    && cd /toolchain \
+    && find . \( -name 'lib*san.*' -o -name 'lib*san_preinit.o' -o -name 'libsanitizer.spec' \) > /tmp/sanitizer-files \
+    && while read -r f; do mkdir -p "/toolchain-sanitizers/$(dirname "$f")" && mv "$f" "/toolchain-sanitizers/$f" || exit 1; done < /tmp/sanitizer-files \
+    && rm -f /tmp/sanitizer-files \
+    && test -f /toolchain-sanitizers/aarch64-none-linux-gnu/lib64/libasan.so \
+    && test -f /toolchain-sanitizers/aarch64-none-linux-gnu/lib64/libtsan.so \
+    && test -f /toolchain-sanitizers/aarch64-none-linux-gnu/lib64/libubsan.so
+
+
+FROM base AS release
+COPY --from=toolchain /toolchain /opt/arm-gnu-toolchain
+
+ARG RVC4_SYSROOT_VERSION=ca10306
+ARG RVC4_SYSROOT_URL=https://artifacts.luxonis.com/artifactory/luxonis-rvc4-snapshot-local/depthai-device-rvc4-sdk/${RVC4_SYSROOT_VERSION}/rvc4-public-sysroot-${RVC4_SYSROOT_VERSION}.tar.xz
+ARG RVC4_SYSROOT_SHA256=23fdb84a9165f2e1801df7b8883ba2a01e8ea8689e031733378bed10946738c1
+RUN --mount=type=bind,target=/context \
+    set -eu; \
+    if [ -f "/context/$RVC4_SYSROOT_URL" ]; then \
+        cp "/context/$RVC4_SYSROOT_URL" /tmp/rvc4-sysroot.tar.xz; \
+    else \
+        curl -fsSL --retry 3 -o /tmp/rvc4-sysroot.tar.xz "$RVC4_SYSROOT_URL"; \
+    fi; \
+    echo "$RVC4_SYSROOT_SHA256  /tmp/rvc4-sysroot.tar.xz" | sha256sum -c -; \
+    tar -xJf /tmp/rvc4-sysroot.tar.xz -C /opt; \
+    rm -f /tmp/rvc4-sysroot.tar.xz; \
+    test -f /opt/rvc4-sysroot/usr/include/python3.10/Python.h
+
+# FastCV: the firmware calls a few FastCV functions. The device has the library and the sysroot has its link stub, so
+# the build needs only the headers. Qualcomm Innovation Center publishes them under BSD-3-Clause-Clear in the
+# third-party repository of OpenCV. The license and the notice file of that package are installed with them.
+ARG FASTCV_URL=https://raw.githubusercontent.com/opencv/opencv_3rdparty/9e8d42b6d7e769548d70b2e5674e263b056de8b4/fastcv/fastcv_linux_aarch64_2025_07_09.tgz
+ARG FASTCV_SHA256=599f4c1b9081f78855043e69a981cbd6c2652b7206da0c39462394d14c6717c1
+RUN curl -fsSL --retry 3 -o /tmp/fastcv.tgz "$FASTCV_URL" \
+    && echo "$FASTCV_SHA256  /tmp/fastcv.tgz" | sha256sum -c - \
+    && mkdir -p /tmp/fastcv /opt/rvc4-sysroot/usr/include/fastcv /opt/rvc4-sysroot/usr/share/licenses/fastcv \
+    && tar -xzf /tmp/fastcv.tgz -C /tmp/fastcv inc/fastcv.h inc/fastcvExt.h LICENSE NOTICE \
+    && cp /tmp/fastcv/inc/fastcv.h /tmp/fastcv/inc/fastcvExt.h /opt/rvc4-sysroot/usr/include/fastcv/ \
+    && cp /tmp/fastcv/LICENSE /tmp/fastcv/NOTICE /opt/rvc4-sysroot/usr/share/licenses/fastcv/ \
+    && rm -rf /tmp/fastcv /tmp/fastcv.tgz
+
+COPY sdk/install-hexagon-sdk.sh /usr/local/bin/
+
+# HEXAGON_SDK_ROOT is where install-hexagon-sdk.sh puts the SDK. The firmware build uses it only when the SDK is there.
+ENV DEPTHAI_DEVICE_RVC4_SYSROOT=/opt/rvc4-sysroot \
+    HEXAGON_SDK_ROOT=/opt/Hexagon_SDK \
+    PATH=/opt/arm-gnu-toolchain/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+
+# The sanitizer libraries of the toolchain, for the targets rvc4-tsan and rvc4-asan-ubsan
+FROM release AS dev
+COPY --from=toolchain /toolchain-sanitizers /opt/arm-gnu-toolchain
+
+
+# A build without --target gives the release image
+FROM release

@@ -57,8 +57,6 @@ VENDORED_DEPENDENCIES = {
 # parts are classified here. The paths are relative to that checkout, which find_private_module_root() locates;
 # when the checkout is absent, these entries are skipped with a warning.
 PRIVATE_MODULE_NAME = "depthai-device-rvc4-vendor"
-# Directory name of a checkout of the private repository that holds the module
-PRIVATE_MODULE_CHECKOUT_NAME = "depthai-device-vendor-fw"
 PRIVATE_MODULE_ENV = "DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR"
 PRIVATE_MODULE_VENDORED_DEPENDENCIES = {
     "depthmapwrapper-vd55h1/glog": {
@@ -146,8 +144,8 @@ def parse_args() -> argparse.Namespace:
         "--private-module-root",
         type=Path,
         default=None,
-        help=f"Path to the private {PRIVATE_MODULE_NAME} checkout (default: ${PRIVATE_MODULE_ENV}, then the "
-        "sibling directory of the repository). Its entries are skipped when the checkout is absent.",
+        help=f"Path to the private {PRIVATE_MODULE_NAME} checkout (default: ${PRIVATE_MODULE_ENV}). Its entries are "
+        "skipped when the checkout is absent (a build with the prebuilt vendor archive).",
     )
     parser.add_argument(
         "--output",
@@ -222,9 +220,10 @@ def path_is_relative_to(path: Path, base: Path) -> bool:
 
 def find_private_module_root(repo_root: Path, override: Path | None = None) -> Path | None:
     """The checkout of the private module: --private-module-root, then $DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR (in the build
-    container /depthai-device-rvc4-vendor), then a sibling directory named depthai-device-vendor-fw.
-    None when no candidate is a directory; the private-module entries are then skipped."""
-    candidates = (override, os.environ.get(PRIVATE_MODULE_ENV), repo_root.parent / PRIVATE_MODULE_CHECKOUT_NAME)
+    container /depthai-device-rvc4-vendor). No other place: a build with the prebuilt vendor archive has no private-module
+    sources, even when a checkout is near. None when no candidate is a directory; the private-module entries are then
+    skipped."""
+    candidates = (override, os.environ.get(PRIVATE_MODULE_ENV))
     for candidate in candidates:
         if candidate and Path(candidate).is_dir():
             return Path(candidate).resolve()

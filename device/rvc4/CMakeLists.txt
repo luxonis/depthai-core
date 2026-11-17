@@ -1,18 +1,59 @@
 cmake_minimum_required(VERSION 3.13) # For Hunter
 
 # ---------------------------------------------------------------------
-# Check for the RVC4 sysroot (by Python sysroot include path)
+# Cross toolchain and RVC4 sysroot
 # ---------------------------------------------------------------------
-
-# The RVC4 Yocto SDK environment script exports OECORE_TARGET_SYSROOT. The legacy
-# hard-coded location is kept as a fallback for the current build image.
-set(DEPTHAI_DEVICE_RVC4_SYSROOT "$ENV{OECORE_TARGET_SYSROOT}" CACHE PATH "RVC4 target sysroot (aarch64-oe-linux)")
-if(NOT DEPTHAI_DEVICE_RVC4_SYSROOT AND EXISTS "/usr/local/oe-sdk-hardcoded-buildpath/sysroots/aarch64-oe-linux")
-    set(DEPTHAI_DEVICE_RVC4_SYSROOT "/usr/local/oe-sdk-hardcoded-buildpath/sysroots/aarch64-oe-linux" CACHE PATH "RVC4 target sysroot (aarch64-oe-linux)" FORCE)
+#   oe   the OpenEmbedded SDK of the Luxonis OS SDK image. Its environment script sets CC, CXX, the flags and
+#        OECORE_TARGET_SYSROOT (toolchains/OEToolchainConfig.cmake).
+#   gnu  the Arm GNU Toolchain with a plain sysroot directory, as in the public build container docker/Dockerfile.sdk
+#        (toolchains/rvc4-gnu.cmake).
+#   auto oe when the OpenEmbedded SDK environment is sourced, else gnu.
+set(DEPTHAI_DEVICE_RVC4_TOOLCHAIN "auto" CACHE STRING "Cross toolchain of the firmware: auto, oe or gnu")
+set_property(CACHE DEPTHAI_DEVICE_RVC4_TOOLCHAIN PROPERTY STRINGS auto oe gnu)
+set(DEPTHAI_DEVICE_RVC4_TOOLCHAIN_RESOLVED "${DEPTHAI_DEVICE_RVC4_TOOLCHAIN}")
+if(DEPTHAI_DEVICE_RVC4_TOOLCHAIN_RESOLVED STREQUAL "auto")
+    if(DEFINED ENV{OECORE_TARGET_SYSROOT})
+        set(DEPTHAI_DEVICE_RVC4_TOOLCHAIN_RESOLVED "oe")
+    else()
+        set(DEPTHAI_DEVICE_RVC4_TOOLCHAIN_RESOLVED "gnu")
+    endif()
+endif()
+if(DEPTHAI_DEVICE_RVC4_TOOLCHAIN_RESOLVED STREQUAL "oe")
+    set(_rvc4_toolchain_file "${CMAKE_CURRENT_LIST_DIR}/toolchains/OEToolchainConfig.cmake")
+    # The hard-coded location of the current SDK image is the fallback
+    set(_rvc4_sysroot_default "$ENV{OECORE_TARGET_SYSROOT}")
+    if(NOT _rvc4_sysroot_default AND EXISTS "/usr/local/oe-sdk-hardcoded-buildpath/sysroots/aarch64-oe-linux")
+        set(_rvc4_sysroot_default "/usr/local/oe-sdk-hardcoded-buildpath/sysroots/aarch64-oe-linux")
+    endif()
+elseif(DEPTHAI_DEVICE_RVC4_TOOLCHAIN_RESOLVED STREQUAL "gnu")
+    set(_rvc4_toolchain_file "${CMAKE_CURRENT_LIST_DIR}/toolchains/rvc4-gnu.cmake")
+    set(_rvc4_sysroot_default "$ENV{DEPTHAI_DEVICE_RVC4_SYSROOT}")
+else()
+    message(FATAL_ERROR "DEPTHAI_DEVICE_RVC4_TOOLCHAIN must be auto, oe or gnu, not '${DEPTHAI_DEVICE_RVC4_TOOLCHAIN}'")
+endif()
+set(DEPTHAI_DEVICE_RVC4_SYSROOT "" CACHE PATH "RVC4 target sysroot (default: OECORE_TARGET_SYSROOT for oe, DEPTHAI_DEVICE_RVC4_SYSROOT for gnu)")
+if(NOT DEPTHAI_DEVICE_RVC4_SYSROOT)
+    set(DEPTHAI_DEVICE_RVC4_SYSROOT "${_rvc4_sysroot_default}" CACHE PATH "RVC4 target sysroot (default: OECORE_TARGET_SYSROOT for oe, DEPTHAI_DEVICE_RVC4_SYSROOT for gnu)" FORCE)
 endif()
 if(NOT EXISTS "${DEPTHAI_DEVICE_RVC4_SYSROOT}/usr/include/python3.10/")
-    message(FATAL_ERROR "Could not find the RVC4 sysroot: set OECORE_TARGET_SYSROOT (source the SDK environment script) or DEPTHAI_DEVICE_RVC4_SYSROOT. Looked at '${DEPTHAI_DEVICE_RVC4_SYSROOT}'.")
+    message(FATAL_ERROR "Could not find the RVC4 sysroot for the ${DEPTHAI_DEVICE_RVC4_TOOLCHAIN_RESOLVED} toolchain at '${DEPTHAI_DEVICE_RVC4_SYSROOT}'. "
+                        "oe: source the SDK environment script. gnu: set DEPTHAI_DEVICE_RVC4_SYSROOT (the public build container sets it).")
 endif()
+message(STATUS "RVC4 toolchain: ${DEPTHAI_DEVICE_RVC4_TOOLCHAIN_RESOLVED} (${_rvc4_toolchain_file})")
+# The vcpkg port builds read the triplets and the toolchain file in other processes, which see only the environment
+set(ENV{DEPTHAI_DEVICE_RVC4_TOOLCHAIN} "${DEPTHAI_DEVICE_RVC4_TOOLCHAIN_RESOLVED}")
+set(ENV{DEPTHAI_DEVICE_RVC4_SYSROOT} "${DEPTHAI_DEVICE_RVC4_SYSROOT}")
+if(DEPTHAI_DEVICE_RVC4_TOOLCHAIN_RESOLVED STREQUAL "gnu")
+    # The Python finders ask the host python3 for its headers when these are not set; the public image has none, and
+    # the target headers come first on the include path anyway. FindPython of depthai-core reads Python_INCLUDE_DIR,
+    # the FindPythonLibsNew of pybind11 in this directory reads PYTHON_INCLUDE_DIR (and overwrites it unless told not to).
+    set(Python_INCLUDE_DIR "${DEPTHAI_DEVICE_RVC4_SYSROOT}/usr/include/python3.10" CACHE PATH "Python headers of the target")
+    set(PYTHON_INCLUDE_DIR "${Python_INCLUDE_DIR}" CACHE PATH "Python headers of the target")
+    set(PYBIND11_PYTHONLIBS_OVERWRITE OFF CACHE BOOL "Keep PYTHON_INCLUDE_DIR (RVC4 gnu toolchain)")
+endif()
+# pkg-config (libusb for XLink, GStreamer) searches the sysroot only
+set(ENV{PKG_CONFIG_LIBDIR} "${DEPTHAI_DEVICE_RVC4_SYSROOT}/usr/lib/pkgconfig:${DEPTHAI_DEVICE_RVC4_SYSROOT}/usr/share/pkgconfig")
+set(ENV{PKG_CONFIG_SYSROOT_DIR} "${DEPTHAI_DEVICE_RVC4_SYSROOT}")
 # QAIRT (SNPE) SDK inside the sysroot. The firmware is built against a fixed version; other
 # installed versions are only used as a fallback.
 set(DEPTHAI_DEVICE_QAIRT_VERSION "2.32.6.250402" CACHE STRING "QAIRT/SNPE SDK version under <sysroot>/opt/qcom/aistack/qairt to build against")
@@ -30,7 +71,8 @@ if(NOT EXISTS "${SNPE_ROOT}/include/SNPE")
     endforeach()
 endif()
 if(NOT EXISTS "${SNPE_ROOT}/include/SNPE")
-    message(FATAL_ERROR "No QAIRT/SNPE SDK found under ${DEPTHAI_DEVICE_RVC4_SYSROOT}/opt/qcom/aistack/qairt")
+    message(FATAL_ERROR "No QAIRT/SNPE SDK found under ${DEPTHAI_DEVICE_RVC4_SYSROOT}/opt/qcom/aistack/qairt. "
+                        "create_deployment_artifacts.sh and start_dev_shell.sh mount it there (README.md, Public build container).")
 endif()
 message(STATUS "RVC4 sysroot: ${DEPTHAI_DEVICE_RVC4_SYSROOT}; QAIRT: ${SNPE_ROOT}")
 # Work around the broken OpenCV CMake export in the SDK sysroot (no root needed).
@@ -54,7 +96,7 @@ set(DEPTHAI_ASAN_UBSAN_FLAGS
 # Project wide options
 # Disable FW in core
 set(VCPKG_OVERLAY_TRIPLETS "${CMAKE_CURRENT_LIST_DIR}/triplets" CACHE STRING "Path to vcpkg triplet files" FORCE)
-set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/toolchains/OEToolchainConfig.cmake" CACHE STRING "Toolchain file to overload" FORCE)
+set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${_rvc4_toolchain_file}" CACHE STRING "Toolchain file to overload" FORCE)
 if(DEPTHAI_ASAN_UBSAN)
     message(STATUS "Enabling AddressSanitizer and UndefinedBehaviorSanitizer")
     set(VCPKG_TARGET_TRIPLET "rvc4-asan-ubsan" CACHE STRING "Vcpkg target triplet" FORCE)
@@ -131,10 +173,35 @@ string(STRIP "${version}" version)
 
 project(depthai-device-rvc4 VERSION ${version} LANGUAGES CXX C ASM)
 
+# The release image of the public build has no sanitizer libraries; its dev image has them. Stop here with the reason,
+# and not at the link step.
+if((DEPTHAI_ASAN_UBSAN OR DEPTHAI_TSAN) AND DEPTHAI_DEVICE_RVC4_TOOLCHAIN_RESOLVED STREQUAL "gnu")
+    if(DEPTHAI_TSAN)
+        set(_rvc4_sanitizer_library libtsan.so)
+    else()
+        set(_rvc4_sanitizer_library libasan.so)
+    endif()
+    execute_process(COMMAND "${CMAKE_CXX_COMPILER}" -print-file-name=${_rvc4_sanitizer_library}
+                    OUTPUT_VARIABLE _rvc4_sanitizer_library_path OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if(NOT IS_ABSOLUTE "${_rvc4_sanitizer_library_path}")
+        message(FATAL_ERROR "The toolchain of this build image has no ${_rvc4_sanitizer_library}. The sanitizer targets need the "
+                            "dev image, ghcr.io/luxonis/depthai-device-sdk:<sysroot version>-dev. "
+                            "create_deployment_artifacts.sh takes it when DEPTHAI_DEVICE_SDK_IMAGE is not set.")
+    endif()
+endif()
+
 # Location of this tree and of its build directory. They differ from CMAKE_SOURCE_DIR /
 # CMAKE_BINARY_DIR when the firmware is built as a subdirectory of depthai-core.
 set(DEPTHAI_DEVICE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(DEPTHAI_DEVICE_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+
+# Debug data in the object files. Without it the firmware in the package is the same, because the package has the
+# stripped binary. The build is then faster and its build folder is 10 times smaller. Debug data is necessary for a
+# debugger and for the file and line of an address in a crash report.
+option(DEPTHAI_DEVICE_DEBUG_INFO "Compile with debug data (-g)" ON)
+if(NOT DEPTHAI_DEVICE_DEBUG_INFO)
+    add_compile_options(-g0)
+endif()
 
 find_program(CCACHE_PROGRAM ccache)
 
@@ -144,6 +211,10 @@ if(CCACHE_PROGRAM)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CCACHE_PROGRAM}")
 endif()
+
+# include(CTest) of depthai-core would default BUILD_TESTING to ON, and the subprojects (cpp-subprocess) would then
+# build their tests.
+set(BUILD_TESTING OFF CACHE BOOL "Build the tests of the subprojects")
 
 # depthai-core is not below this directory, so it needs an explicit binary directory
 add_subdirectory("${DEPTHAI_DEVICE_KB_CORE_PATH}" "${CMAKE_BINARY_DIR}/depthai-core" EXCLUDE_FROM_ALL)
@@ -164,23 +235,70 @@ include_directories(BEFORE
     "${DEPTHAI_DEVICE_BINARY_DIR}"
 )
 
-# Private Qualcomm/ST module sources (licensee-only code; not part of the public repository): the private repository
-# depthai-device-vendor-fw. Default: the environment variable DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR, then a checkout named
-# depthai-device-vendor-fw next to the depthai-core checkout.
-set(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR "$ENV{DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}" CACHE PATH "Path to the checkout of the private module (repository depthai-device-vendor-fw)")
-if(NOT DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR AND EXISTS "${DEPTHAI_DEVICE_KB_CORE_PATH}/../depthai-device-vendor-fw/CMakeLists.txt")
-    get_filename_component(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR "${DEPTHAI_DEVICE_KB_CORE_PATH}/../depthai-device-vendor-fw" ABSOLUTE)
+# Vendor module: the licensee-only Qualcomm/ST code (repository depthai-device-vendor-fw; not part of this repository) behind
+# the public interface headers. The build links its prebuilt archive (cmake/DepthaiDeviceRvc4VendorPrebuilt.cmake), the first of:
+#   DEPTHAI_DEVICE_RVC4_VENDOR  a local archive depthai-device-rvc4-vendor-<version>[-asan-ubsan|-tsan].tar.xz, in place of
+#                               the download (as DEPTHAI_DEVICE_RVC4_FWP is a local firmware package for depthai-core)
+#   the archive of DEPTHAI_DEVICE_RVC4_VENDOR_VERSION in cmake/Depthai/DepthaiDeviceRVC4Config.cmake of depthai-core,
+#   downloaded (cmake/DepthaiDeviceRvc4VendorDownloader.cmake of depthai-core)
+# The CI of depthai-device-vendor-fw builds the module from its sources instead: DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR (Luxonis
+# licensees only). An environment variable of the same name, when it is set (also when it is empty), replaces the
+# cached value at each configure step: the build scripts set both, so a build folder follows the last call.
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/DepthaiDeviceRvc4VendorPrebuilt.cmake")
+include("${DEPTHAI_DEVICE_KB_CORE_PATH}/cmake/DepthaiDeviceRvc4VendorDownloader.cmake")
+set(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR "" CACHE PATH "Sources of the vendor module (repository depthai-device-vendor-fw; its CI and Luxonis licensees)")
+set(DEPTHAI_DEVICE_RVC4_VENDOR "" CACHE FILEPATH "Local prebuilt vendor archive (depthai-device-rvc4-vendor-<version>.tar.xz) in place of the download")
+foreach(_vendor_setting DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR DEPTHAI_DEVICE_RVC4_VENDOR)
+    if(DEFINED ENV{${_vendor_setting}})
+        get_property(_vendor_help CACHE ${_vendor_setting} PROPERTY HELPSTRING)
+        get_property(_vendor_type CACHE ${_vendor_setting} PROPERTY TYPE)
+        set(${_vendor_setting} "$ENV{${_vendor_setting}}" CACHE ${_vendor_type} "${_vendor_help}" FORCE)
+    endif()
+endforeach()
+unset(_vendor_setting)
+unset(_vendor_help)
+unset(_vendor_type)
+set(DEPTHAI_DEVICE_RVC4_VENDOR_DIR "")
+if(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR)
+    if(DEPTHAI_DEVICE_RVC4_VENDOR)
+        message(FATAL_ERROR "Set DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR (vendor module sources) or DEPTHAI_DEVICE_RVC4_VENDOR "
+                            "(prebuilt vendor archive), not both.")
+    endif()
+    message(STATUS "Vendor module: sources '${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}'")
+else()
+    depthai_device_rvc4_vendor_identity()
+    set(_vendor_suffix "")
+    if(NOT DEPTHAI_DEVICE_RVC4_VENDOR_SANITIZER STREQUAL "none")
+        set(_vendor_suffix "-${DEPTHAI_DEVICE_RVC4_VENDOR_SANITIZER}")
+    endif()
+    if(DEPTHAI_DEVICE_RVC4_VENDOR)
+        get_filename_component(_vendor_archive "${DEPTHAI_DEVICE_RVC4_VENDOR}" ABSOLUTE)
+        if(NOT EXISTS "${_vendor_archive}" OR IS_DIRECTORY "${_vendor_archive}")
+            message(FATAL_ERROR "DEPTHAI_DEVICE_RVC4_VENDOR is not a file: '${DEPTHAI_DEVICE_RVC4_VENDOR}'. Set it to a vendor archive "
+                                "depthai-device-rvc4-vendor-<version>${_vendor_suffix}.tar.xz.")
+        endif()
+        message(STATUS "Vendor module: local archive '${_vendor_archive}' (DEPTHAI_DEVICE_RVC4_VENDOR)")
+    else()
+        DepthaiDeviceRvc4VendorDownloader("${_vendor_suffix}" "${DEPTHAI_DEVICE_BINARY_DIR}/vendor/download" _vendor_archive)
+    endif()
+    depthai_device_rvc4_vendor_extract("${_vendor_archive}" "${DEPTHAI_DEVICE_BINARY_DIR}/vendor" DEPTHAI_DEVICE_RVC4_VENDOR_DIR)
+    message(STATUS "Vendor module: prebuilt '${DEPTHAI_DEVICE_RVC4_VENDOR_DIR}'")
+    unset(_vendor_suffix)
+    unset(_vendor_archive)
 endif()
-message(STATUS "Private module source dir: '${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}'")
 
 # STMicroelectronics VD55H1 ToF processing (ST SLA0106 library + Qualcomm depth-map wrapper).
-# Available only when the private module carries the wrapper; without it the ToF node reports an error.
+# Available only when the private module sources carry the wrapper; without it the ToF node reports an error.
 if(EXISTS "${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}/depthmapwrapper-vd55h1/CMakeLists.txt")
     set(_tof_default ON)
 else()
     set(_tof_default OFF)
 endif()
 option(DEPTHAI_DEVICE_TOF_VD55H1 "Build the VD55H1 ToF depth processing (needs the private depthmapwrapper-vd55h1)" ${_tof_default})
+if(DEPTHAI_DEVICE_TOF_VD55H1 AND NOT EXISTS "${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}/depthmapwrapper-vd55h1/CMakeLists.txt")
+    message(FATAL_ERROR "DEPTHAI_DEVICE_TOF_VD55H1 is ON, but the private module sources with depthmapwrapper-vd55h1 are not "
+                        "available (the prebuilt private module has no ToF wrapper).")
+endif()
 message(STATUS "ToF VD55H1 processing: ${DEPTHAI_DEVICE_TOF_VD55H1}")
 # Without the wrapper the core library compiles the stub of the ToF sensor pipeline (see the private module section)
 set(DEPTHAI_DEVICE_TOF_SOURCES src/pipeline/node/ToF/tofVD55H1.cpp)
@@ -459,6 +577,13 @@ target_link_libraries(depthai-device-core PRIVATE gstqtimemorybase gstqtivideoba
 # Specifies name of generated IMPORTED target (set to alias)
 set_target_properties(depthai-device-core PROPERTIES EXPORT_NAME ${TARGET_DEVICE_KB_ALIAS})
 
+# Thin archives for the three large static libraries. They are only an input of the firmware link. A normal archive
+# holds a copy of each object file (2.7 GB for the Python bindings with debug data), and that copy takes more time
+# than the link of the firmware. A library that leaves the build folder must stay a normal archive, because a thin
+# archive only names its object files: the libraries of the private module and of the DSP offload go into the
+# prebuilt archive.
+set_target_properties(depthai-core depthai depthai-device-core PROPERTIES STATIC_LIBRARY_OPTIONS "--thin")
+
 # Add to list of targets to export and install
 list(APPEND targets_to_export depthai-device-core)
 
@@ -475,7 +600,6 @@ target_include_directories(depthai-device-core
 
     # Build time path to include directories
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
-    ${GST_INCLUDE_DIRS}
     ${SNPE_INCLUDE_PATH}
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/external/cpp-subprocess>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src/pipeline/node/IMU/rvc4>"
@@ -589,12 +713,6 @@ find_package(spdlog CONFIG REQUIRED)
 message(STATUS "Found spdlog at ${spdlog_DIR}")
 
 find_package(PkgConfig REQUIRED)
-set(DEPTHAI_SYSROOT "${DEPTHAI_DEVICE_RVC4_SYSROOT}")
-
-# Point pkg-config to the sysroot pkgconfig directories and tell it to use sysroot
-# This makes pkg_search_module(GST ...) find gstreamer-1.0 .pc files in the sysroot
-set(ENV{PKG_CONFIG_LIBDIR} "${DEPTHAI_SYSROOT}/usr/lib/pkgconfig;${DEPTHAI_SYSROOT}/usr/share/pkgconfig")
-set(ENV{PKG_CONFIG_SYSROOT_DIR} "${DEPTHAI_SYSROOT}")
 pkg_search_module(GST REQUIRED gstreamer-1.0>=1.4 gstreamer-app-1.0>=1.4 gstallocators-1.0>=1.4)
 message(STATUS "GST Libraries: ${GST_LIBRARIES}")
 
@@ -667,8 +785,8 @@ target_link_libraries(depthai-device-core
     camera_metadata
     qmmf_camera_metadata
 
-    # string formatting
-    fmt
+    # string formatting (the fmt port of vcpkg; a plain "fmt" would link the libfmt of the OS sysroot)
+    fmt::fmt
     spdlog::spdlog
     gpiod
 
@@ -689,36 +807,45 @@ endif()
 # ---------------------------------------------------------------------
 # Hexagon DSP offload (ImageAlign and StereoDepth DSP kernels)
 # ---------------------------------------------------------------------
-# Every firmware carries the DSP offload, built from source with the Qualcomm Hexagon SDK. Luxonis
-# builds use the SDK of the Luxonis OS SDK image; other builds install it from Qualcomm and set
-# HEXAGON_SDK_ROOT to it.
+# Every firmware carries the DSP offload. It is built from source when HEXAGON_SDK_ROOT has the Qualcomm Hexagon SDK
+# (Luxonis builds use the SDK of the Luxonis OS SDK image; other builds install it from Qualcomm), else it comes from
+# the dsp/ folder of the prebuilt vendor module.
 set(DEPTHAI_DEVICE_HEXAGON_SDK_VERSION "5.5.0.1")  # the version that the firmware is built and tested with
+set(_dsp_prebuilt OFF)
 if(NOT DEFINED ENV{HEXAGON_SDK_ROOT} OR NOT EXISTS "$ENV{HEXAGON_SDK_ROOT}/build/cmake/hexagon_fun.cmake")
-    message(FATAL_ERROR "The firmware needs the Qualcomm Hexagon SDK ${DEPTHAI_DEVICE_HEXAGON_SDK_VERSION} for its DSP offload: "
-                        "install it from Qualcomm and set the environment variable HEXAGON_SDK_ROOT to it "
-                        "(now: '$ENV{HEXAGON_SDK_ROOT}').")
-endif()
-set(_hexagon_sdk_version "unknown")
-if(EXISTS "$ENV{HEXAGON_SDK_ROOT}/hexagon_sdk.json")
-    # Not strict JSON (trailing commas): take the first "version" entry, the one of the SDK
-    file(READ "$ENV{HEXAGON_SDK_ROOT}/hexagon_sdk.json" _hexagon_sdk_json)
-    if(_hexagon_sdk_json MATCHES "\"version\": *\"([0-9.]+)\"")
-        set(_hexagon_sdk_version "${CMAKE_MATCH_1}")
+    if(NOT DEPTHAI_DEVICE_RVC4_VENDOR_DIR)
+        message(FATAL_ERROR "The firmware needs the Qualcomm Hexagon SDK ${DEPTHAI_DEVICE_HEXAGON_SDK_VERSION} to build its DSP offload "
+                            "with the vendor module sources: install it from Qualcomm and set the environment variable "
+                            "HEXAGON_SDK_ROOT to it (now: '$ENV{HEXAGON_SDK_ROOT}').")
     endif()
-    unset(_hexagon_sdk_json)
+    set(_dsp_prebuilt ON)
 endif()
-message(STATUS "Hexagon DSP offload: Hexagon SDK ${_hexagon_sdk_version} at $ENV{HEXAGON_SDK_ROOT}")
-if(NOT _hexagon_sdk_version STREQUAL DEPTHAI_DEVICE_HEXAGON_SDK_VERSION)
-    message(WARNING "The firmware is built and tested with the Hexagon SDK ${DEPTHAI_DEVICE_HEXAGON_SDK_VERSION}; "
-                    "HEXAGON_SDK_ROOT has version ${_hexagon_sdk_version}.")
+if(_dsp_prebuilt)
+    depthai_device_dsp_prebuilt_import("${DEPTHAI_DEVICE_RVC4_VENDOR_DIR}/dsp")
+    message(STATUS "Hexagon DSP offload: prebuilt '${DEPTHAI_DEVICE_RVC4_VENDOR_DIR}/dsp' (no Hexagon SDK at '$ENV{HEXAGON_SDK_ROOT}')")
+else()
+    set(_hexagon_sdk_version "unknown")
+    if(EXISTS "$ENV{HEXAGON_SDK_ROOT}/hexagon_sdk.json")
+        # Not strict JSON (trailing commas): take the first "version" entry, the one of the SDK
+        file(READ "$ENV{HEXAGON_SDK_ROOT}/hexagon_sdk.json" _hexagon_sdk_json)
+        if(_hexagon_sdk_json MATCHES "\"version\": *\"([0-9.]+)\"")
+            set(_hexagon_sdk_version "${CMAKE_MATCH_1}")
+        endif()
+        unset(_hexagon_sdk_json)
+    endif()
+    message(STATUS "Hexagon DSP offload: Hexagon SDK ${_hexagon_sdk_version} at $ENV{HEXAGON_SDK_ROOT}")
+    if(NOT _hexagon_sdk_version STREQUAL DEPTHAI_DEVICE_HEXAGON_SDK_VERSION)
+        message(WARNING "The firmware is built and tested with the Hexagon SDK ${DEPTHAI_DEVICE_HEXAGON_SDK_VERSION}; "
+                        "HEXAGON_SDK_ROOT has version ${_hexagon_sdk_version}.")
+    endif()
+    unset(_hexagon_sdk_version)
+    add_subdirectory(src/hexagon/ImageAlignDsp)
+    add_subdirectory(src/hexagon/StereoDepthDsp)
+    set(DEPTHAI_DEVICE_DSP_SKELS
+        "${DEPTHAI_DEVICE_BINARY_DIR}/src/hexagon/ImageAlignDsp/hexagon_build/libImageAlignDsp_skel.so"
+        "${DEPTHAI_DEVICE_BINARY_DIR}/src/hexagon/StereoDepthDsp/hexagon_build/libStereoDepthDsp_skel.so")
 endif()
-unset(_hexagon_sdk_version)
-add_subdirectory(src/hexagon/ImageAlignDsp)
-add_subdirectory(src/hexagon/StereoDepthDsp)
 target_link_libraries(depthai-device-core PRIVATE ImageAlignDsp StereoDepthDsp)
-set(DEPTHAI_DEVICE_DSP_SKELS
-    "${DEPTHAI_DEVICE_BINARY_DIR}/src/hexagon/ImageAlignDsp/hexagon_build/libImageAlignDsp_skel.so"
-    "${DEPTHAI_DEVICE_BINARY_DIR}/src/hexagon/StereoDepthDsp/hexagon_build/libStereoDepthDsp_skel.so")
 
 target_link_libraries(depthai-device-core PRIVATE pipeline.node.IMU)
 
@@ -736,9 +863,13 @@ if(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR)
     if(DEPTHAI_DEVICE_TOF_VD55H1)
         target_link_libraries(depthai-device-core PRIVATE depthai-device-rvc4-vendor-tof)
     endif()
+    depthai_device_rvc4_vendor_prebuilt_describe("${DEPTHAI_DEVICE_BINARY_DIR}/vendor-prebuilt")
 else()
-    message(FATAL_ERROR "DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR is not set and no depthai-device-vendor-fw checkout was found next to the "
-                        "depthai-core checkout. The private module is required to build the firmware.")
+    depthai_device_rvc4_vendor_prebuilt_import("${DEPTHAI_DEVICE_RVC4_VENDOR_DIR}" "${DEPTHAI_DEVICE_BINARY_DIR}/vendor-prebuilt" ${_dsp_prebuilt})
+    target_link_libraries(depthai-device-core PRIVATE depthai-device-rvc4-vendor)
+    target_link_libraries(pipeline.node.IMU PRIVATE depthai-device-rvc4-vendor)
+    add_dependencies(depthai-device-core depthai-device-rvc4-vendor-prebuilt-check)
+    add_dependencies(pipeline.node.IMU depthai-device-rvc4-vendor-prebuilt-check)
 endif()
 
 # Create final version
@@ -820,10 +951,16 @@ foreach(_skel IN LISTS DEPTHAI_DEVICE_DSP_SKELS)
     list(APPEND DEPTHAI_DEVICE_DSP_SKEL_COPY_COMMANDS COMMAND ${CMAKE_COMMAND} -E copy "${_skel}" "${DEPTHAI_DEVICE_BINARY_DIR}/${_skel_name}")
     list(APPEND DEPTHAI_DEVICE_DSP_SKELS_IN_FWP "${DEPTHAI_DEVICE_BINARY_DIR}/${_skel_name}")
 endforeach()
+# The license bundle lists the third-party parts of the private module sources (the ToF wrapper). A build with the
+# prebuilt archive has none of them.
+set(DEPTHAI_DEVICE_LICENSE_PRIVATE_MODULE_ARGS "")
+if(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR)
+    set(DEPTHAI_DEVICE_LICENSE_PRIVATE_MODULE_ARGS --private-module-root "${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}")
+endif()
 add_custom_command(TARGET ${TARGET_DEVICE_EXECUTABLE} POST_BUILD
-    COMMAND $ENV{OBJCOPY} --only-keep-debug "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>" "$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/$<TARGET_FILE_BASE_NAME:${TARGET_DEVICE_EXECUTABLE}>.debug"
-    COMMAND $ENV{STRIP} --strip-unneeded "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>"
-    COMMAND $ENV{OBJCOPY} --add-gnu-debuglink="$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/$<TARGET_FILE_BASE_NAME:${TARGET_DEVICE_EXECUTABLE}>.debug" "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>"
+    COMMAND ${CMAKE_OBJCOPY} --only-keep-debug "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>" "$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/$<TARGET_FILE_BASE_NAME:${TARGET_DEVICE_EXECUTABLE}>.debug"
+    COMMAND ${CMAKE_STRIP} --strip-unneeded "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>"
+    COMMAND ${CMAKE_OBJCOPY} --add-gnu-debuglink="$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/$<TARGET_FILE_BASE_NAME:${TARGET_DEVICE_EXECUTABLE}>.debug" "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>"
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>" "${DEPTHAI_DEVICE_BINARY_DIR}/$<TARGET_FILE_NAME:${TARGET_DEVICE_EXECUTABLE}>"
     ${DEPTHAI_DEVICE_DSP_SKEL_COPY_COMMANDS}
     COMMAND ${CMAKE_COMMAND} -E tar cfJ "$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/depthai-device-rvc4-fwp.tar.xz"
@@ -841,7 +978,7 @@ add_custom_command(TARGET ${TARGET_DEVICE_EXECUTABLE} POST_BUILD
         --vcpkg-root "${DEPTHAI_DEVICE_VCPKG_ROOT}"
         --install-root "${CMAKE_BINARY_DIR}/vcpkg_installed"
         --license-input "${DEPTHAI_DEVICE_SOURCE_DIR}/LICENSE.fwp"
-        --private-module-root "${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}"
+        ${DEPTHAI_DEVICE_LICENSE_PRIVATE_MODULE_ARGS}
         --license-output "$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/depthai-device-rvc4-fwp-LICENSE"
         --spdx-output "$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/depthai-device-rvc4-fwp.spdx.json"
         --cyclonedx-output "$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/depthai-device-rvc4-fwp.cdx.json"

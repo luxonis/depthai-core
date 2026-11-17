@@ -34,7 +34,11 @@ utility_scripts/core_dump_tmp_*
 # vcpkg checkout that the configure step fetches (see CMakeLists.txt)
 /vcpkg/
 
-# The root .gitignore of depthai-core ignores build* and .vscode. These files of the firmware tree are tracked.
+# A local sysroot tarball in the build context of docker/Dockerfile.sdk
+/docker/*.tar.xz
+
+# The root .gitignore of depthai-core ignores build*, install* and .vscode. These files of the firmware tree are tracked.
 !build.sh
 !build_rvc4.sh
 !/.vscode/
+!/docker/sdk/install-*.sh

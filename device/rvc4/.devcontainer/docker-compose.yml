@@ -2,8 +2,10 @@ version: '3'
 
 # Variables come from .devcontainer/.env, which createEnv.sh writes (gitignored):
 #   DOCKER_USER               uid:gid of the host user
-#   DEPTHAI_DEVICE_SDK_IMAGE  Luxonis OS RVC4 SDK image (private today; ghcr.io/luxonis/depthai-device-sdk is planned)
-#   VENDOR_SOURCE_DIR         host path of the private depthai-device-rvc4-vendor module
+#   DEPTHAI_DEVICE_SDK_IMAGE  build image (README.md, Public build container)
+#   VENDOR_SOURCE_DIR         host path of the vendor module sources (an empty folder when the build uses the prebuilt
+#                             archive)
+#   DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR, DEPTHAI_DEVICE_RVC4_VENDOR   the vendor module settings of CMake (env_file)
 services:
   rvc4-dev:
     build:
@@ -17,8 +19,8 @@ services:
     volumes:
       # the depthai-core checkout (this directory is device/rvc4/.devcontainer)
       - ../../..:/work
-      # Private depthai-device-rvc4-vendor module (licensee-only Qualcomm/ST code); CMake finds it at /depthai-device-rvc4-vendor
-      - ${VENDOR_SOURCE_DIR:-../../../../depthai-device-vendor-fw}:/depthai-device-rvc4-vendor
+      # Vendor module sources (licensee-only Qualcomm/ST code) when DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR is set; CMake finds them at /depthai-device-rvc4-vendor
+      - ${VENDOR_SOURCE_DIR:?run createEnv.sh}:/depthai-device-rvc4-vendor
       - /etc/passwd:/etc/passwd:ro
       - /etc/shadow:/etc/shadow:ro
       - ${HOME}:${HOME}:ro
@@ -27,7 +29,6 @@ services:
     tty: true
     environment:
       HOME: /home/docker
-      DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR: /depthai-device-rvc4-vendor
       TERM: xterm-256color
     group_add:
       - sudo

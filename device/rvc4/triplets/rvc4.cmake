@@ -11,4 +11,9 @@ if(PORT MATCHES "libusb")
     set(VCPKG_LIBRARY_LINKAGE dynamic)
 endif()
 
-set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/../toolchains/OEToolchainConfig.cmake")
+# CMakeLists.txt exports the toolchain that it selected, because vcpkg reads this file in its own process.
+if("$ENV{DEPTHAI_DEVICE_RVC4_TOOLCHAIN}" STREQUAL "gnu")
+    set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/../toolchains/rvc4-gnu.cmake")
+else()
+    set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/../toolchains/OEToolchainConfig.cmake")
+endif()

@@ -64,6 +64,7 @@ set(common_incs
 set(StereoDepthDsp_srcs
     ${CMAKE_CURRENT_BINARY_DIR}/StereoDepthDsp_stub
     cpu/StereoDepthDspHandler.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utilities/utilities.cpp
     ${HEXAGON_SDK_ROOT}/utils/examples/dsp_capabilities_utils
     ${HEXAGON_SDK_ROOT}/utils/examples/pd_status_notification
 )
