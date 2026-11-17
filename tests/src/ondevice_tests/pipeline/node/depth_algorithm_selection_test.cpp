@@ -28,6 +28,14 @@ struct DepthTestAccess {
         const auto selection = Depth::selectBackend(Platform::RVC4, resolution, fps, algorithms, models, strict, dai::Version(1, 47, 0));
         return {selection.algorithm, selection.config};
     }
+    static std::pair<Depth::Algorithm, Depth::Config> selectWithOs(std::optional<std::pair<uint32_t, uint32_t>> resolution,
+                                                                   float fps,
+                                                                   const std::vector<Depth::Algorithm>& algorithms,
+                                                                   bool strict,
+                                                                   const std::optional<dai::Version>& osVersion) {
+        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, fps, algorithms, {}, strict, osVersion);
+        return {selection.algorithm, selection.config};
+    }
     // Test the optional-output contract without connecting a device or building a backend.
     static void setWiredOutputs(Depth& depth, Depth::Algorithm algorithm, Node::Output& depthOutput, Node::Output* left, Node::Output* right) {
         depth.graphBuilt_ = true;
@@ -309,7 +317,8 @@ TEST_CASE("Depth optimized neural profiles honor every advertised FPS and tensor
     for(const auto& p : profiles) {
         INFO("model=" << static_cast<unsigned>(p.model) << " maxFps=" << p.maxFps);
         // Restrict candidates to this supported model so priority cannot mask a bad row.
-        const float targetFps = (p.maxFps - 0.05f) / 0.9f;
+        // The selection is strict (explicit FPS), so no safety margin applies: the request must fit the model exactly.
+        const float targetFps = p.maxFps - 0.05f;
         const uint32_t minW = static_cast<uint32_t>(static_cast<float>(p.width) / 1.4142135f);
         const uint32_t maxW = static_cast<uint32_t>(static_cast<float>(p.width) * 1.4142135f);
         const uint32_t minH = static_cast<uint32_t>(static_cast<float>(p.height) / 1.4142135f);
@@ -381,4 +390,34 @@ TEST_CASE("Pinned AUTO rejects stereo-only hardware below the requested FPS", "[
     const auto bestEffort = dai::node::DepthTestAccess::selectOptimized(resolution, 60.f, kStereoOnly);
     REQUIRE(bestEffort.first == Depth::Algorithm::STEREO);
     REQUIRE_THROWS_AS(dai::node::DepthTestAccess::selectOptimized(resolution, 60.f, kStereoOnly, {}, true), std::runtime_error);
+}
+
+TEST_CASE("Explicit FPS above every backend profile is rejected, never downgraded", "[Depth][ExplicitFps]") {
+    for(const auto& resolution : {std::optional<std::pair<uint32_t, uint32_t>>{}, std::optional{std::make_pair(640u, 400u)}}) {
+        REQUIRE_THROWS_WITH(dai::node::DepthTestAccess::selectOptimized(resolution, 1000.f, kAllRvc4Backends, {}, true),
+                            Catch::Matchers::ContainsSubstring("no available algorithm"));
+    }
+    REQUIRE_THROWS_WITH(dai::node::DepthTestAccess::selectOptimized(std::make_pair(1920u, 1440u), 30.f, kAllRvc4Backends, {}, true),
+                        Catch::Matchers::ContainsSubstring("no available algorithm"));
+    // Unpinned FPS keeps the best-effort fallback.
+    REQUIRE_NOTHROW(dai::node::DepthTestAccess::selectOptimized(std::nullopt, 1000.f, kAllRvc4Backends, {}, false));
+}
+
+TEST_CASE("Explicit FPS drops the selection safety margin", "[Depth][ExplicitFps]") {
+    // The 768x480 model tops out at 22 FPS on older OS. The margin lets an inferred 22.5 FPS pick it (22 >= 22.5 * 0.9),
+    // but an explicitly requested 22.5 FPS must move to a model that can really serve it.
+    const std::vector<Depth::Algorithm> neuralOnly = {Depth::Algorithm::NEURAL};
+    const auto old = dai::Version(1, 45, 0);
+    const auto exact = dai::node::DepthTestAccess::selectWithOs(std::nullopt, 22.5f, neuralOnly, true, old);
+    REQUIRE(std::get<DeviceModelZoo>(exact.second) == DeviceModelZoo::NEURAL_DEPTH_576X360);
+    const auto margin = dai::node::DepthTestAccess::selectWithOs(std::nullopt, 22.5f, neuralOnly, false, old);
+    REQUIRE(std::get<DeviceModelZoo>(margin.second) == DeviceModelZoo::NEURAL_DEPTH_768X480);
+}
+
+TEST_CASE("Explicit FPS selection respects the device OS neural capacity", "[Depth][ExplicitFps]") {
+    const std::vector<Depth::Algorithm> neuralOnly = {Depth::Algorithm::NEURAL};
+    const auto oldOs = dai::node::DepthTestAccess::selectWithOs(std::nullopt, 50.f, neuralOnly, true, dai::Version(1, 45, 0));
+    REQUIRE(std::get<DeviceModelZoo>(oldOs.second) == DeviceModelZoo::NEURAL_DEPTH_480X300);
+    const auto newOs = dai::node::DepthTestAccess::selectWithOs(std::nullopt, 50.f, neuralOnly, true, dai::Version(1, 47, 0));
+    REQUIRE(std::get<DeviceModelZoo>(newOs.second) == DeviceModelZoo::NEURAL_DEPTH_768X480);
 }
