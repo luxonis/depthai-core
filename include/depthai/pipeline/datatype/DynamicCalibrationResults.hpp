@@ -72,6 +72,40 @@ struct CoverageData : public Buffer {
 };
 
 /**
+ * @brief Quality metrics describing differences between current
+ *        and predicted calibration.
+ *
+ * Use it as CalibrationQuality::Data. It is not a nested struct because GCC 9 does not see a nested
+ * struct with default member initializers as default constructible inside the enclosing struct, so
+ * the JSON and libnop serializers of CalibrationQuality do not compile.
+ *
+ * @ingroup dcl_results
+ */
+struct CalibrationQualityData {
+    /** @deprecated Rotation difference between old and new extrinsics (degrees). */
+    std::array<float, 3> rotationChange;
+
+    /**
+     * @deprecated
+     * Predicted relative depth error difference between current and new calibration.
+     * Reported at reference distances [1m, 2m, 5m, 10m].
+     * Units: percent [%].
+     */
+    std::vector<double> depthErrorDifference;
+
+    /** Sampson error of currently installed calibration. */
+    float sampsonErrorCurrent = 0.0f;
+
+    /** Estimated new Sampson error if the new calibration is applied. */
+    float sampsonErrorNew = 0.0f;
+
+    /** Pairwise per-axis rotation deltas keyed by camera socket pairs. */
+    std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, RotationChangePerAxis> pairwiseRotationDifference;
+
+    DEPTHAI_SERIALIZE(CalibrationQualityData, rotationChange, sampsonErrorCurrent, sampsonErrorNew, depthErrorDifference, pairwiseRotationDifference);
+};
+
+/**
  * @brief Summary of calibration quality metrics.
  *
  * Returned from a calibration quality check. Describes
@@ -80,35 +114,8 @@ struct CoverageData : public Buffer {
  * @ingroup dcl_results
  */
 struct CalibrationQuality : public Buffer {
-    /**
-     * @brief Quality metrics describing differences between current
-     *        and predicted calibration.
-     *
-     * @ingroup dcl_results
-     */
-    struct Data {
-        /** @deprecated Rotation difference between old and new extrinsics (degrees). */
-        std::array<float, 3> rotationChange;
-
-        /**
-         * @deprecated
-         * Predicted relative depth error difference between current and new calibration.
-         * Reported at reference distances [1m, 2m, 5m, 10m].
-         * Units: percent [%].
-         */
-        std::vector<double> depthErrorDifference;
-
-        /** Sampson error of currently installed calibration. */
-        float sampsonErrorCurrent = 0.0f;
-
-        /** Estimated new Sampson error if the new calibration is applied. */
-        float sampsonErrorNew = 0.0f;
-
-        /** Pairwise per-axis rotation deltas keyed by camera socket pairs. */
-        std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, RotationChangePerAxis> pairwiseRotationDifference;
-
-        DEPTHAI_SERIALIZE(Data, rotationChange, sampsonErrorCurrent, sampsonErrorNew, depthErrorDifference, pairwiseRotationDifference);
-    };
+    /** Quality metrics describing differences between current and predicted calibration. */
+    using Data = CalibrationQualityData;
 
     CalibrationQuality() = default;
     virtual ~CalibrationQuality();
@@ -175,6 +182,29 @@ struct CalibrationMetrics : public Buffer {
 };
 
 /**
+ * @brief Detailed calibration result.
+ *
+ * Use it as DynamicCalibrationResult::Data. It is not a nested struct for the same reason as
+ * CalibrationQualityData (GCC 9).
+ *
+ * @ingroup dcl_results
+ */
+struct DynamicCalibrationResultData {
+    /** Calibration produced by dynamic calibration. */
+    dai::CalibrationHandler newCalibration;
+
+    /** Calibration present before dynamic calibration. */
+    dai::CalibrationHandler currentCalibration;
+
+    /** Per-metric comparison of new vs old calibration. */
+    CalibrationQualityData calibrationDifference;
+
+    double dataConfidence = 0.0;
+
+    DEPTHAI_SERIALIZE(DynamicCalibrationResultData, newCalibration, currentCalibration, calibrationDifference, dataConfidence);
+};
+
+/**
  * @brief Final result of running dynamic calibration.
  *
  * Includes:
@@ -185,25 +215,8 @@ struct CalibrationMetrics : public Buffer {
  * @ingroup dcl_results
  */
 struct DynamicCalibrationResult : public Buffer {
-    /**
-     * @brief Detailed calibration result.
-     *
-     * @ingroup dcl_results
-     */
-    struct Data {
-        /** Calibration produced by dynamic calibration. */
-        dai::CalibrationHandler newCalibration;
-
-        /** Calibration present before dynamic calibration. */
-        dai::CalibrationHandler currentCalibration;
-
-        /** Per-metric comparison of new vs old calibration. */
-        CalibrationQuality::Data calibrationDifference;
-
-        double dataConfidence = 0.0;
-
-        DEPTHAI_SERIALIZE(Data, newCalibration, currentCalibration, calibrationDifference, dataConfidence);
-    };
+    /** Detailed calibration result. */
+    using Data = DynamicCalibrationResultData;
 
     DynamicCalibrationResult() = default;
     virtual ~DynamicCalibrationResult();
