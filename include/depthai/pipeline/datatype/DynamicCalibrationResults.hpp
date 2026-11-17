@@ -68,7 +68,33 @@ struct CoverageData : public Buffer {
 
     ///@}
 
-    DEPTHAI_SERIALIZE_DECL(CoverageData, coveragePerCellA, coveragePerCellB, coveragePerCell, meanCoverage, dataAcquired, coverageAcquired);
+    /**
+     * @brief Marker status of one frame set when world constraints are configured.
+     *
+     * A frame set is accepted for the calibration only when every marker the constraints refer to is seen by at
+     * least two of the calibrated cameras, at or above the minimum marker size. Rejected sets are not loaded.
+     */
+    struct MarkerCoverage {
+        /** Marker ids any distance or size of the constraints refers to, sorted. */
+        std::vector<int32_t> requiredMarkers;
+        /** Cameras that saw each marker in this frame set, large enough to be used. */
+        std::map<int32_t, std::vector<CameraBoardSocket>> seenBy;
+        /** Required markers not seen by two cameras in this frame set. Empty when the set was accepted. */
+        std::vector<int32_t> missingMarkers;
+        /** Required markers that were seen but below the minimum size, with the largest size seen in pixels. */
+        std::map<int32_t, float> tooSmallPx;
+        /** Required markers seen by two cameras in this frame set, divided by the number of required markers ∈ [0, 1]. */
+        float markersAcquired = 0.0f;
+        /** True when this frame set was loaded into the calibration. */
+        bool accepted = false;
+        /** Frame sets with marker observations kept for the calibration so far, oldest dropped at 50. */
+        uint32_t observationSets = 0;
+        DEPTHAI_SERIALIZE_DECL(MarkerCoverage, requiredMarkers, seenBy, missingMarkers, tooSmallPx, markersAcquired, accepted, observationSets);
+    };
+    /** Marker status of the frame set this message belongs to; set only when world constraints are configured. */
+    std::optional<MarkerCoverage> markers;
+
+    DEPTHAI_SERIALIZE_DECL(CoverageData, coveragePerCellA, coveragePerCellB, coveragePerCell, meanCoverage, dataAcquired, coverageAcquired, markers);
 };
 
 /**
