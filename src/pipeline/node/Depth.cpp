@@ -22,6 +22,8 @@ namespace {
 constexpr DeviceModelZoo DEFAULT_NEURAL_DEPTH_MODEL = DeviceModelZoo::NEURAL_DEPTH_MEDIUM;
 constexpr DeviceModelZoo DEFAULT_NAS_NEURAL_MODEL = DeviceModelZoo::NEURAL_DEPTH_NANO;
 constexpr bool DEFAULT_NAS_RECTIFY = true;
+// NAS runs StereoDepth on the camera frames; the EVA pyramid stage asserts (PYR: eStatus == EVA_SUCCESS) unless the width is a multiple of 128.
+constexpr uint32_t NAS_STEREO_WIDTH_ALIGNMENT = 128;
 constexpr float DEFAULT_TARGET_FPS = 30.f;
 constexpr float SELECTION_FPS_SAFETY_MARGIN = 0.9f;
 constexpr float NEURAL_TENSOR_COVER_SCALE = 1.4142135f;
@@ -779,11 +781,25 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     }
 }
 
+std::pair<uint32_t, uint32_t> Depth::nasCameraSize(std::pair<uint32_t, uint32_t> requested, DeviceModelZoo model) {
+    // NeuralDepth inside NAS outputs a disparity at the model size; the camera frames must not be smaller than that.
+    const auto is = NeuralDepth::getInputSize(model);
+    uint32_t width = std::max(requested.first, static_cast<uint32_t>(is.first));
+    uint32_t height = std::max(requested.second, static_cast<uint32_t>(is.second));
+    if(width % NAS_STEREO_WIDTH_ALIGNMENT != 0) {
+        const uint32_t alignedWidth = (width + NAS_STEREO_WIDTH_ALIGNMENT - 1) / NAS_STEREO_WIDTH_ALIGNMENT * NAS_STEREO_WIDTH_ALIGNMENT;
+        // Keep the aspect ratio, round the height up to an even number.
+        height = (static_cast<uint32_t>((static_cast<uint64_t>(height) * alignedWidth + width - 1) / width) + 1) / 2 * 2;
+        width = alignedWidth;
+    }
+    return {width, height};
+}
+
 Depth::StereoWiring Depth::ensureStereoOutputs(Pipeline& pipeline,
                                                const StereoPair& pair,
                                                std::optional<std::pair<uint32_t, uint32_t>> frameSize,
                                                const std::optional<float>& fps,
-                                               std::optional<std::pair<uint32_t, uint32_t>> minFrameSize) {
+                                               const std::function<std::pair<uint32_t, uint32_t>(std::pair<uint32_t, uint32_t>)>& adjustFrameSize) {
     auto [left, right] = findCamerasForPair(pipeline, pair, device);
     const bool stereoCamerasPreexist = left && right;
 
@@ -803,9 +819,9 @@ Depth::StereoWiring Depth::ensureStereoOutputs(Pipeline& pipeline,
             outputSize = existingSize;
         }
     }
-    // The backend needs camera frames at least this large (e.g. NAS: disparity must not exceed the camera image).
-    if(outputSize && minFrameSize && (outputSize->first < minFrameSize->first || outputSize->second < minFrameSize->second)) {
-        outputSize = std::pair<uint32_t, uint32_t>{std::max(outputSize->first, minFrameSize->first), std::max(outputSize->second, minFrameSize->second)};
+    // Backend-specific size requirements (e.g. NAS minimum size and width alignment).
+    if(outputSize && adjustFrameSize) {
+        outputSize = adjustFrameSize(*outputSize);
     }
     const std::optional<float>& outputFps = fps;
 
@@ -931,10 +947,10 @@ void Depth::buildInternal() {
             add(nasBackend_);
             const auto* configuredModel = std::get_if<DeviceModelZoo>(&resolved_.config);
             const DeviceModelZoo nasModel = configuredModel ? *configuredModel : DEFAULT_NAS_NEURAL_MODEL;
-            // NeuralDepth inside NAS outputs a disparity at the model size; the camera frames must not be smaller than that.
-            const auto is = NeuralDepth::getInputSize(nasModel);
-            const std::pair<uint32_t, uint32_t> nasMinSize{static_cast<uint32_t>(is.first), static_cast<uint32_t>(is.second)};
-            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), sizeOverride_, stereoOutputFps_, nasMinSize);
+            const auto stereo =
+                ensureStereoOutputs(pipeline, requireFirstStereoPair(device), sizeOverride_, stereoOutputFps_, [nasModel](std::pair<uint32_t, uint32_t> size) {
+                    return nasCameraSize(size, nasModel);
+                });
             nasBackend_->build(*stereo.left, *stereo.right, nasModel, DEFAULT_NAS_RECTIFY);
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
             depthOut_ = &(*nasBackend_->stereoDepth).depth;

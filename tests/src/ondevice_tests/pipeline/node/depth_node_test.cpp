@@ -1011,6 +1011,23 @@ TEST_CASE("Depth: NEURAL_ASSISTED_STEREO enlarges camera outputs smaller than th
     REQUIRE(failures.empty());
 }
 
+TEST_CASE("Depth: NEURAL_ASSISTED_STEREO aligns an unaligned requested width to 128") {
+    Pipeline pipeline;
+    auto device = requireNasDevice(pipeline);
+    // 960 is not a multiple of 128 and makes the StereoDepth EVA pyramid assert; Depth must enlarge it to 1024x640.
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO, std::nullopt, std::pair<uint32_t, uint32_t>{960, 600});
+    PipelineStopGuard guard(pipeline);
+    auto depthQueue = depth->depth().createOutputQueue();
+    pipeline.start();
+    bool timedOut = false;
+    auto frame = depthQueue->get<dai::ImgFrame>(std::chrono::seconds(30), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(frame != nullptr);
+    REQUIRE(frame->getWidth() % 128 == 0);
+    REQUIRE(frame->getWidth() == 1024);
+    REQUIRE(frame->getHeight() == 640);
+}
+
 TEST_CASE("Depth: NEURAL_ASSISTED_STEREO rejects invalid configs") {
     Pipeline pipeline;
     auto device = requireNasDevice(pipeline);
