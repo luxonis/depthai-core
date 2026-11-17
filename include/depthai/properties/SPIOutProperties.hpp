@@ -21,6 +21,8 @@ struct SPIOutProperties : PropertiesSerializable<Properties, SPIOutProperties> {
     ~SPIOutProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(SPIOutProperties, streamName, busId);
+DEPTHAI_SERIALIZE_EXT_DECL(SPIOutProperties, streamName, busId);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::SPIOutProperties>;

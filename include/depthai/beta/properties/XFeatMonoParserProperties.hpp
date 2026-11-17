@@ -26,7 +26,9 @@ struct XFeatMonoParserProperties : PropertiesSerializable<Properties, XFeatMonoP
     ~XFeatMonoParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(XFeatMonoParserProperties, outputLayerFeats, outputLayerKeypoints, outputLayerHeatmaps, originalSize, inputSize, initialConfig);
+DEPTHAI_SERIALIZE_EXT_DECL(XFeatMonoParserProperties, outputLayerFeats, outputLayerKeypoints, outputLayerHeatmaps, originalSize, inputSize, initialConfig);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::XFeatMonoParserProperties>;

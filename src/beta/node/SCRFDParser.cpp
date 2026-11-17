@@ -24,8 +24,6 @@
 namespace dai {
 namespace beta {
 
-SCRFDParserProperties::~SCRFDParserProperties() = default;
-
 namespace node {
 
 SCRFDParser::SCRFDParser(std::unique_ptr<Properties> props)

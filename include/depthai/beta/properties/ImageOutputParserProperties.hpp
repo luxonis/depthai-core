@@ -17,7 +17,9 @@ struct ImageOutputParserProperties : PropertiesSerializable<Properties, ImageOut
     ~ImageOutputParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ImageOutputParserProperties, outputLayerName, outputIsBGR);
+DEPTHAI_SERIALIZE_EXT_DECL(ImageOutputParserProperties, outputLayerName, outputIsBGR);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::ImageOutputParserProperties>;

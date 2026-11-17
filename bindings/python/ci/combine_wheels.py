@@ -211,6 +211,21 @@ def _update_wheel_file(dist_info_dir: str, combined_infos: list[WheelInfo]):
         f.writelines(new_lines)
 
 
+def _replace_needed(lib_path: str, name_map: dict[str, str]):
+    """Replace all DT_NEEDED names of name_map in one patchelf call.
+
+    Each patchelf call that adds names to .dynstr writes a new copy of .dynstr and leaves the old
+    copy in the file as zero bytes. libdepthaicore has a .dynstr of ~10 MB and ~10 bundled
+    dependencies, so one call per name added ~100 MB to the installed file.
+    patchelf ignores the pairs whose old name is not in DT_NEEDED.
+    """
+    args = []
+    for old_name, new_name in name_map.items():
+        args += ["--replace-needed", old_name, new_name]
+    if args:
+        subprocess.run(["patchelf", *args, lib_path], check=True)
+
+
 def _combine_wheels_linux(input_folder, output_folder, strip):
     """
     Each wheel is expected to have the following structure:
@@ -338,14 +353,10 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
             # Relink all libraries
             libs = os.listdir(os.path.join(wheel_extract_dir, libs_folder))
             for lib in libs:  # for each library, relink it to the new name
-                lib_path = os.path.join(wheel_extract_dir, libs_folder, lib)
-                for old_name, new_name in name_map.items():
-                    subprocess.run(["patchelf", "--replace-needed", old_name, new_name, lib_path], check=True)
+                _replace_needed(os.path.join(wheel_extract_dir, libs_folder, lib), name_map)
 
             # Relink the cpython library
-            for old_name, new_name in name_map.items():
-                cpython_lib_path = os.path.join(wheel_extract_dir, cpython_lib)
-                subprocess.run(["patchelf", "--replace-needed", old_name, new_name, cpython_lib_path], check=True)
+            _replace_needed(os.path.join(wheel_extract_dir, cpython_lib), name_map)
 
             # Strip debug symbols for all libraries
             if strip:
@@ -658,7 +669,7 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
         os.makedirs(staging_dir, exist_ok=True)
 
         ExtractedWheel = namedtuple(
-            "ExtractedWheel", ["wheel_info", "wheel_extract_dir", "cpython_lib", "python_dll", "data_folder", "dist_info_dir"]
+            "ExtractedWheel", ["wheel_info", "wheel_extract_dir", "cpython_lib", "data_folder", "dist_info_dir"]
         )
 
         # Step: Each wheel is extracted to a separate directory
@@ -681,12 +692,6 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
             cpython_lib = pyd_files[0]
             _logger.debug(f"Found .pyd file: {cpython_lib}")
 
-            # Find python3X.dll
-            python_dlls = [f for f in extracted_files if f.endswith(".dll") and f.startswith("python3")]
-            assert len(python_dlls) == 1, f"Expected 1 python3X.dll file, got {len(python_dlls)}"
-            python_dll = python_dlls[0]
-            _logger.debug(f"Found python dll: {python_dll}")
-
             # Find .data folder
             data_folders = [f for f in extracted_files if f.endswith(".data")]
             assert len(data_folders) == 1, f"Expected 1 .data folder, got {len(data_folders)}"
@@ -699,13 +704,14 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
             dist_info_dir = dist_info_dirs[0]
             _logger.debug(f"Found dist-info directory: {dist_info_dir}")
 
-            # Delete extra DLLs (already in the .data/platlib folder)
-            extra_dlls = [f for f in extracted_files if f.endswith(".dll") and (f != python_dll)]
+            # Delete the DLLs in the wheel root: the bundled ones are already in the .data/platlib folder,
+            # and python3X.dll (older builds) is the interpreter, which is loaded before the module.
+            extra_dlls = [f for f in extracted_files if f.endswith(".dll")]
             _logger.debug(f"Found extra DLLs: {extra_dlls}. Removing them.")
             for dll in extra_dlls:
                 os.remove(os.path.join(wheel_extract_dir, dll))
 
-            extracted_wheels.append(ExtractedWheel(wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder, dist_info_dir))
+            extracted_wheels.append(ExtractedWheel(wheel_info, wheel_extract_dir, cpython_lib, data_folder, dist_info_dir))
 
         # Step: Rename libraries in the .data/platlib folder to new names (remangling)
         magic_hash = str(time.perf_counter())[-5:] + "win"
@@ -714,7 +720,7 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
         # Store rename mappings for each wheel
         all_name_maps = {}
         for extracted_wheel in extracted_wheels:
-            wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder, dist_info_dir = extracted_wheel
+            wheel_info, wheel_extract_dir, cpython_lib, data_folder, dist_info_dir = extracted_wheel
 
             platlib_dir = os.path.join(wheel_extract_dir, data_folder, "platlib")
             if not os.path.exists(platlib_dir):
@@ -738,7 +744,7 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
         # Step: Patch all binaries to use the new DLL names
         _logger.info("Step: Patching binaries with new DLL names")
         for extracted_wheel in extracted_wheels:
-            wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder, dist_info_dir = extracted_wheel
+            wheel_info, wheel_extract_dir, cpython_lib, data_folder, dist_info_dir = extracted_wheel
             name_map = all_name_maps[wheel_info.wheel_name]
 
             if not name_map:
@@ -775,7 +781,7 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
         # Step: Actually rename the DLL files
         _logger.info("Step: Renaming DLL files")
         for extracted_wheel in extracted_wheels:
-            wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder, dist_info_dir = extracted_wheel
+            wheel_info, wheel_extract_dir, cpython_lib, data_folder, dist_info_dir = extracted_wheel
             name_map = all_name_maps[wheel_info.wheel_name]
 
             if not name_map:
@@ -809,7 +815,7 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
         # Step: Copy all other content to the staging directory
         _logger.info("Step: Copying all other content to the staging directory")
         for extracted_wheel in extracted_wheels:
-            wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder, dist_info_dir = extracted_wheel
+            wheel_info, wheel_extract_dir, cpython_lib, data_folder, dist_info_dir = extracted_wheel
             for item in os.listdir(wheel_extract_dir):
                 if item.endswith(".dist-info"):
                     continue

@@ -32,7 +32,7 @@ struct SpatialKeypoint {
     explicit SpatialKeypoint(float x, float y, float z, float sx, float sy, float sz, float conf = 0.f, uint32_t label = 0, std::string labelName = "")
         : SpatialKeypoint(Point3f(x, y, z), Point3f{sx, sy, sz}, conf, label, labelName) {}
 
-    DEPTHAI_SERIALIZE(dai::SpatialKeypoint, imageCoordinates, confidence, label, labelName, spatialCoordinates);
+    DEPTHAI_SERIALIZE_DECL(dai::SpatialKeypoint, imageCoordinates, confidence, label, labelName, spatialCoordinates);
 };
 
 /**
@@ -146,7 +146,7 @@ struct SpatialKeypointsList : KeypointsListT<SpatialKeypoint> {
         return transformed;
     }
 
-    DEPTHAI_SERIALIZE(SpatialKeypointsList, keypoints, edges, unit);
+    DEPTHAI_SERIALIZE_DECL(SpatialKeypointsList, keypoints, edges, unit);
 };
 
 }  // namespace dai

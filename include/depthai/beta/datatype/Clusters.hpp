@@ -27,7 +27,7 @@ struct Cluster {
      */
     std::vector<Point2f> points;
 
-    DEPTHAI_SERIALIZE(Cluster, label, points);
+    DEPTHAI_SERIALIZE_DECL(Cluster, label, points);
 };
 
 /**
@@ -89,7 +89,7 @@ class Clusters : public Buffer, public TransformableCRTP<Clusters> {
         return DatatypeEnum::Clusters;
     }
 
-    DEPTHAI_SERIALIZE(Clusters, sequenceNum, ts, tsDevice, tsSystem, transformation, clusters);
+    DEPTHAI_SERIALIZE_DECL(Clusters, sequenceNum, ts, tsDevice, tsSystem, transformation, clusters);
 };
 
 }  // namespace beta

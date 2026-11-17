@@ -117,7 +117,7 @@ class Buffer : public ADatatype {
     Timestamp tsDevice = {};            // generation timestamp, direct device monotonic clock
     std::optional<Timestamp> tsSystem;  // generation timestamp, direct device system clock
 
-    DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice, tsSystem);
+    DEPTHAI_SERIALIZE_DECL(Buffer, sequenceNum, ts, tsDevice, tsSystem);
 };
 
 }  // namespace dai

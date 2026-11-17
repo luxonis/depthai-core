@@ -37,16 +37,14 @@ class PipelineEvent : public Buffer {
     Type type = Type::CUSTOM;
     std::string source;  // e.g., input/output/custom event name - used in conjunction with type to identify the event
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::PipelineEvent;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::PipelineEvent;
     }
 
-    DEPTHAI_SERIALIZE(PipelineEvent, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, nodeId, status, queueSize, interval, type, source);
+    DEPTHAI_SERIALIZE_DECL(
+        PipelineEvent, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, nodeId, status, queueSize, interval, type, source);
 };
 
 }  // namespace dai
