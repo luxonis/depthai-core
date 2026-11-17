@@ -124,6 +124,41 @@ inline std::vector<SingleInputCase> sharedCases(const std::string& id) {
             }
             cases.push_back(c);
         }
+    } else if(id == "N-1") {
+        const std::vector<ExpectedDetection> data = {
+            {2, 2, 2, 2, .5f, 1}, {6, 2, 2, 2, .75f, 1}, {2, 2, 2, 2, .875f, 1, 0, "box", {{2, 2, .9f}}}, {2, 2, 2, 2, .625f, 1}, {2, 2, 2, 2, .6875f, 2}};
+        for(int variant = 0; variant < 7; ++variant) {
+            c = {};
+            c.variant = std::vector<std::string>{"default", "within-input NMS", "OFF", "sorted K=2", "average", "empty", "confidence rejects all"}[variant];
+            c.settings.suppressWithinInputs = variant != 0;
+            c.outputTransformation = transformation(8, 4);
+            c.input = message(c.outputTransformation, data);
+            c.input->setSegmentationMask(maskBytes("0 1 2 3 4 . . ."), 8, 1);
+            c.maskWidth = 8;
+            c.maskHeight = 1;
+            c.expected = {data[1], data[2], data[4]};
+            c.mask = ". 0 1 . 2 . . .";
+            if(variant == 0 || variant == 2) {
+                c.settings.mode = variant == 2 ? Mode::OFF : Mode::NMS;
+                c.expected = data;
+                c.mask = "0 1 2 3 4 . . .";
+                c.unchanged = true;
+            } else if(variant == 3) {
+                c.settings.sort = true;
+                c.settings.maxDetections = 2;
+                c.expected = {data[2], data[1]};
+                c.mask = ". 1 0 . . . . .";
+            } else if(variant == 4) {
+                c.settings.mode = Mode::AVERAGE;
+                c.mask = "1 0 1 1 2 . . .";
+            } else if(variant >= 5) {
+                if(variant == 5) c.input->detections.clear();
+                if(variant == 6) c.settings.minConfidence = .9375f;
+                c.expected.clear();
+                c.mask = ". . . . . . . .";
+            }
+            cases.push_back(c);
+        }
     } else if(id == "R-1") {
         c.settings.reference = transformation();
         c.input = message(scaled(transformation(), .5f), {{64, 64, 32, 32, .9f, 5, 0, "obj"}});

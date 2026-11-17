@@ -191,6 +191,34 @@ def test_p6_average_mask_union(_case):
         ], tolerance=1e-3)
 
 
+@pytest.mark.parametrize("mode", list(dai.ImgDetectionsFilterConfig.OverlapMode.__members__.values()))
+def test_within_input_duplicate_suppression(mode):
+    with dai.Pipeline(False) as pipeline:
+        node = pipeline.create(dai.node.ImgDetectionsFilter)
+        assert node.initialConfig.suppressWithinInputs is False
+        node.initialConfig.suppressWithinInputs = True
+        node.initialConfig.overlapMode = mode
+        queue = node.inputs["merged_tiles"].createInputQueue()
+        output = node.out.createOutputQueue()
+        t = transformation(8, 4)
+        data = [
+            (1, 0.5, 2, 2, 2, 2), (1, 0.75, 6, 2, 2, 2), (1, 0.875, 2, 2, 2, 2),
+            (1, 0.625, 2, 2, 2, 2), (2, 0.6875, 2, 2, 2, 2),
+        ]
+        msg = message(t, data)
+        set_mask(msg, [[0, 1, 2, 3, 4, 255, 255, 255]])
+        expected = [data[1], data[2], data[4]]
+        mask = [[255, 0, 1, 255, 2, 255, 255, 255]]
+        if mode == dai.ImgDetectionsFilterConfig.OverlapMode.OFF:
+            expected, mask = data, [[0, 1, 2, 3, 4, 255, 255, 255]]
+        elif mode == dai.ImgDetectionsFilterConfig.OverlapMode.AVERAGE:
+            mask = [[1, 0, 1, 1, 2, 255, 255, 255]]
+        pipeline.start()
+        queue.send(msg)
+        require_output(output.get(timeout=timedelta(seconds=1)), t, expected, mask)
+        assert msg.getCvSegmentationMask().tolist() == [[0, 1, 2, 3, 4, 255, 255, 255]]
+
+
 def test_source_mask_rejects_hidden_detection_before_nms():
     with dai.Pipeline(False) as pipeline:
         node = pipeline.create(dai.node.ImgDetectionsFilter)

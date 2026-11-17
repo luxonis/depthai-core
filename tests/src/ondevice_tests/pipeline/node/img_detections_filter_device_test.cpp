@@ -57,7 +57,7 @@ TEST_CASE("ImgDetectionsFilter V-4: explicit host placement", "[ImgDetectionsFil
     REQUIRE(h.runOnHost());
 }
 TEST_CASE("ImgDetectionsFilter V-5: shared host oracles on RVC4", "[ImgDetectionsFilter][EX-3]") {
-    for(const auto* id : {"B-1", "B-3", "B-4", "B-8", "D-1", "E-1", "E-2", "R-1", "R-3"}) {
+    for(const auto* id : {"B-1", "B-3", "B-4", "B-8", "D-1", "E-1", "E-2", "N-1", "R-1", "R-3"}) {
         DYNAMIC_SECTION(id) {
             runSharedCase(id, true);
         }
@@ -90,6 +90,7 @@ while True:
     const auto result = output->get<dai::ImgDetectionsFilterConfig>(std::chrono::seconds(2), timedOut);
     REQUIRE_FALSE(timedOut);
     REQUIRE(result != nullptr);
+    REQUIRE(result->suppressWithinInputs);
     REQUIRE(result->getDatatype() == config->getDatatype());
     REQUIRE(result->getSequenceNum() == 43);
     REQUIRE(dai::utility::serialize(*result) == dai::utility::serialize(expected));
