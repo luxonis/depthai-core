@@ -79,7 +79,8 @@ struct Arm {  // host -> device before its pipeline starts: hold the cameras, th
 struct Ready {  // device -> host: all cameras configured, stream-on held
     uint32_t generation;
     uint16_t cameras;
-    int64_t gridMilliFps;  // rate (mHz) whose frame grid boundaries all the device's cameras share (gcd of their rates)
+    int64_t gridMilliFps;    // rate (mHz) whose frame grid boundaries all the device's cameras share (gcd of their rates)
+    int64_t ptpMinusHostNs;  // TIME_PTP cameras on the device: PTP time - host time, for a start on the PTP grid; 0 = none
 };
 struct StartAt {  // host -> device: stream on at this host steady-clock time; a LATE reply carries int64_t lateNs
     uint32_t generation;
@@ -706,6 +707,7 @@ void SyncStartGroup::begin(const void* pipeline, const std::vector<std::pair<con
                 if(ready.generation != g->generation) return sync_start::STALE;
                 g->members[i].ready = true;
                 g->members[i].gridMilliFps = ready.gridMilliFps;
+                g->members[i].ptpMinusHostNs = ready.ptpMinusHostNs;
                 g->cv.notify_all();
                 return sync_start::OK;
             });
@@ -739,13 +741,20 @@ void SyncStartGroup::coordinate() {
         std::lock_guard<std::mutex> lock(mtx);
         if(stopping) return;
         int64_t milliFps = 0;  // rate whose grid boundaries every camera shares
+        // TIME_PTP: the start goes on the PTP clock's grid, with the PTP offset of a device that is no PTP slave if there is
+        // one (a slave's clock steps when it locks, maybe after its READY)
+        const Member* ptpRef = nullptr;
+        const auto isPtpSlave = [this](const Member& m) { return std::find(ptpSlaves.begin(), ptpSlaves.end(), m.device) != ptpSlaves.end(); };
         for(const auto& m : members) {
             targets.push_back(m.device);
             if(m.ready && m.gridMilliFps > 0) milliFps = std::gcd(milliFps, m.gridMilliFps);
+            if(m.ready && m.ptpMinusHostNs != 0 && (ptpRef == nullptr || (isPtpSlave(*ptpRef) && !isPtpSlave(m)))) ptpRef = &m;
         }
         startNs = steadyNs() + duration_cast<nanoseconds>(SYNC_START_MARGIN).count();
         if(milliFps >= 1000) {
-            startNs = gridBoundaryAtOrAfter(startNs, milliFps);  // a frame boundary of the host clock, like TIME_DAI's grid
+            // a frame boundary of the PTP clock, else of the host clock (TIME_DAI's grid)
+            const int64_t ptpMinusHostNs = ptpRef != nullptr ? ptpRef->ptpMinusHostNs : 0;
+            startNs = gridBoundaryAtOrAfter(startNs + ptpMinusHostNs, milliFps) - ptpMinusHostNs;
         } else if(milliFps > 0) {
             logger::warn("Synchronized start: the cameras' frame rates share no frame boundary within a second, the start is not on one");
         }

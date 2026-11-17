@@ -108,8 +108,9 @@ class PtpGroup {
  * Synchronized camera start of a multi-device pipeline (RVC4 with the UDP timesync, firmware CameraSensor.cpp).
  * Before the device pipelines start, every device is armed with how many cameras the pipeline runs on it (ARM). The
  * devices hold their cameras' stream-on until all are configured and report READY; once all did (or 10 s passed), each
- * gets the same start time, a frame boundary ~150 ms ahead on the host clock (START_AT). The devices convert it to
- * their clock only then, so the timesync's drift error covers those 150 ms, not the seconds the setup took. With
+ * gets the same start time, a frame boundary ~150 ms ahead on the host clock, or on the PTP clock for TIME_PTP cameras
+ * (START_AT). The devices convert it to their clock only then, so the timesync's drift error covers those 150 ms, not
+ * the seconds the setup took; TIME_PTP cameras then take the nearest PTP frame boundary, free of that error. With
  * depthai's PTP the start also waits (10 s at most) for its slaves to lock, so the frames align from the first one.
  */
 class SyncStartGroup {
@@ -127,7 +128,8 @@ class SyncStartGroup {
         const void* device;  // its responder is looked up for every use: a reconnect or close replaces it
         uint16_t cameras;
         bool ready = false;
-        int64_t gridMilliFps = 0;  // rate (mHz) whose frame grid boundaries all its cameras share
+        int64_t gridMilliFps = 0;    // rate (mHz) whose frame grid boundaries all its cameras share
+        int64_t ptpMinusHostNs = 0;  // its TIME_PTP cameras: PTP time - host time, 0 = none
     };
     void coordinate();
 
