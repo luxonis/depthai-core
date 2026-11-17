@@ -28,7 +28,7 @@ on:
         type: number
         default: 10
       latest_start:
-        description: UTC time (ISO 8601) after which a pass that has not started is skipped; empty for no limit
+        description: UTC time (ISO 8601) after which a pass that has no testbed yet is skipped; empty for no limit
         type: string
         default: ''
 
@@ -135,11 +135,32 @@ jobs:
         source scripts/hil/prepare_hil_framework.sh "$HIL_PAT_TOKEN"
         # One reservation name per pass: hil_runner hands a testbed to any job that uses the same name.
         RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#soak-$ROW-$RVC4_OS-p$PASS"
-        set -o pipefail
         hil_runner --models "oak4_pro or oak4_d" "${SANITY_ARGS[@]}" --reservation-name "$RESERVATION_NAME" --wait \
           --rvc4-os-version "$RVC4_OS" --docker-image "$IMAGE" \
           --commands "export DEPTHAI_TELEMETRY_URL='$CI_TELEMETRY_URL'; export DEPTHAI_TELEMETRY_API_KEY='$CI_TELEMETRY_API_KEY'; ./tests/run_tests_entrypoint.sh $ROW --test-label \"ci|ci_nightly\"" \
-          2>&1 | tee soak.log
+          > soak.log 2>&1 &
+        hil_pid=$!
+        tail -n +1 -f --pid="$hil_pid" soak.log &
+        deadline=""
+        [ -z "$LATEST_START" ] || deadline=$(date -u -d "$LATEST_START" +%s)
+        # A pass still waiting for a testbed at latest_start stops. hil_runner holds no reservation while it
+        # sleeps after "Waiting for 1 minute.", so it is stopped only in the first 50 seconds of that sleep.
+        while kill -0 "$hil_pid" 2>/dev/null; do
+          if [ -n "$deadline" ] && [ "$(date -u +%s)" -gt "$deadline" ] && ! grep -q "Using testbed:" soak.log \
+            && tail -n 1 soak.log | grep -q "Waiting for 1 minute\." \
+            && [ $(( $(date +%s) - $(stat -c %Y soak.log) )) -lt 50 ]; then
+            kill "$hil_pid"
+            wait || true
+            printf '{"os": "%s", "row": "%s", "pass": %s, "not_started": "no testbed by %s"}\n' "$RVC4_OS" "$ROW" "$PASS" "$LATEST_START" > pass.json
+            echo "Not started: no testbed was free by $LATEST_START"
+            exit 0
+          fi
+          sleep 5
+        done
+        status=0
+        wait "$hil_pid" || status=$?
+        wait
+        exit "$status"
 
     - name: Upload the pass log
       if: always()
