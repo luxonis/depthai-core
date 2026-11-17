@@ -440,7 +440,8 @@ dcl::ImageData DclUtils::cvMatToImageData(const cv::Mat& mat) {
         default:
             throw std::runtime_error("Unsupported cv::Mat type: " + std::to_string(type));
     }
-    img.data.assign(mat.data, mat.data + mat.total() * mat.elemSize());
+    const auto contiguous = mat.isContinuous() ? mat : mat.clone();
+    img.data.assign(contiguous.data, contiguous.data + contiguous.total() * contiguous.elemSize());
 
     return img;
 }
