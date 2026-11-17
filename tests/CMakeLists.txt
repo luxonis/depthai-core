@@ -780,6 +780,13 @@ endif()
 
 dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibration_test.cpp)
 dai_set_test_labels(dynamic_calibration_onhost_test onhost)
+if(DEPTHAI_DYNAMIC_CALIBRATION_STATIC)
+    find_program(DEPTHAI_READELF NAMES readelf llvm-readelf REQUIRED)
+    add_test(NAME dynamic_calibration_static_link
+        COMMAND "${CMAKE_COMMAND}" "-DBINARY=$<TARGET_FILE:dynamic_calibration_onhost_test>"
+            "-DREADELF=${DEPTHAI_READELF}" -P "${CMAKE_CURRENT_SOURCE_DIR}/check_static_dcl.cmake")
+    set_tests_properties(dynamic_calibration_static_link PROPERTIES LABELS onhost)
+endif()
 
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     dai_add_test(auto_calibration_queue_test src/onhost_tests/auto_calibration_queue_test.cpp)
