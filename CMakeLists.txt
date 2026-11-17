@@ -312,6 +312,7 @@ set(TARGET_CORE_SOURCES
     "${DEPTHAI_DEVICE_MANAGER_SOURCES}"
     # sources
     src/common/ModelType.cpp
+    src/common/WorldConstraints.cpp
     src/device/CrashDump.cpp
     src/device/CrashDumpManager.cpp
     src/device/Device.cpp

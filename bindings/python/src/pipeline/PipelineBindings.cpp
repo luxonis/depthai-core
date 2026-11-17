@@ -2,6 +2,7 @@
 
 #include <pybind11/attr.h>
 #include <pybind11/gil.h>
+#include <pybind11/stl/filesystem.h>
 
 #include "DeviceBindings.hpp"
 #include "node/NodeBindings.hpp"
@@ -462,6 +463,20 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, Pipeline, getBoardConfig, 2))
         .def("setAutoCalibrationMode", &Pipeline::setAutoCalibrationMode, py::arg("mode"))
         .def("getAutoCalibrationMode", &Pipeline::getAutoCalibrationMode)
+        .def("setAutoCalibrationWorldConstraints",
+             &Pipeline::setAutoCalibrationWorldConstraints,
+             py::arg("constraints"),
+             DOC(dai, Pipeline, setAutoCalibrationWorldConstraints))
+        .def("setAutoCalibrationWorldConstraintsFromJson",
+             &Pipeline::setAutoCalibrationWorldConstraintsFromJson,
+             py::arg("json"),
+             DOC(dai, Pipeline, setAutoCalibrationWorldConstraintsFromJson))
+        .def("setAutoCalibrationWorldConstraintsFromFile",
+             &Pipeline::setAutoCalibrationWorldConstraintsFromFile,
+             py::arg("path"),
+             DOC(dai, Pipeline, setAutoCalibrationWorldConstraintsFromFile))
+        .def("clearAutoCalibrationWorldConstraints", &Pipeline::clearAutoCalibrationWorldConstraints, DOC(dai, Pipeline, clearAutoCalibrationWorldConstraints))
+        .def("getAutoCalibrationWorldConstraints", &Pipeline::getAutoCalibrationWorldConstraints, DOC(dai, Pipeline, getAutoCalibrationWorldConstraints))
         .def("getDefaultDevice", static_cast<std::shared_ptr<Device> (Pipeline::*)()>(&Pipeline::getDefaultDevice), DOC(dai, Pipeline, getDefaultDevice))
         .def("addDevice", py::overload_cast<std::shared_ptr<Device>>(&Pipeline::addDevice), py::arg("device"), DOC(dai, Pipeline, addDevice))
         .def("addDevice",

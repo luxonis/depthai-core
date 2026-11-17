@@ -18,7 +18,7 @@ with dai.Pipeline() as pipeline:
     # ROI selection variables
     start_points = []
     roi_rect = None
-    scale_factors = None
+    transformation = None
     # Mouse callback function for ROI selection
     def select_roi(event, x, y, flags, param):
         global start_points, roi_rect
@@ -35,19 +35,16 @@ with dai.Pipeline() as pipeline:
             set_roi_rect()
         elif event == cv2.EVENT_LBUTTONUP and start_points:
             set_roi_rect()
-            roi_rect_scaled = (
-                int(roi_rect[0] * scale_factors[0]),
-                int(roi_rect[1] * scale_factors[1]),
-                int(roi_rect[2] * scale_factors[0]),
-                int(roi_rect[3] * scale_factors[1])
-            )
-            print(f"ROI selected: {roi_rect}")
-            ctrl = dai.CameraControl()
-            print(f"Scaled ROI selected: {roi_rect_scaled}. Setting exposure and focus to this region.")
-            ctrl.setAutoExposureRegion(*roi_rect_scaled)
-            ctrl.setAutoFocusRegion(*roi_rect_scaled)
-            cam_q_in.send(ctrl)
             start_points = None
+            if roi_rect[2] == 0 or roi_rect[3] == 0:
+                return
+            print(f"ROI selected: {roi_rect}. Setting exposure and focus to this region.")
+            # The ROI is in pixels of the shown frame; the frame's transformation maps it to the camera's sensor
+            roi = dai.Rect(*roi_rect, False)
+            ctrl = dai.CameraControl()
+            ctrl.setAutoExposureRegion(roi, transformation)
+            ctrl.setAutoFocusRegion(roi, transformation)
+            cam_q_in.send(ctrl)
 
     # Create a window and set the mouse callback
     cv2.namedWindow("video")
@@ -55,10 +52,7 @@ with dai.Pipeline() as pipeline:
 
     while pipeline.isRunning():
         img_hd: dai.ImgFrame = stream_q.get()
-        if scale_factors is None:
-            print(img_hd.getTransformation().getSourceSize(), img_hd.getTransformation().getSize())
-            scale_factors = (img_hd.getTransformation().getSourceSize()[0] / img_hd.getTransformation().getSize()[0],
-                            img_hd.getTransformation().getSourceSize()[1] / img_hd.getTransformation().getSize()[1])
+        transformation = img_hd.getTransformation()
         frame = img_hd.getCvFrame()
 
         # Draw the ROI rectangle if it exists

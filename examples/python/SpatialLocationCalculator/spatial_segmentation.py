@@ -35,7 +35,8 @@ with dai.Pipeline(device) as pipeline:
     monoLeftOut.link(stereo.left)
     monoRightOut.link(stereo.right)
 
-    align = pipeline.create(dai.node.ImageAlign)
+    # On RVC2, Align runs on the host and requires the SDK built with DEPTHAI_OPENCV_SUPPORT=ON.
+    align = pipeline.create(dai.node.Align)
     stereo.depth.link(align.input)
     detNN.passthrough.link(align.inputAlignTo)
 
