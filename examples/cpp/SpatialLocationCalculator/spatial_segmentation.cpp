@@ -104,6 +104,7 @@ int main() {
         monoLeft->requestFullResolutionOutput()->link(stereo->left);
         monoRight->requestFullResolutionOutput()->link(stereo->right);
 
+        // On RVC2, Align runs on the host and requires the SDK built with DEPTHAI_OPENCV_SUPPORT=ON.
         auto align = pipeline.create<dai::node::Align>();
         stereo->depth.link(align->input);
         detectionNetwork->passthrough.link(align->inputAlignTo);

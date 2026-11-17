@@ -30,6 +30,8 @@ platform = pipeline.getDefaultDevice().getPlatform()
 
 # Define sources and outputs
 camRgb = pipeline.create(dai.node.Camera).build(RGB_SOCKET)
+# Leave room for RGB history in Sync and frames in flight.
+camRgb.setOutputsNumFramesPool(8)
 left = pipeline.create(dai.node.Camera).build(LEFT_SOCKET)
 right = pipeline.create(dai.node.Camera).build(RIGHT_SOCKET)
 stereo = pipeline.create(dai.node.NeuralDepth)
@@ -48,10 +50,12 @@ rgbOut.link(align.inputAlignTo)
 rgbOut.link(sync.inputs["rgb"])
 align.outputAligned.link(sync.inputs["depth_aligned"])
 
-# Avoid retaining frame pools while waiting for matching timestamps.
+# Use nonblocking queues to limit backpressure while synchronizing.
 for name in ("rgb", "depth_aligned"):
     sync.inputs[name].setBlocking(False)
     sync.inputs[name].setMaxSize(1)
+# Retain 160 ms of RGB history at 25 FPS for delayed neural depth results.
+sync.inputs["rgb"].setMaxSize(4)
 
 queue = sync.out.createOutputQueue()
 
