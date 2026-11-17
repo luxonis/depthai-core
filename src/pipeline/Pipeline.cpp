@@ -848,6 +848,24 @@ PipelineAutoCalibrationMode PipelineImpl::getAutoCalibrationMode() const {
     return autoCalibrationMode;
 }
 
+void PipelineImpl::setAutoCalibrationWorldConstraints(const WorldConstraints& constraints) {
+    DAI_CHECK_V(!isBuilt(), "Cannot change the auto calibration world constraints once the pipeline is built.");
+    constraints.validate();
+    if(constraints.empty()) {
+        throw std::invalid_argument("Pipeline::setAutoCalibrationWorldConstraints: at least one marker or socket distance is required");
+    }
+    autoCalibrationWorldConstraints = constraints;
+}
+
+void PipelineImpl::clearAutoCalibrationWorldConstraints() {
+    DAI_CHECK_V(!isBuilt(), "Cannot change the auto calibration world constraints once the pipeline is built.");
+    autoCalibrationWorldConstraints.reset();
+}
+
+std::optional<WorldConstraints> PipelineImpl::getAutoCalibrationWorldConstraints() const {
+    return autoCalibrationWorldConstraints;
+}
+
 BoardConfig PipelineImpl::getBoardConfig() const {
     return board;
 }
@@ -1438,6 +1456,12 @@ void PipelineImpl::build() {
             if(stereoPair.first && stereoPair.second && hasStereoPairValidCalibration(autoCalibDevice->tryGetCalibration())) {
                 auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this(), autoCalibDevice)->build(stereoPair.first, stereoPair.second);
                 Logging::getInstance().logger.info("AutoCalibration is initialized");
+                if(autoCalibrationWorldConstraints) {
+                    autoCalibrationNode->setWorldConstraints(*autoCalibrationWorldConstraints);
+                    Logging::getInstance().logger.info("AutoCalibration uses world constraints ({} marker distances, {} socket distances)",
+                                                       autoCalibrationWorldConstraints->markerDistances.size(),
+                                                       autoCalibrationWorldConstraints->socketDistances.size());
+                }
 
                 // Build-time flash safety: disable flashing when runtime calibration differs from EEPROM.
                 const auto runtimeCalibration = autoCalibDevice->tryGetCalibration();
