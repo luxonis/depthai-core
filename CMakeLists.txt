@@ -215,8 +215,13 @@ if(DEPTHAI_OPENCV_SUPPORT)
     if(OPENCV_SUPPORT_AVAILABLE)
         # Add public compile definition indicating that OpenCV support is available
         set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
+        # Host stitching uses cv::Stitcher::setTransform, which OpenCV has since 4.5.2
         if(DEPTHAI_BUILD_BETA AND "opencv_stitching" IN_LIST OpenCV_LIBS)
-            set(DEPTHAI_HAVE_OPENCV_STITCHING ON)
+            if(OpenCV_VERSION VERSION_GREATER_EQUAL 4.5.2)
+                set(DEPTHAI_HAVE_OPENCV_STITCHING ON)
+            else()
+                message(STATUS "OpenCV ${OpenCV_VERSION} is older than 4.5.2. Host stitching support disabled")
+            endif()
         endif()
 
         message(STATUS "OpenCV and required libraries (${REQUIRED_OPENCV_LIBRARIES}) found. OpenCV Support enabled")

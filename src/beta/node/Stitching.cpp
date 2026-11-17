@@ -233,11 +233,14 @@ Stitching::SeamFinder Stitching::getSeamFinder() const {
     return properties.seamFinder;
 }
 
-#if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && !defined(DEPTHAI_HAVE_OPENCV_STITCHING)
+// Inverse of the guard of the host implementation in utilities/Stitching/Stitching.cpp
+#if !(defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && defined(DEPTHAI_HAVE_OPENCV_STITCHING))
 void Stitching::initializeHostState() {}
 
 void Stitching::run() {
-    throw std::runtime_error("Stitching requires OpenCV support to run on the host. Enable OpenCV support or use setRunOnHost(false) with an RVC4 device.");
+    throw std::runtime_error(
+        "Stitching requires OpenCV support with the stitching module (OpenCV 4.5.2 or newer) to run on the host. Enable OpenCV support or use "
+        "setRunOnHost(false) with an RVC4 device.");
 }
 #endif
 
