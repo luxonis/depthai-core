@@ -1,0 +1,9 @@
+# Development image: the Luxonis OS RVC4 SDK image plus the build tools that docker/build.sh installs.
+#
+# DEPTHAI_DEVICE_SDK_IMAGE: today the private Luxonis OS SDK image; the public image
+# ghcr.io/luxonis/depthai-device-sdk will replace it once it is published. docker-compose.yml passes the value
+# from .env (written by createEnv.sh); the default here is the same.
+ARG DEPTHAI_DEVICE_SDK_IMAGE
+FROM ${DEPTHAI_DEVICE_SDK_IMAGE}
+
+RUN sudo apt update && sudo apt install -y ninja-build ccache curl zip unzip tar

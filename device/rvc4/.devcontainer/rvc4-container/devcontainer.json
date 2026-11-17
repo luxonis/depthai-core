@@ -1,0 +1,20 @@
+{
+	"name": "RVC4 FW development container",
+	"dockerComposeFile": "../docker-compose.yml",
+	"service": "rvc4-dev",
+	"workspaceFolder": "/work",
+	"shutdownAction": "stopCompose",
+	"initializeCommand": ".devcontainer/createEnv.sh",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-vscode.cpptools",
+				"ms-vscode.cpptools-extension-pack",
+				"mhutchie.git-graph",
+				"rioj7.command-variable",
+				"llvm-vs-code-extensions.vscode-clangd"
+			]
+		}
+	},
+	"postStartCommand": ""
+}

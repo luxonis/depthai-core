@@ -1,0 +1,37 @@
+# Build trees (docker builds, local builds, bump_version output)
+build*/
+include/depthai/build/
+
+# Local developer configuration (generated, machine specific)
+.devcontainer/.env
+docker/boardIP
+
+# Git merge files
+*.orig
+*_REMOTE_*
+*_LOCAL_*
+*_BACKUP_*
+*_BASE_*
+
+# Clangd / editor caches
+.cache*
+.history/
+.compile_commands.json
+*.swp
+
+# AI assistant working directories
+.claude/
+.devin/
+
+# Python
+__pycache__/
+*.pyc
+
+# Core dump parsing (utility_scripts/parse_core_dump.sh) and device-side scratch folders
+utility_scripts/core_dump_tmp_*
+*.rvc4/
+
+# The root .gitignore of depthai-core ignores build* and .vscode. These files of the firmware tree are tracked.
+!build.sh
+!build_rvc4.sh
+!/.vscode/
