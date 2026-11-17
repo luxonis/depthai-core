@@ -23,12 +23,22 @@ if(DEPTHAI_XTENSOR_SUPPORT)
     find_dependency(xtensor CONFIG REQUIRED)
 endif()
 
-if(DEPTHAI_DYNAMIC_CALIBRATION_STATIC AND NOT "@BUILD_SHARED_LIBS@")
-    set(DEPTHAI_DYNAMIC_CALIBRATION_INSTALLED_LIBRARY "@DEPTHAI_DCL_CONFIG_LIBRARY@")
-    set(DEPTHAI_DYNAMIC_CALIBRATION_INSTALLED_INCLUDE "@DEPTHAI_DCL_CONFIG_INCLUDE@")
-    set(CONFIG_MODE TRUE)
-    include("@DEPTHAI_DCL_CONFIG_HELPER@")
-    unset(CONFIG_MODE)
+# Resolve the private link dependencies exposed by every static core, using
+# the same dependency declarations as the source build. Keep build-option
+# values local so importing DepthAI does not change the consumer's options.
+if(NOT "@BUILD_SHARED_LIBS@")
+    function(_depthai_find_static_dependencies)
+        set(CONFIG_MODE TRUE)
+        set(DEPTHAI_SHARED_LIBS "@BUILD_SHARED_LIBS@")
+        set(_IMPORT_PREFIX "@DEPTHAI_CONFIG_IMPORT_PREFIX@")
+@DEPTHAI_CONFIG_STATIC_FEATURES@
+        set(XLINK_LIBUSB_SYSTEM "@XLINK_LIBUSB_SYSTEM@")
+        set(DEPTHAI_DYNAMIC_CALIBRATION_INSTALLED_LIBRARY "@DEPTHAI_DCL_CONFIG_LIBRARY@")
+        set(DEPTHAI_DYNAMIC_CALIBRATION_INSTALLED_INCLUDE "@DEPTHAI_DCL_CONFIG_INCLUDE@")
+        set(DEPTHAI_DYNAMIC_CALIBRATION_INSTALLED_ROOT "@DEPTHAI_DCL_CONFIG_ROOT@")
+        include("${CMAKE_CURRENT_LIST_DIR}/depthaiDependencies.cmake")
+    endfunction()
+    _depthai_find_static_dependencies()
 endif()
 
 # Add the targets file

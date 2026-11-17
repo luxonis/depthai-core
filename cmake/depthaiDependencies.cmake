@@ -1,4 +1,6 @@
-include(FetchContent)
+if(NOT CONFIG_MODE)
+    include(FetchContent)
+endif()
 if(CONFIG_MODE)
     set(_DEPTHAI_PREFIX_PATH_ORIGINAL ${CMAKE_PREFIX_PATH})
     set(_DEPTHAI_MODULE_PATH_ORIGINAL ${CMAKE_MODULE_PATH})
@@ -14,7 +16,7 @@ endif()
 # If library was build as static, find all dependencies
 if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
-    if(DEPTHAI_BUILD_PYTHON)
+    if(DEPTHAI_BUILD_PYTHON AND NOT CONFIG_MODE)
         # Some dependencies (xtensor) still use the old FindPythonInterp and FindPythonLibs
         if(PYTHON_EXECUTABLE AND NOT Python_EXECUTABLE)
             set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
@@ -92,7 +94,7 @@ endif()
 
 # Xtensor
 if(DEPTHAI_XTENSOR_SUPPORT)
-    if(NOT DEPTHAI_XTENSOR_EXTERNAL)
+    if(NOT DEPTHAI_XTENSOR_EXTERNAL AND NOT CONFIG_MODE)
         FetchContent_Declare(
             xtl
             GIT_REPOSITORY https://github.com/luxonis/xtl.git
@@ -116,7 +118,9 @@ if(DEPTHAI_XTENSOR_SUPPORT)
     endif()
 endif()
 
-if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION AND CONFIG_MODE)
+    find_package(websocketpp CONFIG REQUIRED)
+elseif(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     get_filename_component(PARENT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
     add_subdirectory("${PARENT_DIRECTORY}/3rdparty/foxglove/ws-protocol/cpp/foxglove-websocket" foxglove-websocket)
 endif()
@@ -124,7 +128,7 @@ endif()
 # Add threads (c++)
 find_package(Threads ${_QUIET} REQUIRED)
 
-if(NOT DEPTHAI_JSON_EXTERNAL)
+if(NOT DEPTHAI_JSON_EXTERNAL AND NOT CONFIG_MODE)
     FetchContent_Declare(
         nlohmann_json
         GIT_REPOSITORY https://github.com/nlohmann/json.git
@@ -139,7 +143,7 @@ else()
     find_package(nlohmann_json CONFIG REQUIRED)
 endif()
 
-if(NOT DEPTHAI_LIBNOP_EXTERNAL)
+if(NOT DEPTHAI_LIBNOP_EXTERNAL AND NOT CONFIG_MODE)
     FetchContent_Declare(
         libnop
         GIT_REPOSITORY https://github.com/luxonis/libnop.git
@@ -168,35 +172,40 @@ if(DEPTHAI_ENABLE_PROTOBUF)
     find_package(Protobuf ${_QUIET} REQUIRED)
 endif()
 
-if(DEPTHAI_BUILD_TESTS)
+if(DEPTHAI_BUILD_TESTS AND NOT CONFIG_MODE)
     find_package(Catch2 CONFIG REQUIRED)
 endif()
 
 # XLink
-# Always compile XLink as static library, even when DepthAI is built as shared
-set(_BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
-set(BUILD_SHARED_LIBS OFF)
-set(XLINK_ENABLE_LIBUSB ${DEPTHAI_ENABLE_LIBUSB} CACHE BOOL "Enable libusb" FORCE)
-set(XLINK_INSTALL_PUBLIC_ONLY ON CACHE BOOL "Install only public headers" FORCE)
 if(DEPTHAI_ENABLE_LIBUSB AND NOT XLINK_LIBUSB_SYSTEM)
     find_package(usb-1.0 ${_QUIET} CONFIG REQUIRED)
 endif()
-if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
-    add_subdirectory("${DEPTHAI_XLINK_LOCAL}" ${CMAKE_CURRENT_BINARY_DIR}/XLink)
+if(CONFIG_MODE)
+    find_package(XLink CONFIG REQUIRED COMPONENTS XLinkPublic)
 else()
-    FetchContent_Declare(
-        XLink
-        GIT_REPOSITORY https://github.com/luxonis/XLink.git
-        GIT_TAG        def3760e05dba906b40326fa4d94291e5a4fb929
-    )
+    # XLink
+    # Always compile XLink as static library, even when DepthAI is built as shared
+    set(_BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
+    set(BUILD_SHARED_LIBS OFF)
+    set(XLINK_ENABLE_LIBUSB ${DEPTHAI_ENABLE_LIBUSB} CACHE BOOL "Enable libusb" FORCE)
+    set(XLINK_INSTALL_PUBLIC_ONLY ON CACHE BOOL "Install only public headers" FORCE)
+    if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
+        add_subdirectory("${DEPTHAI_XLINK_LOCAL}" ${CMAKE_CURRENT_BINARY_DIR}/XLink)
+    else()
+        FetchContent_Declare(
+            XLink
+            GIT_REPOSITORY https://github.com/luxonis/XLink.git
+            GIT_TAG        def3760e05dba906b40326fa4d94291e5a4fb929
+        )
 
-    FetchContent_MakeAvailable(
-        XLink
-    )
+        FetchContent_MakeAvailable(
+            XLink
+        )
+    endif()
+    set(BUILD_SHARED_LIBS "${_BUILD_SHARED_LIBS_SAVED}")
+    unset(_BUILD_SHARED_LIBS_SAVED)
+    list(APPEND targets_to_export XLinkPublic)
 endif()
-set(BUILD_SHARED_LIBS "${_BUILD_SHARED_LIBS_SAVED}")
-unset(_BUILD_SHARED_LIBS_SAVED)
-list(APPEND targets_to_export XLinkPublic)
 
 # OpenCV 4 - (optional)
 message("DEPTHAI_OPENCV_SUPPORT: ${DEPTHAI_OPENCV_SUPPORT}")
@@ -223,7 +232,11 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT AND DEPTHAI_DYNAMIC_CALIBRATION_STATIC AN
 elseif(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     set(DEPTHAI_DYNAMIC_CALIBRATION_PATH "" CACHE FILEPATH "Override path to local dynamic_calibration .zip file")
 
-    if(DEPTHAI_DYNAMIC_CALIBRATION_PATH AND EXISTS "${DEPTHAI_DYNAMIC_CALIBRATION_PATH}")
+    if(CONFIG_MODE)
+        # Installed static cores use the bundled shared DCL runtime, too.
+        # Static DCL was handled above; neither CONFIG_MODE path may fetch.
+        set(DYNAMIC_CALIBRATION_DIR "${DEPTHAI_DYNAMIC_CALIBRATION_INSTALLED_ROOT}")
+    elseif(DEPTHAI_DYNAMIC_CALIBRATION_PATH AND EXISTS "${DEPTHAI_DYNAMIC_CALIBRATION_PATH}")
         message(STATUS "Using local dynamic_calibration zip: ${DEPTHAI_DYNAMIC_CALIBRATION_PATH}")
         FetchContent_Declare(
             dynamic_calibration
@@ -270,9 +283,11 @@ elseif(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         )
     endif()
 
-    FetchContent_MakeAvailable(dynamic_calibration)
-    message(STATUS "Dynamic calibration extracted to ${dynamic_calibration_SOURCE_DIR}")
-    set(DYNAMIC_CALIBRATION_DIR ${dynamic_calibration_SOURCE_DIR})
+    if(NOT CONFIG_MODE)
+        FetchContent_MakeAvailable(dynamic_calibration)
+        message(STATUS "Dynamic calibration extracted to ${dynamic_calibration_SOURCE_DIR}")
+        set(DYNAMIC_CALIBRATION_DIR ${dynamic_calibration_SOURCE_DIR})
+    endif()
 
     if(DEPTHAI_DYNAMIC_CALIBRATION_STATIC)
         include("${CMAKE_CURRENT_LIST_DIR}/depthaiDynamicCalibrationStatic.cmake")
@@ -357,8 +372,10 @@ endif()
 # Cleanup
 if(CONFIG_MODE)
     set(CMAKE_PREFIX_PATH ${_DEPTHAI_PREFIX_PATH_ORIGINAL})
+    set(CMAKE_MODULE_PATH ${_DEPTHAI_MODULE_PATH_ORIGINAL})
     set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ${_DEPTHAI_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL})
     unset(_DEPTHAI_PREFIX_PATH_ORIGINAL)
+    unset(_DEPTHAI_MODULE_PATH_ORIGINAL)
     unset(_DEPTHAI_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL)
     unset(_QUIET)
 else()

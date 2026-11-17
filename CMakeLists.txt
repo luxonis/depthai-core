@@ -1654,21 +1654,32 @@ configure_file("cmake/${PROJECT_NAME}Dependencies.cmake" ${PROJECT_NAME}Dependen
 # Write project version
 write_basic_package_version_file(${PROJECT_NAME}ConfigVersion.cmake VERSION ${PROJECT_VERSION} COMPATIBILITY AnyNewerVersion)
 
+# Snapshot feature values for CONFIG_MODE; package discovery remains defined
+# in depthaiDependencies.cmake rather than a second list of dependencies.
+set(DEPTHAI_CONFIG_STATIC_FEATURES "")
+foreach(feature IN ITEMS ENABLE_KOMPUTE ENABLE_CURL ENABLE_REMOTE_CONNECTION
+        BASALT_SUPPORT RTABMAP_SUPPORT ENABLE_BACKWARD HAS_APRIL_TAG
+        ENABLE_MP4V2 ENABLE_PROTOBUF ENABLE_LIBUSB)
+    string(APPEND DEPTHAI_CONFIG_STATIC_FEATURES "        set(DEPTHAI_${feature} \"${DEPTHAI_${feature}}\")\n")
+endforeach()
+set(DEPTHAI_CONFIG_IMPORT_PREFIX "")
+set(DEPTHAI_DCL_CONFIG_ROOT "${DYNAMIC_CALIBRATION_DIR}")
 if(DEPTHAI_DYNAMIC_CALIBRATION_STATIC)
+    configure_file(cmake/depthaiDynamicCalibrationStatic.cmake depthaiDynamicCalibrationStatic.cmake COPYONLY)
     get_target_property(DEPTHAI_DCL_CONFIG_LIBRARY dynamic_calibration_imported IMPORTED_LOCATION)
     set(DEPTHAI_DCL_CONFIG_INCLUDE "${DYNAMIC_CALIBRATION_DIR}/include")
-    set(DEPTHAI_DCL_CONFIG_HELPER "${CMAKE_CURRENT_SOURCE_DIR}/cmake/depthaiDynamicCalibrationStatic.cmake")
 endif()
 
 # Configure config file (one for exporting build directory, one for installation)
 configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
 
 # Config for installation
+file(RELATIVE_PATH DEPTHAI_CONFIG_IMPORT_PREFIX "${CMAKE_INSTALL_FULL_LIBDIR}/cmake/depthai" "${CMAKE_INSTALL_PREFIX}")
+set(DEPTHAI_DCL_CONFIG_ROOT "\${CMAKE_CURRENT_LIST_DIR}/${DEPTHAI_CONFIG_IMPORT_PREFIX}")
 if(DEPTHAI_DYNAMIC_CALIBRATION_STATIC)
     file(RELATIVE_PATH _dcl_include_relative "${CMAKE_INSTALL_FULL_LIBDIR}/cmake/depthai" "${CMAKE_INSTALL_FULL_INCLUDEDIR}/depthai/dcl")
     set(DEPTHAI_DCL_CONFIG_LIBRARY "\${CMAKE_CURRENT_LIST_DIR}/../../libdynamic_calibration.a")
     set(DEPTHAI_DCL_CONFIG_INCLUDE "\${CMAKE_CURRENT_LIST_DIR}/${_dcl_include_relative}")
-    set(DEPTHAI_DCL_CONFIG_HELPER "\${CMAKE_CURRENT_LIST_DIR}/depthaiDynamicCalibrationStatic.cmake")
 endif()
 set(DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "./dependencies")
 configure_file(cmake/${PROJECT_NAME}Config.cmake.in _install/${PROJECT_NAME}Config.cmake @ONLY)
@@ -1736,6 +1747,7 @@ if(DEPTHAI_INSTALL)
     install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/_install/${PROJECT_NAME}Config.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Dependencies.cmake"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
     )
 
