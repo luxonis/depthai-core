@@ -394,6 +394,16 @@ void requireControlRoundTrips() {
     REQUIRE(std::holds_alternative<Commands::ResetData>(roundTrip<Type>(*DCC::resetData()).command));
     REQUIRE(std::holds_alternative<std::monostate>(roundTrip<Type>(DCC{}).command));
 
+    // The Buffer fields travel with the command, as for every other message.
+    auto stamped = DCC::resetData();
+    stamped->setSequenceNum(42);
+    stamped->setTimestamp(std::chrono::steady_clock::time_point(std::chrono::milliseconds(1234)));
+    stamped->setTimestampDevice(std::chrono::steady_clock::time_point(std::chrono::milliseconds(5678)));
+    const auto stampedParsed = roundTrip<Type>(*stamped);
+    REQUIRE(stampedParsed.getSequenceNum() == 42);
+    REQUIRE(stampedParsed.getTimestamp() == stamped->getTimestamp());
+    REQUIRE(stampedParsed.getTimestampDevice() == stamped->getTimestampDevice());
+
     dai::CalibrationHandler calibration;
     calibration.setCameraIntrinsics(Socket::CAM_B, std::vector<std::vector<float>>{{800.f, 0.f, 640.f}, {0.f, 800.f, 400.f}, {0.f, 0.f, 1.f}}, 1280, 800);
     const auto apply = roundTrip<Type>(*DCC::applyCalibration(calibration, true));

@@ -272,7 +272,7 @@ class DynamicCalibrationControl : public Buffer {
         return DatatypeEnum::DynamicCalibrationControl;
     }
 
-    DEPTHAI_SERIALIZE_DECL(DynamicCalibrationControl, command);
+    DEPTHAI_SERIALIZE_DECL(DynamicCalibrationControl, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, command);
 };
 
 inline std::string toString(DynamicCalibrationControl::PerformanceMode mode) {
