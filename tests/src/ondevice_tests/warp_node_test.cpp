@@ -25,16 +25,22 @@ struct Plane {
 std::shared_ptr<dai::Device> rvc2Device() {
     // Select an available device after the previous pipeline has rebooted it. ANY_STATE
     // can find a device still shutting down; it can also select an unrelated network RVC4.
+    // dai::Device(info) gives up after its own connect timeout, so keep polling on failure.
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+    std::string lastError = "none";
     do {
         for(const auto& info : dai::Device::getAllAvailableDevices()) {
             if(info.platform == X_LINK_MYRIAD_X && info.status == X_LINK_SUCCESS) {
-                return std::make_shared<dai::Device>(info);
+                try {
+                    return std::make_shared<dai::Device>(info);
+                } catch(const std::exception& e) {
+                    lastError = e.what();
+                }
             }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     } while(std::chrono::steady_clock::now() < deadline);
-    FAIL("No available RVC2 device found within 30 seconds");
+    FAIL("No available RVC2 device found within 30 seconds (last connection error: " << lastError << ")");
     return nullptr;
 }
 
