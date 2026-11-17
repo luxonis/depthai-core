@@ -127,7 +127,7 @@ class SyncStartGroup {
         const void* device;  // its responder is looked up for every use: a reconnect or close replaces it
         uint16_t cameras;
         bool ready = false;
-        int64_t framePeriodNs = 0;
+        int64_t gridMilliFps = 0;  // rate (mHz) whose frame grid boundaries all its cameras share
     };
     void coordinate();
 

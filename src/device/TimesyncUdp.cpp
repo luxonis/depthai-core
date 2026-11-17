@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <map>
+#include <numeric>
 #include <optional>
 
 #include "utility/Logging.hpp"
@@ -78,7 +79,7 @@ struct Arm {  // host -> device before its pipeline starts: hold the cameras, th
 struct Ready {  // device -> host: all cameras configured, stream-on held
     uint32_t generation;
     uint16_t cameras;
-    int64_t framePeriodNs;
+    int64_t gridMilliFps;  // rate (mHz) whose frame grid boundaries all the device's cameras share (gcd of their rates)
 };
 struct StartAt {  // host -> device: stream on at this host steady-clock time; a LATE reply carries int64_t lateNs
     uint32_t generation;
@@ -86,6 +87,18 @@ struct StartAt {  // host -> device: stream on at this host steady-clock time; a
 };
     #pragma pack(pop)
 }  // namespace sync_start
+
+// CamX's frame-time sync grid (luxframetimesync.cpp, firmware CameraSensor.cpp, keep in sync): slot k at
+// round(k * 1e12 / milliFps) ns of the clock. Rates that are whole multiples of each other share every boundary of the
+// slower one's grid.
+constexpr int64_t NS_PER_MILLIHZ_PERIOD = 1000000000000;  // period in ns = this / rate in mHz
+
+// First grid slot at or after timeNs (>= 0)
+int64_t gridBoundaryAtOrAfter(int64_t timeNs, int64_t milliFps) {
+    const int64_t slot =
+        timeNs / NS_PER_MILLIHZ_PERIOD * milliFps + (timeNs % NS_PER_MILLIHZ_PERIOD * milliFps + NS_PER_MILLIHZ_PERIOD - 1) / NS_PER_MILLIHZ_PERIOD;
+    return slot / milliFps * NS_PER_MILLIHZ_PERIOD + (slot % milliFps * NS_PER_MILLIHZ_PERIOD + milliFps / 2) / milliFps;
+}
 
 // depthai's PTP instance for TIME_PTP when the OS runs no PTP, keep in sync with the firmware (DaiPtp.cpp)
 namespace dai_ptp {
@@ -692,7 +705,7 @@ void SyncStartGroup::begin(const void* pipeline, const std::vector<std::pair<con
                 std::lock_guard<std::mutex> lock(g->mtx);
                 if(ready.generation != g->generation) return sync_start::STALE;
                 g->members[i].ready = true;
-                g->members[i].framePeriodNs = ready.framePeriodNs;
+                g->members[i].gridMilliFps = ready.gridMilliFps;
                 g->cv.notify_all();
                 return sync_start::OK;
             });
@@ -725,22 +738,16 @@ void SyncStartGroup::coordinate() {
     {
         std::lock_guard<std::mutex> lock(mtx);
         if(stopping) return;
-        int64_t periodNs = 0;
-        bool samePeriod = true;
+        int64_t milliFps = 0;  // rate whose grid boundaries every camera shares
         for(const auto& m : members) {
             targets.push_back(m.device);
-            if(!m.ready || m.framePeriodNs <= 0) continue;
-            if(periodNs == 0) {
-                periodNs = m.framePeriodNs;
-            } else if(m.framePeriodNs != periodNs) {
-                samePeriod = false;
-            }
+            if(m.ready && m.gridMilliFps > 0) milliFps = std::gcd(milliFps, m.gridMilliFps);
         }
         startNs = steadyNs() + duration_cast<nanoseconds>(SYNC_START_MARGIN).count();
-        if(periodNs > 0 && samePeriod) {
-            startNs = (startNs + periodNs - 1) / periodNs * periodNs;  // a frame boundary of the host clock, like TIME_DAI's grid
-        } else if(!samePeriod) {
-            logger::warn("Synchronized start: the devices run different frame rates, the start is not on a frame boundary");
+        if(milliFps >= 1000) {
+            startNs = gridBoundaryAtOrAfter(startNs, milliFps);  // a frame boundary of the host clock, like TIME_DAI's grid
+        } else if(milliFps > 0) {
+            logger::warn("Synchronized start: the cameras' frame rates share no frame boundary within a second, the start is not on one");
         }
     }
     const sync_start::StartAt at{generation, startNs};
