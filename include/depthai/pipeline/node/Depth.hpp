@@ -97,14 +97,14 @@ class Depth : public DeviceNodeGroup {
     /**
      * Set algorithm and optional FPS before wiring.
      * @param algorithm Backend to use
-     * @param fps Requested stereo camera FPS; when set, AUTO selects a backend that can serve it and an explicit algorithm or config that cannot throws
+     * @param fps Requested stereo camera FPS; on RVC4, rejects configurations above known backend capacity or a fixed camera rate. Runtime throughput may vary.
      */
     std::shared_ptr<Depth> build(Algorithm algorithm, std::optional<float> fps = std::nullopt);
 
     /**
      * Set algorithm, optional FPS, and preferred internal processing size before wiring.
      * @param algorithm Backend to use
-     * @param fps Requested stereo camera FPS; when set, AUTO selects a backend that can serve it and an explicit algorithm or config that cannot throws
+     * @param fps Requested stereo camera FPS; on RVC4, rejects configurations above known backend capacity or a fixed camera rate. Runtime throughput may vary.
      * @param size preferred internal processing size; setAlignTo() determines aligned output geometry
      */
     std::shared_ptr<Depth> build(Algorithm algorithm, std::optional<float> fps, std::optional<std::pair<uint32_t, uint32_t>> size);
@@ -113,7 +113,7 @@ class Depth : public DeviceNodeGroup {
      * Set algorithm and config before wiring. algorithm must not be AUTO.
      * @param algorithm Backend to use
      * @param config Algorithm-specific configuration
-     * @param fps Requested stereo camera FPS; when set, AUTO selects a backend that can serve it and an explicit algorithm or config that cannot throws
+     * @param fps Requested stereo camera FPS; on RVC4, rejects configurations above known backend capacity or a fixed camera rate. Runtime throughput may vary.
      * @param size preferred internal processing size; setAlignTo() determines aligned output geometry
      */
     std::shared_ptr<Depth> build(Algorithm algorithm,
@@ -260,9 +260,10 @@ class Depth : public DeviceNodeGroup {
                                    const std::vector<Algorithm>& supportedAlgorithms,
                                    const std::vector<DeviceModelZoo>& modelFilter = {},
                                    bool requireFpsAndResolutionMatch = false,
-                                   const std::optional<Version>& osVersion = std::nullopt);
+                                   const std::optional<Version>& osVersion = std::nullopt,
+                                   std::optional<std::pair<uint32_t, uint32_t>> stereoResolution = std::nullopt);
 
-    void resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline);
+    std::optional<std::pair<uint32_t, uint32_t>> resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline);
 
     StereoWiring ensureStereoOutputs(Pipeline& pipeline,
                                      const StereoPair& pair,

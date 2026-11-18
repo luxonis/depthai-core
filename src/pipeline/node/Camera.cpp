@@ -10,6 +10,7 @@
 #include "depthai/pipeline/Pipeline.hpp"
 
 // depthai internal utilities
+#include "utility/CameraFeatures.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/RecordReplayImpl.hpp"
 
@@ -199,27 +200,11 @@ Node::Output* Camera::requestFullResolutionOutput(std::optional<ImgFrame::Type> 
     if(useHighestResolution) {
         cap.size.fixed({cameraFeatures.width, cameraFeatures.height});
     } else {
-        int32_t maxWidth = 0;
-        int32_t maxHeight = 0;
-        // Loop over all the configs and find the highest resolution that is not higher than 5000x4000
-        for(const auto& config : cameraFeatures.configs) {
-            // Only consider the full FOV configurations
-            auto denormalizedFov = config.fov.denormalize(cameraFeatures.width, cameraFeatures.height);
-            if((static_cast<int>(denormalizedFov.width) != cameraFeatures.width) || (static_cast<int>(denormalizedFov.height) != cameraFeatures.height)
-               || denormalizedFov.x != 0 || denormalizedFov.y != 0) {
-                continue;
-            }
-            if(config.width <= 5000 && config.height <= 4000) {
-                if(config.width > maxWidth || config.height > maxHeight) {
-                    maxWidth = config.width;
-                    maxHeight = config.height;
-                }
-            }
-        }
-        if(maxWidth == 0 || maxHeight == 0) {
+        const auto size = utility::findDefaultFullResolutionSize(cameraFeatures);
+        if(!size) {
             throw std::runtime_error("No valid full resolution configuration found for the connected camera");
         }
-        cap.size.fixed({maxWidth, maxHeight});
+        cap.size.fixed(*size);
     }
     if(fps.has_value()) {
         cap.fps.fixed(fps.value());

@@ -1204,8 +1204,7 @@ TEST_CASE("Depth: explicit neural FPS accepts preferred sizes and larger preview
         SKIP("Requires NeuralDepth on RVC4.");
     }
     const auto models = device->getSupportedDeviceModels();
-    const auto model = DeviceModelZoo::NEURAL_DEPTH_576X360;
-    if(std::find(models.begin(), models.end(), model) == models.end()) {
+    if(std::find(models.begin(), models.end(), DeviceModelZoo::NEURAL_DEPTH_576X360) == models.end()) {
         SKIP("Requires the 576x360 NeuralDepth model.");
     }
     const auto pair = requireFirstStereoPairForTest(device);
@@ -1219,15 +1218,21 @@ TEST_CASE("Depth: explicit neural FPS accepts preferred sizes and larger preview
         }
     }
     auto depth = pipeline.create<node::Depth>();
+    std::optional<std::pair<uint32_t, uint32_t>> preferredSize;
     SECTION("automatic processing size") {
         depth->build(algorithm, 30.f);
     }
     SECTION("preferred size within the model tensor-cover band") {
-        depth->build(algorithm, 30.f, std::make_pair(640u, 400u));
+        preferredSize = std::make_pair(640u, 400u);
+        depth->build(algorithm, 30.f, preferredSize);
     }
+    // Pure selection tests cover the profile boundaries; this test checks live wiring against the
+    // OS version and model catalog actually reported by this device.
+    const auto expected =
+        node::DepthTestAccess::selectBackend(preferredSize, 30.f, {node::Depth::Algorithm::NEURAL}, models, device->getDeviceOSVersion(), true);
     REQUIRE_NOTHROW((void)depth->depth());
     REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::NEURAL);
-    REQUIRE(std::get<DeviceModelZoo>(depth->getResolvedConfig()) == model);
+    REQUIRE(depth->getResolvedConfig() == expected.second);
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
 }
 
@@ -1257,4 +1262,35 @@ TEST_CASE("Depth: wired processing size is independent of larger preview request
     REQUIRE(node::DepthTestAccess::getWiredStereoResolution(*depth, pipeline, pair) == std::make_pair(640u, 400u));
     REQUIRE(left->getMaxRequestedWidth() == kUserStereoSensorResolution.first);
     REQUIRE(right->getMaxRequestedWidth() == kUserStereoSensorResolution.first);
+}
+
+TEST_CASE("Depth: explicit FPS rejects a slower existing camera before adding a backend", "[Depth][ExplicitFps]") {
+    Pipeline pipeline;
+    const auto device = requireDefaultDevice(pipeline);
+    if(device->getPlatform() != Platform::RVC4) {
+        SKIP("Requires RVC4 FPS validation.");
+    }
+    const auto pair = requireFirstStereoPairForTest(device);
+    const auto algorithm = GENERATE(node::Depth::Algorithm::AUTO, node::Depth::Algorithm::STEREO, node::Depth::Algorithm::NEURAL);
+    if(algorithm == node::Depth::Algorithm::NEURAL && !device->isNeuralDepthSupported()) {
+        SKIP("Requires NeuralDepth support.");
+    }
+    const bool slowLeft = GENERATE(false, true);
+    pipeline.create<node::Camera>()->build(pair.left, std::nullopt, slowLeft ? 15.f : 30.f);
+    pipeline.create<node::Camera>()->build(pair.right, std::nullopt, slowLeft ? 30.f : 15.f);
+    auto depth = pipeline.create<node::Depth>()->build(algorithm, 30.f, std::make_pair(640u, 400u));
+    REQUIRE_THROWS_WITH(depth->depth(), Catch::Matchers::ContainsSubstring("must not be below requested depth FPS"));
+    REQUIRE(depth->getNodeMap().empty());
+}
+
+TEST_CASE("Depth: explicit GPU config is validated before adding a backend", "[Depth][ExplicitFps]") {
+    Pipeline pipeline;
+    const auto device = requireDefaultDevice(pipeline);
+    if(device->getPlatform() != Platform::RVC4 || !deviceSupportsGpuStereo(device)) {
+        SKIP("Requires GPUStereo on RVC4.");
+    }
+    (void)requireFirstStereoPairForTest(device);
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::GPU_STEREO, std::monostate{}, 30.f, std::make_pair(1920u, 1440u));
+    REQUIRE_THROWS_WITH(depth->depth(), Catch::Matchers::ContainsSubstring("cannot serve the requested 30 FPS"));
+    REQUIRE(depth->getNodeMap().empty());
 }

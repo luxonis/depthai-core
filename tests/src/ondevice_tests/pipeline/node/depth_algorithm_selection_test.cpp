@@ -8,6 +8,7 @@
 #include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/pipeline/node/Depth.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
+#include "utility/CameraFeatures.hpp"
 
 using dai::DeviceModelZoo;
 using dai::node::Depth;
@@ -24,8 +25,9 @@ struct DepthTestAccess {
                                                                       float fps,
                                                                       const std::vector<Depth::Algorithm>& algorithms,
                                                                       const std::vector<DeviceModelZoo>& models = {},
-                                                                      bool strict = false) {
-        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, fps, algorithms, models, strict, dai::Version(1, 47, 0));
+                                                                      bool strict = false,
+                                                                      std::optional<std::pair<uint32_t, uint32_t>> stereoResolution = std::nullopt) {
+        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, fps, algorithms, models, strict, dai::Version(1, 47, 0), stereoResolution);
         return {selection.algorithm, selection.config};
     }
     static std::pair<Depth::Algorithm, Depth::Config> selectWithOs(std::optional<std::pair<uint32_t, uint32_t>> resolution,
@@ -318,7 +320,7 @@ TEST_CASE("Depth optimized neural profiles honor every advertised FPS and tensor
         INFO("model=" << static_cast<unsigned>(p.model) << " maxFps=" << p.maxFps);
         // Restrict candidates to this supported model so priority cannot mask a bad row.
         // The selection is strict (explicit FPS), so no safety margin applies: the request must fit the model exactly.
-        const float targetFps = p.maxFps - 0.05f;
+        const float targetFps = p.maxFps;
         const uint32_t minW = static_cast<uint32_t>(static_cast<float>(p.width) / 1.4142135f);
         const uint32_t maxW = static_cast<uint32_t>(static_cast<float>(p.width) * 1.4142135f);
         const uint32_t minH = static_cast<uint32_t>(static_cast<float>(p.height) / 1.4142135f);
@@ -330,9 +332,9 @@ TEST_CASE("Depth optimized neural profiles honor every advertised FPS and tensor
             REQUIRE(std::get<DeviceModelZoo>(selected.second) == p.model);
         }
 
-        // Above the tolerated capacity, strict mode must reject this sole available neural row.
-        REQUIRE_THROWS(dai::node::DepthTestAccess::selectOptimized(
-            std::make_pair(p.width, p.height), (p.maxFps + 0.2f) / 0.9f, {Depth::Algorithm::NEURAL}, {p.model}, true));
+        // Above the exact capacity, strict mode must reject this sole available neural row.
+        REQUIRE_THROWS(
+            dai::node::DepthTestAccess::selectOptimized(std::make_pair(p.width, p.height), p.maxFps + 0.2f, {Depth::Algorithm::NEURAL}, {p.model}, true));
     }
 }
 
@@ -420,4 +422,50 @@ TEST_CASE("Explicit FPS selection respects the device OS neural capacity", "[Dep
     REQUIRE(std::get<DeviceModelZoo>(oldOs.second) == DeviceModelZoo::NEURAL_DEPTH_480X300);
     const auto newOs = dai::node::DepthTestAccess::selectWithOs(std::nullopt, 50.f, neuralOnly, true, dai::Version(1, 47, 0));
     REQUIRE(std::get<DeviceModelZoo>(newOs.second) == DeviceModelZoo::NEURAL_DEPTH_768X480);
+}
+
+TEST_CASE("Explicit FPS selection uses the processing size that non-neural backends will receive", "[Depth][ExplicitFps]") {
+    const std::vector<Depth::Algorithm> nonNeural = {Depth::Algorithm::NEURAL_ASSISTED_STEREO, Depth::Algorithm::STEREO, Depth::Algorithm::GPU_STEREO};
+    const auto largeSensor = std::make_pair(2592u, 1944u);
+    // NAS fits the FPS but cannot process this camera size; GPU can serve both constraints.
+    const auto selected = dai::node::DepthTestAccess::selectOptimized(std::nullopt, 5.f, nonNeural, {}, true, largeSensor);
+    REQUIRE(selected.first == Depth::Algorithm::GPU_STEREO);
+    REQUIRE_THROWS_WITH(dai::node::DepthTestAccess::selectOptimized(std::nullopt, 30.f, nonNeural, {}, true, largeSensor),
+                        Catch::Matchers::ContainsSubstring("no available algorithm"));
+    // A preferred processing size overrides the sensor size for all candidates.
+    const auto preferred = dai::node::DepthTestAccess::selectOptimized(std::make_pair(640u, 400u), 30.f, nonNeural, {}, true, largeSensor);
+    REQUIRE(preferred.first == Depth::Algorithm::NEURAL_ASSISTED_STEREO);
+    // Neural tensors remain independent of the sensor or preview size.
+    const auto neural = dai::node::DepthTestAccess::selectOptimized(std::nullopt, 30.f, kAllRvc4Backends, {}, true, largeSensor);
+    REQUIRE(neural.first == Depth::Algorithm::NEURAL);
+    REQUIRE(std::get<DeviceModelZoo>(neural.second) == DeviceModelZoo::NEURAL_DEPTH_1056X660);
+}
+
+TEST_CASE("Depth and Camera use the same bounded full-FOV sensor mode", "[Depth][ExplicitFps]") {
+    dai::CameraFeatures features;
+    features.width = 8000;
+    features.height = 6000;
+    auto addMode = [&](int32_t width, int32_t height, dai::Rect fov) {
+        dai::CameraSensorConfig config;
+        config.width = width;
+        config.height = height;
+        config.type = dai::CameraSensorType::COLOR;
+        config.fov = fov;
+        features.configs.push_back(config);
+    };
+    const dai::Rect fullFov(0.f, 0.f, 1.f, 1.f, true);
+    addMode(8000, 6000, fullFov);
+    addMode(1920, 1440, fullFov);
+    addMode(4000, 3000, dai::Rect(0.25f, 0.25f, 0.5f, 0.5f, true));
+    const auto processingSize = dai::utility::findDefaultFullResolutionSize(features);
+    REQUIRE(processingSize == std::make_pair(1920u, 1440u));
+    const auto selected = dai::node::DepthTestAccess::selectOptimized(
+        std::nullopt, 5.f, {Depth::Algorithm::NEURAL_ASSISTED_STEREO, Depth::Algorithm::GPU_STEREO}, {}, true, processingSize);
+    REQUIRE(selected.first == Depth::Algorithm::GPU_STEREO);
+    features.configs.erase(features.configs.begin() + 1);
+    const auto unavailable = dai::utility::findDefaultFullResolutionSize(features);
+    REQUIRE_FALSE(unavailable);
+    // A neural tensor output remains usable when the camera has no default full-FOV mode.
+    const auto neural = dai::node::DepthTestAccess::selectOptimized(std::nullopt, 30.f, kAllRvc4Backends, {}, true, unavailable);
+    REQUIRE(neural.first == Depth::Algorithm::NEURAL);
 }

@@ -13,6 +13,7 @@
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/ImageFiltersConfig.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
+#include "utility/CameraFeatures.hpp"
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
@@ -216,20 +217,11 @@ void validateRequestedFps(Depth::Algorithm algorithm,
                           std::optional<std::pair<uint32_t, uint32_t>> resolution,
                           const std::optional<Version>& osVersion) {
     if(!fps) return;
-    // NeuralAssistedStereo whose config holds a model is bounded by that model's FPS as well.
-    const bool nasModel = algorithm == Depth::Algorithm::NEURAL_ASSISTED_STEREO && std::holds_alternative<DeviceModelZoo>(config);
-    if(nasModel) {
-        validateRequestedFps(Depth::Algorithm::NEURAL, config, fps, std::nullopt, osVersion);
-    }
-    // NeuralDepth rectifies to the selected model's tensor size. A preferred size only guides model selection.
-    if(algorithm == Depth::Algorithm::NEURAL) {
-        resolution.reset();
-    }
     bool knownProfile = false;
     bool fits = false;
     for(const auto& profile : BACKEND_PROFILES) {
         if(profile.algorithm != algorithm) continue;
-        if(!nasModel && !std::holds_alternative<std::monostate>(config) && profile.config != config) continue;
+        if(!std::holds_alternative<std::monostate>(config) && profile.config != config) continue;
         knownProfile = true;
         if(profileMaxFps(profile, osVersion) >= *fps
            && (!resolution || (resolution->first <= profile.maxSize.first && resolution->second <= profile.maxSize.second))) {
@@ -403,11 +395,19 @@ std::optional<std::pair<uint32_t, uint32_t>> sizeFromExistingCameras(const std::
     return std::nullopt;
 }
 
-std::optional<std::pair<uint32_t, uint32_t>> sizeFromDeviceFeatures(const std::shared_ptr<Device>& device, const StereoPair& pair) {
+std::optional<std::pair<uint32_t, uint32_t>> sizeFromDeviceFeatures(const std::shared_ptr<Device>& device,
+                                                                    const StereoPair& pair,
+                                                                    bool useDefaultFullResolution = false) {
     const auto features = device->getConnectedCameraFeatures();
+    bool missingFullResolutionMode = false;
     auto findSocket = [&](CameraBoardSocket socket) -> std::optional<std::pair<uint32_t, uint32_t>> {
         for(const auto& f : features) {
             if(f.socket == socket && f.width > 0 && f.height > 0) {
+                if(useDefaultFullResolution) {
+                    const auto size = utility::findDefaultFullResolutionSize(f);
+                    if(!size) missingFullResolutionMode = true;
+                    return size;
+                }
                 return std::make_pair(static_cast<uint32_t>(f.width), static_cast<uint32_t>(f.height));
             }
         }
@@ -415,6 +415,7 @@ std::optional<std::pair<uint32_t, uint32_t>> sizeFromDeviceFeatures(const std::s
     };
     const auto leftSize = findSocket(pair.left);
     const auto rightSize = findSocket(pair.right);
+    if(missingFullResolutionMode) return std::nullopt;
     if(!leftSize && !rightSize) return std::nullopt;
     if(leftSize && !rightSize) return leftSize;
     if(rightSize && !leftSize) return rightSize;
@@ -469,7 +470,7 @@ WiringInputs gatherWiringInputs(const std::shared_ptr<Device>& device,
         inputs.resolution = sizeFromExistingCameras(left, right);
     }
     if(!inputs.resolution) {
-        inputs.resolution = sizeFromDeviceFeatures(device, pair);
+        inputs.resolution = sizeFromDeviceFeatures(device, pair, device->getPlatform() == Platform::RVC4);
     }
     return inputs;
 }
@@ -663,7 +664,7 @@ Depth::Algorithm Depth::getDefaultAlgorithm(const std::shared_ptr<Device>& devic
     const auto supported = getSupportedAlgorithmsWithModels(device, models);
     std::optional<std::pair<uint32_t, uint32_t>> resolution;
     if(!supportsAlgorithm(supported, Algorithm::TOF) || (isRvc4 && supportsAlgorithm(supported, Algorithm::STEREO))) {
-        resolution = sizeFromDeviceFeatures(device, requireFirstStereoPair(device));
+        resolution = sizeFromDeviceFeatures(device, requireFirstStereoPair(device), isRvc4);
     }
     return selectBackend(platform, resolution, DEFAULT_TARGET_FPS, supported, models, false, device->getDeviceOSVersion()).algorithm;
 }
@@ -681,7 +682,8 @@ Depth::Selection Depth::selectBackend(Platform platform,
                                       const std::vector<Algorithm>& supportedAlgorithms,
                                       const std::vector<DeviceModelZoo>& modelFilter,
                                       bool requireFpsAndResolutionMatch,
-                                      const std::optional<Version>& osVersion) {
+                                      const std::optional<Version>& osVersion,
+                                      std::optional<std::pair<uint32_t, uint32_t>> stereoResolution) {
     if(supportsAlgorithm(supportedAlgorithms, Algorithm::TOF) && (platform != Platform::RVC4 || !supportsAlgorithm(supportedAlgorithms, Algorithm::STEREO))) {
         return {Algorithm::TOF, std::monostate{}};
     }
@@ -693,9 +695,14 @@ Depth::Selection Depth::selectBackend(Platform platform,
     // An explicitly requested FPS is served exactly; the safety margin only applies to inferred FPS.
     const float requiredFps = requireFpsAndResolutionMatch ? targetFps : targetFps * SELECTION_FPS_SAFETY_MARGIN;
 
+    // Non-neural backends process the camera size when no preferred size was requested.
+    const auto effectiveStereoResolution = resolution ? resolution : stereoResolution;
+
     // 1. Priority scan honoring the requested FPS and (optional) resolution.
-    if(const auto picked = findBackendProfile(
-           [&](const BackendProfile& profile) { return profileMatches(profile, supportedAlgorithms, modelFilter, requiredFps, resolution, osVersion); })) {
+    if(const auto picked = findBackendProfile([&](const BackendProfile& profile) {
+           const auto candidateResolution = profile.algorithm == Algorithm::NEURAL ? resolution : effectiveStereoResolution;
+           return profileMatches(profile, supportedAlgorithms, modelFilter, requiredFps, candidateResolution, osVersion);
+       })) {
         return {picked->algorithm, picked->config};
     }
 
@@ -723,7 +730,7 @@ Depth::Selection Depth::selectBackend(Platform platform,
     throw std::runtime_error("Depth: no available algorithm can serve the requested resolution with the supported model catalog.");
 }
 
-void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline) {
+std::optional<std::pair<uint32_t, uint32_t>> Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline) {
     const auto platform = device->getPlatform();
     const bool isRvc4 = platform == Platform::RVC4;
 
@@ -735,34 +742,30 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         validateExplicitConfig(
             algorithmOverride_, *configOverride_, supported, algorithmOverride_ == Algorithm::NEURAL ? supportedModels : std::vector<DeviceModelZoo>{});
         resolved_ = {algorithmOverride_, *configOverride_};
-        if(isRvc4) {
-            validateRequestedFps(resolved_.algorithm, resolved_.config, stereoOutputFps_, sizeOverride_, device->getDeviceOSVersion());
-        }
-        if(resolved_.algorithm == Algorithm::STEREO && sizeOverride_) {
-            validateStereoDepthResolution(sizeOverride_->first, sizeOverride_->second);
-        }
-        return;
-    }
-
-    if(algorithmOverride_ != Algorithm::AUTO) {
+    } else if(algorithmOverride_ != Algorithm::AUTO) {
         DAI_CHECK_V(supportsAlgorithm(supported, algorithmOverride_), "Depth algorithm {} is not supported on this device.", algorithmName(algorithmOverride_));
     }
 
     if(!isRvc4 || algorithmOverride_ == Algorithm::TOF || (!supportsAlgorithm(supported, Algorithm::STEREO) && supportsAlgorithm(supported, Algorithm::TOF))) {
-        const Algorithm chosen =
-            (algorithmOverride_ == Algorithm::AUTO) ? selectBackend(platform, std::nullopt, DEFAULT_TARGET_FPS, supported).algorithm : algorithmOverride_;
-        Config config = std::monostate{};
-        if(chosen == Algorithm::STEREO) {
-            const auto pair = requireFirstStereoPair(device);
-            const auto [left, right] = findCamerasForPair(pipeline, pair, device);
-            const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_);
-            if(inputs.resolution) {
-                validateStereoDepthResolution(inputs.resolution->first, inputs.resolution->second);
+        if(!configOverride_) {
+            const Algorithm chosen =
+                (algorithmOverride_ == Algorithm::AUTO) ? selectBackend(platform, std::nullopt, DEFAULT_TARGET_FPS, supported).algorithm : algorithmOverride_;
+            Config config = std::monostate{};
+            if(chosen == Algorithm::STEREO) {
+                const auto pair = requireFirstStereoPair(device);
+                const auto [left, right] = findCamerasForPair(pipeline, pair, device);
+                const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_);
+                if(inputs.resolution) {
+                    validateStereoDepthResolution(inputs.resolution->first, inputs.resolution->second);
+                }
+                config = resolveStereoPreset(inputs.targetFps, inputs.resolution);
             }
-            config = resolveStereoPreset(inputs.targetFps, inputs.resolution);
+            resolved_ = {chosen, config};
         }
-        resolved_ = {chosen, config};
-        return;
+        if(resolved_.algorithm == Algorithm::STEREO && sizeOverride_) {
+            validateStereoDepthResolution(sizeOverride_->first, sizeOverride_->second);
+        }
+        return sizeOverride_;
     }
 
     const auto pair = requireFirstStereoPair(device);
@@ -772,59 +775,71 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     const float targetFps = inputs.targetFps;
     const auto& resolution = inputs.resolution;
 
-    if(algorithmOverride_ == Algorithm::AUTO) {
-        // An explicit FPS must be served exactly. Existing camera outputs do not constrain the internal
-        // processing size (alignment follows the output passed to setAlignTo()), so only a preferred
-        // size from build() is used then. Unpinned FPS keeps inferred-size selection.
-        const auto processingResolution = stereoOutputFps_ ? sizeOverride_ : resolution;
-        resolved_ = selectBackend(platform, processingResolution, targetFps, supported, supportedModels, stereoOutputFps_.has_value(), osVersion);
-        if(resolved_.algorithm == Algorithm::STEREO && resolution) {
-            validateStereoDepthResolution(resolution->first, resolution->second);
-        }
-        return;
-    }
-
-    // Explicit algorithm: pick only the config (model or preset) for that backend.
-    resolved_.algorithm = algorithmOverride_;
-    resolved_.config = std::monostate{};
-
-    if(resolution
-       && (resolved_.algorithm == Algorithm::STEREO || resolved_.algorithm == Algorithm::NEURAL_ASSISTED_STEREO
-           || resolved_.algorithm == Algorithm::GPU_STEREO)) {
-        const auto [maxW, maxH] = maxResolutionForAlgorithm(resolved_.algorithm);
-        DAI_CHECK_V(anyProfileFits(resolved_.algorithm, *resolution),
-                    "Depth: resolution exceeds the maximum supported by the requested algorithm "
-                    "(largest profile: {}x{}).",
-                    maxW,
-                    maxH);
-    }
-
-    if(resolved_.algorithm == Algorithm::STEREO && resolution) {
-        validateStereoDepthResolution(resolution->first, resolution->second);
-    }
-
-    switch(resolved_.algorithm) {
-        case Algorithm::NEURAL:
-            if(const auto model =
-                   pickNeuralModel(stereoOutputFps_ ? targetFps : targetFps * SELECTION_FPS_SAFETY_MARGIN, sizeOverride_, supportedModels, osVersion)) {
-                resolved_.config = *model;
-            } else {
-                DAI_CHECK_V(
-                    !stereoOutputFps_, "Depth: no supported NeuralDepth model can serve the requested {} FPS at the requested processing size.", targetFps);
-                resolved_.config = DEFAULT_NEURAL_DEPTH_MODEL;
+    if(!configOverride_) {
+        if(algorithmOverride_ == Algorithm::AUTO) {
+            // Neural models choose their tensor size; other backends use the resolved camera size.
+            const auto preferredResolution = stereoOutputFps_ ? sizeOverride_ : resolution;
+            resolved_ =
+                selectBackend(platform, preferredResolution, targetFps, supported, supportedModels, stereoOutputFps_.has_value(), osVersion, resolution);
+        } else {
+            resolved_ = {algorithmOverride_, std::monostate{}};
+            switch(resolved_.algorithm) {
+                case Algorithm::NEURAL:
+                    if(const auto model =
+                           pickNeuralModel(stereoOutputFps_ ? targetFps : targetFps * SELECTION_FPS_SAFETY_MARGIN, sizeOverride_, supportedModels, osVersion)) {
+                        resolved_.config = *model;
+                    } else {
+                        DAI_CHECK_V(!stereoOutputFps_,
+                                    "Depth: no supported NeuralDepth model can serve the requested {} FPS at the requested processing size.",
+                                    targetFps);
+                        resolved_.config = DEFAULT_NEURAL_DEPTH_MODEL;
+                    }
+                    break;
+                case Algorithm::STEREO:
+                    resolved_.config = resolveStereoPreset(targetFps, resolution, stereoOutputFps_.has_value());
+                    break;
+                case Algorithm::NEURAL_ASSISTED_STEREO:
+                case Algorithm::GPU_STEREO:
+                case Algorithm::TOF:
+                case Algorithm::TOF_STEREO_FUSION:
+                case Algorithm::AUTO:
+                    break;
             }
-            break;
-        case Algorithm::STEREO:
-            resolved_.config = resolveStereoPreset(targetFps, resolution, stereoOutputFps_.has_value());
-            break;
-        case Algorithm::NEURAL_ASSISTED_STEREO:
-        case Algorithm::GPU_STEREO:
-        case Algorithm::TOF:
-        case Algorithm::TOF_STEREO_FUSION:
-        case Algorithm::AUTO:
-            break;
+            if(resolution
+               && (resolved_.algorithm == Algorithm::STEREO || resolved_.algorithm == Algorithm::NEURAL_ASSISTED_STEREO
+                   || resolved_.algorithm == Algorithm::GPU_STEREO)) {
+                const auto [maxW, maxH] = maxResolutionForAlgorithm(resolved_.algorithm);
+                DAI_CHECK_V(anyProfileFits(resolved_.algorithm, *resolution),
+                            "Depth: resolution exceeds the maximum supported by the requested algorithm (largest profile: {}x{}).",
+                            maxW,
+                            maxH);
+            }
+        }
     }
-    validateRequestedFps(resolved_.algorithm, resolved_.config, stereoOutputFps_, sizeOverride_, osVersion);
+
+    auto processingResolution = resolution;
+    if(resolved_.algorithm == Algorithm::NEURAL) {
+        const auto inputSize = NeuralDepth::getInputSize(neuralModelFromConfig(resolved_.config));
+        processingResolution = std::make_pair(static_cast<uint32_t>(inputSize.first), static_cast<uint32_t>(inputSize.second));
+    }
+    // A neural model requests its tensor size and does not need a default full-FOV camera mode.
+    DAI_CHECK_V(processingResolution || resolved_.algorithm == Algorithm::TOF_STEREO_FUSION,
+                "Depth: no valid full resolution configuration found for the stereo cameras; specify a processing size.");
+    if(resolved_.algorithm == Algorithm::STEREO && processingResolution) {
+        validateStereoDepthResolution(processingResolution->first, processingResolution->second);
+    }
+    if(stereoOutputFps_ && resolved_.algorithm != Algorithm::TOF_STEREO_FUSION) {
+        for(const auto& camera : {left, right}) {
+            if(camera) {
+                DAI_CHECK_V(camera->properties.fps == CameraProperties::AUTO || camera->properties.fps >= *stereoOutputFps_,
+                            "Depth: camera {} FPS ({}) must not be below requested depth FPS ({}).",
+                            camera == left ? "left" : "right",
+                            camera->properties.fps,
+                            *stereoOutputFps_);
+            }
+        }
+    }
+    return processingResolution;
 }
 
 Depth::StereoWiring Depth::ensureStereoOutputs(Pipeline& pipeline,
@@ -914,8 +929,11 @@ void Depth::buildInternal() {
     DAI_CHECK_V(device != nullptr,
                 "Depth node requires a device (set on create, when added to a pipeline with a default device, or from pipeline at first wiring).");
 
-    resolveWiring(device, pipeline);
+    const auto processingResolution = resolveWiring(device, pipeline);
     const Algorithm active = resolved_.algorithm;
+    if(device->getPlatform() == Platform::RVC4) {
+        validateRequestedFps(active, resolved_.config, stereoOutputFps_, processingResolution, device->getDeviceOSVersion());
+    }
 
     std::optional<float> wiredFps = stereoOutputFps_;
     std::optional<std::pair<uint32_t, uint32_t>> wiredResolution;
@@ -973,7 +991,7 @@ void Depth::buildInternal() {
         case Algorithm::NEURAL_ASSISTED_STEREO: {
             nasBackend_ = std::make_shared<NeuralAssistedStereo>(device);
             add(nasBackend_);
-            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), sizeOverride_, stereoOutputFps_);
+            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), processingResolution, stereoOutputFps_);
             nasBackend_->build(*stereo.left, *stereo.right, DEFAULT_NAS_NEURAL_MODEL, DEFAULT_NAS_RECTIFY);
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
             depthOut_ = &(*nasBackend_->stereoDepth).depth;
@@ -991,7 +1009,7 @@ void Depth::buildInternal() {
         }
         case Algorithm::GPU_STEREO: {
             gpuStereoBackend_ = std::make_unique<Subnode<GPUStereo>>(*this, "gpuStereo");
-            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), sizeOverride_, stereoOutputFps_);
+            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), processingResolution, stereoOutputFps_);
             (*gpuStereoBackend_)->setRectification(true).build(*stereo.left, *stereo.right);
             depthOut_ = &(**gpuStereoBackend_).depth;
             confidenceOut_ = &(**gpuStereoBackend_).confidenceMap;
@@ -1006,8 +1024,9 @@ void Depth::buildInternal() {
         }
         case Algorithm::NEURAL: {
             const auto model = neuralModelFromConfig(resolved_.config);
-            const auto is = NeuralDepth::getInputSize(model);
-            const std::pair<uint32_t, uint32_t> monoSize{static_cast<uint32_t>(is.first), static_cast<uint32_t>(is.second)};
+            const auto inputSize = NeuralDepth::getInputSize(model);
+            const auto monoSize =
+                processingResolution.value_or(std::make_pair(static_cast<uint32_t>(inputSize.first), static_cast<uint32_t>(inputSize.second)));
             neuralBackend_ = std::make_unique<Subnode<NeuralDepth>>(*this, "neuralDepth");
             const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), monoSize, stereoOutputFps_);
             (*neuralBackend_)->build(*stereo.left, *stereo.right, model);
@@ -1023,7 +1042,7 @@ void Depth::buildInternal() {
         }
         case Algorithm::STEREO: {
             stereoBackend_ = std::make_unique<Subnode<StereoDepth>>(*this, "stereoDepth");
-            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), sizeOverride_, stereoOutputFps_);
+            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), processingResolution, stereoOutputFps_);
             validateStereoDepthResolution(stereo.resolution.first, stereo.resolution.second);
             (*stereoBackend_)->build(*stereo.left, *stereo.right, stereoPresetFromConfig(resolved_.config));
             depthOut_ = &(**stereoBackend_).depth;
@@ -1038,9 +1057,6 @@ void Depth::buildInternal() {
         }
     }
 
-    if(device->getPlatform() == Platform::RVC4) {
-        validateRequestedFps(active, resolved_.config, stereoOutputFps_, wiredResolution, device->getDeviceOSVersion());
-    }
     wireAlignment(active, device);
 
     if(!wiredFps || *wiredFps <= 0.f) {
