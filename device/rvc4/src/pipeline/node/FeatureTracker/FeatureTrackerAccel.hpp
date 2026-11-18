@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "vendor/dai_device_accel.h"
 
 namespace dai {
 namespace gate {
@@ -14,7 +15,7 @@ namespace gate {
 /**
  * One detected corner, as the corner detector writes it into its output buffer.
  * The low 28 bits of `score` are the Harris score (mask with HARRIS_SCORE_MASK).
- * The layout (2 + 2 + 4 bytes, no padding) mirrors the accelerator record, so
+ * The layout (2 + 2 + 4 bytes, no padding) mirrors dai_device_feature_point, so
  * CornerDetector::points() exposes the output buffer without a copy.
  */
 struct FeaturePoint {
@@ -23,9 +24,14 @@ struct FeaturePoint {
     uint32_t score = 0;
 
     /// The Harris score is in the last 28 bits of `score`
-    static constexpr uint32_t HARRIS_SCORE_MASK = 0xFFFFFFF;
+    static constexpr uint32_t HARRIS_SCORE_MASK = DAI_FEATURE_HARRIS_SCORE_MASK;
 };
 static_assert(sizeof(FeaturePoint) == 8, "FeaturePoint must stay a packed 8 byte record");
+static_assert(sizeof(FeaturePoint) == sizeof(dai_device_feature_point), "FeaturePoint must mirror dai_device_feature_point");
+static_assert(alignof(FeaturePoint) == alignof(dai_device_feature_point), "FeaturePoint must mirror dai_device_feature_point");
+static_assert(offsetof(FeaturePoint, x) == offsetof(dai_device_feature_point, x), "FeaturePoint::x must mirror dai_device_feature_point::x");
+static_assert(offsetof(FeaturePoint, y) == offsetof(dai_device_feature_point, y), "FeaturePoint::y must mirror dai_device_feature_point::y");
+static_assert(offsetof(FeaturePoint, score) == offsetof(dai_device_feature_point, score), "FeaturePoint::score must mirror dai_device_feature_point::score");
 
 /**
  * A feature followed over frames in the optical flow mode. Key of the node's feature map:
@@ -93,8 +99,9 @@ class CornerDetector {
     size_t numPoints() const;
 
    private:
-    struct Impl;
-    std::unique_ptr<Impl> impl;
+    // The detector of the vendor module. Run() is synchronous: the frame keeps its data (converted to an accelerator
+    // buffer) alive while the hardware uses it.
+    std::unique_ptr<dai_device_corner, void (*)(dai_device_corner*)> handle;
 };
 
 /**
@@ -130,8 +137,11 @@ class OpticalFlow {
     const uint8_t* confidenceMap() const;
 
    private:
-    struct Impl;
-    std::unique_ptr<Impl> impl;
+    dai_device_oflow_result result() const;
+
+    // The optical flow of the vendor module. Run() is synchronous: the frames keep their data (converted to
+    // accelerator buffers) alive while the hardware uses it.
+    std::unique_ptr<dai_device_oflow, void (*)(dai_device_oflow*)> handle;
 };
 
 /**
@@ -142,9 +152,9 @@ class OpticalFlow {
 class DescriptorCalculator {
    public:
     /// Size of one descriptor in bytes
-    static constexpr uint32_t DESCRIPTOR_SIZE = 32;
+    static constexpr uint32_t DESCRIPTOR_SIZE = DAI_DESCRIPTOR_SIZE;
     /// Maximum number of search positions per Run() (the hardware buffer capacity)
-    static constexpr uint32_t MAX_POINTS = 1024;
+    static constexpr uint32_t MAX_POINTS = DAI_DESCRIPTOR_MAX_POINTS;
 
     DescriptorCalculator();
     ~DescriptorCalculator();
@@ -173,8 +183,11 @@ class DescriptorCalculator {
     const uint8_t* descriptors() const;
 
    private:
-    struct Impl;
-    std::unique_ptr<Impl> impl;
+    // The descriptor calculator of the vendor module. Run() is synchronous: the frame keeps its data (converted to an
+    // accelerator buffer) alive while the hardware uses it.
+    std::unique_ptr<dai_device_descriptor, void (*)(dai_device_descriptor*)> handle;
+    // The search positions of the last Run() in the layout of the C interface (reused to avoid an allocation per frame)
+    std::vector<dai_device_point16> searchPositions;
 };
 
 }  // namespace gate

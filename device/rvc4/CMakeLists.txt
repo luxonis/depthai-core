@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.13) # For Hunter
 # ---------------------------------------------------------------------
 #   oe   the OpenEmbedded SDK of the Luxonis OS SDK image. Its environment script sets CC, CXX, the flags and
 #        OECORE_TARGET_SYSROOT (toolchains/OEToolchainConfig.cmake).
-#   gnu  the Arm GNU Toolchain with a plain sysroot directory, as in the public build container docker/Dockerfile.sdk
+#   gnu  a GNU cross compiler (aarch64-linux-gnu) with a plain sysroot directory, as in the public build container docker/Dockerfile.sdk
 #        (toolchains/rvc4-gnu.cmake).
 #   auto oe when the OpenEmbedded SDK environment is sourced, else gnu.
 set(DEPTHAI_DEVICE_RVC4_TOOLCHAIN "auto" CACHE STRING "Cross toolchain of the firmware: auto, oe or gnu")
@@ -185,7 +185,7 @@ if((DEPTHAI_ASAN_UBSAN OR DEPTHAI_TSAN) AND DEPTHAI_DEVICE_RVC4_TOOLCHAIN_RESOLV
                     OUTPUT_VARIABLE _rvc4_sanitizer_library_path OUTPUT_STRIP_TRAILING_WHITESPACE)
     if(NOT IS_ABSOLUTE "${_rvc4_sanitizer_library_path}")
         message(FATAL_ERROR "The toolchain of this build image has no ${_rvc4_sanitizer_library}. The sanitizer targets need the "
-                            "dev image, ghcr.io/luxonis/depthai-device-sdk:<sysroot version>-dev. "
+                            "dev image (the pinned image of DEPTHAI_DEVICE_RVC4_SDK_IMAGE with -dev). "
                             "create_deployment_artifacts.sh takes it when DEPTHAI_DEVICE_SDK_IMAGE is not set.")
     endif()
 endif()
@@ -287,24 +287,29 @@ else()
     unset(_vendor_archive)
 endif()
 
-# STMicroelectronics VD55H1 ToF processing (ST SLA0106 library + Qualcomm depth-map wrapper).
-# Available only when the private module sources carry the wrapper; without it the ToF node reports an error.
-if(EXISTS "${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}/depthmapwrapper-vd55h1/CMakeLists.txt")
-    set(_tof_default ON)
-else()
-    set(_tof_default OFF)
+# STMicroelectronics VD55H1 ToF processing (ST SLA0106 library + Qualcomm depth-map wrapper), behind the C interface
+# vendor/dai_device_tof.h. It is available when the vendor module sources have the wrapper (depthmapwrapper-vd55h1), or
+# when the prebuilt vendor archive has a ToF part (its tof/ folder). Without it the firmware compiles the stub of the C
+# functions, and the ToF node reports an error.
+set(_tof_available OFF)
+if(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR AND EXISTS "${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}/depthmapwrapper-vd55h1/CMakeLists.txt")
+    set(_tof_available ON)
+elseif(DEPTHAI_DEVICE_RVC4_VENDOR_DIR AND EXISTS "${DEPTHAI_DEVICE_RVC4_VENDOR_DIR}/tof/PREBUILT.libraries")
+    set(_tof_available ON)
 endif()
-option(DEPTHAI_DEVICE_TOF_VD55H1 "Build the VD55H1 ToF depth processing (needs the private depthmapwrapper-vd55h1)" ${_tof_default})
-if(DEPTHAI_DEVICE_TOF_VD55H1 AND NOT EXISTS "${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}/depthmapwrapper-vd55h1/CMakeLists.txt")
-    message(FATAL_ERROR "DEPTHAI_DEVICE_TOF_VD55H1 is ON, but the private module sources with depthmapwrapper-vd55h1 are not "
-                        "available (the prebuilt private module has no ToF wrapper).")
+option(DEPTHAI_DEVICE_TOF_VD55H1 "Build with the VD55H1 ToF depth processing of the vendor module" ${_tof_available})
+if(DEPTHAI_DEVICE_TOF_VD55H1 AND NOT _tof_available)
+    message(FATAL_ERROR "DEPTHAI_DEVICE_TOF_VD55H1 is ON, but neither the vendor module sources (with depthmapwrapper-vd55h1) "
+                        "nor the prebuilt vendor archive have the ToF part. Set DEPTHAI_DEVICE_TOF_VD55H1=OFF.")
 endif()
 message(STATUS "ToF VD55H1 processing: ${DEPTHAI_DEVICE_TOF_VD55H1}")
-# Without the wrapper the core library compiles the stub of the ToF sensor pipeline (see the private module section)
 set(DEPTHAI_DEVICE_TOF_SOURCES src/pipeline/node/ToF/tofVD55H1.cpp)
 if(NOT DEPTHAI_DEVICE_TOF_VD55H1)
-    list(APPEND DEPTHAI_DEVICE_TOF_SOURCES src/pipeline/node/ToF/tofVD55H1Stub.cpp)
+    list(APPEND DEPTHAI_DEVICE_TOF_SOURCES src/pipeline/node/ToF/dai_device_tof_stub.cpp)
+    # The node then reports "ToF VD55H1 support is not built into this firmware"
+    set_source_files_properties(src/pipeline/node/ToF/tofVD55H1.cpp PROPERTIES COMPILE_DEFINITIONS DEPTHAI_DEVICE_TOF_VD55H1_STUB)
 endif()
+unset(_tof_available)
 
 # Add dependencies
 find_package(Eigen3 CONFIG REQUIRED)
@@ -446,6 +451,16 @@ set(DEPTHAI_PLATFORM_SOURCES
 
     # DeviceTreeDiscovery
     src/utilities/DeviceTreeDiscovery.cpp
+    # The C interface of the vendor module (src/vendor/dai_device_*.h): readable errors and the log of the vendor module,
+    # the accelerator buffers, and the public C++ wrappers of the units of the vendor module
+    src/vendor/DeviceError.cpp
+    src/utilities/EvaDataMemory.cpp
+    src/pipeline/node/OfflineJpegEncoder.cpp
+    src/pipeline/node/FeatureTracker/FeatureTrackerAccel.cpp
+    src/pipeline/node/ImageManip/DsImgDispatcher.cpp
+    src/pipeline/node/StereoDepth/PyrImgDispatcher.cpp
+    src/pipeline/node/StereoDepth/rvc4/StereoDepthDispatcherRvc4.cpp
+    src/pipeline/node/Warp/rvc4/WarpDispatcherRvc4.cpp
 
     # Pipeline / nodes
     src/pipeline/node/NeuralNetwork/rvc4/NeuralNetworkRvc4.cpp
@@ -530,10 +545,33 @@ target_compile_definitions(depthai-device-accel-api
 )
 target_link_libraries(depthai-device-accel-api INTERFACE depthai-core)
 
+# What the vendor module (depthai-device-rvc4-vendor) and the DSP offload compile against: only the C interface
+# (src/vendor/dai_device_*.h). It has no other header of depthai-core and no define, so a prebuilt vendor module stays
+# valid when depthai-core changes.
+add_library(depthai-device-vendor-api INTERFACE)
+target_include_directories(depthai-device-vendor-api INTERFACE "${CMAKE_CURRENT_LIST_DIR}/src/vendor")
+
+# Each header of the C interface compiles alone as C11 without warnings, so that no C++ comes into the interface
+file(GLOB _vendor_api_headers RELATIVE "${CMAKE_CURRENT_LIST_DIR}/src/vendor" CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/src/vendor/dai_device_*.h")
+set(_vendor_api_check_sources "")
+foreach(_header IN LISTS _vendor_api_headers)
+    string(REGEX REPLACE "\\.h$" ".c" _source "${CMAKE_CURRENT_BINARY_DIR}/vendor-api-check/${_header}")
+    file(CONFIGURE OUTPUT "${_source}" CONTENT "#include \"${_header}\"\n" @ONLY)
+    list(APPEND _vendor_api_check_sources "${_source}")
+endforeach()
+add_library(depthai-device-vendor-api-check OBJECT ${_vendor_api_check_sources})
+target_link_libraries(depthai-device-vendor-api-check PRIVATE depthai-device-vendor-api)
+set_target_properties(depthai-device-vendor-api-check PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+target_compile_options(depthai-device-vendor-api-check PRIVATE -Wall -Wextra -Wpedantic -Werror)
+unset(_vendor_api_headers)
+unset(_vendor_api_check_sources)
+
 target_link_libraries(depthai-device-core
     PUBLIC
         depthai-device-accel-api
+        depthai-device-vendor-api
 )
+add_dependencies(depthai-device-core depthai-device-vendor-api-check)
 
 add_subdirectory(src/pipeline/node/IMU)
 add_library("${PROJECT_NAME}::${TARGET_DEVICE_KB_ALIAS}" ALIAS depthai-device-core)
@@ -868,6 +906,10 @@ else()
     depthai_device_rvc4_vendor_prebuilt_import("${DEPTHAI_DEVICE_RVC4_VENDOR_DIR}" "${DEPTHAI_DEVICE_BINARY_DIR}/vendor-prebuilt" ${_dsp_prebuilt})
     target_link_libraries(depthai-device-core PRIVATE depthai-device-rvc4-vendor)
     target_link_libraries(pipeline.node.IMU PRIVATE depthai-device-rvc4-vendor)
+    # The ToF part of the archive (tof/), when it has one
+    if(DEPTHAI_DEVICE_TOF_VD55H1)
+        target_link_libraries(depthai-device-core PRIVATE depthai-device-rvc4-vendor-tof)
+    endif()
     add_dependencies(depthai-device-core depthai-device-rvc4-vendor-prebuilt-check)
     add_dependencies(pipeline.node.IMU depthai-device-rvc4-vendor-prebuilt-check)
 endif()

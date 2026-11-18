@@ -18,7 +18,8 @@
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/utility/matrixOps.hpp"
-#include "hexagon/ImageAlignDsp/cpu/ImageAlignDspHandler.hpp"
+#include "vendor/DeviceError.hpp"
+#include "vendor/dai_device_dsp.h"
 #include "hexagon/ImageAlignDsp/shared/ImageAlignDspConfig.h"
 #include "pipeline/NodeTiming.hpp"
 #include "pipeline/utilities/Alignment/RectifiedBounds.hpp"
@@ -373,7 +374,7 @@ void ImageAlign::buildStage1() {
     // As EVA init also uses CDSP this is probably the same s**t.
     // fastCV maybe reconfigures / overrides some global CDSP state
     // and that doesn't play nice with other CDSP stuff.
-    auto& dsp = ImageAlignDspHandler::getInstance(logger);
+    dai::device::openDspSession(dai_device_dsp_open_align, "dai_device_dsp_open_align");
 }
 
 void ImageAlign::run() {
@@ -402,7 +403,7 @@ void ImageAlign::run() {
 
     int previousShiftFactor = 0;
 
-    auto& dsp = ImageAlignDspHandler::getInstance(logger);
+    dai::device::openDspSession(dai_device_dsp_open_align, "dai_device_dsp_open_align");
 
     std::shared_ptr<EvaDataMemory> inConfigData = EvaDataMemory::create(sizeof(ImageAlignDspConfig));
 
@@ -578,7 +579,8 @@ void ImageAlign::run() {
             config.bpp = shiftedOutput->getBytesPerPixel();
 
             int nErr = 0;
-            nErr = dsp.shiftDepthImg(inDepthImgRectified, inConfigData, outShiftedOutput);
+            const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDepthImgRectified), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outShiftedOutput);
+            nErr = dai_device_dsp_shift_depth(&dspIn0, &dspConfig, &dspOut);
 
             if(nErr != 0) {
                 logger->error("alignDepthImg failed with code {}", nErr);

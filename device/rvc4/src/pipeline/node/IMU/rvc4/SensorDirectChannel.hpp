@@ -7,6 +7,9 @@
 #include <string>
 #include <vector>
 
+// C interface of the vendor module
+#include "vendor/dai_device_sensor.h"
+
 namespace dai {
 namespace gate {
 
@@ -86,8 +89,9 @@ class SensorDirectChannel {
     static size_t sharedBufferSize();
 
    private:
-    struct Impl;
-    std::unique_ptr<Impl> impl;
+    std::unique_ptr<dai_device_sensor_channel, void (*)(dai_device_sensor_channel*)> handle;
+    /// Copy of the sample rates of the last queryAttributes()
+    std::vector<int> sampleRates;
 };
 
 /**

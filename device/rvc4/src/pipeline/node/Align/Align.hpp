@@ -13,7 +13,6 @@
 #include "depthai/pipeline/datatype/AlignConfig.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/Align.hpp"
-#include "hexagon/ImageAlignDsp/cpu/ImageAlignDspHandler.hpp"
 #include "pipeline/Pool.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "utilities/EvaDataMemory.hpp"
@@ -81,7 +80,7 @@ class Align : public ::dai::node::Align {
     cv::Mat map_x_2, map_y_2;
 
     uint16_t staticDepthPlane = 0;
-    ImageAlignDspHandler* dspHandler = nullptr;
+    bool dspOpened = false;  // the ImageAlign session of the DSP offload is open
     std::shared_ptr<EvaDataMemory> dspConfigData;
 };
 

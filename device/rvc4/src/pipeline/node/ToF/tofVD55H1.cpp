@@ -3,16 +3,94 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <stdexcept>
+#include <string>
 
 #include <opencv2/calib3d.hpp>
 
-// Geometry helpers and plane conversions. The sensor pipeline itself (constructor, processFrame,
-// applyConfig and the amplitude/confidence/intensity planes) is implemented in the private
-// accelerator module.
+#include "depthai/pipeline/datatype/ToFConfig.hpp"
+#include "utilities/ErrorMacros.hpp"
+#include "vendor/DeviceError.hpp"
+
+// The sensor pipeline (depth-map wrapper, aligned buffers, tuning tables) is in the vendor module behind
+// vendor/dai_device_tof.h. This file has the C interface calls, the geometry helpers and the plane conversions.
+
+namespace {
+
+constexpr const char* UNIT = "ToF";
+
+uint32_t toDeviceProfile(dai::ToFConfig::Profile profile) {
+    switch(profile) {
+        case dai::ToFConfig::Profile::LOW_RANGE:
+            return DAI_TOF_PROFILE_LOW_RANGE;
+        case dai::ToFConfig::Profile::MID_RANGE:
+            return DAI_TOF_PROFILE_MID_RANGE;
+        case dai::ToFConfig::Profile::HIGH_RANGE:
+            return DAI_TOF_PROFILE_HIGH_RANGE;
+    }
+    throw std::runtime_error("tofVD55H1: unknown ToF profile " + std::to_string(static_cast<std::uint32_t>(profile)));
+}
+
+}  // namespace
+
+tofVD55H1::tofVD55H1(uint32_t rawWidth, uint32_t rawHeight, bool wantConfidence, bool wantIntensity, std::shared_ptr<spdlog::logger> logger)
+    : handle(nullptr, &dai_device_tof_destroy), logger(std::move(logger)) {
+    dai::device::installDeviceLog();
+
+    dai_device_tof_params params{};
+    params.raw_width = rawWidth;
+    params.raw_height = rawHeight;
+    params.want_confidence = wantConfidence ? 1 : 0;
+    params.want_intensity = wantIntensity ? 1 : 0;
+
+    dai_device_tof* tof = nullptr;
+    const dai_status status = dai_device_tof_create(&params, &tof);
+    if(status != DAI_STATUS_OK) {
+#ifdef DEPTHAI_DEVICE_TOF_VD55H1_STUB
+        // The stub of the ToF part (dai_device_tof_stub.cpp) can not set the text of dai_device_last_error()
+        throw dai::device::DeviceError(
+            status, "dai_device_tof_create", "tofVD55H1: ToF VD55H1 support is not built into this firmware (DEPTHAI_DEVICE_TOF_VD55H1=OFF)");
+#else
+        dai::device::throwDeviceError(status, UNIT, "dai_device_tof_create", nullptr);
+#endif
+    }
+    handle.reset(tof);
+}
+
+tofVD55H1::~tofVD55H1() = default;
+
+bool tofVD55H1::processFrame(const uint8_t* gray16Data, int dmaBufFd) {
+    const dai_status status = dai_device_tof_process(handle.get(), gray16Data, dmaBufFd);
+    if(status != DAI_STATUS_OK) {
+        if(logger) {
+            logger->error("[tofVD55H1] processFrame failed: {}: {}", dai::device::describeStatus(status), dai_device_last_error());
+        }
+        return false;
+    }
+    return true;
+}
+
+int64_t tofVD55H1::getNextExposureTimeNs() const {
+    return dai_device_tof_next_exposure_ns(handle.get());
+}
+
+void tofVD55H1::applyConfig(const dai::ToFConfig& cfg) {
+    dai_device_tof_config config{};
+    config.profile = toDeviceProfile(cfg.profile);
+    config.phase_shuffle_temporal_filter = cfg.enablePhaseShuffleTemporalFilter ? 1 : 0;
+    DAI_CHECK_DEVICE(UNIT, dai_device_tof_set_config(handle.get(), &config));
+}
+
+dai_device_tof_output tofVD55H1::output() const {
+    dai_device_tof_output out{};
+    DAI_CHECK_DEVICE(UNIT, dai_device_tof_output_get(handle.get(), &out));
+    return out;
+}
 
 void tofVD55H1::buildRadialToPerpLut(const std::array<std::array<float, 3>, 3>& K, const std::vector<float>& distCoeffs) {
-    const uint32_t outW = depthHeight;
-    const uint32_t outH = depthWidth;
+    const auto sizes = output();
+    const uint32_t outW = sizes.depth_height;
+    const uint32_t outH = sizes.depth_width;
 
     std::vector<cv::Point2f> pts;
     pts.reserve(static_cast<size_t>(outW) * outH);
@@ -37,27 +115,40 @@ void tofVD55H1::buildRadialToPerpLut(const std::array<std::array<float, 3>, 3>& 
 
 void tofVD55H1::buildIdentityLut() {
     // No calibration: skip radial-to-perpendicular correction (factor 1.0 per pixel).
-    r2pLut.assign(static_cast<size_t>(depthWidth) * depthHeight, 1.0f);
+    const auto sizes = output();
+    r2pLut.assign(static_cast<size_t>(sizes.depth_width) * sizes.depth_height, 1.0f);
 }
 
 const uint8_t* tofVD55H1::getDepthPtr() const {
-    return alignedOutput.get();
+    return output().depth;
 }
 
 size_t tofVD55H1::getDepthSizeBytes() const {
-    return static_cast<size_t>(depthWidth) * depthHeight * sizeof(uint16_t);
+    return output().depth_size;
+}
+
+const uint8_t* tofVD55H1::getAmplitudePtr() const {
+    return output().amplitude;
+}
+
+const uint8_t* tofVD55H1::getConfidencePtr() const {
+    return output().confidence;
+}
+
+const uint8_t* tofVD55H1::getIntensityPtr() const {
+    return output().intensity;
 }
 
 size_t tofVD55H1::getFloatPlaneSizeBytes() const {
-    return slotSize;
+    return output().float_plane_size;
 }
 
 uint32_t tofVD55H1::getDepthWidth() const {
-    return depthWidth;
+    return output().depth_width;
 }
 
 uint32_t tofVD55H1::getDepthHeight() const {
-    return depthHeight;
+    return output().depth_height;
 }
 
 tofVD55H1::Float16ToUint8Lut tofVD55H1::makeFloat16ToUint8Log1pLut(float outScale, float inScale) {

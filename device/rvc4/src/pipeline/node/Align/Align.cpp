@@ -29,7 +29,8 @@
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 #include "depthai/pipeline/datatype/Transformable.hpp"
 #include "depthai/utility/matrixOps.hpp"
-#include "hexagon/ImageAlignDsp/cpu/ImageAlignDspHandler.hpp"
+#include "vendor/DeviceError.hpp"
+#include "vendor/dai_device_dsp.h"
 #include "hexagon/ImageAlignDsp/shared/ImageAlignDspConfig.h"
 #include "pipeline/utilities/Alignment/RectifiedBounds.hpp"
 #include "utilities/ImageRemap.hpp"
@@ -451,7 +452,7 @@ void Align::buildStage1() {
     // As EVA init also uses CDSP this is probably the same s**t.
     // fastCV maybe reconfigures / overrides some global CDSP state
     // and that doesn't play nice with other CDSP stuff.
-    (void)ImageAlignDspHandler::getInstance(logger);
+    dai::device::openDspSession(dai_device_dsp_open_align, "dai_device_dsp_open_align");
 }
 
 std::shared_ptr<ImgFrame> Align::alignImgFrame(std::shared_ptr<ImgFrame> inputImg, const cv::Scalar borderColor, const cv::InterpolationFlags interpolation) {
@@ -520,7 +521,7 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(std::shared_ptr<ImgFrame> inputIm
 
     auto warp2Input = depthImgRectified;
     if(inputIsDepth && staticDepthPlane == 0) {
-        if(dspHandler == nullptr || !dspConfigData) {
+        if(!dspOpened || !dspConfigData) {
             throw std::logic_error("Align DSP must be initialized before aligning depth frames");
         }
 
@@ -546,7 +547,8 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(std::shared_ptr<ImgFrame> inputIm
         config.stride = shiftedOutput->fb.stride;
         config.bpp = shiftedOutput->getBytesPerPixel();
 
-        int nErr = dspHandler->shiftDepthImg(inDepthImgRectified, dspConfigData, outShiftedOutput);
+        const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDepthImgRectified), dspConfig = dai::device::toDeviceBuf(*dspConfigData), dspOut = dai::device::toDeviceBuf(*outShiftedOutput);
+        int nErr = dai_device_dsp_shift_depth(&dspIn0, &dspConfig, &dspOut);
         if(nErr != 0) {
             logger->error("alignDepthImg failed with code {}", nErr);
         }
@@ -831,7 +833,8 @@ void Align::run() {
     auto firstInput = input.get<Buffer>();
     auto firstAlignTo = inputAlignTo.get<Buffer>();
     std::shared_ptr<Buffer> alignToMsg = firstAlignTo;
-    dspHandler = &ImageAlignDspHandler::getInstance(logger);
+    dai::device::openDspSession(dai_device_dsp_open_align, "dai_device_dsp_open_align");
+    dspOpened = true;
     dspConfigData = EvaDataMemory::create(sizeof(ImageAlignDspConfig));
 
     staticDepthPlane = properties.initialConfig.staticDepthPlane;
@@ -889,7 +892,7 @@ void Align::run() {
     }
 
     dspConfigData.reset();
-    dspHandler = nullptr;
+    dspOpened = false;
 }
 
 }  // namespace gate

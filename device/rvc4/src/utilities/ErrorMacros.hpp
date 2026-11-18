@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
@@ -40,6 +41,21 @@
     }
 
 // clang-format on
+
+namespace dai {
+namespace device {
+// vendor/DeviceError.hpp
+[[noreturn]] void throwDeviceError(std::int32_t status, const char* unit, const char* call, const char* detail);
+}  // namespace device
+}  // namespace dai
+
+// A call of the C interface of the vendor module (vendor/dai_device_*.h): when its status is not DAI_STATUS_OK (0),
+// throws dai::device::DeviceError with the text "<UNIT>: <function> failed: <status>: <text of the vendor module>".
+#define DAI_CHECK_DEVICE(UNIT, CALL)                                                                         \
+    do {                                                                                                     \
+        const std::int32_t daiDeviceStatus_ = (CALL);                                                        \
+        if(daiDeviceStatus_ != 0) ::dai::device::throwDeviceError(daiDeviceStatus_, UNIT, #CALL, nullptr); \
+    } while(0)
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)

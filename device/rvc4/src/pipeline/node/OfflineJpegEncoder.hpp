@@ -8,6 +8,9 @@
 // AOSP
 #include <cutils/native_handle.h>
 
+// C interface of the vendor module
+#include "vendor/dai_device_jpeg.h"
+
 namespace dai {
 namespace gate {
 
@@ -48,8 +51,10 @@ class OfflineJpegEncoder {
     bool encode(int inputFd, int outputFd, int64_t frameNum, uint8_t quality, void* jobTag);
 
    private:
-    struct Impl;
-    std::unique_ptr<Impl> impl;
+    /// The vendor module calls it through a C completion function with a pointer to this member, so the object must
+    /// not move (it is not copyable and not movable)
+    CompletionCallback completionCallback;
+    std::unique_ptr<dai_device_jpeg, void (*)(dai_device_jpeg*)> handle;
 };
 
 }  // namespace gate

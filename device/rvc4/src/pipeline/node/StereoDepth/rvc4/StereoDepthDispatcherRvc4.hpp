@@ -7,6 +7,11 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "pipeline/node/AccelTypes.hpp"
+#include "vendor/dai_device_accel.h"
+
+namespace dai {
+class EvaDataMemory;
+}  // namespace dai
 
 struct StereoInit {
     bool bConfOutputEnable = true;
@@ -58,6 +63,12 @@ class StereoDepthDispatcher {
     uint32_t getMinSlicImgSize() const;
 
    private:
-    struct Impl;
-    std::unique_ptr<Impl> impl;
+    /// The accelerator buffers of the last RunAsync: they stay valid until Wait
+    struct RunBuffers {
+        std::shared_ptr<dai::EvaDataMemory> left, right, disparity, confidence, slic;
+    };
+    RunBuffers running;
+
+    /// The stereo unit of the vendor module. Declared last, so it is destroyed (and closed) before the buffers.
+    std::unique_ptr<dai_device_stereo, void (*)(dai_device_stereo*)> handle;
 };

@@ -49,14 +49,6 @@ function(depthai_device_rvc4_vendor_identity)
     set(DEPTHAI_DEVICE_RVC4_VENDOR_SYSROOT "${_sysroot}" PARENT_SCOPE)
 endfunction()
 
-# Writes <dir>/interface-defines-<config>.txt at generate time: the defines that the public interface gives to code
-# that compiles against it (depthai-device-accel-api and what it links) and the HAL compile options, one per line.
-function(depthai_device_rvc4_vendor_write_interface_defines dir)
-    string(JOIN "\n" _camx ${DEPTHAI_DEVICE_CAMX_COMPILE_OPTIONS})
-    file(GENERATE OUTPUT "${dir}/interface-defines-$<CONFIG>.txt"
-         CONTENT "$<JOIN:$<TARGET_PROPERTY:depthai-device-accel-api,INTERFACE_COMPILE_DEFINITIONS>,\n>\n${_camx}\n")
-endfunction()
-
 # Build with the sources of the private module (and so with the Hexagon SDK): writes the input of the export script of
 # the private repository to <dir>: build.json (identity, link interface of the base archive, the roots),
 # archive-<config>.txt (the base archive) and dsp-<config>.txt (the four files of the DSP offload).
@@ -90,7 +82,66 @@ function(depthai_device_rvc4_vendor_prebuilt_describe dir)
     string(JOIN "\n" _skels ${DEPTHAI_DEVICE_DSP_SKELS})
     file(GENERATE OUTPUT "${dir}/dsp-$<CONFIG>.txt"
          CONTENT "$<TARGET_FILE:ImageAlignDsp>\n$<TARGET_FILE:StereoDepthDsp>\n${_skels}\n")
-    depthai_device_rvc4_vendor_write_interface_defines("${dir}")
+    # The ToF part: its static libraries in link order (tof-<config>.txt) and its other link items (tof-link.txt)
+    file(REMOVE "${dir}/tof-link.txt")
+    if(TARGET depthai-device-rvc4-vendor-tof)
+        _depthai_device_rvc4_vendor_link_closure(depthai-device-rvc4-vendor-tof _archives _others)
+        set(_content "")
+        foreach(_archive IN LISTS _archives)
+            string(APPEND _content "$<TARGET_FILE:${_archive}>\n")
+        endforeach()
+        file(GENERATE OUTPUT "${dir}/tof-$<CONFIG>.txt" CONTENT "${_content}")
+        string(JOIN "\n" _others ${_others})
+        file(WRITE "${dir}/tof-link.txt" "${_others}\n")
+    endif()
+endfunction()
+
+# The static libraries that <target> needs, in link order (<target> first; static library targets of this build), and
+# the other link items (imported and interface targets, system libraries). The vendor base archive and the C interface
+# target are left out: the import adds them. An absolute path of a system library becomes its name (liblog.so: log),
+# because a prebuilt archive is used with another sysroot path.
+function(_depthai_device_rvc4_vendor_link_closure target archives_var others_var)
+    set(_archives "")
+    set(_others "")
+    set(_seen "")
+    set(_queue "${target}")
+    while(_queue)
+        list(GET _queue 0 _item)
+        list(REMOVE_AT _queue 0)
+        if(_item MATCHES "^\\$<LINK_ONLY:(.+)>$")
+            set(_item "${CMAKE_MATCH_1}")
+        endif()
+        if(TARGET "${_item}")
+            get_target_property(_aliased "${_item}" ALIASED_TARGET)
+            if(_aliased)
+                set(_item "${_aliased}")
+            endif()
+        endif()
+        if(_item IN_LIST _seen OR _item STREQUAL "" OR _item MATCHES "^\\$<"
+           OR _item STREQUAL "depthai-device-rvc4-vendor" OR _item STREQUAL "depthai-device-vendor-api")
+            continue()
+        endif()
+        list(APPEND _seen "${_item}")
+        if(TARGET "${_item}")
+            get_target_property(_type "${_item}" TYPE)
+            get_target_property(_imported "${_item}" IMPORTED)
+            if(_type STREQUAL "STATIC_LIBRARY" AND NOT _imported)
+                list(APPEND _archives "${_item}")
+                get_target_property(_deps "${_item}" LINK_LIBRARIES)
+                if(_deps)
+                    list(APPEND _queue ${_deps})
+                endif()
+            else()
+                list(APPEND _others "${_item}")
+            endif()
+        elseif(IS_ABSOLUTE "${_item}" AND _item MATCHES "/lib([^/]+)\\.(so|a)$")
+            list(APPEND _others "${CMAKE_MATCH_1}")
+        else()
+            list(APPEND _others "${_item}")
+        endif()
+    endwhile()
+    set(${archives_var} "${_archives}" PARENT_SCOPE)
+    set(${others_var} "${_others}" PARENT_SCOPE)
 endfunction()
 
 # Value of a field of PREBUILT.json (a string, or the elements of an array as a list); fails when it is missing.
@@ -138,9 +189,9 @@ endfunction()
 
 # Build without the sources of the private module: imports the base archive of <prebuilt_dir> as the target
 # depthai-device-rvc4-vendor and checks it. The configure step stops when the archive was built for another sanitizer, vcpkg
-# triplet, compiler or sysroot, or against other headers. The target depthai-device-rvc4-vendor-prebuilt-check checks the
-# headers and the interface defines again before the code that uses the archive compiles, and after each change of a
-# listed header. With <use_dsp> the DSP offload of the archive is checked too.
+# triplet, compiler or sysroot, or against other headers of the C interface. The target
+# depthai-device-rvc4-vendor-prebuilt-check checks the headers again before the code that uses the archive compiles, and
+# after each change of a listed header. A tof/ folder in the archive gives the target depthai-device-rvc4-vendor-tof. With <use_dsp> the DSP offload of the archive is checked too.
 function(depthai_device_rvc4_vendor_prebuilt_import prebuilt_dir work_dir use_dsp)
     foreach(_file lib/libdepthai-device-rvc4-vendor.a PREBUILT.json PREBUILT.headers)
         if(NOT EXISTS "${prebuilt_dir}/${_file}")
@@ -149,8 +200,9 @@ function(depthai_device_rvc4_vendor_prebuilt_import prebuilt_dir work_dir use_ds
     endforeach()
     file(READ "${prebuilt_dir}/PREBUILT.json" _json)
     _depthai_device_rvc4_vendor_prebuilt_field("${_json}" format _format)
-    if(NOT _format EQUAL 1)
-        message(FATAL_ERROR "Prebuilt private module: PREBUILT.json has format ${_format}; this tree reads format 1")
+    if(NOT _format EQUAL 2)
+        message(FATAL_ERROR "Prebuilt private module: PREBUILT.json has format ${_format}; this tree reads format 2 (the C "
+                            "interface vendor/dai_device_*.h). Use a vendor archive that was built for this interface.")
     endif()
     _depthai_device_rvc4_vendor_prebuilt_field("${_json}" version _version)
 
@@ -182,10 +234,36 @@ function(depthai_device_rvc4_vendor_prebuilt_import prebuilt_dir work_dir use_ds
         list(APPEND _lists "${prebuilt_dir}/dsp/PREBUILT.headers")
     endif()
     file(MAKE_DIRECTORY "${work_dir}")
-    _depthai_device_rvc4_vendor_prebuilt_field("${_json}" interface_defines _defines)
-    string(JOIN "\n" _defines ${_defines})
-    file(WRITE "${work_dir}/prebuilt-interface-defines.txt" "${_defines}\n")
-    depthai_device_rvc4_vendor_write_interface_defines("${work_dir}")
+    # The ToF part (tof/): its static libraries in link order, then the base archive and its other link items
+    if(EXISTS "${prebuilt_dir}/tof/PREBUILT.libraries")
+        file(STRINGS "${prebuilt_dir}/tof/PREBUILT.libraries" _tof_libraries)
+        _depthai_device_rvc4_vendor_prebuilt_field("${_json}" tof_link_interface _tof_link_items)
+        # Imported targets of the vendor build that this build may not have: Threads::Threads from find_package, the
+        # others (for example unwind::unwind of glog) as the library of the sysroot with that name
+        set(_tof_link "")
+        foreach(_item IN LISTS _tof_link_items)
+            if(_item STREQUAL "Threads::Threads" AND NOT TARGET Threads::Threads)
+                find_package(Threads REQUIRED)
+            elseif(_item MATCHES "^[^:]+::([^:]+)$" AND NOT TARGET "${_item}")
+                set(_item "${CMAKE_MATCH_1}")
+            endif()
+            list(APPEND _tof_link "${_item}")
+        endforeach()
+        set(_tof_targets "")
+        set(_index 0)
+        foreach(_library IN LISTS _tof_libraries)
+            if(NOT EXISTS "${prebuilt_dir}/tof/lib/${_library}")
+                message(FATAL_ERROR "Prebuilt private module: ${prebuilt_dir}/tof/lib/${_library} not found")
+            endif()
+            add_library(depthai-device-rvc4-vendor-tof-part${_index} STATIC IMPORTED GLOBAL)
+            set_target_properties(depthai-device-rvc4-vendor-tof-part${_index} PROPERTIES IMPORTED_LOCATION "${prebuilt_dir}/tof/lib/${_library}")
+            list(APPEND _tof_targets depthai-device-rvc4-vendor-tof-part${_index})
+            math(EXPR _index "${_index} + 1")
+        endforeach()
+        add_library(depthai-device-rvc4-vendor-tof INTERFACE IMPORTED GLOBAL)
+        set_target_properties(depthai-device-rvc4-vendor-tof PROPERTIES
+            INTERFACE_LINK_LIBRARIES "${_tof_targets};depthai-device-rvc4-vendor;${_tof_link}")
+    endif()
 
     set(_check_args
         -D "PREBUILT_DIR=${prebuilt_dir}" -D "VERSION=${_version}" -D "HEADER_LISTS=${_lists}"
@@ -208,13 +286,10 @@ function(depthai_device_rvc4_vendor_prebuilt_import prebuilt_dir work_dir use_ds
     set(_stamp "${work_dir}/checked-$<CONFIG>.stamp")
     add_custom_command(OUTPUT "${_stamp}"
         COMMAND "${CMAKE_COMMAND}" ${_check_args}
-                -D "EXPECTED_DEFINES=${work_dir}/prebuilt-interface-defines.txt"
-                -D "ACTUAL_DEFINES=${work_dir}/interface-defines-$<CONFIG>.txt"
                 -D "STAMP=${_stamp}"
                 -P "${_DEPTHAI_DEVICE_RVC4_VENDOR_MODULE_DIR}/DepthaiDeviceRvc4VendorPrebuiltCheck.cmake"
-        DEPENDS ${_lists} "${work_dir}/prebuilt-interface-defines.txt" "${work_dir}/interface-defines-$<CONFIG>.txt"
-                "${_DEPTHAI_DEVICE_RVC4_VENDOR_MODULE_DIR}/DepthaiDeviceRvc4VendorPrebuiltCheck.cmake" ${_headers}
-        COMMENT "Checking the prebuilt private module against the public headers and interface defines"
+        DEPENDS ${_lists} "${_DEPTHAI_DEVICE_RVC4_VENDOR_MODULE_DIR}/DepthaiDeviceRvc4VendorPrebuiltCheck.cmake" ${_headers}
+        COMMENT "Checking the prebuilt private module against the C interface headers"
         VERBATIM)
     add_custom_target(depthai-device-rvc4-vendor-prebuilt-check DEPENDS "${_stamp}")
     set_property(DIRECTORY "${CMAKE_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${prebuilt_dir}/PREBUILT.json" ${_lists})
@@ -232,10 +307,14 @@ function(depthai_device_dsp_prebuilt_import dsp_dir)
     endforeach()
     foreach(_lib ImageAlignDsp StereoDepthDsp)
         add_library(${_lib} STATIC IMPORTED GLOBAL)
-        set_target_properties(${_lib} PROPERTIES
-            IMPORTED_LOCATION "${dsp_dir}/lib/lib${_lib}.a"
-            INTERFACE_LINK_LIBRARIES "cdsprpc;spdlog::spdlog")
     endforeach()
+    # ImageAlignDsp uses the common part of the DSP offload in StereoDepthDsp (log, status names)
+    set_target_properties(ImageAlignDsp PROPERTIES
+        IMPORTED_LOCATION "${dsp_dir}/lib/libImageAlignDsp.a"
+        INTERFACE_LINK_LIBRARIES "StereoDepthDsp;cdsprpc")
+    set_target_properties(StereoDepthDsp PROPERTIES
+        IMPORTED_LOCATION "${dsp_dir}/lib/libStereoDepthDsp.a"
+        INTERFACE_LINK_LIBRARIES "cdsprpc")
     set(DEPTHAI_DEVICE_DSP_SKELS "${dsp_dir}/lib/libImageAlignDsp_skel.so" "${dsp_dir}/lib/libStereoDepthDsp_skel.so" PARENT_SCOPE)
 endfunction()
 

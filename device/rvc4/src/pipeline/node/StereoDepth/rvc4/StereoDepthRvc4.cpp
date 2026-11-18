@@ -27,7 +27,8 @@
 #include "../TemporalFilter/TemporalFilter.hpp"
 #include "../ThresholdFilter/ThresholdFilter.hpp"
 #include "depthai/utility/LockingQueue.hpp"
-#include "hexagon/StereoDepthDsp/cpu/StereoDepthDspHandler.hpp"
+#include "vendor/DeviceError.hpp"
+#include "vendor/dai_device_dsp.h"
 #include "hexagon/StereoDepthDsp/shared/StereoDepthDspConfig.h"
 #include "hexagon/utilities/utilities.hpp"
 #include "pipeline/Pool.hpp"
@@ -736,8 +737,8 @@ void StereoDepth::_ThreadStereo() {
                 dspConfig.width = disparityFrame->getWidth();
                 dspConfig.height = disparityFrame->getHeight();
                 dspConfig.confidenceThreshold = latestConfig->costMatching.confidenceThreshold;
-                auto& dsp = StereoDepthDspHandler::getInstance(logger);
-                if(int err = dsp.confidenceInvalidation(inDisparityFrame, inConfidenceFrame, inConfigData, outDisparityFrame)) {
+                const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspIn1 = dai::device::toDeviceBuf(*inConfidenceFrame), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
+                if(int err = dai_device_dsp_confidence_invalidation(&dspIn0, &dspIn1, &dspConfig, &dspOut)) {
                     logger->error("DSP: Confidence invalidation failed with error: {}, {}", hexagon::errorToString(err), __LINE__);
                 }
             }
@@ -805,8 +806,8 @@ void StereoDepth::_ThreadStereo() {
                     dspConfig.width = disparityFrame->getWidth();
                     dspConfig.height = disparityFrame->getHeight();
                     dspConfig.confidenceThreshold = latestConfig->costMatching.confidenceThreshold;
-                    auto& dsp = StereoDepthDspHandler::getInstance(logger);
-                    if(int err = dsp.confidenceInvalidation(inDisparityFrame, inConfidenceFrame, inConfigData, outDisparityFrame)) {
+                    const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspIn1 = dai::device::toDeviceBuf(*inConfidenceFrame), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
+                    if(int err = dai_device_dsp_confidence_invalidation(&dspIn0, &dspIn1, &dspConfig, &dspOut)) {
                         logger->error("DSP: Confidence invalidation failed with error: {}, {}", hexagon::errorToString(err), __LINE__);
                     }
                 }
@@ -842,8 +843,8 @@ void StereoDepth::_ThreadStereo() {
                 dspConfig.height = disparityFrame->getHeight();
                 dspConfig.leftRightCheckThreshold = latestConfig->algorithmControl.leftRightCheckThreshold;
                 dspConfig.primarySearchR2L = primarySearchR2L ? 1 : 0;
-                auto& dsp = StereoDepthDspHandler::getInstance(logger);
-                if(int err = dsp.leftRightCheck(inDisparityLR, inDisparityRL, inConfigData, outDisparityFrame)) {
+                const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityLR), dspIn1 = dai::device::toDeviceBuf(*inDisparityRL), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
+                if(int err = dai_device_dsp_left_right_check(&dspIn0, &dspIn1, &dspConfig, &dspOut)) {
                     logger->error("DSP: Left-right check failed with error: {}, {}", hexagon::errorToString(err), __LINE__);
                 }
             }
@@ -924,8 +925,8 @@ void StereoDepth::_ThreadStereo() {
                     dspConfig.width = disparityFrameDs->getWidth();
                     dspConfig.height = disparityFrameDs->getHeight();
                     dspConfig.confidenceThreshold = latestConfig->costMatching.confidenceThreshold;
-                    auto& dsp = StereoDepthDspHandler::getInstance(logger);
-                    if(int err = dsp.confidenceInvalidation(inDisparityFrame, inConfidenceFrame, inConfigData, outDisparityFrame)) {
+                    const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspIn1 = dai::device::toDeviceBuf(*inConfidenceFrame), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
+                    if(int err = dai_device_dsp_confidence_invalidation(&dspIn0, &dspIn1, &dspConfig, &dspOut)) {
                         logger->error("DSP: Confidence invalidation failed with error: {}, {}", hexagon::errorToString(err), __LINE__);
                     }
                 }
@@ -988,8 +989,8 @@ void StereoDepth::_ThreadStereo() {
                         dspConfig.width = disparityFrameDsSecondary->getWidth();
                         dspConfig.height = disparityFrameDsSecondary->getHeight();
                         dspConfig.confidenceThreshold = latestConfig->costMatching.confidenceThreshold;
-                        auto& dsp = StereoDepthDspHandler::getInstance(logger);
-                        if(int err = dsp.confidenceInvalidation(inDisparityFrame, inConfidenceFrame, inConfigData, outDisparityFrame)) {
+                        const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspIn1 = dai::device::toDeviceBuf(*inConfidenceFrame), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
+                        if(int err = dai_device_dsp_confidence_invalidation(&dspIn0, &dspIn1, &dspConfig, &dspOut)) {
                             logger->error("DSP: Confidence invalidation failed with error: {}, {}", hexagon::errorToString(err), __LINE__);
                         }
                     }
@@ -1022,9 +1023,9 @@ void StereoDepth::_ThreadStereo() {
                     dspConfig.height = disparityFrameDs->getHeight();
                     dspConfig.leftRightCheckThreshold = latestConfig->algorithmControl.leftRightCheckThreshold;
                     dspConfig.primarySearchR2L = primarySearchR2L ? 1 : 0;
-                    auto& dsp = StereoDepthDspHandler::getInstance(logger);
+                    const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityLR), dspIn1 = dai::device::toDeviceBuf(*inDisparityRL), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
 
-                    if(int err = dsp.leftRightCheck(inDisparityLR, inDisparityRL, inConfigData, outDisparityFrame)) {
+                    if(int err = dai_device_dsp_left_right_check(&dspIn0, &dspIn1, &dspConfig, &dspOut)) {
                         logger->error("DSP: Left-right check failed with error: {}, {}", hexagon::errorToString(err), __LINE__);
                     }
                 }
@@ -1049,8 +1050,8 @@ void StereoDepth::_ThreadStereo() {
                 dspConfig.height = disparityFrame->getHeight();
                 dspConfig.numDisparities = 64;
                 dspConfig.downscaleFactor = 2;
-                auto& dsp = StereoDepthDspHandler::getInstance(logger);
-                if(int err = dsp.combineDisparityMaps(inDisparityFrame, inDisparityFrameDs, inConfigData, outDisparityFrame)) {
+                const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspIn1 = dai::device::toDeviceBuf(*inDisparityFrameDs), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
+                if(int err = dai_device_dsp_combine_disparity_maps(&dspIn0, &dspIn1, &dspConfig, &dspOut)) {
                     logger->error("DSP: combineDisparityMaps failed with error code: {}, {}", hexagon::errorToString(err), __LINE__);
                 }
             }
@@ -1470,8 +1471,8 @@ void StereoDepth::_ThreadPostProcessing() {
                     dspConfig.height = disparityFrame->getHeight();
                     dspConfig.fixedNumerator = fixedNumerator;
                     dspConfig.scaleFactor = scaleFactor;
-                    auto& dsp = StereoDepthDspHandler::getInstance(logger);
-                    if(int err = dsp.disparityToDepth(inDisparityFrame, inConfigData, outDepthFrame)) {
+                    const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDepthFrame);
+                    if(int err = dai_device_dsp_disparity_to_depth(&dspIn0, &dspConfig, &dspOut)) {
                         logger->error("DSP: Disparity to depth failed with error: {}, {}", hexagon::errorToString(err), __LINE__);
                     }
                 }
@@ -1861,7 +1862,7 @@ void StereoDepth::buildStage1() {
         // As EVA init also uses CDSP this is probably the same s**t.
         // fastCV maybe reconfigures / overrides some global CDSP state
         // and that doesn't play nice with other CDSP stuff.
-        (void)StereoDepthDspHandler::getInstance(logger);
+        dai::device::openDspSession(dai_device_dsp_open_stereo, "dai_device_dsp_open_stereo");
     }
 }
 

@@ -44,7 +44,9 @@ set(CMAKE_CXX_FLAGS -DDOMAIN_ID=${DOMAIN_ID})
 
 include(${HEXAGON_SDK_ROOT}/build/cmake/hexagon_fun.cmake)
 
-# Base Include dirs for the Project
+# Base Include dirs for the Project. The CPU side implements the C interface vendor/dai_device_dsp.h (found through
+# the src/ root ../..) and includes only the C interface, the standard library, the Hexagon SDK and the generated IDL
+# headers: the prebuilt dsp/ folder of the vendor module has this library.
 set(common_incs
     ${CMAKE_CURRENT_SOURCE_DIR}/src/
     ${CMAKE_CURRENT_SOURCE_DIR}/shared/
@@ -53,7 +55,6 @@ set(common_incs
     ${HEXAGON_SDK_ROOT}/incs/stddef/
     ${HEXAGON_SDK_ROOT}/rtos/qurt/
     ${HEXAGON_SDK_ROOT}/utils/examples/
-    ${DEPTHAI_DEVICE_KB_CORE_PATH}/include/
     ${CMAKE_CURRENT_SOURCE_DIR}/../..
     ${GST_INCLUDE_DIRS}
 )
@@ -61,18 +62,19 @@ set(common_incs
 # ################################################
 # HLOS Dynamic Stub Library
 # ################################################
+# The common objects of both DSP libraries are only here (ImageAlignDsp links StereoDepthDsp): utilities/DspCommon.cpp
+# (the log, dai_device_dsp_set_log), utilities/utilities.cpp (dai_device_dsp_status_name) and the SDK utils.
 set(StereoDepthDsp_srcs
     ${CMAKE_CURRENT_BINARY_DIR}/StereoDepthDsp_stub
-    cpu/StereoDepthDspHandler.cpp
+    cpu/StereoDepthDspInterface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../utilities/utilities.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utilities/DspCommon.cpp
     ${HEXAGON_SDK_ROOT}/utils/examples/dsp_capabilities_utils
     ${HEXAGON_SDK_ROOT}/utils/examples/pd_status_notification
 )
 
-find_package(spdlog CONFIG REQUIRED)
-message(STATUS "Found spdlog at ${spdlog_DIR}")
 add_library(StereoDepthDsp STATIC ${CMAKE_CURRENT_BINARY_DIR}/StereoDepthDsp_stub ${StereoDepthDsp_srcs})
-target_link_libraries(StereoDepthDsp PRIVATE cdsprpc spdlog::spdlog)
+target_link_libraries(StereoDepthDsp PRIVATE cdsprpc)
 
 add_dependencies(StereoDepthDsp dsp_StereoDepthDsp)
 

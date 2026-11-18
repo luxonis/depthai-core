@@ -4,16 +4,17 @@
 
 #include <array>
 #include <cstdint>
-#include <cstdlib>
 #include <memory>
 #include <vector>
 
-#include "depthai/common/ImgTransformations.hpp"
+#include "vendor/dai_device_tof.h"
 
 namespace dai {
 struct ToFConfig;
 }
 
+/// VD55H1 ToF depth processing. The processing itself (depth-map wrapper, aligned buffers, tuning) is in the vendor
+/// module behind the C interface vendor/dai_device_tof.h; this class adds the LUTs and the plane conversions.
 class tofVD55H1 {
    public:
     tofVD55H1(uint32_t rawWidth, uint32_t rawHeight, bool wantConfidence, bool wantIntensity, std::shared_ptr<spdlog::logger> logger);
@@ -47,27 +48,10 @@ class tofVD55H1 {
     static void transposeFloat16ToUint8(const void* src, uint8_t* dst, uint32_t srcW, uint32_t srcH, const Float16ToUint8Lut& lut);
 
    private:
-    const uint32_t rawWidth;
-    const uint32_t rawHeight;
-    const bool wantConfidence;
-    const bool wantIntensity;
-    uint32_t depthWidth = 0;
-    uint32_t depthHeight = 0;
-    size_t slotSize = 0;
+    /// The sizes and the planes of the vendor module; the plane pointers are valid until the next processFrame
+    dai_device_tof_output output() const;
 
-    static constexpr size_t GPU_ALIGN = 128;
-    struct AlignedFree {
-        void operator()(void* p) const {
-            std::free(p);
-        }
-    };
-    using AlignedBuf = std::unique_ptr<uint8_t[], AlignedFree>;
-    AlignedBuf alignedInput;
-    AlignedBuf alignedOutput;
-
+    std::unique_ptr<dai_device_tof, void (*)(dai_device_tof*)> handle;
     std::vector<float> r2pLut;
     std::shared_ptr<spdlog::logger> logger;
-
-    struct Impl;
-    std::unique_ptr<Impl> impl;
 };

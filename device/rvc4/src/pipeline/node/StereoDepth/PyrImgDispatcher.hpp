@@ -7,6 +7,11 @@
 
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "pipeline/node/AccelTypes.hpp"
+#include "vendor/dai_device_accel.h"
+
+namespace dai {
+class EvaDataMemory;
+}  // namespace dai
 
 struct PyrImgInit {
     bool bOutBaseimage = false;
@@ -23,6 +28,7 @@ struct PyrImgConfig {
     dai::gate::ScaledownInterpolation eDsInterpolation = dai::gate::ScaledownInterpolation::BILINEAR;
 };
 
+/// The hardware image pyramid (EVA) of the vendor module: dai_device_pyrimg_* of vendor/dai_device_accel.h
 class PyrImgDispatcher {
    public:
     PyrImgDispatcher();
@@ -43,6 +49,9 @@ class PyrImgDispatcher {
     uint32_t GetMinPyrImgBytes(int level = 1) const;
 
    private:
-    struct Impl;
-    std::unique_ptr<Impl> impl;
+    // The accelerator buffers of the last RunAsync: the hardware uses them until Wait
+    std::shared_ptr<dai::EvaDataMemory> inMem;
+    std::vector<std::shared_ptr<dai::EvaDataMemory>> outMems;
+    // Declared last: destroyed (and closed) before the buffers are released
+    std::unique_ptr<dai_device_pyrimg, void (*)(dai_device_pyrimg*)> handle;
 };

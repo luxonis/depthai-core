@@ -7,6 +7,11 @@
 
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "pipeline/node/AccelTypes.hpp"
+#include "vendor/dai_device_accel.h"
+
+namespace dai {
+class EvaDataMemory;
+}  // namespace dai
 
 struct DsImgInit {
     uint32_t nActualFps = 30;
@@ -22,6 +27,7 @@ struct DsImgConfig {
     dai::gate::ScaledownInterpolation eDsInterpolation = dai::gate::ScaledownInterpolation::BILINEAR;
 };
 
+/// The hardware downscaler (EVA scaledown) of the vendor module: dai_device_dsimg_* of vendor/dai_device_accel.h
 class DsImgDispatcher {
    public:
     DsImgDispatcher();
@@ -46,6 +52,11 @@ class DsImgDispatcher {
     void PrintFrameInfo(int width, int height, spdlog::logger& logger);
 
    private:
-    struct Impl;
-    std::unique_ptr<Impl> impl;
+    // The accelerator buffers of the last RunAsync: the hardware uses them until Wait
+    std::shared_ptr<dai::EvaDataMemory> inMem;
+    std::shared_ptr<dai::EvaDataMemory> outMem;
+    // The color format of the last successful Init, for PrintFrameInfo
+    dai::ImgFrame::Type initColorFormat = dai::ImgFrame::Type::GRAY8;
+    // Declared last: destroyed (and closed) before the buffers are released
+    std::unique_ptr<dai_device_dsimg, void (*)(dai_device_dsimg*)> handle;
 };
