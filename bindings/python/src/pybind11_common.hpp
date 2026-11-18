@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #include <depthai/common/Point2f.hpp>
+#include <depthai/common/WorldConstraints.hpp>
 #include <pybind11_json/pybind11_json.hpp>
 #include <stack>
 #include <utility/SpanBindings.hpp>
@@ -24,6 +25,10 @@
 
 PYBIND11_MAKE_OPAQUE(std::vector<uint8_t>);
 PYBIND11_MAKE_OPAQUE(std::vector<dai::Point2f>);
+// Lists of WorldConstraints entries are live references in Python, so that append() and friends change the constraints.
+PYBIND11_MAKE_OPAQUE(std::vector<dai::WorldConstraints::MarkerDistance>);
+PYBIND11_MAKE_OPAQUE(std::vector<dai::WorldConstraints::MarkerSocketDistance>);
+PYBIND11_MAKE_OPAQUE(std::vector<dai::WorldConstraints::MarkerSize>);
 
 namespace py = pybind11;
 
