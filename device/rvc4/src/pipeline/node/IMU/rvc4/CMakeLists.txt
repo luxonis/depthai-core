@@ -1,7 +1,7 @@
 project(pipeline.node.IMU)
 
-# The node talks to the sensor framework through the Luxonis SensorDirectChannel class, a wrapper of the C interface
-# vendor/dai_device_sensor.h; the implementation (Qualcomm SEE direct channel client) lives in the private module.
+# The node talks to the sensor hub through the Luxonis SensorDirectChannel class, a wrapper of the C interface
+# vendor/dai_device_sensor.h; the implementation (the direct channel client of the sensor hub) lives in the private module.
 set(HEADERS
     IMU.hpp
     SensorDirectChannel.hpp

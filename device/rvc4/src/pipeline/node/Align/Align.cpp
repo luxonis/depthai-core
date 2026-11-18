@@ -29,11 +29,11 @@
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 #include "depthai/pipeline/datatype/Transformable.hpp"
 #include "depthai/utility/matrixOps.hpp"
-#include "vendor/DeviceError.hpp"
-#include "vendor/dai_device_dsp.h"
 #include "hexagon/ImageAlignDsp/shared/ImageAlignDspConfig.h"
 #include "pipeline/utilities/Alignment/RectifiedBounds.hpp"
 #include "utilities/ImageRemap.hpp"
+#include "vendor/DeviceError.hpp"
+#include "vendor/dai_device_dsp.h"
 
 namespace dai {
 namespace gate {
@@ -445,11 +445,11 @@ void Align::buildStage1() {
     // Without this it fails in some cases with:
     // Remote_session_control failed
     // as it has some race conditions with some unknown stuff.
-    // Main suspects are EVA and fastCV. fastCV and EVA already had a race condition,
-    // where fastCV had to be configured before EVA or EVA init would fail.
+    // Main suspects are the hardware accelerator and fastCV. fastCV and the accelerator already had a race condition,
+    // where fastCV had to be configured before the accelerator or the accelerator init would fail.
     //
     // THEORY:
-    // As EVA init also uses CDSP this is probably the same s**t.
+    // As the accelerator init also uses CDSP this is probably the same s**t.
     // fastCV maybe reconfigures / overrides some global CDSP state
     // and that doesn't play nice with other CDSP stuff.
     dai::device::openDspSession(dai_device_dsp_open_align, "dai_device_dsp_open_align");
@@ -534,8 +534,8 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(std::shared_ptr<ImgFrame> inputIm
         shiftedOutput->fb.p2Offset = shiftedOutput->fb.stride * shiftedOutput->getHeight();
         shiftedOutput->fb.p3Offset = shiftedOutput->fb.p2Offset;
 
-        std::shared_ptr<EvaDataMemory> inDepthImgRectified = EvaDataMemory::convert(depthImgRectified->data);
-        std::shared_ptr<EvaDataMemory> outShiftedOutput = EvaDataMemory::convert(shiftedOutput->data);
+        std::shared_ptr<AcceleratorMemory> inDepthImgRectified = AcceleratorMemory::convert(depthImgRectified->data);
+        std::shared_ptr<AcceleratorMemory> outShiftedOutput = AcceleratorMemory::convert(shiftedOutput->data);
 
         auto startDSP = high_resolution_clock::now();
         auto& config = *reinterpret_cast<ImageAlignDspConfig*>(dspConfigData->data());
@@ -547,13 +547,14 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(std::shared_ptr<ImgFrame> inputIm
         config.stride = shiftedOutput->fb.stride;
         config.bpp = shiftedOutput->getBytesPerPixel();
 
-        const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDepthImgRectified), dspConfig = dai::device::toDeviceBuf(*dspConfigData), dspOut = dai::device::toDeviceBuf(*outShiftedOutput);
+        const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDepthImgRectified), dspConfig = dai::device::toDeviceBuf(*dspConfigData),
+                             dspOut = dai::device::toDeviceBuf(*outShiftedOutput);
         int nErr = dai_device_dsp_shift_depth(&dspIn0, &dspConfig, &dspOut);
         if(nErr != 0) {
             logger->error("alignDepthImg failed with code {}", nErr);
         }
 
-        shiftedOutput->data = EvaDataMemory::convert(outShiftedOutput);
+        shiftedOutput->data = AcceleratorMemory::convert(outShiftedOutput);
         auto stopDSP = high_resolution_clock::now();
         auto durationDSP = duration_cast<microseconds>(stopDSP - startDSP);
         logger->debug("DSP time: {} ms", durationDSP.count() / 1000.0f);
@@ -835,7 +836,7 @@ void Align::run() {
     std::shared_ptr<Buffer> alignToMsg = firstAlignTo;
     dai::device::openDspSession(dai_device_dsp_open_align, "dai_device_dsp_open_align");
     dspOpened = true;
-    dspConfigData = EvaDataMemory::create(sizeof(ImageAlignDspConfig));
+    dspConfigData = AcceleratorMemory::create(sizeof(ImageAlignDspConfig));
 
     staticDepthPlane = properties.initialConfig.staticDepthPlane;
 

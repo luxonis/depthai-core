@@ -39,7 +39,7 @@ IMUDescription IMUDiscovery::forceEnumerateIMU() {
             std::string sscCmd = "ssc_sensor_info -sensor=" + imu + " | grep " + imu;
 
             /*
-             * Detect at least one IMU sensor from qcom service to instantiate IMU.
+             * Detect at least one IMU sensor from the sensor hub service to instantiate IMU.
              * Presence of specific sensor will be detected on a request.
              *
              * e.g. IMU can have accel & gyro but no mag and rotation vector.

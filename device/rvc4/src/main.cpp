@@ -797,7 +797,7 @@ static void custom_log_handler(const gchar* log_domain, GLogLevelFlags log_level
 }
 
 // Crash handler that guarantees a kernel core dump. A plain re-raise (what
-// backward-cpp does) is not enough: camx's SignalCatcher re-registers these
+// backward-cpp does) is not enough: the signal catcher of the camera HAL re-registers these
 // signals at camera open reusing one sigaction whose sa_mask blocks the signal
 // itself inside its own handler, so the re-raise would stay pending and the
 // process would die without a core. sigaction() and pthread_sigmask() are
@@ -836,7 +836,7 @@ int main(int argc, char** args) {
     // Install backward-cpp crash handlers before anything else touches depthai-core:
     // initialize() is a run-once static and XLink bring-up calls the no-arg overload
     // with installSignalHandler=false, so a later opt-in would be silently ignored.
-    // camx's SignalCatcher then chains into these handlers instead of SIG_DFL(=NULL).
+    // The signal catcher of the camera HAL then chains into these handlers instead of SIG_DFL(=NULL).
     dai::initialize("", /*installSignalHandler=*/true, nullptr);
 
     // A linked library drops PR_SET_DUMPABLE at startup which makes the kernel
@@ -844,7 +844,7 @@ int main(int argc, char** args) {
     prctl(PR_SET_DUMPABLE, 1);
 
     // Wrap backward's handlers so the crash path always ends in a core dump,
-    // also when invoked through camx's SignalCatcher chain (see crashHandler).
+    // also when invoked through the signal catcher chain of the camera HAL (see crashHandler).
     installCrashHandler();
 
     // Watchdog

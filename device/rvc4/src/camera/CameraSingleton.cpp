@@ -33,6 +33,7 @@
 #include "utilities/ErrorMacros.hpp"
 #include "utilities/OSUtils.hpp"
 #include "utilities/StereoPairs.hpp"
+#include "vendor/dai_device_camera.h"
 
 using namespace android;
 using CameraMetadata = android::hardware::camera::common::V1_0::helper::CameraMetadata;
@@ -338,7 +339,7 @@ struct CbaSensorSelection {
 };
 
 // The sensor driver that the CBA EEPROM on `bus`, the I2C bus of camera port `csi`, selects. Only the device tree,
-// sysfs and /dev/i2c are used, CamX isn't loaded yet
+// sysfs and /dev/i2c are used, the camera HAL isn't loaded yet
 std::optional<CbaSensorSelection> selectSensorDriverFromCbaEeprom(uint32_t csi, int bus, const std::map<uint32_t, int>& busesForCsis) {
     // EEPROMs at the same address on a shared bus can't be told apart
     if(std::count_if(busesForCsis.begin(), busesForCsis.end(), [bus](const auto& csiBus) { return csiBus.second == bus; }) > 1) {
@@ -374,7 +375,7 @@ std::string selectSensorDriversFromCbaEeproms() {
             continue;
         }
         // The firmware's early log lines don't always reach the host, stdout ends up in the depthai_gate journal. Flush so the
-        // line is there even if the process dies while CamX is still starting
+        // line is there even if the process dies while the camera HAL is still starting
         printf("CBA EEPROM csi %u bus %d addr 0x%02x board config %s selects sensor driver %.*s\n",
                csi,
                selection->bus,
@@ -391,12 +392,12 @@ std::string selectSensorDriversFromCbaEeproms() {
     return value;
 }
 
-// CamX reads the same name, like LUX_SC_CLIENT_VERSION_MAJOR and LUX_SC_CLIENT_VERSION_MINOR
+// The camera HAL reads the same name, like LUX_SC_CLIENT_VERSION_MAJOR and LUX_SC_CLIENT_VERSION_MINOR
 constexpr const char* SENSOR_SELECT_ENV = "LUX_SC_CLIENT_SENSOR_SELECT";
 
-// CamX enumerates and probes the sensors while camera.qcom.so is being loaded by hw_get_module(), so the selection has to
-// be in the environment by then. It is only a preference, CamX falls back to probing for the sensor's chip ID. Always
-// set, so a value inherited from the parent process never leaks in
+// The camera HAL enumerates and probes the sensors while camera.qcom.so is being loaded by hw_get_module(), so the
+// selection has to be in the environment by then. It is only a preference, the camera HAL falls back to probing for the
+// sensor's chip ID. Always set, so a value inherited from the parent process never leaks in
 void setSensorSelectionEnv() {
     std::string value;
     try {
@@ -476,7 +477,7 @@ camera_module_t* CameraSingleton::initializeCameraModule() {
             uint32_t tagId = 0;
             char* sensorName;
             sp<VendorTagDescriptor> vTags = VendorTagDescriptor::getGlobalVendorTagDescriptor();
-            CameraMetadata::getTagFromName("org.codeaurora.qcamera3.sensorName.sensorName", vTags.get(), &tagId);
+            CameraMetadata::getTagFromName(dai_device_camera_tag_name(DAI_CAMERA_TAG_SENSOR_NAME), vTags.get(), &tagId);
             camera_metadata_entry tagEntry = {};
             int ret = find_camera_metadata_entry(const_cast<camera_metadata_t*>(cameraInfos[i].static_camera_characteristics), tagId, &tagEntry);
             if(ret == 0) {

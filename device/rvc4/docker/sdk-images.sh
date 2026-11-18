@@ -1,6 +1,6 @@
 #!/bin/bash
 # Builds, checks and pushes the public build images of the RVC4 firmware (Dockerfile.sdk in this folder).
-# The CI of depthai-device-vendor-fw runs 'build' and 'push' when it changes the public sysroot. The build scripts of
+# The private CI of the vendor module runs 'build' and 'push' when it changes the public sysroot. The build scripts of
 # device/rvc4 and the workflow containers_device_rvc4_sdk.yml use 'pinned' and 'check'.
 #
 # Usage:

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <gst/memory/gstmempool.h>
+
 #include <iostream>
 #include <memory>
 #include <type_traits>
@@ -7,9 +9,8 @@
 
 #include "depthai/depthai.hpp"
 #include "depthai/utility/LockingQueue.hpp"
+#include "utilities/AcceleratorMemory.hpp"
 #include "utilities/GstBufferMemory.hpp"
-#include <gst/memory/gstmempool.h>
-#include "utilities/EvaDataMemory.hpp"
 namespace dai {
 namespace gate {
 
@@ -74,7 +75,7 @@ class Pool : public std::enable_shared_from_this<Pool<T>> {
                 }
                 msg->data = gstMemory;
             } else {
-                msg->data = EvaDataMemory::create(maxSize);
+                msg->data = AcceleratorMemory::create(maxSize);
             }
             pool.push(std::move(msg));
         }

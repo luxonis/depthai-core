@@ -73,7 +73,7 @@ void FeatureTracker::run() {
             inImageCurrentFrame = inputImage.get<ImgFrame>();
         }
 
-        // Validate every frame before initializing or using the EVA dispatchers.
+        // Validate every frame before initializing or using the hardware accelerator dispatchers.
         const auto width = inImageCurrentFrame->getWidth();
         const auto height = inImageCurrentFrame->getHeight();
         if(width <= 0 || height <= 0 || width > 1920 || height > 1080 || width % 128 != 0 || height % 32 != 0) {

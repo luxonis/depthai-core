@@ -58,35 +58,35 @@ static void exposureUpdateCb(const lux_sc_exposure_update_t& msg) {
 }
 }
 
-LuxonisSidechannel::LuxonisSidechannel(void* camxDlopenHandle) {
-    DAI_CHECK_IN(camxDlopenHandle);
-    this->camxDlopenHandle = camxDlopenHandle;
-    auto scVersionGet = (lux_sc_version_get_cb_t)dlsym(camxDlopenHandle, "lux_sc_version_get");
+LuxonisSidechannel::LuxonisSidechannel(void* halDlopenHandle) {
+    DAI_CHECK_IN(halDlopenHandle);
+    this->halDlopenHandle = halDlopenHandle;
+    auto scVersionGet = (lux_sc_version_get_cb_t)dlsym(halDlopenHandle, "lux_sc_version_get");
     if(scVersionGet != nullptr) {
         // This version supports direct calling
         protocolVersion = scVersionGet();
-        std::cout << "Running CAMX sidechannel shared library version: " << protocolVersion->major << "." << protocolVersion->minor
+        std::cout << "Running camera HAL sidechannel shared library version: " << protocolVersion->major << "." << protocolVersion->minor
                   << " and depthai-device build container version: " << LUX_SC_VERSION_MAJOR << "." << LUX_SC_VERSION_MINOR << "\n"
                   << std::flush;
-        scExposureUpdateListen = (lux_sc_exposure_update_listen_t)dlsym(camxDlopenHandle, "lux_sc_exposure_update_listen");
+        scExposureUpdateListen = (lux_sc_exposure_update_listen_t)dlsym(halDlopenHandle, "lux_sc_exposure_update_listen");
         DAI_CHECK_IN(scExposureUpdateListen);
         scExposureUpdateListen(exposureUpdateCb);
-        ops.camera_mode_set = (lux_sc_camera_mode_set_cb_t)dlsym(camxDlopenHandle, "lux_sc_camera_mode_set");
+        ops.camera_mode_set = (lux_sc_camera_mode_set_cb_t)dlsym(halDlopenHandle, "lux_sc_camera_mode_set");
         DAI_CHECK_IN(ops.camera_mode_set);
-        ops.camera_sockets_config = (lux_sc_camera_sockets_config_cb_t)dlsym(camxDlopenHandle, "lux_sc_camera_sockets_config");
+        ops.camera_sockets_config = (lux_sc_camera_sockets_config_cb_t)dlsym(halDlopenHandle, "lux_sc_camera_sockets_config");
         DAI_CHECK_IN(ops.camera_sockets_config);
-        ops.camera_lens_pos_set = (lux_sc_camera_lens_pos_set_cb_t)dlsym(camxDlopenHandle, "lux_sc_camera_lens_pos_set");
+        ops.camera_lens_pos_set = (lux_sc_camera_lens_pos_set_cb_t)dlsym(halDlopenHandle, "lux_sc_camera_lens_pos_set");
         DAI_CHECK_IN(ops.camera_lens_pos_set);
-        ops.sensor_register_control = (lux_sc_sensor_register_control_cb_t)dlsym(camxDlopenHandle, "lux_sc_sensor_register_control");
+        ops.sensor_register_control = (lux_sc_sensor_register_control_cb_t)dlsym(halDlopenHandle, "lux_sc_sensor_register_control");
         DAI_CHECK_IN(ops.sensor_register_control);
-        ops.camera_tuning_update = (lux_sc_camera_tuning_update_cb_t)dlsym(camxDlopenHandle, "lux_sc_camera_tuning_update");
+        ops.camera_tuning_update = (lux_sc_camera_tuning_update_cb_t)dlsym(halDlopenHandle, "lux_sc_camera_tuning_update");
         DAI_CHECK_IN(ops.camera_tuning_update);
-        ops.camera_socket_for_csi_get = (lux_sc_camera_socket_for_csi_get_cb_t)dlsym(camxDlopenHandle, "lux_sc_camera_socket_for_csi_get");
+        ops.camera_socket_for_csi_get = (lux_sc_camera_socket_for_csi_get_cb_t)dlsym(halDlopenHandle, "lux_sc_camera_socket_for_csi_get");
         DAI_CHECK_IN(ops.camera_socket_for_csi_get);
-        ops.sensors_get = (lux_sc_sensors_get_cb_t)dlsym(camxDlopenHandle, "lux_sc_sensors_get");
-        ops.sensor_get_error_gpio = (lux_sc_sensor_get_error_gpio_cb_t)dlsym(camxDlopenHandle, "lux_sc_sensor_get_error_gpio");
-        ops.sensor_err_cb_add = (lux_sc_sensor_err_cb_add_t)dlsym(camxDlopenHandle, "lux_sc_sensor_err_cb_add");
-        ops.sensor_err_cb_rm = (lux_sc_sensor_err_cb_rm_t)dlsym(camxDlopenHandle, "lux_sc_sensor_err_cb_rm");
+        ops.sensors_get = (lux_sc_sensors_get_cb_t)dlsym(halDlopenHandle, "lux_sc_sensors_get");
+        ops.sensor_get_error_gpio = (lux_sc_sensor_get_error_gpio_cb_t)dlsym(halDlopenHandle, "lux_sc_sensor_get_error_gpio");
+        ops.sensor_err_cb_add = (lux_sc_sensor_err_cb_add_t)dlsym(halDlopenHandle, "lux_sc_sensor_err_cb_add");
+        ops.sensor_err_cb_rm = (lux_sc_sensor_err_cb_rm_t)dlsym(halDlopenHandle, "lux_sc_sensor_err_cb_rm");
     } else {
         // Note: do not put this in a initializer list, since the thread will start before the object is fully constructed
         sidechannelThread = std::thread(&LuxonisSidechannel::listenToLuxonisSidechannel, this);
@@ -122,7 +122,7 @@ void LuxonisSidechannel::listenToLuxonisSidechannel() {
                 break;
             }
             if(count == 0) {
-                std::cout << "The camx service closed the fifo pipe " << LUX_SC_FIFO_PATH << "\n" << std::flush;
+                std::cout << "The camera HAL service closed the fifo pipe " << LUX_SC_FIFO_PATH << "\n" << std::flush;
                 close(fd);
                 break;
             }
@@ -158,8 +158,8 @@ void LuxonisSidechannel::listenToLuxonisSidechannel() {
                     close(fd);
                     break;
                 }
-                std::cout << "Running CAMX sidechannel server version: " << msg.major << "." << msg.minor << " and client version: " << LUX_SC_VERSION_MAJOR
-                          << "." << LUX_SC_VERSION_MINOR << "\n"
+                std::cout << "Running camera HAL sidechannel server version: " << msg.major << "." << msg.minor
+                          << " and client version: " << LUX_SC_VERSION_MAJOR << "." << LUX_SC_VERSION_MINOR << "\n"
                           << std::flush;
             } else if(msgType == LUX_SC_VERSION_QUERY) {
                 lux_sc_version_query_t msg;
@@ -189,7 +189,7 @@ void LuxonisSidechannel::initializeFifo() {
     // if protocol version < 2 it is normal that we first have to sendMessage() to query the version
     if(protocolVersion.has_value()) {
         // LuxonisSidechannel::sendMessage() or LuxonisSidechannel::initializeFifo() should never be called on sidechannel version 2.0+
-        // as we don't use named pipes anymore but dlopen() and dlsym() to communicate between CAMX and depthai-device
+        // as we don't use named pipes anymore but dlopen() and dlsym() to communicate between the camera HAL and depthai-device
         DAI_CHECK_IN(protocolVersion->major < 2);
     }
     std::lock_guard lock(fifoFdLock);
@@ -222,8 +222,8 @@ void LuxonisSidechannel::setCameraMode(lux_sc_camera_mode_set_t cameraMode) {
     }
 }
 
-void LuxonisSidechannel::initialize(void* camxDlopenHandle) {
-    instance = std::make_unique<LuxonisSidechannel>(camxDlopenHandle);
+void LuxonisSidechannel::initialize(void* halDlopenHandle) {
+    instance = std::make_unique<LuxonisSidechannel>(halDlopenHandle);
 }
 
 void LuxonisSidechannel::handleExposureUpdate(const lux_sc_exposure_update_t& msg) {

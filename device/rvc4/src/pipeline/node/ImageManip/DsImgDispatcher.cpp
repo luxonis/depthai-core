@@ -4,8 +4,8 @@
 #include <string>
 #include <utility>
 
+#include "utilities/AcceleratorMemory.hpp"
 #include "utilities/ErrorMacros.hpp"
-#include "utilities/EvaDataMemory.hpp"
 #include "vendor/DeviceError.hpp"
 
 namespace {
@@ -49,7 +49,7 @@ void DsImgDispatcher::startSession() {
 void DsImgDispatcher::RunAsync(std::shared_ptr<dai::ImgFrame> inFrame, std::shared_ptr<dai::ImgFrame> outFrame, bool useMetadata) {
     // Input: the frame data in an accelerator buffer of at least the minimum input size. The frame keeps the buffer.
     const uint32_t inMinBytes = GetInMinDsImgBytes(inFrame->getWidth(), inFrame->getHeight());
-    std::shared_ptr<dai::EvaDataMemory> inImg = dai::EvaDataMemory::convert(inFrame->data, inMinBytes);
+    std::shared_ptr<dai::AcceleratorMemory> inImg = dai::AcceleratorMemory::convert(inFrame->data, inMinBytes);
     inFrame->data = inImg;
 
     // Output: the frame data must be large enough before the conversion. The buffer is not assigned to the frame.
@@ -57,7 +57,7 @@ void DsImgDispatcher::RunAsync(std::shared_ptr<dai::ImgFrame> inFrame, std::shar
     if(!(outFrame->data->getData().size() >= outMinBytes)) {
         throw std::runtime_error("DS: Assert (outFrame->data->getData().size() >= minMemSize)");
     }
-    std::shared_ptr<dai::EvaDataMemory> outImg = dai::EvaDataMemory::convert(outFrame->data);
+    std::shared_ptr<dai::AcceleratorMemory> outImg = dai::AcceleratorMemory::convert(outFrame->data);
 
     const dai_device_image in = dai::device::toDeviceImage(*inFrame, *inImg);
     dai_device_image out = dai::device::toDeviceImage(*outFrame, *outImg);
@@ -89,7 +89,7 @@ int DsImgDispatcher::Wait() {
     const dai_status status = dai_device_dsimg_wait(handle.get());
     inMem.reset();
     outMem.reset();
-    // The C call gives the EVA status of the work (0 = OK); this method returns it negated, as before
+    // The C call gives the accelerator driver status of the work (0 = OK); this method returns it negated, as before
     return -dai::device::returnDriverStatus(status, UNIT, "dai_device_dsimg_wait");
 }
 

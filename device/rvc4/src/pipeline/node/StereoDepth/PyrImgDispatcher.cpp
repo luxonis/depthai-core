@@ -2,8 +2,8 @@
 
 #include <utility>
 
+#include "utilities/AcceleratorMemory.hpp"
 #include "utilities/ErrorMacros.hpp"
-#include "utilities/EvaDataMemory.hpp"
 #include "vendor/DeviceError.hpp"
 
 namespace {
@@ -35,16 +35,16 @@ PyrImgDispatcher::~PyrImgDispatcher() = default;
 void PyrImgDispatcher::RunAsync(const std::shared_ptr<const dai::ImgFrame>& inFrame, std::vector<std::shared_ptr<dai::ImgFrame>> outFrames) {
     // The outputs first, then the input, as before the C interface. The buffers are not assigned to the frames.
     // A level without a frame gets an image without memory: the unit does not write that level.
-    std::vector<std::shared_ptr<dai::EvaDataMemory>> outImgs;
+    std::vector<std::shared_ptr<dai::AcceleratorMemory>> outImgs;
     outImgs.reserve(outFrames.size());
     std::vector<dai_device_image> outs(outFrames.size());
     for(size_t n = 0; n < outFrames.size(); n++) {
         if(outFrames[n] == nullptr) continue;
-        auto out = dai::EvaDataMemory::convert(outFrames[n]->data);
+        auto out = dai::AcceleratorMemory::convert(outFrames[n]->data);
         outs[n] = dai::device::toDeviceImage(*outFrames[n], *out);
         outImgs.push_back(std::move(out));
     }
-    auto inImg = dai::EvaDataMemory::convert(inFrame->data);
+    auto inImg = dai::AcceleratorMemory::convert(inFrame->data);
     const dai_device_image in = dai::device::toDeviceImage(*inFrame, *inImg);
 
     inMem = std::move(inImg);
@@ -66,7 +66,7 @@ int PyrImgDispatcher::Wait() {
     const dai_status status = dai_device_pyrimg_wait(handle.get());
     inMem.reset();
     outMems.clear();
-    // The C call gives the EVA status of the work (0 = OK); this method returns it negated, as before
+    // The C call gives the accelerator driver status of the work (0 = OK); this method returns it negated, as before
     return -dai::device::returnDriverStatus(status, UNIT, "dai_device_pyrimg_wait");
 }
 

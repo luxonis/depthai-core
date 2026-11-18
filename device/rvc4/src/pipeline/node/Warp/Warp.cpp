@@ -7,7 +7,7 @@
 
 // #include "WarpHelper.hpp"
 #include "pipeline/NodeTiming.hpp"
-#include "utilities/EvaDataMemory.hpp"
+#include "utilities/AcceleratorMemory.hpp"
 
 template <typename T>
 T ALIGN_UP(T value, uintptr_t align) {
@@ -53,8 +53,8 @@ void Warp::run() {
         auto tGotInput = steady_clock::now();
         {
             auto t1 = steady_clock::now();
-            // Converts or just returns the same pointer if already EvaDataMemory
-            inImage->data = EvaDataMemory::convert(inImage->data);
+            // Converts or just returns the same pointer if already AcceleratorMemory
+            inImage->data = AcceleratorMemory::convert(inImage->data);
             auto t2 = steady_clock::now();
             wastedTime += duration_cast<microseconds>(t2 - t1);
             logger->info("Input image convert time: {}us", duration_cast<microseconds>(t2 - t1).count());
@@ -65,7 +65,7 @@ void Warp::run() {
 
             auto t1 = steady_clock::now();
 
-            // Initialize the EVA warp engine
+            // Initialize the warp engine of the hardware accelerator
             warpDispatcher->Open();
             warpDispatcher->Init(properties, inImage->fb.width, inImage->fb.height, inImage->fb.type, inImage->fb.type);
             warpDispatcher->SetWarpMesh(rawGridX, rawGridY);
@@ -77,7 +77,7 @@ void Warp::run() {
         logger->info("Running wrap on received image.");
 
         outImage = std::make_shared<ImgFrame>();
-        outImage->data = dai::EvaDataMemory::create(warpDispatcher->getMinOutImgSize());
+        outImage->data = dai::AcceleratorMemory::create(warpDispatcher->getMinOutImgSize());
         outImage->setBufferMetadataFrom(inImage);
         outImage->setSourceSize(inImage->fb.width, inImage->fb.height);
         outImage->setSize(properties.outputWidth, properties.outputHeight);

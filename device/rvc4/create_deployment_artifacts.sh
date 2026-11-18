@@ -29,7 +29,7 @@
 #   DEPTHAI_DEVICE_RVC4_VENDOR_BASE_URL
 #                             Base URL of that download. Default: https://artifacts.luxonis.com/artifactory
 #   DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR
-#                             Sources of the vendor module (repository depthai-device-vendor-fw; its CI and Luxonis licensees),
+#                             Sources of the vendor module (its private CI and Luxonis licensees),
 #                             mounted at /depthai-device-rvc4-vendor, in place of the prebuilt archive. Not set:
 #                             the build uses the prebuilt archive.
 #   HEXAGON_SDK_DIR           Qualcomm Hexagon SDK on the host, mounted at /opt/hexagon-sdk: the build then builds the DSP

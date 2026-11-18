@@ -33,7 +33,7 @@ uint32_t dai_device_abi_version(void);
 
 /* The status of one call. It is not a state of the device or of an object.
  *    0   DAI_STATUS_OK
- *  > 0   the status of the hardware driver in this call (for example an EVA status)
+ *  > 0   the status of the hardware driver in this call (for example the status of the accelerator driver)
  *  < 0   DAI_STATUS_*: the call failed for another reason
  * When a call fails, dai_device_last_error() gives a text for it. */
 typedef int32_t dai_status;

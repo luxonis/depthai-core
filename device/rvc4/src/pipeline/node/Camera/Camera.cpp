@@ -44,14 +44,14 @@ extern "C" {
 #include "depthai/pipeline/node/ToF.hpp"
 #include "depthai/properties/CameraProperties.hpp"
 #include "luxonis_sidechannel_data.h"
-#include "pipeline/NodeTiming.hpp"
 #include "pipeline/MultiDeviceCalibrationStore.hpp"
+#include "pipeline/NodeTiming.hpp"
+#include "utilities/AcceleratorMemory.hpp"
 #include "utilities/CameraDiscovery.hpp"
 #include "utilities/ClockOffset.hpp"
 #include "utilities/DeviceModel.hpp"
 #include "utilities/DeviceTreeDiscovery.hpp"
 #include "utilities/ErrorMacros.hpp"
-#include "utilities/EvaDataMemory.hpp"
 #include "utilities/FastCvUtils.hpp"
 #include "utilities/FsyncController.hpp"
 #include "utilities/OSUtils.hpp"
@@ -353,7 +353,7 @@ static std::shared_ptr<ImgFrame> convertToFormat(ImgFrame::Type type, std::share
     outFrame->setBufferMetadataFrom(inFrame);
     outFrame->cam = inFrame->cam;
     size_t outputSize = outFrame->getStride() * outFrame->getHeight();
-    outFrame->data = dai::EvaDataMemory::create(outputSize);
+    outFrame->data = dai::AcceleratorMemory::create(outputSize);
     DAI_CHECK_IN(outFrame->data);
     const uint8_t* srcPtr = inFrame->getData().data();
     uint8_t* dstPtr = outFrame->getData().data();
@@ -368,7 +368,7 @@ static std::shared_ptr<ImgFrame> convertToFormat(ImgFrame::Type type, std::share
                                                outFrame->getStride());
     });
     if(type == ImgFrame::Type::BGR888i) {
-        auto tmpData = dai::EvaDataMemory::create(outputSize);
+        auto tmpData = dai::AcceleratorMemory::create(outputSize);
         DAI_CHECK_IN(dstPtr && tmpData && tmpData->data());
         fcvRun([&]() { fcvColorRGB888ToBGR888u8(dstPtr, inFrame->getWidth(), inFrame->getHeight(), 0, tmpData->data(), 0); });
         outFrame->data = tmpData;
@@ -585,11 +585,11 @@ Camera::SensorConfig Camera::decideSensorConfig() {
     if(requestedFps > 0.0f) {
         modes = filterByFps(modes, requestedFps);
     }
-    // Find which sensor mode can satisfy us. We prefer bigger because sensor scaling is worse then IPE scaling - That is why we sorted modes by area.
+    // Find which sensor mode can satisfy us. We prefer bigger because sensor scaling is worse then ISP scaling - That is why we sorted modes by area.
     // Our other preferences by priority are:
     // - never upscale !!!
     // - fullFOV, so we see it all
-    // - cheap on IPE instances (area <= 5000 * 4000) // TODO(jakgra) get IPE (spectra / titan HW) cost per sensor mode to be more exact here
+    // - cheap on the ISP image processing instances (area <= 5000 * 4000) // TODO(jakgra) get their cost per sensor mode to be more exact here
     // - fallback on non fullFOV is allowed
     auto lowestSatisfyingSensorSize = getLowestSatisfyingSensorSize();
     enum Condition {
@@ -1337,7 +1337,7 @@ void Camera::buildStage2() {
                     logger->info("Falling back to hardcoded FSYNC pin.");
                 } else {
                     logger->error("Could not get the FSYNC pin for socket " + toString(properties.boardSocket)
-                                  + ". Check camera device tree and camx camera configuration.");
+                                  + ". Check the camera device tree and the camera HAL configuration.");
                     logger->warn("Falling back to hardcoded FSYNC pin.");
                 }
             }

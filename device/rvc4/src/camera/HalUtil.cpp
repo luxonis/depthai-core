@@ -14,6 +14,24 @@ uint32_t HalUtil::getVendorTag(const char* tag) {
     return tagId;
 }
 
+namespace {
+const char* daiTagName(uint32_t daiTag) {
+    const char* name = dai_device_camera_tag_name(daiTag);
+    DAI_CHECK_V(name != nullptr, "The vendor module has no name for the camera tag {}", daiTag);
+    return name;
+}
+}  // namespace
+
+uint32_t HalUtil::getCameraTag(uint32_t daiTag) {
+    return getVendorTag(daiTagName(daiTag));
+}
+
+std::optional<uint32_t> HalUtil::tryGetCameraTag(uint32_t daiTag) {
+    const char* name = dai_device_camera_tag_name(daiTag);
+    if(name == nullptr) return std::nullopt;
+    return tryGetVendorTag(name);
+}
+
 std::optional<uint32_t> HalUtil::tryGetVendorTag(const char* tag) {
     uint32_t tagId{0};
     auto res = CameraMetadata::getTagFromName(tag, VendorTagDescriptor::getGlobalVendorTagDescriptor().get(), &tagId);
@@ -82,7 +100,7 @@ bool HalUtil::getMetaSensorTemperature(const camera_metadata_t* meta, uint32_t t
     switch(entry.type) {
         case TYPE_BYTE:
             if(entry.count >= sizeof(uint16_t)) {
-                // Some CAMX builds expose the temperature vendor tag as raw bytes.
+                // Some camera HAL builds expose the temperature vendor tag as raw bytes.
                 value = static_cast<float>(static_cast<uint16_t>(entry.data.u8[0]) | (static_cast<uint16_t>(entry.data.u8[1]) << 8));
                 return true;
             }

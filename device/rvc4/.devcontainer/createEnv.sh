@@ -13,7 +13,7 @@ DEPTHAI_DEVICE_SDK_IMAGE="${DEPTHAI_DEVICE_SDK_IMAGE:?Set DEPTHAI_DEVICE_SDK_IMA
 
 # Vendor module (licensee-only Qualcomm/ST code). Default: CMake downloads its prebuilt archive. DEPTHAI_DEVICE_RVC4_VENDOR:
 # a local archive below $HOME (the container mounts $HOME at the same path). DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR:
-# its sources, the repository depthai-device-vendor-fw (Luxonis licensees), mounted at /depthai-device-rvc4-vendor.
+# its sources (Luxonis licensees), mounted at /depthai-device-rvc4-vendor.
 VENDOR_SOURCE_DIR="${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR:-}"
 VENDOR_SOURCE_DIR_IN_CONTAINER=""
 if [ -n "$VENDOR_SOURCE_DIR" ] && [ -d "$VENDOR_SOURCE_DIR" ]; then

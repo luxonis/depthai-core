@@ -51,9 +51,9 @@ VENDORED_DEPENDENCIES = {
     },
 }
 
-# The licensee-only Qualcomm/ST code is not in this repository: it is the private module depthai-device-rvc4-vendor, in
-# the private repository depthai-device-vendor-fw (CMake: DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR; in the build container it is
-# mounted at /depthai-device-rvc4-vendor). The firmware package bundles what that module builds, so its third-party
+# The licensee-only Qualcomm/ST code is not in this repository: it is the private module depthai-device-rvc4-vendor, the
+# vendor module (CMake: DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR; in the build container it is mounted at
+# /depthai-device-rvc4-vendor). The firmware package bundles what that module builds, so its third-party
 # parts are classified here. The paths are relative to that checkout, which find_private_module_root() locates;
 # when the checkout is absent, these entries are skipped with a warning.
 PRIVATE_MODULE_NAME = "depthai-device-rvc4-vendor"

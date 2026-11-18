@@ -3,8 +3,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include "utilities/AcceleratorMemory.hpp"
 #include "utilities/ErrorMacros.hpp"
-#include "utilities/EvaDataMemory.hpp"
 #include "vendor/DeviceError.hpp"
 
 namespace {
@@ -33,9 +33,9 @@ void WarpDispatcher::RunAsync(const std::shared_ptr<const dai::ImgFrame>& inputF
 
     // The accelerator buffers, in the order of the former vendor code. The output gets its buffer as frame data; a
     // copy of the input gets the input size of the hardware.
-    std::shared_ptr<dai::EvaDataMemory> output = dai::EvaDataMemory::convert(outputFrame->data);
+    std::shared_ptr<dai::AcceleratorMemory> output = dai::AcceleratorMemory::convert(outputFrame->data);
     outputFrame->data = output;
-    std::shared_ptr<dai::EvaDataMemory> input = dai::EvaDataMemory::convert(inputFrame->data, dai_device_warp_min_in_bytes(handle.get()));
+    std::shared_ptr<dai::AcceleratorMemory> input = dai::AcceleratorMemory::convert(inputFrame->data, dai_device_warp_min_in_bytes(handle.get()));
 
     const dai_device_image inImage = dai::device::toDeviceImage(*inputFrame, *input);
     const dai_device_image outImage = dai::device::toDeviceImage(*outputFrame, *output);
@@ -48,7 +48,7 @@ int WarpDispatcher::Wait() {
     const dai_status status = dai_device_warp_wait(handle.get());
     runningInput.reset();
     runningOutput.reset();
-    // As before the C interface: the negated EVA status of the work (0: done)
+    // As before the C interface: the negated accelerator driver status of the work (0: done)
     return -dai::device::returnDriverStatus(status, UNIT, "dai_device_warp_wait");
 }
 

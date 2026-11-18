@@ -27,13 +27,13 @@
 #include "../TemporalFilter/TemporalFilter.hpp"
 #include "../ThresholdFilter/ThresholdFilter.hpp"
 #include "depthai/utility/LockingQueue.hpp"
-#include "vendor/DeviceError.hpp"
-#include "vendor/dai_device_dsp.h"
 #include "hexagon/StereoDepthDsp/shared/StereoDepthDspConfig.h"
 #include "hexagon/utilities/utilities.hpp"
 #include "pipeline/Pool.hpp"
 #include "spdlog/spdlog.h"
-#include "utilities/EvaDataMemory.hpp"
+#include "utilities/AcceleratorMemory.hpp"
+#include "vendor/DeviceError.hpp"
+#include "vendor/dai_device_dsp.h"
 
 namespace {
 
@@ -316,12 +316,12 @@ void StereoDepth::_ThreadWarp() {
         auto tWarpAllocationStart = steady_clock::now();
         auto tWarpMemConvertStart = tWarpAllocationStart;
 
-        auto leftInEva = std::make_shared<ImgFrame>();
-        auto rightInEva = std::make_shared<ImgFrame>();
-        leftInEva->setMetadata(*leftIn);
-        rightInEva->setMetadata(*rightIn);
-        leftInEva->data = EvaDataMemory::convert(leftIn->data);
-        rightInEva->data = EvaDataMemory::convert(rightIn->data);
+        auto leftInAccel = std::make_shared<ImgFrame>();
+        auto rightInAccel = std::make_shared<ImgFrame>();
+        leftInAccel->setMetadata(*leftIn);
+        rightInAccel->setMetadata(*rightIn);
+        leftInAccel->data = AcceleratorMemory::convert(leftIn->data);
+        rightInAccel->data = AcceleratorMemory::convert(rightIn->data);
 
         auto tWarpMemConvertEnd = steady_clock::now();
 
@@ -364,10 +364,10 @@ void StereoDepth::_ThreadWarp() {
                 // cv::remap(rightIn->getFrame(), rectifiedRightFrame->getFrame(), map_x_r, map_y_r, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0,
                 // 0));
             } else {
-                warp.RunAsync(leftInEva, rectifiedLeftFrame, 0);
+                warp.RunAsync(leftInAccel, rectifiedLeftFrame, 0);
                 warp.Wait();
 
-                warp.RunAsync(rightInEva, rectifiedRightFrame, 1);
+                warp.RunAsync(rightInAccel, rectifiedRightFrame, 1);
                 warp.Wait();
             }
 
@@ -392,8 +392,8 @@ void StereoDepth::_ThreadWarp() {
             warpOutFrames.rectifiedLeftFrame = rectifiedLeftFrame;
             warpOutFrames.rectifiedRightFrame = rectifiedRightFrame;
         } else {
-            warpOutFrames.rectifiedLeftFrame = leftInEva;
-            warpOutFrames.rectifiedRightFrame = rightInEva;
+            warpOutFrames.rectifiedLeftFrame = leftInAccel;
+            warpOutFrames.rectifiedRightFrame = rightInAccel;
         }
         warpOutFrames.performanceMetrics.tStartSync = tStartSync;
         warpOutFrames.performanceMetrics.tEndSync = tEndSync;
@@ -560,7 +560,7 @@ void StereoDepth::_ThreadStereo() {
         }
     }
 
-    auto inConfigData = EvaDataMemory::create(sizeof(StereoDepthDspConfig));
+    auto inConfigData = AcceleratorMemory::create(sizeof(StereoDepthDspConfig));
     auto& dspConfig = *reinterpret_cast<StereoDepthDspConfig*>(inConfigData->data());
 
     decltype(high_resolution_clock::now()) startTimer, stopTimer;
@@ -730,14 +730,15 @@ void StereoDepth::_ThreadStereo() {
                     disp_LR, conf_LR, disp_LR, disparityFrame->getWidth(), disparityFrame->getHeight(), latestConfig->costMatching.confidenceThreshold);
 
             } else {
-                auto inDisparityFrame = EvaDataMemory::convert(disparityFrame->data);
-                auto inConfidenceFrame = EvaDataMemory::convert(confidenceFrame->data);
+                auto inDisparityFrame = AcceleratorMemory::convert(disparityFrame->data);
+                auto inConfidenceFrame = AcceleratorMemory::convert(confidenceFrame->data);
                 auto outDisparityFrame = inDisparityFrame;
 
                 dspConfig.width = disparityFrame->getWidth();
                 dspConfig.height = disparityFrame->getHeight();
                 dspConfig.confidenceThreshold = latestConfig->costMatching.confidenceThreshold;
-                const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspIn1 = dai::device::toDeviceBuf(*inConfidenceFrame), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
+                const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspIn1 = dai::device::toDeviceBuf(*inConfidenceFrame),
+                                     dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
                 if(int err = dai_device_dsp_confidence_invalidation(&dspIn0, &dspIn1, &dspConfig, &dspOut)) {
                     logger->error("DSP: Confidence invalidation failed with error: {}, {}", hexagon::errorToString(err), __LINE__);
                 }
@@ -799,14 +800,15 @@ void StereoDepth::_ThreadStereo() {
                                            disparityFrameSecondary->getHeight(),
                                            latestConfig->costMatching.confidenceThreshold);
                 } else {
-                    auto inDisparityFrame = EvaDataMemory::convert(disparityFrameSecondary->data);
-                    auto inConfidenceFrame = EvaDataMemory::convert(confidenceFrameSecondary->data);
+                    auto inDisparityFrame = AcceleratorMemory::convert(disparityFrameSecondary->data);
+                    auto inConfidenceFrame = AcceleratorMemory::convert(confidenceFrameSecondary->data);
                     auto outDisparityFrame = inDisparityFrame;
 
                     dspConfig.width = disparityFrame->getWidth();
                     dspConfig.height = disparityFrame->getHeight();
                     dspConfig.confidenceThreshold = latestConfig->costMatching.confidenceThreshold;
-                    const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspIn1 = dai::device::toDeviceBuf(*inConfidenceFrame), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
+                    const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspIn1 = dai::device::toDeviceBuf(*inConfidenceFrame),
+                                         dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
                     if(int err = dai_device_dsp_confidence_invalidation(&dspIn0, &dspIn1, &dspConfig, &dspOut)) {
                         logger->error("DSP: Confidence invalidation failed with error: {}, {}", hexagon::errorToString(err), __LINE__);
                     }
@@ -835,15 +837,16 @@ void StereoDepth::_ThreadStereo() {
                                latestConfig->algorithmControl.leftRightCheckThreshold,
                                primarySearchR2L);
             } else {
-                auto inDisparityLR = EvaDataMemory::convert(disparityFrame->data);
-                auto inDisparityRL = EvaDataMemory::convert(disparityFrameSecondary->data);
+                auto inDisparityLR = AcceleratorMemory::convert(disparityFrame->data);
+                auto inDisparityRL = AcceleratorMemory::convert(disparityFrameSecondary->data);
                 auto outDisparityFrame = inDisparityLR;
 
                 dspConfig.width = disparityFrame->getWidth();
                 dspConfig.height = disparityFrame->getHeight();
                 dspConfig.leftRightCheckThreshold = latestConfig->algorithmControl.leftRightCheckThreshold;
                 dspConfig.primarySearchR2L = primarySearchR2L ? 1 : 0;
-                const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityLR), dspIn1 = dai::device::toDeviceBuf(*inDisparityRL), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
+                const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityLR), dspIn1 = dai::device::toDeviceBuf(*inDisparityRL),
+                                     dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
                 if(int err = dai_device_dsp_left_right_check(&dspIn0, &dspIn1, &dspConfig, &dspOut)) {
                     logger->error("DSP: Left-right check failed with error: {}, {}", hexagon::errorToString(err), __LINE__);
                 }
@@ -918,14 +921,15 @@ void StereoDepth::_ThreadStereo() {
                                            disparityFrameDs->getHeight(),
                                            latestConfig->costMatching.confidenceThreshold);
                 } else {
-                    auto inDisparityFrame = EvaDataMemory::convert(disparityFrameDs->data);
-                    auto inConfidenceFrame = EvaDataMemory::convert(confidenceFrameDs->data);
+                    auto inDisparityFrame = AcceleratorMemory::convert(disparityFrameDs->data);
+                    auto inConfidenceFrame = AcceleratorMemory::convert(confidenceFrameDs->data);
                     auto outDisparityFrame = inDisparityFrame;
 
                     dspConfig.width = disparityFrameDs->getWidth();
                     dspConfig.height = disparityFrameDs->getHeight();
                     dspConfig.confidenceThreshold = latestConfig->costMatching.confidenceThreshold;
-                    const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspIn1 = dai::device::toDeviceBuf(*inConfidenceFrame), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
+                    const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspIn1 = dai::device::toDeviceBuf(*inConfidenceFrame),
+                                         dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
                     if(int err = dai_device_dsp_confidence_invalidation(&dspIn0, &dspIn1, &dspConfig, &dspOut)) {
                         logger->error("DSP: Confidence invalidation failed with error: {}, {}", hexagon::errorToString(err), __LINE__);
                     }
@@ -982,14 +986,15 @@ void StereoDepth::_ThreadStereo() {
                                                latestConfig->costMatching.confidenceThreshold);
 
                     } else {
-                        auto inDisparityFrame = EvaDataMemory::convert(disparityFrameDsSecondary->data);
-                        auto inConfidenceFrame = EvaDataMemory::convert(confidenceFrameDsSecondary->data);
+                        auto inDisparityFrame = AcceleratorMemory::convert(disparityFrameDsSecondary->data);
+                        auto inConfidenceFrame = AcceleratorMemory::convert(confidenceFrameDsSecondary->data);
                         auto outDisparityFrame = inDisparityFrame;
 
                         dspConfig.width = disparityFrameDsSecondary->getWidth();
                         dspConfig.height = disparityFrameDsSecondary->getHeight();
                         dspConfig.confidenceThreshold = latestConfig->costMatching.confidenceThreshold;
-                        const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspIn1 = dai::device::toDeviceBuf(*inConfidenceFrame), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
+                        const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspIn1 = dai::device::toDeviceBuf(*inConfidenceFrame),
+                                             dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
                         if(int err = dai_device_dsp_confidence_invalidation(&dspIn0, &dspIn1, &dspConfig, &dspOut)) {
                             logger->error("DSP: Confidence invalidation failed with error: {}, {}", hexagon::errorToString(err), __LINE__);
                         }
@@ -1015,15 +1020,16 @@ void StereoDepth::_ThreadStereo() {
                                    latestConfig->algorithmControl.leftRightCheckThreshold,
                                    primarySearchR2L);
                 } else {
-                    auto inDisparityLR = EvaDataMemory::convert(disparityFrameDs->data);
-                    auto inDisparityRL = EvaDataMemory::convert(disparityFrameDsSecondary->data);
+                    auto inDisparityLR = AcceleratorMemory::convert(disparityFrameDs->data);
+                    auto inDisparityRL = AcceleratorMemory::convert(disparityFrameDsSecondary->data);
                     auto outDisparityFrame = inDisparityLR;
 
                     dspConfig.width = disparityFrameDs->getWidth();
                     dspConfig.height = disparityFrameDs->getHeight();
                     dspConfig.leftRightCheckThreshold = latestConfig->algorithmControl.leftRightCheckThreshold;
                     dspConfig.primarySearchR2L = primarySearchR2L ? 1 : 0;
-                    const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityLR), dspIn1 = dai::device::toDeviceBuf(*inDisparityRL), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
+                    const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityLR), dspIn1 = dai::device::toDeviceBuf(*inDisparityRL),
+                                         dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
 
                     if(int err = dai_device_dsp_left_right_check(&dspIn0, &dspIn1, &dspConfig, &dspOut)) {
                         logger->error("DSP: Left-right check failed with error: {}, {}", hexagon::errorToString(err), __LINE__);
@@ -1038,19 +1044,20 @@ void StereoDepth::_ThreadStereo() {
             logger->debug("Stereo for DS finished. Merging the disparities ...");
 
             startTimer = high_resolution_clock::now();
-            // auto combinedDisparity = dai::EvaDataMemory::create(outDisparityFrameSize);
+            // auto combinedDisparity = dai::AcceleratorMemory::create(outDisparityFrameSize);
             if(runPostProcessingOnCPU) {
                 combineDispMaps(disparityFrame, disparityFrameDs, disparityFrame, 64, 2);
             } else {
-                auto inDisparityFrame = EvaDataMemory::convert(disparityFrame->data);
-                auto inDisparityFrameDs = EvaDataMemory::convert(disparityFrameDs->data);
+                auto inDisparityFrame = AcceleratorMemory::convert(disparityFrame->data);
+                auto inDisparityFrameDs = AcceleratorMemory::convert(disparityFrameDs->data);
                 auto outDisparityFrame = inDisparityFrame;
 
                 dspConfig.width = disparityFrame->getWidth();
                 dspConfig.height = disparityFrame->getHeight();
                 dspConfig.numDisparities = 64;
                 dspConfig.downscaleFactor = 2;
-                const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspIn1 = dai::device::toDeviceBuf(*inDisparityFrameDs), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
+                const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspIn1 = dai::device::toDeviceBuf(*inDisparityFrameDs),
+                                     dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDisparityFrame);
                 if(int err = dai_device_dsp_combine_disparity_maps(&dspIn0, &dspIn1, &dspConfig, &dspOut)) {
                     logger->error("DSP: combineDisparityMaps failed with error code: {}, {}", hexagon::errorToString(err), __LINE__);
                 }
@@ -1181,7 +1188,7 @@ void StereoDepth::_ThreadPostProcessing() {
     dai2::MedianFilter medianFilter;
     BrightnessFilter brightnessFilter;
 
-    auto inConfigData = EvaDataMemory::create(sizeof(StereoDepthDspConfig));
+    auto inConfigData = AcceleratorMemory::create(sizeof(StereoDepthDspConfig));
     auto& dspConfig = *reinterpret_cast<StereoDepthDspConfig*>(inConfigData->data());
 
     while(isRunning() && threadsRunning) {
@@ -1456,8 +1463,8 @@ void StereoDepth::_ThreadPostProcessing() {
                 if(runPostProcessingOnCPU) {
                     disparityToDepth(disparityFrame, depthFrame, scaleFactor);
                 } else {
-                    auto inDisparityFrame = EvaDataMemory::convert(disparityFrame->data);
-                    auto outDepthFrame = EvaDataMemory::convert(depthFrame->data);
+                    auto inDisparityFrame = AcceleratorMemory::convert(disparityFrame->data);
+                    auto outDepthFrame = AcceleratorMemory::convert(depthFrame->data);
 
                     if(dspConfig.scaleFactor != scaleFactor || (dspConfig.fixedNumerator != fixedNumerator)) {
                         uint16_t* disp2depthLUT = dspConfig.disp2depthLUT;
@@ -1471,7 +1478,8 @@ void StereoDepth::_ThreadPostProcessing() {
                     dspConfig.height = disparityFrame->getHeight();
                     dspConfig.fixedNumerator = fixedNumerator;
                     dspConfig.scaleFactor = scaleFactor;
-                    const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outDepthFrame);
+                    const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDisparityFrame), dspConfig = dai::device::toDeviceBuf(*inConfigData),
+                                         dspOut = dai::device::toDeviceBuf(*outDepthFrame);
                     if(int err = dai_device_dsp_disparity_to_depth(&dspIn0, &dspConfig, &dspOut)) {
                         logger->error("DSP: Disparity to depth failed with error: {}, {}", hexagon::errorToString(err), __LINE__);
                     }
@@ -1855,11 +1863,11 @@ void StereoDepth::buildStage1() {
         // Without this it fails in some cases with:
         // Remote_session_control failed
         // as it has some race conditions with some unknown stuff.
-        // Main suspects are EVA and fastCV. fastCV and EVA already had a race condition,
-        // where fastCV had to be configured before EVA or EVA init would fail.
+        // Main suspects are the hardware accelerator and fastCV. fastCV and the accelerator already had a race condition,
+        // where fastCV had to be configured before the accelerator or the accelerator init would fail.
         //
         // THEORY:
-        // As EVA init also uses CDSP this is probably the same s**t.
+        // As the accelerator init also uses CDSP this is probably the same s**t.
         // fastCV maybe reconfigures / overrides some global CDSP state
         // and that doesn't play nice with other CDSP stuff.
         dai::device::openDspSession(dai_device_dsp_open_stereo, "dai_device_dsp_open_stereo");
@@ -1909,7 +1917,7 @@ void StereoDepth::run() {
     }
 
     enableRectification = properties.enableRectification;
-    // TODO(jakgra) check why EVA unwarp triggers ASAN
+    // TODO(jakgra) check why the accelerator unwarp triggers ASAN
     // enableRectification = false;
 
     // if(customInputPixelDescriptors && enableRectification) {

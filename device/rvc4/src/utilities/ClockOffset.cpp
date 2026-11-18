@@ -28,7 +28,7 @@ std::chrono::steady_clock::time_point readMonotonicRawClock() {
     return timespecToSteady(tsRaw);
 }
 
-// QTimer helper: convert raw ticks into nanoseconds using the CAM IFE conversion constants.
+// QTimer helper: convert raw ticks into nanoseconds using the conversion constants of the camera image front end.
 uint64_t qtimerTicksToNs(uint64_t ticks) {
     return (ticks * CAM_IFE_CSID_QTIMER_MUL_FACTOR / CAM_IFE_CSID_QTIMER_DIV_FACTOR);
 }

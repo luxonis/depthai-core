@@ -10,7 +10,7 @@
 #include "vendor/dai_device_accel.h"
 
 namespace dai {
-class EvaDataMemory;
+class AcceleratorMemory;
 }  // namespace dai
 
 struct DsImgInit {
@@ -27,7 +27,7 @@ struct DsImgConfig {
     dai::gate::ScaledownInterpolation eDsInterpolation = dai::gate::ScaledownInterpolation::BILINEAR;
 };
 
-/// The hardware downscaler (EVA scaledown) of the vendor module: dai_device_dsimg_* of vendor/dai_device_accel.h
+/// The hardware downscaler (accelerator scaledown) of the vendor module: dai_device_dsimg_* of vendor/dai_device_accel.h
 class DsImgDispatcher {
    public:
     DsImgDispatcher();
@@ -53,8 +53,8 @@ class DsImgDispatcher {
 
    private:
     // The accelerator buffers of the last RunAsync: the hardware uses them until Wait
-    std::shared_ptr<dai::EvaDataMemory> inMem;
-    std::shared_ptr<dai::EvaDataMemory> outMem;
+    std::shared_ptr<dai::AcceleratorMemory> inMem;
+    std::shared_ptr<dai::AcceleratorMemory> outMem;
     // The color format of the last successful Init, for PrintFrameInfo
     dai::ImgFrame::Type initColorFormat = dai::ImgFrame::Type::GRAY8;
     // Declared last: destroyed (and closed) before the buffers are released

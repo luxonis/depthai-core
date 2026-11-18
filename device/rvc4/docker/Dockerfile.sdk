@@ -10,7 +10,7 @@
 #   release  the default image: what the build of the release firmware (target rvc4) needs
 #   dev      release plus the sanitizer libraries of the compiler (targets rvc4-tsan and rvc4-asan-ubsan)
 # Luxonis publishes both as ghcr.io/luxonis/depthai-device-sdk:os-<Luxonis OS version>-<sysroot> and the same tag with
-# -dev. The CI of the private repository depthai-device-vendor-fw makes the public sysroot and builds and pushes the
+# -dev. The private CI of the vendor module makes the public sysroot and builds and pushes the
 # images with sdk-images.sh (in this folder) when the sysroot changes. depthai-core pins the image in
 # cmake/Depthai/DepthaiDeviceRVC4Config.cmake (DEPTHAI_DEVICE_RVC4_SDK_IMAGE). The build scripts take the image that
 # the target needs.
@@ -80,7 +80,7 @@ RUN apt-get update \
 
 FROM cross AS release
 
-# The public sysroot of Luxonis OS (made in the CI of depthai-device-vendor-fw). The build context 'sysroot'
+# The public sysroot of Luxonis OS (made in the private CI of the vendor module). The build context 'sysroot'
 # (docker build --build-context sysroot=<folder>) has it as rvc4-public-sysroot.tar.xz; RVC4_SYSROOT_SHA256 is the
 # sha256 of that file. Without that build context, docker looks for an image named 'sysroot' and the build fails.
 ARG RVC4_SYSROOT_SHA256

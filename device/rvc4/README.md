@@ -60,9 +60,9 @@ CMake selects the toolchain with `DEPTHAI_DEVICE_RVC4_TOOLCHAIN`: `auto` (defaul
 SDK environment is sourced (the Luxonis OS SDK image), else `gnu` (`toolchains/rvc4-gnu.cmake`). Both use the same
 compile and link flags.
 
-The firmware links the vendor module `depthai-device-rvc4-vendor` (licensee-only Qualcomm and ST code of the private
-repository `depthai-device-vendor-fw`, see [What is not in this repository](#what-is-not-in-this-repository)) as a prebuilt
-archive, `depthai-device-rvc4-vendor-<version>[-asan-ubsan|-tsan].tar.xz`:
+The firmware links the vendor module `depthai-device-rvc4-vendor` (licensee-only Qualcomm and ST code that is not in
+this repository, see [What is not in this repository](#what-is-not-in-this-repository)) as a prebuilt archive,
+`depthai-device-rvc4-vendor-<version>[-asan-ubsan|-tsan].tar.xz`:
 
 * By default the build downloads the archive of `DEPTHAI_DEVICE_RVC4_VENDOR_VERSION` in
   `cmake/Depthai/DepthaiDeviceRVC4Config.cmake` of depthai-core (`cmake/DepthaiDeviceRvc4VendorDownloader.cmake`) from
@@ -70,9 +70,9 @@ archive, `depthai-device-rvc4-vendor-<version>[-asan-ubsan|-tsan].tar.xz`:
 * `DEPTHAI_DEVICE_RVC4_VENDOR=<path of an archive>` takes a local archive in place of the download, as
   `DEPTHAI_DEVICE_RVC4_FWP` takes a local firmware package for depthai-core. The scripts mount it into the container.
 
-The CI of `depthai-device-vendor-fw` builds the module from its sources and publishes the archive: with `DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR` (Luxonis
-licensees) the scripts mount the sources at `/depthai-device-rvc4-vendor` and pass them to CMake as
-`DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR`.
+The private CI of the vendor module builds it from its sources and publishes the archive. With
+`DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR` (Luxonis licensees) the scripts mount the sources at
+`/depthai-device-rvc4-vendor` and pass them to CMake as `DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR`.
 
 A prebuilt archive was compiled against the public headers of the depthai-core commit of its build. CMake compares every header and
 interface define that it used with this tree, and stops with the list of differences when one differs: a changed
@@ -172,7 +172,7 @@ the build:
 `install-hexagon-sdk.sh` in the images puts the Qualcomm Hexagon SDK into an image of your own, to build the DSP
 offload from source. `HEXAGON_SDK_DIR` (see above) does the same without a new image.
 
-The public sysroot is made in the CI of `depthai-device-vendor-fw`, from the Luxonis OS SDK image. When the sysroot
+The public sysroot is made in the private CI of the vendor module, from the Luxonis OS SDK image. When the sysroot
 changes, that CI builds both images with `docker/sdk-images.sh`, checks them and pushes them:
 
 ```bash
@@ -251,15 +251,17 @@ to attach to a stuck production firmware and how to parse core dumps.
 
 ## What is not in this repository
 
-The private module `depthai-device-rvc4-vendor` contains the code that depends on licensee-only Qualcomm and ST
+The vendor module `depthai-device-rvc4-vendor` contains the code that depends on licensee-only Qualcomm and ST
 material and cannot be published:
 
-* EVA (Qualcomm Engine for Visual Analytics) integration
-* SEE sensor framework integration (IMU and other sensors)
-* CHI-CDK camera HAL pieces
+* the units of the hardware accelerator (downscale, image pyramid, stereo, warp, feature tracker stages)
+* the direct channel of the sensor hub (IMU and other sensors)
+* the hardware offline JPEG encoder
+* the names of the vendor tags of the camera HAL
 * ST ToF support: the VD55H1 IPP library and the depthmapwrapper
 
-The public code uses these parts through Luxonis-owned interface headers (for example
-`src/utilities/EvaDataMemory.hpp`, `src/pipeline/node/Warp/rvc4/WarpDispatcherRvc4.hpp`,
-`src/pipeline/node/IMU/rvc4/SensorDirectChannel.hpp`). At this time the firmware cannot be built without the
-sources of the module.
+The public code uses the vendor module only through the C interface in `src/vendor/dai_device_*.h` (the rules are in
+`src/vendor/dai_device_common.h`). The interface has only C types, and a change of it needs a new vendor module. The
+build links the module as a prebuilt archive, see [Building](#building). The DSP offload (`src/hexagon/`,
+`src/vendor/dai_device_dsp.h`) is public code. The prebuilt archive also has a build of it, for builds without the
+Hexagon SDK.

@@ -37,7 +37,7 @@ CUSTOM_LICENSES = {
     ),
 }
 
-# The licensee-only Qualcomm/ST code lives in the private module depthai-device-rvc4-vendor of the repository depthai-device-vendor-fw
+# The licensee-only Qualcomm/ST code lives in the private module depthai-device-rvc4-vendor (the vendor module)
 # (CMake: DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR, or its prebuilt vendor archive), outside this repository. The collector reports where it found that checkout
 # in payload["profile"]["private_module"]; when it is absent, the entries that need it are skipped.
 PRIVATE_MODULE_NAME = "depthai-device-rvc4-vendor"

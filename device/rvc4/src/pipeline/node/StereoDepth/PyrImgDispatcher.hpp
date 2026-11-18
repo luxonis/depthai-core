@@ -10,7 +10,7 @@
 #include "vendor/dai_device_accel.h"
 
 namespace dai {
-class EvaDataMemory;
+class AcceleratorMemory;
 }  // namespace dai
 
 struct PyrImgInit {
@@ -28,7 +28,7 @@ struct PyrImgConfig {
     dai::gate::ScaledownInterpolation eDsInterpolation = dai::gate::ScaledownInterpolation::BILINEAR;
 };
 
-/// The hardware image pyramid (EVA) of the vendor module: dai_device_pyrimg_* of vendor/dai_device_accel.h
+/// The hardware image pyramid (accelerator) of the vendor module: dai_device_pyrimg_* of vendor/dai_device_accel.h
 class PyrImgDispatcher {
    public:
     PyrImgDispatcher();
@@ -50,8 +50,8 @@ class PyrImgDispatcher {
 
    private:
     // The accelerator buffers of the last RunAsync: the hardware uses them until Wait
-    std::shared_ptr<dai::EvaDataMemory> inMem;
-    std::vector<std::shared_ptr<dai::EvaDataMemory>> outMems;
+    std::shared_ptr<dai::AcceleratorMemory> inMem;
+    std::vector<std::shared_ptr<dai::AcceleratorMemory>> outMems;
     // Declared last: destroyed (and closed) before the buffers are released
     std::unique_ptr<dai_device_pyrimg, void (*)(dai_device_pyrimg*)> handle;
 };

@@ -18,12 +18,12 @@
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/utility/matrixOps.hpp"
-#include "vendor/DeviceError.hpp"
-#include "vendor/dai_device_dsp.h"
 #include "hexagon/ImageAlignDsp/shared/ImageAlignDspConfig.h"
 #include "pipeline/NodeTiming.hpp"
 #include "pipeline/utilities/Alignment/RectifiedBounds.hpp"
 #include "utilities/ImageRemap.hpp"
+#include "vendor/DeviceError.hpp"
+#include "vendor/dai_device_dsp.h"
 
 namespace dai {
 namespace gate {
@@ -311,7 +311,7 @@ void ImageAlign::initialize(const std::shared_ptr<ImgFrame>& inputImg,
             warpInited = false;
         }
         allocated = false;
-        logger->debug("ImageAlign dimensions are unsupported by EVA DSX; using CPU remapping.");
+        logger->debug("ImageAlign dimensions are unsupported by the hardware accelerator; using CPU remapping.");
     }
 
     if(warpInited && hwSupportedFrameType) {
@@ -320,7 +320,7 @@ void ImageAlign::initialize(const std::shared_ptr<ImgFrame>& inputImg,
     }
 
     if(!warpInited && hwSupportedFrameType) {
-        allocated = false;  // Rebuild pools with EVA's buffer requirements when switching back from CPU.
+        allocated = false;  // Rebuild pools with the accelerator's buffer requirements when switching back from CPU.
         warpInited = true;
         dai::WarpProperties warp1Config;
         warp1Config.outputWidth = map_x_1.cols;
@@ -367,11 +367,11 @@ void ImageAlign::buildStage1() {
     // Without this it fails in some cases with:
     // Remote_session_control failed
     // as it has some race conditions with some unknown stuff.
-    // Main suspects are EVA and fastCV. fastCV and EVA already had a race condition,
-    // where fastCV had to be configured before EVA or EVA init would fail.
+    // Main suspects are the hardware accelerator and fastCV. fastCV and the accelerator already had a race condition,
+    // where fastCV had to be configured before the accelerator or the accelerator init would fail.
     //
     // THEORY:
-    // As EVA init also uses CDSP this is probably the same s**t.
+    // As the accelerator init also uses CDSP this is probably the same s**t.
     // fastCV maybe reconfigures / overrides some global CDSP state
     // and that doesn't play nice with other CDSP stuff.
     dai::device::openDspSession(dai_device_dsp_open_align, "dai_device_dsp_open_align");
@@ -405,7 +405,7 @@ void ImageAlign::run() {
 
     dai::device::openDspSession(dai_device_dsp_open_align, "dai_device_dsp_open_align");
 
-    std::shared_ptr<EvaDataMemory> inConfigData = EvaDataMemory::create(sizeof(ImageAlignDspConfig));
+    std::shared_ptr<AcceleratorMemory> inConfigData = AcceleratorMemory::create(sizeof(ImageAlignDspConfig));
 
     bool warpInited = false;
     bool hwSupportedFrameType = false;
@@ -563,8 +563,8 @@ void ImageAlign::run() {
             shiftedOutput->setType(inputImg->getType());
             shiftedOutput->fb.stride = shiftedOutput->fb.width * shiftedOutput->getBytesPerPixel();
 
-            std::shared_ptr<EvaDataMemory> inDepthImgRectified = EvaDataMemory::convert(depthImgRectified->data);
-            std::shared_ptr<EvaDataMemory> outShiftedOutput = EvaDataMemory::convert(shiftedOutput->data);
+            std::shared_ptr<AcceleratorMemory> inDepthImgRectified = AcceleratorMemory::convert(depthImgRectified->data);
+            std::shared_ptr<AcceleratorMemory> outShiftedOutput = AcceleratorMemory::convert(shiftedOutput->data);
 
             auto startDSP = high_resolution_clock::now();
 
@@ -579,14 +579,15 @@ void ImageAlign::run() {
             config.bpp = shiftedOutput->getBytesPerPixel();
 
             int nErr = 0;
-            const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDepthImgRectified), dspConfig = dai::device::toDeviceBuf(*inConfigData), dspOut = dai::device::toDeviceBuf(*outShiftedOutput);
+            const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDepthImgRectified), dspConfig = dai::device::toDeviceBuf(*inConfigData),
+                                 dspOut = dai::device::toDeviceBuf(*outShiftedOutput);
             nErr = dai_device_dsp_shift_depth(&dspIn0, &dspConfig, &dspOut);
 
             if(nErr != 0) {
                 logger->error("alignDepthImg failed with code {}", nErr);
             }
 
-            shiftedOutput->data = EvaDataMemory::convert(outShiftedOutput);
+            shiftedOutput->data = AcceleratorMemory::convert(outShiftedOutput);
 
             auto stopDSP = high_resolution_clock::now();
 

@@ -126,7 +126,7 @@ class CameraSensor : public camera3_callback_ops_t {
     std::optional<std::pair<int32_t, int32_t>> activeArraySize;
     mutable bool warnedRegionClamped{false};
     std::optional<std::pair<int32_t, int32_t>> readActiveArraySize() const;
-    std::array<int32_t, 5> toCamxRegion(const dai::CameraControl::RegionParams& region, const char* name) const;
+    std::array<int32_t, 5> toHalRegion(const dai::CameraControl::RegionParams& region, const char* name) const;
     int stride_align = 64;
     int scanline_align = 64;
     bool isEvenFocusApply{false};
@@ -134,7 +134,7 @@ class CameraSensor : public camera3_callback_ops_t {
     std::mutex metaCacheMutex;
     std::deque<MetaCacheItem> metaCache;
     std::map<std::string, uint64_t> metaCacheLast;
-    // Frames per CamX batch in a high-frame-rate session, 1 otherwise. Only the batch's last frame carries the settings.
+    // Frames per camera HAL batch in a high-frame-rate session, 1 otherwise. Only the batch's last frame carries the settings.
     uint32_t hfrBatchSize{1};
     uint32_t readHfrBatchSize(uint32_t width, uint32_t height) const;
     std::vector<std::unique_ptr<CallbackArgs>> callbackArgs;

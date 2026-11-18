@@ -13,23 +13,24 @@ namespace {
 
 // Pixel-rate budgets. A shared offline pool serves its members sequentially,
 // so its usable rate is the engine's peak (785 MHz, ~1 pix/clk) derated for
-// the serving overhead between frames. BPS strips wide frames internally but
-// tops out lower once striping overlap is counted.
+// the serving overhead between frames. The Bayer processing stage strips wide
+// frames internally but tops out lower once striping overlap is counted.
 constexpr double kPoolBudgetPixPerSec = 550e6;
 constexpr double kBpsBudgetPixPerSec = 650e6;
-// Widest frame a single IFE processes inline; above this a sensor needs a
-// dual-IFE pair or BPS.
+// Widest frame a single image front end processes inline; above this a sensor
+// needs a pair of front ends or the Bayer processing stage.
 constexpr uint32_t kMaxSingleIfeWidth = 5760;
 
 constexpr int kNumFullIfe = 3;
-// Only IFE0/IFE1 can host shared pools: the offline fetch is SFE BUS_RD ->
-// same-index CSID -> IFE, and there is no SFE2.
+// Only front ends 0 and 1 can host shared pools: the offline fetch is SFE
+// BUS_RD -> same-index CSID -> image front end, and there is no SFE2.
 constexpr int kNumPoolIfe = 2;
 
-// Ingress slots for pool/BPS members, in assignment preference order. The
-// lites are otherwise idle; SFE RDI writes coexist with the SFE's BUS_RD
-// fetch duty, but SFE_n shares CSID_n's receiver with a dedicated pixel path
-// on IFE_n, so a dedicated IFE_n blocks sfe_n ingress.
+// Ingress slots for members of a pool or of the Bayer processing stage, in
+// assignment preference order. The lites are otherwise idle; SFE RDI writes
+// coexist with the SFE's BUS_RD fetch duty, but SFE_n shares CSID_n's receiver
+// with a dedicated pixel path on front end n, so a dedicated front end n blocks
+// sfe_n ingress.
 const std::array<const char*, 4> kIngressNames = {"ife-lite0", "ife-lite1", "sfe0", "sfe1"};
 constexpr int kIngressSfe0 = 2;
 constexpr int kIngressSfe1 = 3;
@@ -70,7 +71,7 @@ double sensorLoad(const IspSensorRequest& req) {
 
 struct ParsedShared {
     int ingress{-1};       // index into kIngressNames, -1 = unknown token
-    std::vector<int> ifes;  // processor IFE indices
+    std::vector<int> ifes;  // processor image front end indices
     bool bps{false};
     bool valid{false};
 };
@@ -172,10 +173,10 @@ IspRouteDecision manualDecision(const IspSensorRequest& req) {
 }
 
 // Result of trying to pack a set of automatic sensors into the open pools
-// (and, only when pools cannot take them, BPS).
+// (and, only when pools cannot take them, the Bayer processing stage).
 struct Packing {
     bool ok{false};
-    // socket -> (pool ife index, ingress slot); bps entries use pool -1
+    // socket -> (pool front end index, ingress slot); Bayer processing stage entries use pool -1
     std::map<int, std::pair<int, int>> placement;
 };
 
@@ -243,7 +244,7 @@ Packing tryPack(const FleetState& base, const std::vector<const IspSensorRequest
             packing.placement = std::move(placement);
             return packing;
         }
-        // Pools cannot take the set: spill the lightest sensor to BPS and retry.
+        // Pools cannot take the set: spill the lightest sensor to the Bayer processing stage and retry.
         if(!allowBps || toPool.empty()) {
             return packing;
         }
@@ -266,14 +267,14 @@ std::optional<int32_t> encodeFullIfeRoute(const std::string& value) {
     for(const auto& token : splitTokens(value)) {
         const std::string normalized = normalizeToken(token);
         if(normalized.size() != 1 || normalized[0] < '0' || normalized[0] > '2') {
-            spdlog::error("Invalid beta-full-ife entry '{}', expected IFE indices 0..2", token);
+            spdlog::error("Invalid beta-full-ife entry '{}', expected image front end indices 0..2", token);
             return std::nullopt;
         }
         route |= 1U << static_cast<uint32_t>(normalized[0] - '0');
         anyIfe = true;
     }
     if(!anyIfe) {
-        spdlog::error("beta-full-ife control has no IFE indices");
+        spdlog::error("beta-full-ife control has no image front end indices");
         return std::nullopt;
     }
     return static_cast<int32_t>(route);
@@ -368,9 +369,9 @@ std::map<int, IspRouteDecision> IspRouteAllocator::allocate(std::vector<IspSenso
         return a->socket < b->socket;
     });
 
-    // With no manual routes, no wide sensors, and one free full IFE per
-    // camera, keep the legacy realtime path: the camera stack picks the
-    // physical IFE itself and nothing needs coordinating.
+    // With no manual routes, no wide sensors, and one free full image front end
+    // per camera, keep the legacy realtime path: the camera stack picks the
+    // physical front end itself and nothing needs coordinating.
     if(!anyManual && !anyWide && static_cast<int>(autos.size()) <= kNumFullIfe) {
         for(const auto* req : autos) {
             IspRouteDecision decision;
@@ -393,9 +394,9 @@ std::map<int, IspRouteDecision> IspRouteAllocator::allocate(std::vector<IspSenso
         return decisions;
     };
 
-    // Wide sensors first: they have the largest regret. A free dual-IFE pair
-    // beats BPS (no RAW round-trip); the pairing prefers to include IFE2 so a
-    // pool-capable IFE survives.
+    // Wide sensors first: they have the largest regret. A free pair of front
+    // ends beats the Bayer processing stage (no RAW round-trip); the pairing
+    // prefers to include front end 2 so a pool-capable front end survives.
     std::vector<IspSensorRequest*> normals;
     for(auto* req : autos) {
         if(req->width <= kMaxSingleIfeWidth) {
@@ -428,7 +429,7 @@ std::map<int, IspRouteDecision> IspRouteAllocator::allocate(std::vector<IspSenso
                 }
             }
             if(slot < 0 || state.bpsLoad + sensorLoad(*req) > kBpsBudgetPixPerSec) {
-                return fail("no dual-IFE pair or BPS capacity for wide sensor");
+                return fail("no free pair of image front ends and no Bayer processing stage capacity for wide sensor");
             }
             state.ingressUsed[slot] = true;
             state.bpsLoad += sensorLoad(*req);
@@ -440,8 +441,8 @@ std::map<int, IspRouteDecision> IspRouteAllocator::allocate(std::vector<IspSenso
 
     // Dedication is a luxury, granted only while everyone left still fits the
     // pools: try the largest number of dedicated sensors first and back off.
-    // IFE2 is handed out first (it can never host a pool), IFE0 last (its
-    // dedication also blocks sfe0 ingress).
+    // Front end 2 is handed out first (it can never host a pool), front end 0
+    // last (its dedication also blocks sfe0 ingress).
     std::vector<int> dedicationOrder;
     for(const int n : {2, 1, 0}) {
         if(state.ifeFree(n)) {
@@ -449,7 +450,7 @@ std::map<int, IspRouteDecision> IspRouteAllocator::allocate(std::vector<IspSenso
         }
     }
 
-    // First pass keeps everyone off BPS; only if no dedication level packs
+    // First pass keeps everyone off the Bayer processing stage; only if no dedication level packs
     // the pools does the second pass allow spilling the lightest sensors.
     const int maxDedicated = std::min(static_cast<int>(dedicationOrder.size()), static_cast<int>(normals.size()));
     for(const bool allowBps : {false, true}) {
@@ -486,7 +487,7 @@ std::map<int, IspRouteDecision> IspRouteAllocator::allocate(std::vector<IspSenso
     }
     }
 
-    return fail("fleet exceeds ISP capacity (pools and BPS full)");
+    return fail("fleet exceeds ISP capacity (pools and Bayer processing stage full)");
 }
 
 IspRouteAllocator& IspRouteAllocator::getInstance() {

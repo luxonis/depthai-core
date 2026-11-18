@@ -1,5 +1,4 @@
-# Prebuilt private module (depthai-device-rvc4-vendor, the vendor module of the repository depthai-device-vendor-fw) and prebuilt
-# Hexagon DSP offload.
+# Prebuilt private module (depthai-device-rvc4-vendor, the vendor module) and prebuilt Hexagon DSP offload.
 #
 # A build with the sources of the private module (the Luxonis CI) exports them as one archive:
 #   lib/libdepthai-device-rvc4-vendor.a   the base archive (the ToF wrapper is a separate archive and is not exported)

@@ -12,7 +12,7 @@
 
 namespace dai {
 
-class EvaDataMemory;
+class AcceleratorMemory;
 
 namespace device {
 
@@ -66,10 +66,10 @@ uint32_t toDeviceFormat(ImgFrame::Type type);
 uint32_t toDeviceInterpolation(Interpolation interpolation);
 
 /// The image of a frame in `memory` (the accelerator buffer of the frame data)
-dai_device_image toDeviceImage(const ImgFrame& frame, const EvaDataMemory& memory);
+dai_device_image toDeviceImage(const ImgFrame& frame, const AcceleratorMemory& memory);
 
 /// The buffer view for the DSP offload: data() and getMaxSize() of the buffer, as before the C interface
-dai_device_buf toDeviceBuf(const EvaDataMemory& memory);
+dai_device_buf toDeviceBuf(const AcceleratorMemory& memory);
 
 }  // namespace device
 }  // namespace dai

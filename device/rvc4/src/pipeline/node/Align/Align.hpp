@@ -15,7 +15,7 @@
 #include "depthai/pipeline/node/Align.hpp"
 #include "pipeline/Pool.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
-#include "utilities/EvaDataMemory.hpp"
+#include "utilities/AcceleratorMemory.hpp"
 
 namespace dai {
 namespace gate {
@@ -81,7 +81,7 @@ class Align : public ::dai::node::Align {
 
     uint16_t staticDepthPlane = 0;
     bool dspOpened = false;  // the ImageAlign session of the DSP offload is open
-    std::shared_ptr<EvaDataMemory> dspConfigData;
+    std::shared_ptr<AcceleratorMemory> dspConfigData;
 };
 
 }  // namespace gate

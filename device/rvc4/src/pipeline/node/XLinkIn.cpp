@@ -19,7 +19,7 @@
 namespace dai {
 namespace gate {
 
-std::shared_ptr<ADatatype> convertToEva(std::shared_ptr<ADatatype> msg) {
+std::shared_ptr<ADatatype> convertToAccelerator(std::shared_ptr<ADatatype> msg) {
     auto imgFrame = std::dynamic_pointer_cast<dai::ImgFrame>(msg);
     if(imgFrame) {
         *imgFrame = FrameAlignment::convertImgFrame(*imgFrame);
@@ -64,7 +64,7 @@ void XLinkIn::run() {
         logger->trace("Received message at: {}", steady_clock::now().time_since_epoch());
 
         t1Parse = steady_clock::now();
-        const auto msg = convertToEva(StreamMessageParser::parseMessage(std::move(packet)));
+        const auto msg = convertToAccelerator(StreamMessageParser::parseMessage(std::move(packet)));
         t2Parse = steady_clock::now();
 
         std::shared_ptr<dai::MessageGroup> msgGrp = nullptr;
@@ -78,7 +78,7 @@ void XLinkIn::run() {
                 }
                 logger->trace("Received message at: {}", steady_clock::now().time_since_epoch());
                 t1Parse = steady_clock::now();
-                tmpMsg.second = convertToEva(StreamMessageParser::parseMessage(std::move(packet)));
+                tmpMsg.second = convertToAccelerator(StreamMessageParser::parseMessage(std::move(packet)));
                 t2Parse = steady_clock::now();
                 if(logger->level() == spdlog::level::trace) {
                     std::vector<std::uint8_t> metadata;

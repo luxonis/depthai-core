@@ -12,8 +12,8 @@ code completion from clangd, CMake integration and one-click remote debugging of
   `ghcr.io/luxonis/depthai-device-sdk` will replace it once it is published. Set `DEPTHAI_DEVICE_SDK_IMAGE` in your
   environment to use another image.
 * The vendor module: by default CMake downloads its prebuilt archive. `DEPTHAI_DEVICE_RVC4_VENDOR=<archive>` in your
-  environment takes a local archive below your home folder. `DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR=<path>` takes a checkout of its sources, the
-  private repository `depthai-device-vendor-fw` (Luxonis licensees); it is mounted at `/depthai-device-rvc4-vendor`.
+  environment takes a local archive below your home folder. `DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR=<path>` takes a checkout of its private
+  sources (Luxonis licensees); it is mounted at `/depthai-device-rvc4-vendor`.
 
 `.devcontainer/createEnv.sh` runs when the container is created and writes these values into
 `.devcontainer/.env` (gitignored).

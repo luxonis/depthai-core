@@ -10,11 +10,12 @@
 namespace dai {
 
 // Explicit ISP routes travel to the camera stack as an INT32 (through the
-// EnableOfflineIFE session tag): a magic tag plus dedicated-full-IFE bits, or
-// an ingress selector plus shared-processor bits. These helpers are the single
-// encoder for the route strings used in decisions and misc controls
-// ("beta-full-ife" = IFE indices like "2" or "0,1"; "beta-shared-isp" =
-// ingress+processors like "sfe0+ife0" or "ife-lite1+bps").
+// offline front end session tag, DAI_CAMERA_TAG_OFFLINE_FRONT_END): a magic
+// tag plus bits of dedicated full image front ends, or an ingress selector plus
+// shared-processor bits. These helpers are the single encoder for the route
+// strings used in decisions and misc controls ("beta-full-ife" = image front
+// end indices like "2" or "0,1"; "beta-shared-isp" = ingress+processors like
+// "sfe0+ife0" or "ife-lite1+bps").
 std::optional<int32_t> encodeFullIfeRoute(const std::string& value);
 std::optional<int32_t> encodeSharedIspRoute(const std::string& value);
 bool ispRouteUsesBps(int32_t route);
@@ -34,7 +35,7 @@ struct IspSensorRequest {
 
 // The allocator's verdict for one camera. Exactly one of fullIfe / sharedIsp is
 // non-empty for an explicit route; both empty selects the legacy realtime path
-// where the camera stack picks the physical IFE itself.
+// where the camera stack picks the physical image front end itself.
 struct IspRouteDecision {
     std::string fullIfe;
     std::string sharedIsp;
@@ -45,9 +46,9 @@ struct IspRouteDecision {
     std::string error;
 };
 
-// Fleet-wide automatic selection of ISP routes (dedicated full IFEs, shared
-// offline-IFE pools with their ingress, BPS spill) with manual routes pinned
-// first. Cameras register at construction (all camera nodes are constructed
+// Fleet-wide automatic selection of ISP routes (dedicated full image front
+// ends, shared offline front end pools with their ingress, spill to the Bayer
+// processing stage) with manual routes pinned first. Cameras register at construction (all camera nodes are constructed
 // before any of them opens) and resolve at open time, so the first resolve
 // sees the whole fleet.
 class IspRouteAllocator {

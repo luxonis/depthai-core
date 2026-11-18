@@ -11,7 +11,7 @@
 #include "vendor/dai_device_accel.h"
 
 namespace dai {
-class EvaDataMemory;
+class AcceleratorMemory;
 }  // namespace dai
 
 class WarpDispatcher {
@@ -38,7 +38,7 @@ class WarpDispatcher {
 
    private:
     /// The accelerator buffers of the last RunAsync: they stay valid until Wait
-    std::shared_ptr<dai::EvaDataMemory> runningInput, runningOutput;
+    std::shared_ptr<dai::AcceleratorMemory> runningInput, runningOutput;
 
     /// The warp unit of the vendor module. Declared last, so it is destroyed (and closed) before the buffers.
     std::unique_ptr<dai_device_warp, void (*)(dai_device_warp*)> handle;

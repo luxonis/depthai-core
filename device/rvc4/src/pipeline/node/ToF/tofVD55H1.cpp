@@ -3,10 +3,9 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <opencv2/calib3d.hpp>
 #include <stdexcept>
 #include <string>
-
-#include <opencv2/calib3d.hpp>
 
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 #include "utilities/ErrorMacros.hpp"

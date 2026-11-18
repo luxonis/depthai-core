@@ -19,7 +19,7 @@
 #include "gpu/ImageManipGPUMesh.hpp"
 #include "pipeline/DmaFramePool.hpp"
 #include "pipeline/NodeTiming.hpp"
-#include "utilities/EvaDataMemory.hpp"
+#include "utilities/AcceleratorMemory.hpp"
 #include "utilities/FastCvUtils.hpp"
 #include "utilities/GpuAvailability.hpp"
 
@@ -382,15 +382,15 @@ class WarpQ : public Warp {
     bool gpuEnabled = false;
     std::variant<std::monostate, WarpGPUMat, WarpGPUMesh> warpGpu = std::monostate{};
 
-    // EVA downscaler
+    // Hardware accelerator downscaler
     bool hwScalerEnabled = true;
     bool dsImgInitialized = false;
     ImgFrame::Type dsImgType = ImgFrame::Type::NONE;
     bool firstFrameOver = false;
     DsImgDispatcher dsImg;
-    std::shared_ptr<EvaDataMemory> dsImgAux;
+    std::shared_ptr<AcceleratorMemory> dsImgAux;
     FrameSpecs dsImgAuxSpecs;
-    bool canUseEva();
+    bool canUseAccelerator();
     bool hwDownscale(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst, const ImgFrame::Type type);
     bool fastCvDownscaleu8(const std::shared_ptr<OffsetMemory> src,
                            std::shared_ptr<OffsetMemory> dst,
@@ -465,7 +465,7 @@ class WarpQ : public Warp {
             warpGpu.emplace<WarpGPUMat>();
             std::get<WarpGPUMat>(warpGpu).setLogger(this->logger);
         }
-        logger->info("GPU enabled: {}, EVA enabled: {}", gpuEnabled, hwScalerEnabled);
+        logger->info("GPU enabled: {}, hardware accelerator enabled: {}", gpuEnabled, hwScalerEnabled);
     }
     void build(const FrameSpecs srcFrameSpecs,
                const FrameSpecs dstFrameSpecs,
@@ -487,7 +487,7 @@ class WarpQ : public Warp {
 };
 
 class ColorChangeQ : public ColorChange {
-    std::shared_ptr<EvaDataMemory> ccAuxFrame;
+    std::shared_ptr<AcceleratorMemory> ccAuxFrame;
 
    public:
     void build(const FrameSpecs srcFrameSpecs, const FrameSpecs dstFrameSpecs, const ImgFrame::Type typeFrom, const ImgFrame::Type typeTo);
@@ -594,13 +594,13 @@ void ImageManip::run() {
             std::shared_ptr<OffsetMemory> srcMem = src;
             {
                 auto t1 = std::chrono::steady_clock::now();
-                // Converts or just returns the same pointer if already EvaData
-                auto accelMem = EvaDataMemory::convert(ConvertedOffsetMemory::cast<Memory>(src));
+                // Converts or just returns the same pointer if already AcceleratorMemory
+                auto accelMem = AcceleratorMemory::convert(ConvertedOffsetMemory::cast<Memory>(src));
                 if(accelMem->getData().data() != src->getData().data()) {
                     srcMem = accelMem;
                 }
                 auto t2 = std::chrono::steady_clock::now();
-                /*logger->info("Input image to EvaData convert time: {}us", duration_cast<microseconds>(t2 - t1).count());*/
+                /*logger->info("Input image to AcceleratorMemory convert time: {}us", duration_cast<microseconds>(t2 - t1).count());*/
             }
             auto out = manip.apply(srcMem, std::move(dst));
             logger->trace("ImageManip | benchmark | apply | {}us",
@@ -620,9 +620,9 @@ void ManipResizer::runThreadedResizer(int numFramesPool,
     this->resizerThread = std::make_unique<std::thread>([this, numFramesPool, logger, prepareSend, useCpu]() {
         ImageManipProperties properties;
         properties.initialConfig = cfg;
-        // AUTO uses the GPU for large frames when the device has one, else the CPU. EVA (HW) was not faster for plain resizes.
+        // AUTO uses the GPU for large frames when the device has one, else the CPU. The hardware accelerator was not faster for plain resizes.
         // AUTO also undistorts small frames on the CPU, which is about 3x slower than the GPU mesh, so undistorted
-        // outputs use the GPU when the device has one (EVA cannot undistort).
+        // outputs use the GPU when the device has one (the hardware accelerator cannot undistort).
         if(useCpu) {
             properties.backend = ImageManipProperties::Backend::CPU;
         } else if(cfg.base.undistort && utils::hasGPU()) {
@@ -665,8 +665,8 @@ void ManipResizer::runThreadedResizer(int numFramesPool,
                 std::shared_ptr<OffsetMemory> srcMem = ConvertedOffsetMemory::convert(msg->data);
                 {
                     auto t1 = std::chrono::steady_clock::now();
-                    // Converts or just returns the same pointer if already EvaData
-                    auto accelMem = EvaDataMemory::convert(ConvertedOffsetMemory::cast<Memory>(srcMem));
+                    // Converts or just returns the same pointer if already AcceleratorMemory
+                    auto accelMem = AcceleratorMemory::convert(ConvertedOffsetMemory::cast<Memory>(srcMem));
                     if(accelMem->getData().data() != srcMem->getData().data()) {
                         srcMem = accelMem;
                     }
@@ -781,12 +781,12 @@ void WarpQ::build(const FrameSpecs srcFrameSpecs,
             logger->warn("GPU backend is selected but the GPU is not available. Using the CPU backend instead.");
         }
     }
-    if(optOp == OptOp::SCALE_DOWN && canUseEva() && (this->sourceMinX > 0u || this->sourceMinY > 0u)) {
+    if(optOp == OptOp::SCALE_DOWN && canUseAccelerator() && (this->sourceMinX > 0u || this->sourceMinY > 0u)) {
         uint32_t srcContentWidth = this->sourceMaxX - this->sourceMinX;
         uint32_t srcContentHeight = this->sourceMaxY - this->sourceMinY;
         auto imgSpecs = impl::getDstFrameSpecs(srcContentWidth, srcContentHeight, this->type);
         dsImgAuxSpecs = imgSpecs;
-        dsImgAux = EvaDataMemory::create(impl::getAlignedOutputFrameSize(this->type, imgSpecs.width, imgSpecs.height));
+        dsImgAux = AcceleratorMemory::create(impl::getAlignedOutputFrameSize(this->type, imgSpecs.width, imgSpecs.height));
     }
 }
 
@@ -1052,13 +1052,13 @@ bool WarpQ::hwDownscale(const std::shared_ptr<OffsetMemory>& src, std::shared_pt
                                   ? this->dstSpecs.height
                                   : roundf(scaleHeight);
 
-    if(!pxl_eq(offsetX, 0.f) || !pxl_eq(offsetY, 0.f)) return false;  // Apparently eva does not do offsets very well
+    if(!pxl_eq(offsetX, 0.f) || !pxl_eq(offsetY, 0.f)) return false;  // Apparently the accelerator does not do offsets very well
     // if(!((this->sourceMinY * this->srcSpecs.p1Stride + this->sourceMinX) % 4096 == 0
     //      && ((size_t)offsetY * this->dstSpecs.p1Stride + (size_t)offsetX) % 4096 == 0))
     //     return false;
 
     if((double)dstContentHeight / (double)appliedSrcHeight < 1. / 8 || (double)dstContentWidth / (double)appliedSrcWidth < 1. / 8)
-        return false;  // Eva can't handle a ratio lower than 1/8
+        return false;  // The accelerator can't handle a ratio lower than 1/8
 
     switch(type) {
         case ImgFrame::Type::NV12: {
@@ -1221,10 +1221,10 @@ bool WarpQ::hwDownscale(const std::shared_ptr<OffsetMemory>& src, std::shared_pt
     return true;
 }
 
-bool WarpQ::canUseEva() {
+bool WarpQ::canUseAccelerator() {
     bool supportedType = this->type == ImgFrame::Type::YUV420p || this->type == ImgFrame::Type::NV12 || this->type == ImgFrame::Type::RAW8
                          || this->type == ImgFrame::Type::GRAY8;
-    // Can use if not yet initialized or if initialized with the same type (cannot change EVA type after initialization)
+    // Can use if not yet initialized or if initialized with the same type (cannot change the accelerator type after initialization)
     return hwScalerEnabled && supportedType && (!dsImgInitialized && !firstFrameOver || dsImgInitialized && dsImgType == this->type);
 }
 
@@ -1264,15 +1264,15 @@ void WarpQ::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                                   planeBackground)) {
             gpuWarpPending = true;
         } else {
-            // Internals of ConvertedOffsetMemory do not store offset information so it might need to be re-set on the eva buffer
+            // Internals of ConvertedOffsetMemory do not store offset information so it might need to be re-set on the accelerator buffer
             auto srcOffset = srcPlane->getOffset();
-            auto accelSrcPlane = EvaDataMemory::convert(ConvertedOffsetMemory::cast<Memory>(srcPlane));
+            auto accelSrcPlane = AcceleratorMemory::convert(ConvertedOffsetMemory::cast<Memory>(srcPlane));
             if(accelSrcPlane == nullptr) {
                 throw std::runtime_error("Warp: Invalid source buffer");
             }
             if(accelSrcPlane->getOffset() == 0) accelSrcPlane->setOffset(srcOffset);
             auto dstOffset = dstPlane->getOffset();
-            auto accelDstPlane = EvaDataMemory::convertZeroCopy(ConvertedOffsetMemory::cast<Memory>(dstPlane));
+            auto accelDstPlane = AcceleratorMemory::convertZeroCopy(ConvertedOffsetMemory::cast<Memory>(dstPlane));
             if(accelDstPlane == nullptr) {
                 throw std::runtime_error("Warp: Invalid destination buffer");
             }
@@ -1405,7 +1405,7 @@ void WarpQ::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                 }
                 if(!this->undistortOneShot && !this->isIdentityWarp()) {
                     bool doPlanewise = true;
-                    if(optOp == OptOp::SCALE_DOWN && canUseEva() && !this->enableUndistort) {
+                    if(optOp == OptOp::SCALE_DOWN && canUseAccelerator() && !this->enableUndistort) {
                         if(!dsImgInitialized) {
                             dsImgInitialized = true;
                             dsImgType = this->type;
@@ -1479,7 +1479,7 @@ void WarpQ::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                 }
                 if(!this->undistortOneShot && !this->isIdentityWarp()) {
                     bool doPlanewise = true;
-                    if(optOp == OptOp::SCALE_DOWN && canUseEva() && !this->enableUndistort) {
+                    if(optOp == OptOp::SCALE_DOWN && canUseAccelerator() && !this->enableUndistort) {
                         if(!dsImgInitialized) {
                             dsImgInitialized = true;
                             dsImgType = this->type;
@@ -1536,7 +1536,7 @@ void WarpQ::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                 }
                 if(!this->undistortOneShot && !this->isIdentityWarp()) {
                     bool doPlanewise = true;
-                    if(optOp == OptOp::SCALE_DOWN && canUseEva() && !this->enableUndistort) {
+                    if(optOp == OptOp::SCALE_DOWN && canUseAccelerator() && !this->enableUndistort) {
                         if(!dsImgInitialized) {
                             dsImgInitialized = true;
                             dsImgType = this->type;
@@ -1654,7 +1654,7 @@ void WarpQ::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
         try {
             dsImg.firstFrameOver();
         } catch(std::runtime_error& err) {
-            // It's fine if this timeouts (not initializing EVA) - some other node will start the session
+            // It's fine if this timeouts (not initializing the accelerator) - some other node will start the session
             this->logger->error(err.what());
         }
     }
@@ -2011,7 +2011,7 @@ void ColorChangeQ::build(const FrameSpecs srcFrameSpecs, const FrameSpecs dstFra
     srcSpecs = srcFrameSpecs;
     dstSpecs = dstFrameSpecs;
     size_t newAuxFrameSize = ALIGN_UP(srcSpecs.height, DEPTHAI_HEIGHT_ALIGNMENT) * ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
-    if(!ccAuxFrame || ccAuxFrame->getOffsetSize() < newAuxFrameSize) ccAuxFrame = EvaDataMemory::create(newAuxFrameSize);
+    if(!ccAuxFrame || ccAuxFrame->getOffsetSize() < newAuxFrameSize) ccAuxFrame = AcceleratorMemory::create(newAuxFrameSize);
 }
 
 void ColorChangeQ::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) {
@@ -2023,13 +2023,13 @@ void ColorChangeQ::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_p
     auto start = std::chrono::steady_clock::now();
 
     auto srcOffset = src->getOffset();
-    auto accelSrc = EvaDataMemory::convert(ConvertedOffsetMemory::cast<Memory>(src));
+    auto accelSrc = AcceleratorMemory::convert(ConvertedOffsetMemory::cast<Memory>(src));
     if(accelSrc == nullptr) {
         throw std::runtime_error("ColorChange: Invalid source pointer");
     }
     if(accelSrc->getOffset() == 0) accelSrc->setOffset(srcOffset);
     auto dstOffset = dst->getOffset();
-    auto accelDst = EvaDataMemory::convertZeroCopy(ConvertedOffsetMemory::cast<Memory>(dst));
+    auto accelDst = AcceleratorMemory::convertZeroCopy(ConvertedOffsetMemory::cast<Memory>(dst));
     if(accelDst == nullptr) {
         throw std::runtime_error("ColorChange: Invalid destination pointer");
     }

@@ -15,16 +15,16 @@ namespace dai {
 /**
  * An accelerator buffer of the vendor module (dai_device_mem of vendor/dai_device_common.h): a buffer that the
  * vendor module allocates, or the DMA-BUF of other memory that it registers without a copy. The accelerator units
- * and the DSP offload take their buffers as EvaDataMemory.
+ * and the DSP offload take their buffers as AcceleratorMemory.
  */
-class EvaDataMemory final : public OffsetMemory, public std::enable_shared_from_this<EvaDataMemory> {
+class AcceleratorMemory final : public OffsetMemory, public std::enable_shared_from_this<AcceleratorMemory> {
     struct Private {};
 
    public:
-    EvaDataMemory(Private, dai_device_mem* mem, std::size_t size, std::shared_ptr<const void> keepAlive);
-    ~EvaDataMemory() override;
-    EvaDataMemory(const EvaDataMemory&) = delete;
-    EvaDataMemory& operator=(const EvaDataMemory&) = delete;
+    AcceleratorMemory(Private, dai_device_mem* mem, std::size_t size, std::shared_ptr<const void> keepAlive);
+    ~AcceleratorMemory() override;
+    AcceleratorMemory(const AcceleratorMemory&) = delete;
+    AcceleratorMemory& operator=(const AcceleratorMemory&) = delete;
 
     /// Pointer to the first byte after the current offset.
     std::uint8_t* data();
@@ -42,19 +42,19 @@ class EvaDataMemory final : public OffsetMemory, public std::enable_shared_from_
     }
 
     /// Allocates a new accelerator buffer of `size` bytes.
-    static std::shared_ptr<EvaDataMemory> create(std::size_t size);
+    static std::shared_ptr<AcceleratorMemory> create(std::size_t size);
 
     /**
      * Wraps DMA-BUF backed memory (memory that implements dai::gate::DmaBufMemory with a valid
-     * file descriptor, or an existing EvaDataMemory) without copying. Returns nullptr for other memory.
+     * file descriptor, or an existing AcceleratorMemory) without copying. Returns nullptr for other memory.
      */
-    static std::shared_ptr<EvaDataMemory> convertZeroCopy(std::shared_ptr<Memory> data);
+    static std::shared_ptr<AcceleratorMemory> convertZeroCopy(std::shared_ptr<Memory> data);
 
     /**
      * convertZeroCopy, or a copy into a new buffer when zero-copy is not possible.
      * `size` is the size of the new buffer in the copy case (0: the source size).
      */
-    static std::shared_ptr<EvaDataMemory> convert(std::shared_ptr<Memory> data, std::size_t size = 0);
+    static std::shared_ptr<AcceleratorMemory> convert(std::shared_ptr<Memory> data, std::size_t size = 0);
 
     // Memory and OffsetMemory
     span<std::uint8_t> getData() override;

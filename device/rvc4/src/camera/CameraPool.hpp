@@ -16,7 +16,7 @@
 
 class CameraPool {
    public:
-    // Attention. Keep this class in sync with the qualcomm HAL implementation (CamX/chi-cdk)
+    // Attention. Keep this class in sync with the camera HAL of the device OS
     struct private_handle_t : public native_handle {
         enum { PRIV_FLAGS_FRAMEBUFFER = 0x00000001, PRIV_FLAGS_VIDEO_ENCODER = 0x00010000 };
 

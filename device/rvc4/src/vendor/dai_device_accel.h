@@ -1,10 +1,11 @@
 /*
- * C interface of the hardware accelerator (EVA) units of the vendor module: downscale, image pyramid, stereo,
+ * C interface of the hardware accelerator units of the vendor module: downscale, image pyramid, stereo,
  * warp and the feature tracker stages. See dai_device_common.h for the rules.
  *
  * Sequence of a unit: _create, _open, _init, _config, then for each frame _run_async and _wait (or _run), then
  * _close and _destroy. _destroy also closes the unit. The images of a _run_async call must stay valid until _wait.
- * The status of the work that _run_async started comes from _wait (> 0: the EVA status of the work).
+ * The status of the work that _run_async started comes from _wait (> 0: the status that the accelerator driver gives
+ * for the work).
  */
 #ifndef DAI_DEVICE_ACCEL_H
 #define DAI_DEVICE_ACCEL_H
@@ -39,8 +40,8 @@ dai_status dai_device_dsimg_open(dai_device_dsimg* h);
 dai_status dai_device_dsimg_init(dai_device_dsimg* h, const dai_device_dsimg_init_params* init);
 dai_status dai_device_dsimg_config(dai_device_dsimg* h, const dai_device_dsimg_config_params* config);
 dai_status dai_device_dsimg_close(dai_device_dsimg* h);
-/* All downscale units share one EVA session: each node registers, and the session starts when the first frame of
- * each registered node is done (first_frame_over waits for the others, at most 25 s). */
+/* All downscale units share one accelerator session: each node registers, and the session starts when the first
+ * frame of each registered node is done (first_frame_over waits for the others, at most 25 s). */
 dai_status dai_device_dsimg_start_session(dai_device_dsimg* h);
 void dai_device_dsimg_register_node(dai_device_dsimg* h);
 dai_status dai_device_dsimg_first_frame_over(dai_device_dsimg* h);
@@ -212,9 +213,9 @@ dai_status dai_device_corner_init(dai_device_corner* h, const dai_device_image* 
 dai_status dai_device_corner_config(dai_device_corner* h);
 dai_status dai_device_corner_run(dai_device_corner* h, const dai_device_image* frame);
 dai_status dai_device_corner_close(dai_device_corner* h);
-void dai_device_corner_set_threshold(dai_device_corner* h, uint32_t threshold);           /* default 2000 */
-void dai_device_corner_set_robustness(dai_device_corner* h, uint8_t robustness);          /* default 10 */
-void dai_device_corner_set_gradient_filter_shift(dai_device_corner* h, uint32_t shift);   /* default 1 */
+void dai_device_corner_set_threshold(dai_device_corner* h, uint32_t threshold);         /* default 2000 */
+void dai_device_corner_set_robustness(dai_device_corner* h, uint8_t robustness);        /* default 10 */
+void dai_device_corner_set_gradient_filter_shift(dai_device_corner* h, uint32_t shift); /* default 1 */
 /* The corners of the last run; valid until the next run */
 dai_status dai_device_corner_points(const dai_device_corner* h, const dai_device_feature_point** points, size_t* count);
 
@@ -245,18 +246,15 @@ void dai_device_descriptor_destroy(dai_device_descriptor* h);
 dai_status dai_device_descriptor_open(dai_device_descriptor* h);
 dai_status dai_device_descriptor_init(dai_device_descriptor* h, const dai_device_image* frame, uint8_t run_async);
 dai_status dai_device_descriptor_config(dai_device_descriptor* h);
-dai_status dai_device_descriptor_run(dai_device_descriptor* h,
-                                     const dai_device_image* frame,
-                                     const dai_device_point16* positions,
-                                     size_t count);
+dai_status dai_device_descriptor_run(dai_device_descriptor* h, const dai_device_image* frame, const dai_device_point16* positions, size_t count);
 dai_status dai_device_descriptor_close(dai_device_descriptor* h);
 void dai_device_descriptor_set_num_points(dai_device_descriptor* h, uint32_t num_points);
 uint8_t dai_device_descriptor_low_pass_filter(const dai_device_descriptor* h);
 /* num_points * DAI_DESCRIPTOR_SIZE bytes of the last run; valid until the next run */
 const uint8_t* dai_device_descriptor_data(const dai_device_descriptor* h);
 
-/* Size of the input buffer that the unit expects (the nTotalSize of the EVA image info of the init frame); valid after
- * init, 0 before */
+/* Size of the input buffer that the unit expects (the total size of the driver image info of the init frame); valid
+ * after init, 0 before */
 uint32_t dai_device_corner_in_min_bytes(const dai_device_corner* h);
 uint32_t dai_device_oflow_in_min_bytes(const dai_device_oflow* h);
 uint32_t dai_device_descriptor_in_min_bytes(const dai_device_descriptor* h);

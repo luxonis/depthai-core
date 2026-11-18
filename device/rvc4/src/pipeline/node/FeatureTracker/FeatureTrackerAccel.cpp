@@ -2,8 +2,8 @@
 
 #include "pipeline/node/FeatureTracker/FeatureTrackerAccel.hpp"
 
+#include "utilities/AcceleratorMemory.hpp"
 #include "utilities/ErrorMacros.hpp"
-#include "utilities/EvaDataMemory.hpp"
 #include "vendor/DeviceError.hpp"
 
 namespace dai {
@@ -32,8 +32,8 @@ dai_device_image templateImage(const ImgFrame& frame) {
 /// Converts the data of the frame to an accelerator buffer (no copy for DMA-BUF memory) and puts it into the frame,
 /// as before the C interface: the frame keeps the buffer alive, and the passthrough output sends it. `size` is the
 /// input size of the unit (dai_device_*_in_min_bytes): the size of a copy.
-std::shared_ptr<EvaDataMemory> toAcceleratorMemory(ImgFrame& frame, uint32_t size) {
-    auto memory = EvaDataMemory::convert(frame.data, size);
+std::shared_ptr<AcceleratorMemory> toAcceleratorMemory(ImgFrame& frame, uint32_t size) {
+    auto memory = AcceleratorMemory::convert(frame.data, size);
     frame.data = memory;
     return memory;
 }
@@ -69,7 +69,7 @@ int CornerDetector::Config() {
 
 void CornerDetector::Run(std::shared_ptr<dai::ImgFrame> inImageData) {
     // No frame: the vendor module throws "ImgData error"
-    std::shared_ptr<EvaDataMemory> memory;
+    std::shared_ptr<AcceleratorMemory> memory;
     dai_device_image image{};
     if(inImageData) {
         memory = toAcceleratorMemory(*inImageData, dai_device_corner_in_min_bytes(handle.get()));
@@ -129,8 +129,7 @@ int OpticalFlow::Init(std::shared_ptr<dai::ImgFrame> inFrame, bool runAsync) {
     dai_device_image image{};
     if(inFrame) image = templateImage(*inFrame);
     // runAsync: the vendor module returns DAI_STATUS_UNSUPPORTED, so this throws
-    return device::returnDriverStatus(
-        dai_device_oflow_init(handle.get(), inFrame ? &image : nullptr, runAsync ? 1 : 0), FLOW_UNIT, "dai_device_oflow_init");
+    return device::returnDriverStatus(dai_device_oflow_init(handle.get(), inFrame ? &image : nullptr, runAsync ? 1 : 0), FLOW_UNIT, "dai_device_oflow_init");
 }
 
 int OpticalFlow::Config() {
@@ -138,8 +137,8 @@ int OpticalFlow::Config() {
 }
 
 void OpticalFlow::Run(std::shared_ptr<dai::ImgFrame> refImageData, std::shared_ptr<dai::ImgFrame> curImageData) {
-    std::shared_ptr<EvaDataMemory> refMemory;
-    std::shared_ptr<EvaDataMemory> curMemory;
+    std::shared_ptr<AcceleratorMemory> refMemory;
+    std::shared_ptr<AcceleratorMemory> curMemory;
     dai_device_image refImage{};
     dai_device_image curImage{};
     if(refImageData && curImageData) {
@@ -218,14 +217,13 @@ void DescriptorCalculator::Run(std::shared_ptr<dai::ImgFrame> inImageData, const
         searchPositions[i].y = positions[i].y;
     }
     // No frame: the vendor module returns DAI_STATUS_INVALID_ARGUMENT (no image)
-    std::shared_ptr<EvaDataMemory> memory;
+    std::shared_ptr<AcceleratorMemory> memory;
     dai_device_image image{};
     if(inImageData) {
         memory = toAcceleratorMemory(*inImageData, dai_device_descriptor_in_min_bytes(handle.get()));
         image = device::toDeviceImage(*inImageData, *memory);
     }
-    DAI_CHECK_DEVICE(DESCRIPTOR_UNIT,
-                     dai_device_descriptor_run(handle.get(), inImageData ? &image : nullptr, searchPositions.data(), searchPositions.size()));
+    DAI_CHECK_DEVICE(DESCRIPTOR_UNIT, dai_device_descriptor_run(handle.get(), inImageData ? &image : nullptr, searchPositions.data(), searchPositions.size()));
 }
 
 int DescriptorCalculator::Close() {

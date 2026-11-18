@@ -10,7 +10,7 @@
 #include "vendor/dai_device_accel.h"
 
 namespace dai {
-class EvaDataMemory;
+class AcceleratorMemory;
 }  // namespace dai
 
 struct StereoInit {
@@ -65,7 +65,7 @@ class StereoDepthDispatcher {
    private:
     /// The accelerator buffers of the last RunAsync: they stay valid until Wait
     struct RunBuffers {
-        std::shared_ptr<dai::EvaDataMemory> left, right, disparity, confidence, slic;
+        std::shared_ptr<dai::AcceleratorMemory> left, right, disparity, confidence, slic;
     };
     RunBuffers running;
 

@@ -1,4 +1,4 @@
-#include "utilities/EvaDataMemory.hpp"
+#include "utilities/AcceleratorMemory.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -14,7 +14,7 @@ namespace {
 constexpr const char* UNIT = "Accelerator memory";
 }
 
-EvaDataMemory::EvaDataMemory(Private, dai_device_mem* mem, std::size_t size, std::shared_ptr<const void> keepAlive)
+AcceleratorMemory::AcceleratorMemory(Private, dai_device_mem* mem, std::size_t size, std::shared_ptr<const void> keepAlive)
     : mem(mem), keepAlive(std::move(keepAlive)), logicalSize(size) {
     dai_device_buf buf{};
     std::size_t offset = 0;
@@ -30,80 +30,80 @@ EvaDataMemory::EvaDataMemory(Private, dai_device_mem* mem, std::size_t size, std
     bufferFd = buf.fd;
 }
 
-EvaDataMemory::~EvaDataMemory() {
+AcceleratorMemory::~AcceleratorMemory() {
     dai_device_mem_release(mem);
 }
 
-std::uint8_t* EvaDataMemory::data() {
+std::uint8_t* AcceleratorMemory::data() {
     return base + currentOffset;
 }
 
-const std::uint8_t* EvaDataMemory::data() const {
+const std::uint8_t* AcceleratorMemory::data() const {
     return base + currentOffset;
 }
 
-std::size_t EvaDataMemory::size() const {
+std::size_t AcceleratorMemory::size() const {
     return logicalSize - currentOffset;
 }
 
-int EvaDataMemory::fd() const {
+int AcceleratorMemory::fd() const {
     return bufferFd;
 }
 
-span<std::uint8_t> EvaDataMemory::getData() {
+span<std::uint8_t> AcceleratorMemory::getData() {
     return {base + currentOffset, logicalSize - currentOffset};
 }
 
-span<const std::uint8_t> EvaDataMemory::getData() const {
+span<const std::uint8_t> AcceleratorMemory::getData() const {
     return {base + currentOffset, logicalSize - currentOffset};
 }
 
-std::size_t EvaDataMemory::getMaxSize() const {
+std::size_t AcceleratorMemory::getMaxSize() const {
     return total;
 }
 
-std::size_t EvaDataMemory::getOffset() const {
+std::size_t AcceleratorMemory::getOffset() const {
     return currentOffset;
 }
 
-void EvaDataMemory::setSize(std::size_t newSize) {
+void AcceleratorMemory::setSize(std::size_t newSize) {
     if(newSize > getMaxSize()) {
         throw std::invalid_argument("Cannot set size larger than max size");
     }
     logicalSize = newSize;
 }
 
-void EvaDataMemory::setOffset(std::size_t offset) {
+void AcceleratorMemory::setOffset(std::size_t offset) {
     DAI_CHECK_DEVICE(UNIT, dai_device_mem_add_offset(mem, offset));
     currentOffset = std::min(currentOffset + offset, total);
 }
 
-span<std::uint8_t> EvaDataMemory::getOffsetData() {
+span<std::uint8_t> AcceleratorMemory::getOffsetData() {
     return getData();
 }
 
-span<const std::uint8_t> EvaDataMemory::getOffsetData() const {
+span<const std::uint8_t> AcceleratorMemory::getOffsetData() const {
     return getData();
 }
 
-std::shared_ptr<OffsetMemory> EvaDataMemory::offset(std::size_t offset) {
+std::shared_ptr<OffsetMemory> AcceleratorMemory::offset(std::size_t offset) {
     dai_device_mem* clone = nullptr;
     DAI_CHECK_DEVICE(UNIT, dai_device_mem_clone(mem, &clone));
     // The view keeps this buffer alive: it uses the same memory
-    auto view = std::make_shared<EvaDataMemory>(Private{}, clone, logicalSize, shared_from_this());
+    auto view = std::make_shared<AcceleratorMemory>(Private{}, clone, logicalSize, shared_from_this());
     view->setOffset(offset);
     return view;
 }
 
-std::shared_ptr<EvaDataMemory> EvaDataMemory::create(std::size_t size) {
+std::shared_ptr<AcceleratorMemory> AcceleratorMemory::create(std::size_t size) {
     dai_device_mem* mem = nullptr;
     DAI_CHECK_DEVICE(UNIT, dai_device_mem_alloc(size, &mem));
-    return std::make_shared<EvaDataMemory>(Private{}, mem, size, nullptr);
+    return std::make_shared<AcceleratorMemory>(Private{}, mem, size, nullptr);
 }
 
-std::shared_ptr<EvaDataMemory> EvaDataMemory::convertZeroCopy(std::shared_ptr<Memory> data) {
-    if(auto evaBuf = std::dynamic_pointer_cast<EvaDataMemory>(data); evaBuf != nullptr) {
-        return evaBuf;
+std::shared_ptr<AcceleratorMemory> AcceleratorMemory::convertZeroCopy(std::shared_ptr<Memory> data) {
+    if(auto accelBuf = std::dynamic_pointer_cast<AcceleratorMemory>(data); accelBuf != nullptr) {
+        return accelBuf;
     }
     // DMA-BUF memory of the firmware (camera HAL, DMA heap, GStreamer fd memory): register its fd. The buffer keeps
     // `data` alive while the accelerator uses it.
@@ -113,21 +113,21 @@ std::shared_ptr<EvaDataMemory> EvaDataMemory::convertZeroCopy(std::shared_ptr<Me
             auto bytes = data->getData();
             dai_device_mem* mem = nullptr;
             DAI_CHECK_DEVICE(UNIT, dai_device_mem_import(fd, bytes.data(), bytes.size(), &mem));
-            return std::make_shared<EvaDataMemory>(Private{}, mem, bytes.size(), std::move(data));
+            return std::make_shared<AcceleratorMemory>(Private{}, mem, bytes.size(), std::move(data));
         }
     }
     return nullptr;
 }
 
-std::shared_ptr<EvaDataMemory> EvaDataMemory::convert(std::shared_ptr<Memory> data, std::size_t size) {
-    std::shared_ptr<EvaDataMemory> evaBuf = convertZeroCopy(data);
-    if(evaBuf == nullptr) {
+std::shared_ptr<AcceleratorMemory> AcceleratorMemory::convert(std::shared_ptr<Memory> data, std::size_t size) {
+    std::shared_ptr<AcceleratorMemory> accelBuf = convertZeroCopy(data);
+    if(accelBuf == nullptr) {
         // Not DMA-BUF memory: copy it into a new accelerator buffer
         size = size ? size : data->getData().size();
-        evaBuf = create(size);
-        memcpy(evaBuf->getData().data(), data->getData().data(), std::min(size, data->getData().size()));
+        accelBuf = create(size);
+        memcpy(accelBuf->getData().data(), data->getData().data(), std::min(size, data->getData().size()));
     }
-    return evaBuf;
+    return accelBuf;
 }
 
 }  // namespace dai

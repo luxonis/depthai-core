@@ -10,11 +10,11 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/properties/Properties.hpp"
 #include "depthai/properties/StereoDepthProperties.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/node/StereoDepth/PyrImgDispatcher.hpp"
 #include "pipeline/node/StereoDepth/rvc4/StereoDepthDispatcherRvc4.hpp"
 #include "pipeline/node/Warp/rvc4/WarpDispatcherRvc4.hpp"
-#include "utilities/EvaDataMemory.hpp"
-#include "pipeline/ThreadedNodeImpl.hpp"
+#include "utilities/AcceleratorMemory.hpp"
 
 namespace dai {
 namespace gate {

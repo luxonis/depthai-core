@@ -235,18 +235,18 @@ include_directories(BEFORE
     "${DEPTHAI_DEVICE_BINARY_DIR}"
 )
 
-# Vendor module: the licensee-only Qualcomm/ST code (repository depthai-device-vendor-fw; not part of this repository) behind
-# the public interface headers. The build links its prebuilt archive (cmake/DepthaiDeviceRvc4VendorPrebuilt.cmake), the first of:
+# Vendor module: the licensee-only Qualcomm/ST code (not part of this repository) behind the C interface
+# src/vendor/dai_device_*.h. The build links its prebuilt archive (cmake/DepthaiDeviceRvc4VendorPrebuilt.cmake), the first of:
 #   DEPTHAI_DEVICE_RVC4_VENDOR  a local archive depthai-device-rvc4-vendor-<version>[-asan-ubsan|-tsan].tar.xz, in place of
 #                               the download (as DEPTHAI_DEVICE_RVC4_FWP is a local firmware package for depthai-core)
 #   the archive of DEPTHAI_DEVICE_RVC4_VENDOR_VERSION in cmake/Depthai/DepthaiDeviceRVC4Config.cmake of depthai-core,
 #   downloaded (cmake/DepthaiDeviceRvc4VendorDownloader.cmake of depthai-core)
-# The CI of depthai-device-vendor-fw builds the module from its sources instead: DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR (Luxonis
+# The private CI of the vendor module builds it from its sources instead: DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR (Luxonis
 # licensees only). An environment variable of the same name, when it is set (also when it is empty), replaces the
 # cached value at each configure step: the build scripts set both, so a build folder follows the last call.
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/DepthaiDeviceRvc4VendorPrebuilt.cmake")
 include("${DEPTHAI_DEVICE_KB_CORE_PATH}/cmake/DepthaiDeviceRvc4VendorDownloader.cmake")
-set(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR "" CACHE PATH "Sources of the vendor module (repository depthai-device-vendor-fw; its CI and Luxonis licensees)")
+set(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR "" CACHE PATH "Sources of the vendor module (its private CI and Luxonis licensees)")
 set(DEPTHAI_DEVICE_RVC4_VENDOR "" CACHE FILEPATH "Local prebuilt vendor archive (depthai-device-rvc4-vendor-<version>.tar.xz) in place of the download")
 foreach(_vendor_setting DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR DEPTHAI_DEVICE_RVC4_VENDOR)
     if(DEFINED ENV{${_vendor_setting}})
@@ -454,7 +454,7 @@ set(DEPTHAI_PLATFORM_SOURCES
     # The C interface of the vendor module (src/vendor/dai_device_*.h): readable errors and the log of the vendor module,
     # the accelerator buffers, and the public C++ wrappers of the units of the vendor module
     src/vendor/DeviceError.cpp
-    src/utilities/EvaDataMemory.cpp
+    src/utilities/AcceleratorMemory.cpp
     src/pipeline/node/OfflineJpegEncoder.cpp
     src/pipeline/node/FeatureTracker/FeatureTrackerAccel.cpp
     src/pipeline/node/ImageManip/DsImgDispatcher.cpp
@@ -523,11 +523,9 @@ add_library(depthai-device-core STATIC
     ${DEPTHAI_PLATFORM_SOURCES}
 )
 
-# What the private module (depthai-device-rvc4-vendor) compiles against: the include roots of the interface
-# headers, depthai-core and the platform defines that change what these headers declare. The core library
-# links it PUBLIC, so the firmware and the private module see the same headers with the same defines.
-# The private module links only this target: it needs no symbol of depthai-device-core, so the two
-# libraries do not form a link cycle.
+# What the firmware libraries compile against: the include roots of depthai-core and of this tree, and the platform
+# defines that change what these headers declare. The core library links it PUBLIC, so all firmware libraries see
+# the same headers with the same defines. The vendor module does not link it: it links only depthai-device-vendor-api.
 add_library(depthai-device-accel-api INTERFACE)
 target_include_directories(depthai-device-accel-api
     INTERFACE
@@ -761,7 +759,7 @@ target_include_directories(depthai-device-core
 )
 
 # Compile options required by the Qualcomm camera HAL headers (shared with the private module)
-set(DEPTHAI_DEVICE_CAMX_COMPILE_OPTIONS
+set(DEPTHAI_DEVICE_CAMERA_HAL_COMPILE_OPTIONS
     -DANDROID
     -DTARGET_ION_ABI_VERSION=2
     -DFLUSH_RESTART_NOTAVAILABLE
@@ -781,7 +779,7 @@ set(DEPTHAI_DEVICE_CAMX_COMPILE_OPTIONS
     -DENABLE_OFFLINE_JPEG
     -DHAVE_BINDER
 )
-target_compile_options(depthai-device-core PRIVATE ${DEPTHAI_DEVICE_CAMX_COMPILE_OPTIONS})
+target_compile_options(depthai-device-core PRIVATE ${DEPTHAI_DEVICE_CAMERA_HAL_COMPILE_OPTIONS})
 
 # link libraries
 target_link_libraries(depthai-device-core
@@ -893,9 +891,9 @@ target_link_libraries(depthai-device-core PRIVATE pipeline.node.IMU)
 if(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR)
     add_subdirectory("${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}" "${DEPTHAI_DEVICE_BINARY_DIR}/depthai-device-rvc4-vendor")
     # One direction only: the core library uses the implementations of the private module, and the module
-    # compiles against depthai-device-accel-api.
+    # compiles only against depthai-device-vendor-api (the C interface).
     target_link_libraries(depthai-device-core PRIVATE depthai-device-rvc4-vendor)
-    # The IMU node library uses the SensorDirectChannel implementation of the private module.
+    # The IMU node library uses the sensor hub functions of the private module (vendor/dai_device_sensor.h).
     target_link_libraries(pipeline.node.IMU PRIVATE depthai-device-rvc4-vendor)
     # VD55H1 ToF sensor pipeline: the separate archive of the private module when it is built with the ST wrapper
     if(DEPTHAI_DEVICE_TOF_VD55H1)

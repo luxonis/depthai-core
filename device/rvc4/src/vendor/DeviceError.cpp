@@ -6,7 +6,7 @@
 
 #include "build/version.hpp"
 #include "pipeline/PipelineBuilder.hpp"
-#include "utilities/EvaDataMemory.hpp"
+#include "utilities/AcceleratorMemory.hpp"
 #include "vendor/dai_device_dsp.h"
 
 namespace dai {
@@ -135,7 +135,7 @@ uint32_t toDeviceInterpolation(Interpolation interpolation) {
     }
 }
 
-dai_device_image toDeviceImage(const ImgFrame& frame, const EvaDataMemory& memory) {
+dai_device_image toDeviceImage(const ImgFrame& frame, const AcceleratorMemory& memory) {
     dai_device_image image{};
     image.mem = memory.handle();
     image.width = frame.getWidth();
@@ -148,7 +148,7 @@ dai_device_image toDeviceImage(const ImgFrame& frame, const EvaDataMemory& memor
     return image;
 }
 
-dai_device_buf toDeviceBuf(const EvaDataMemory& memory) {
+dai_device_buf toDeviceBuf(const AcceleratorMemory& memory) {
     dai_device_buf buf{};
     buf.fd = memory.fd();
     buf.data = const_cast<uint8_t*>(memory.data());

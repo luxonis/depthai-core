@@ -2,8 +2,8 @@
 
 #include <utility>
 
+#include "utilities/AcceleratorMemory.hpp"
 #include "utilities/ErrorMacros.hpp"
-#include "utilities/EvaDataMemory.hpp"
 #include "vendor/DeviceError.hpp"
 
 namespace {
@@ -43,16 +43,16 @@ void StereoDepthDispatcher::RunAsync(const std::shared_ptr<const dai::ImgFrame>&
                                      std::shared_ptr<dai::ImgFrame> outSLIC) {
     // The accelerator buffers, in the order of the former vendor code. The outputs get their buffer as frame data.
     RunBuffers buffers;
-    buffers.disparity = dai::EvaDataMemory::convert(outDispFrame->data);
+    buffers.disparity = dai::AcceleratorMemory::convert(outDispFrame->data);
     outDispFrame->data = buffers.disparity;
-    buffers.left = dai::EvaDataMemory::convert(inLeftFrame->data);
-    buffers.right = dai::EvaDataMemory::convert(inRightFrame->data);
+    buffers.left = dai::AcceleratorMemory::convert(inLeftFrame->data);
+    buffers.right = dai::AcceleratorMemory::convert(inRightFrame->data);
     if(outConfFrame) {
-        buffers.confidence = dai::EvaDataMemory::convert(outConfFrame->data);
+        buffers.confidence = dai::AcceleratorMemory::convert(outConfFrame->data);
         outConfFrame->data = buffers.confidence;
     }
     if(outSLIC) {
-        buffers.slic = dai::EvaDataMemory::convert(outSLIC->data);
+        buffers.slic = dai::AcceleratorMemory::convert(outSLIC->data);
         outSLIC->data = buffers.slic;
     }
 
@@ -65,8 +65,7 @@ void StereoDepthDispatcher::RunAsync(const std::shared_ptr<const dai::ImgFrame>&
     if(outSLIC) slic = dai::device::toDeviceImage(*outSLIC, *buffers.slic);
 
     DAI_CHECK_DEVICE(UNIT,
-                     dai_device_stereo_run_async(
-                         handle.get(), &left, &right, &disparity, outConfFrame ? &confidence : nullptr, outSLIC ? &slic : nullptr));
+                     dai_device_stereo_run_async(handle.get(), &left, &right, &disparity, outConfFrame ? &confidence : nullptr, outSLIC ? &slic : nullptr));
     running = std::move(buffers);
 }
 
@@ -82,7 +81,7 @@ void StereoDepthDispatcher::Run(const std::shared_ptr<const dai::ImgFrame>& inLe
 int StereoDepthDispatcher::Wait() {
     const dai_status status = dai_device_stereo_wait(handle.get());
     running = RunBuffers{};
-    // As before the C interface: the negated EVA status of the work (0: done)
+    // As before the C interface: the negated accelerator driver status of the work (0: done)
     return -dai::device::returnDriverStatus(status, UNIT, "dai_device_stereo_wait");
 }
 

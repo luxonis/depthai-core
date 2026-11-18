@@ -5,7 +5,7 @@
 #include <cstring>
 #include <memory>
 
-#include "EvaDataMemory.hpp"
+#include "AcceleratorMemory.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 namespace dai {
@@ -125,11 +125,11 @@ class FrameAlignment {
         switch(frame.getType()) {
             case dai::ImgFrame::Type::NV12: {
                 if(frame.getStride() == alignedWidth(frame.getStride()) && getFirstPlaneSize(frame) % 4096 == 0 && getSecondPlaneSize(frame) % 4096 == 0) {
-                    dst.data = EvaDataMemory::convert(frame.data);
+                    dst.data = AcceleratorMemory::convert(frame.data);
                 } else {
                     const size_t uvPlaneSize = alignedSize(dst.fb.stride * alignedHeight2(frame.fb.height / 2));
 
-                    auto mem = dai::EvaDataMemory::create(dst.fb.p2Offset + uvPlaneSize);
+                    auto mem = dai::AcceleratorMemory::create(dst.fb.p2Offset + uvPlaneSize);
                     auto dstData = mem->getData();
                     const auto srcData = frame.getData();
 
@@ -154,9 +154,9 @@ class FrameAlignment {
             }
             case dai::ImgFrame::Type::GRAY8: {
                 if(frame.getStride() == alignedWidth(frame.getStride()) && getFirstPlaneSize(frame) % 4096 == 0) {
-                    dst.data = EvaDataMemory::convert(frame.data);
+                    dst.data = AcceleratorMemory::convert(frame.data);
                 } else {
-                    auto mem = dai::EvaDataMemory::create(dst.fb.p2Offset);
+                    auto mem = dai::AcceleratorMemory::create(dst.fb.p2Offset);
                     auto dstData = mem->getData();
                     copyPlane(dstData.data() + dst.fb.p1Offset,
                               dst.fb.stride,
