@@ -17,6 +17,12 @@ using dai::node::StereoDepth;
 namespace dai::node {
 
 struct DepthTestAccess {
+    static void validateFps(StereoDepth::PresetMode preset, float fps) {
+        Depth::validateRequestedFps(Depth::Algorithm::STEREO, preset, fps, std::make_pair(640u, 400u), dai::Version(1, 47, 0));
+    }
+    static void validateResolution(Depth::Algorithm algorithm, std::optional<std::pair<uint32_t, uint32_t>> resolution) {
+        Depth::validateProcessingResolution(algorithm, resolution);
+    }
     static DeviceModelZoo modelForOS(const std::optional<dai::Version>& version) {
         const auto selection = Depth::selectBackend(Platform::RVC4, std::make_pair(640u, 400u), 30.f, {Depth::Algorithm::NEURAL}, {}, true, version);
         return std::get<DeviceModelZoo>(selection.config);
@@ -468,4 +474,46 @@ TEST_CASE("Depth and Camera use the same bounded full-FOV sensor mode", "[Depth]
     // A neural tensor output remains usable when the camera has no default full-FOV mode.
     const auto neural = dai::node::DepthTestAccess::selectOptimized(std::nullopt, 30.f, kAllRvc4Backends, {}, true, unavailable);
     REQUIRE(neural.first == Depth::Algorithm::NEURAL);
+}
+
+TEST_CASE("RVC4 stereo preset aliases enforce the equivalent profile FPS limit", "[Depth][ExplicitFps][RabbitRegression]") {
+    for(const auto preset : {StereoDepth::PresetMode::FACE,
+                             StereoDepth::PresetMode::HIGH_DETAIL,
+                             StereoDepth::PresetMode::ROBOTICS,
+                             StereoDepth::PresetMode::ACCURACY,
+                             StereoDepth::PresetMode::DENSITY}) {
+        CAPTURE(preset);
+        REQUIRE_NOTHROW(dai::node::DepthTestAccess::validateFps(preset, 30.f));
+        REQUIRE_THROWS_WITH(dai::node::DepthTestAccess::validateFps(preset, 31.f), Catch::Matchers::ContainsSubstring("cannot serve the requested 31 FPS"));
+    }
+    // DEFAULT retains its existing conservative budget; aliases do not change AUTO's preset order.
+    REQUIRE_NOTHROW(dai::node::DepthTestAccess::validateFps(StereoDepth::PresetMode::DEFAULT, 16.f));
+    REQUIRE_THROWS(dai::node::DepthTestAccess::validateFps(StereoDepth::PresetMode::DEFAULT, 17.f));
+}
+
+TEST_CASE("AUTO skips stereo profiles whose width is not aligned", "[Depth][ExplicitFps][RabbitRegression]") {
+    const auto size = std::make_pair(648u, 400u);
+    const std::vector<Depth::Algorithm> supported = {Depth::Algorithm::STEREO, Depth::Algorithm::GPU_STEREO};
+    const auto selected = dai::node::DepthTestAccess::selectOptimized(size, 5.f, supported, {}, true);
+    REQUIRE(selected.first == Depth::Algorithm::GPU_STEREO);
+    REQUIRE_THROWS_WITH(dai::node::DepthTestAccess::selectOptimized(size, 5.f, kStereoOnly, {}, true),
+                        Catch::Matchers::ContainsSubstring("no available algorithm"));
+}
+
+TEST_CASE("Processing dimensions are positive before graph construction", "[Depth][ExplicitFps][RabbitRegression]") {
+    for(const auto size : {std::make_pair(640u, 0u), std::make_pair(0u, 400u), std::make_pair(0u, 0u)}) {
+        CAPTURE(size);
+        REQUIRE_THROWS_WITH(dai::node::DepthTestAccess::validateResolution(Depth::Algorithm::STEREO, size),
+                            Catch::Matchers::ContainsSubstring("must be positive"));
+    }
+    REQUIRE_NOTHROW(dai::node::DepthTestAccess::validateResolution(Depth::Algorithm::STEREO, std::make_pair(640u, 400u)));
+}
+
+TEST_CASE("Missing bounded sensor modes exclude non-neural default backends", "[Depth][RabbitRegression]") {
+    for(const auto algorithm : {Depth::Algorithm::STEREO, Depth::Algorithm::GPU_STEREO, Depth::Algorithm::NEURAL_ASSISTED_STEREO}) {
+        REQUIRE_THROWS_WITH(dai::node::DepthTestAccess::validateResolution(algorithm, std::nullopt),
+                            Catch::Matchers::ContainsSubstring("no valid full resolution configuration"));
+    }
+    REQUIRE_NOTHROW(dai::node::DepthTestAccess::validateResolution(Depth::Algorithm::NEURAL, std::nullopt));
+    REQUIRE_NOTHROW(dai::node::DepthTestAccess::validateResolution(Depth::Algorithm::TOF, std::nullopt));
 }

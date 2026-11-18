@@ -210,30 +210,6 @@ void validateExplicitConfig(Depth::Algorithm algorithm,
     }
 }
 
-// Profile limits validate requested processing settings, not measured runtime throughput.
-void validateRequestedFps(Depth::Algorithm algorithm,
-                          const Depth::Config& config,
-                          std::optional<float> fps,
-                          std::optional<std::pair<uint32_t, uint32_t>> resolution,
-                          const std::optional<Version>& osVersion) {
-    if(!fps) return;
-    bool knownProfile = false;
-    bool fits = false;
-    for(const auto& profile : BACKEND_PROFILES) {
-        if(profile.algorithm != algorithm) continue;
-        if(!std::holds_alternative<std::monostate>(config) && profile.config != config) continue;
-        knownProfile = true;
-        if(profileMaxFps(profile, osVersion) >= *fps
-           && (!resolution || (resolution->first <= profile.maxSize.first && resolution->second <= profile.maxSize.second))) {
-            fits = true;
-        }
-    }
-    DAI_CHECK_V(!knownProfile || fits,
-                "Depth: selected {} configuration cannot serve the requested {} FPS at the requested processing size.",
-                algorithmName(algorithm),
-                *fps);
-}
-
 DeviceModelZoo neuralModelFromConfig(const Depth::Config& config) {
     if(const auto* m = std::get_if<DeviceModelZoo>(&config)) {
         return *m;
@@ -251,6 +227,7 @@ StereoDepth::PresetMode stereoPresetFromConfig(const Depth::Config& config) {
 // NEURAL uses a tensor-cover band around the model size; other algorithms use a simple max cap.
 bool resolutionFits(const BackendProfile& profile, std::pair<uint32_t, uint32_t> resolution) {
     const auto [maxWidth, maxHeight] = profile.maxSize;
+    if(profile.algorithm == Depth::Algorithm::STEREO && resolution.first % STEREO_DEPTH_WIDTH_ALIGNMENT != 0) return false;
     if(profile.algorithm == Depth::Algorithm::NEURAL) {
         const uint32_t minW = static_cast<uint32_t>(static_cast<float>(maxWidth) / NEURAL_TENSOR_COVER_SCALE);
         const uint32_t maxW = static_cast<uint32_t>(static_cast<float>(maxWidth) * NEURAL_TENSOR_COVER_SCALE);
@@ -466,7 +443,8 @@ WiringInputs gatherWiringInputs(const std::shared_ptr<Device>& device,
     inputs.targetFps = targetFpsWithDefault(inputs.targetFps);
 
     inputs.resolution = sizeOverride;
-    if(!inputs.resolution) {
+    // Explicit RVC4 FPS requests use the depth size or the default camera mode, independently of previews.
+    if(!inputs.resolution && (!stereoOutputFps || device->getPlatform() != Platform::RVC4)) {
         inputs.resolution = sizeFromExistingCameras(left, right);
     }
     if(!inputs.resolution) {
@@ -506,6 +484,60 @@ StereoDepth::PresetMode resolveStereoPreset(float targetFps, std::optional<std::
 }
 
 }  // namespace
+
+// Profile limits validate requested processing settings, not measured runtime throughput.
+void Depth::validateRequestedFps(Depth::Algorithm algorithm,
+                                 const Depth::Config& config,
+                                 std::optional<float> fps,
+                                 std::optional<std::pair<uint32_t, uint32_t>> resolution,
+                                 const std::optional<Version>& osVersion) {
+    if(!fps) return;
+    auto profileConfig = config;
+    if(const auto* preset = std::get_if<StereoDepth::PresetMode>(&config)) {
+        // Match setRvc4ProfilePreset without replacing the preset requested by the caller.
+        switch(*preset) {
+            case StereoDepth::PresetMode::FACE:
+            case StereoDepth::PresetMode::HIGH_DETAIL:
+            case StereoDepth::PresetMode::ROBOTICS:
+            case StereoDepth::PresetMode::ACCURACY:
+                profileConfig = StereoDepth::PresetMode::FAST_ACCURACY;
+                break;
+            case StereoDepth::PresetMode::DENSITY:
+                // DENSITY uses FAST_DENSITY's identical settings and 30 FPS profile.
+                // DEFAULT keeps its existing conservative 16 FPS budget.
+                profileConfig = StereoDepth::PresetMode::FAST_DENSITY;
+                break;
+            case StereoDepth::PresetMode::DEFAULT:
+            case StereoDepth::PresetMode::FAST_ACCURACY:
+            case StereoDepth::PresetMode::FAST_DENSITY:
+                break;
+        }
+    }
+    bool knownProfile = false;
+    bool fits = false;
+    for(const auto& profile : BACKEND_PROFILES) {
+        if(profile.algorithm != algorithm) continue;
+        if(!std::holds_alternative<std::monostate>(profileConfig) && profile.config != profileConfig) continue;
+        knownProfile = true;
+        if(profileMaxFps(profile, osVersion) >= *fps
+           && (!resolution || (resolution->first <= profile.maxSize.first && resolution->second <= profile.maxSize.second))) {
+            fits = true;
+        }
+    }
+    DAI_CHECK_V(!knownProfile || fits,
+                "Depth: selected {} configuration cannot serve the requested {} FPS at the requested processing size.",
+                algorithmName(algorithm),
+                *fps);
+}
+
+void Depth::validateProcessingResolution(Algorithm algorithm, std::optional<std::pair<uint32_t, uint32_t>> resolution) {
+    DAI_CHECK_V(resolution || algorithm == Algorithm::NEURAL || algorithm == Algorithm::TOF || algorithm == Algorithm::TOF_STEREO_FUSION,
+                "Depth: no valid full resolution configuration found for the stereo cameras; specify a processing size.");
+    DAI_CHECK_V(!resolution || (resolution->first > 0 && resolution->second > 0), "Depth: processing width and height must be positive.");
+    if(algorithm == Algorithm::STEREO && resolution) {
+        validateStereoDepthResolution(resolution->first, resolution->second);
+    }
+}
 
 // --- Construction ---
 
@@ -666,7 +698,9 @@ Depth::Algorithm Depth::getDefaultAlgorithm(const std::shared_ptr<Device>& devic
     if(!supportsAlgorithm(supported, Algorithm::TOF) || (isRvc4 && supportsAlgorithm(supported, Algorithm::STEREO))) {
         resolution = sizeFromDeviceFeatures(device, requireFirstStereoPair(device), isRvc4);
     }
-    return selectBackend(platform, resolution, DEFAULT_TARGET_FPS, supported, models, false, device->getDeviceOSVersion()).algorithm;
+    const auto selected = selectBackend(platform, resolution, DEFAULT_TARGET_FPS, supported, models, false, device->getDeviceOSVersion());
+    if(isRvc4) validateProcessingResolution(selected.algorithm, resolution);
+    return selected.algorithm;
 }
 
 // --- Algorithm resolution ---
@@ -822,12 +856,7 @@ std::optional<std::pair<uint32_t, uint32_t>> Depth::resolveWiring(const std::sha
         const auto inputSize = NeuralDepth::getInputSize(neuralModelFromConfig(resolved_.config));
         processingResolution = std::make_pair(static_cast<uint32_t>(inputSize.first), static_cast<uint32_t>(inputSize.second));
     }
-    // A neural model requests its tensor size and does not need a default full-FOV camera mode.
-    DAI_CHECK_V(processingResolution || resolved_.algorithm == Algorithm::TOF_STEREO_FUSION,
-                "Depth: no valid full resolution configuration found for the stereo cameras; specify a processing size.");
-    if(resolved_.algorithm == Algorithm::STEREO && processingResolution) {
-        validateStereoDepthResolution(processingResolution->first, processingResolution->second);
-    }
+    validateProcessingResolution(resolved_.algorithm, processingResolution);
     if(stereoOutputFps_ && resolved_.algorithm != Algorithm::TOF_STEREO_FUSION) {
         for(const auto& camera : {left, right}) {
             if(camera) {

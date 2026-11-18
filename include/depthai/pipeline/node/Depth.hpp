@@ -249,6 +249,14 @@ class Depth : public DeviceNodeGroup {
 
     void requireNotBuilt(const char* method) const;
 
+    static void validateProcessingResolution(Algorithm algorithm, std::optional<std::pair<uint32_t, uint32_t>> resolution);
+
+    static void validateRequestedFps(Algorithm algorithm,
+                                     const Config& config,
+                                     std::optional<float> fps,
+                                     std::optional<std::pair<uint32_t, uint32_t>> resolution,
+                                     const std::optional<Version>& osVersion);
+
     static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height);
 
     static std::vector<Algorithm> getSupportedAlgorithmsWithModels(const std::shared_ptr<Device>& device, std::optional<std::vector<DeviceModelZoo>> models);

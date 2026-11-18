@@ -20,6 +20,7 @@
 #include "depthai/pipeline/node/NeuralDepth.hpp"
 #include "depthai/pipeline/node/SystemLogger.hpp"
 #include "depthai/pipeline/node/ToF.hpp"
+#include "utility/CameraFeatures.hpp"
 #include "utility/DeviceOSVersion.hpp"
 
 using namespace dai;
@@ -1272,8 +1273,14 @@ TEST_CASE("Depth: explicit FPS rejects a slower existing camera before adding a 
     }
     const auto pair = requireFirstStereoPairForTest(device);
     const auto algorithm = GENERATE(node::Depth::Algorithm::AUTO, node::Depth::Algorithm::STEREO, node::Depth::Algorithm::NEURAL);
-    if(algorithm == node::Depth::Algorithm::NEURAL && !device->isNeuralDepthSupported()) {
-        SKIP("Requires NeuralDepth support.");
+    if(algorithm == node::Depth::Algorithm::NEURAL) {
+        if(!device->isNeuralDepthSupported()) SKIP("Requires NeuralDepth support.");
+        try {
+            (void)node::DepthTestAccess::selectBackend(
+                std::make_pair(640u, 400u), 30.f, {node::Depth::Algorithm::NEURAL}, device->getSupportedDeviceModels(), device->getDeviceOSVersion(), true);
+        } catch(const std::runtime_error&) {
+            SKIP("Requires a NeuralDepth model that can serve 640x400 at 30 FPS.");
+        }
     }
     const bool slowLeft = GENERATE(false, true);
     pipeline.create<node::Camera>()->build(pair.left, std::nullopt, slowLeft ? 15.f : 30.f);
@@ -1293,4 +1300,68 @@ TEST_CASE("Depth: explicit GPU config is validated before adding a backend", "[D
     auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::GPU_STEREO, std::monostate{}, 30.f, std::make_pair(1920u, 1440u));
     REQUIRE_THROWS_WITH(depth->depth(), Catch::Matchers::ContainsSubstring("cannot serve the requested 30 FPS"));
     REQUIRE(depth->getNodeMap().empty());
+}
+
+TEST_CASE("Depth: pinned FPS processing geometry ignores smaller previews without a preferred size", "[Depth][ExplicitFps][RabbitRegression]") {
+    Pipeline pipeline;
+    const auto device = requireDefaultDevice(pipeline);
+    if(device->getPlatform() != Platform::RVC4) SKIP("Requires RVC4.");
+    const auto pair = requireFirstStereoPairForTest(device);
+    using ProcessingSize = std::pair<uint32_t, uint32_t>;
+    std::optional<ProcessingSize> leftMode, rightMode;
+    for(const auto& feature : device->getConnectedCameraFeatures()) {
+        if(feature.socket == pair.left) leftMode = dai::utility::findDefaultFullResolutionSize(feature);
+        if(feature.socket == pair.right) rightMode = dai::utility::findDefaultFullResolutionSize(feature);
+    }
+    if(!leftMode || !rightMode) SKIP("Requires bounded full-FOV camera modes.");
+    const ProcessingSize expected{std::min(leftMode->first, rightMode->first), std::min(leftMode->second, rightMode->second)};
+    if(expected.first > 1280 || expected.second > 1280 || expected.first % 16 != 0 || expected == ProcessingSize{640u, 400u}) {
+        SKIP("Requires a StereoDepth-compatible default mode distinct from the preview size.");
+    }
+    const bool preview = GENERATE(false, true);
+    auto left = pipeline.create<node::Camera>()->build(pair.left, std::nullopt, 30.f);
+    auto right = pipeline.create<node::Camera>()->build(pair.right, std::nullopt, 30.f);
+    std::vector<std::shared_ptr<MessageQueue>> previewQueues;
+    if(preview) {
+        previewQueues.push_back(left->requestOutput({640, 400}, std::nullopt, ImgResizeMode::CROP, 30.f)->createOutputQueue());
+        previewQueues.push_back(right->requestOutput({640, 400}, std::nullopt, ImgResizeMode::CROP, 30.f)->createOutputQueue());
+    }
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::STEREO, 30.f);
+    REQUIRE_NOTHROW((void)depth->depth());
+    for(const auto& camera : {left, right}) {
+        REQUIRE_FALSE(camera->properties.outputRequests.empty());
+        const auto& size = camera->properties.outputRequests.back().size.value;
+        REQUIRE(size.has_value());
+        REQUIRE(std::holds_alternative<ProcessingSize>(*size));
+        REQUIRE(std::get<ProcessingSize>(*size) == expected);
+    }
+    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
+}
+
+TEST_CASE("Depth: invalid dimensions leave cameras and backend untouched for retry", "[Depth][ExplicitFps][RabbitRegression]") {
+    Pipeline pipeline;
+    const auto device = requireDefaultDevice(pipeline);
+    if(device->getPlatform() != Platform::RVC4) SKIP("Requires RVC4.");
+    const auto pair = requireFirstStereoPairForTest(device);
+    auto left = pipeline.create<node::Camera>()->build(pair.left, std::nullopt, 30.f);
+    auto right = pipeline.create<node::Camera>()->build(pair.right, std::nullopt, 30.f);
+    const auto size = GENERATE(std::make_pair(640u, 0u), std::make_pair(0u, 400u), std::make_pair(0u, 0u));
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::STEREO, node::StereoDepth::PresetMode::FAST_ACCURACY, 30.f, size);
+    REQUIRE_THROWS_WITH(depth->depth(), Catch::Matchers::ContainsSubstring("must be positive"));
+    REQUIRE(depth->getNodeMap().empty());
+    REQUIRE(left->properties.outputRequests.empty());
+    REQUIRE(right->properties.outputRequests.empty());
+    depth->build(node::Depth::Algorithm::STEREO, 30.f, std::make_pair(640u, 400u));
+    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
+}
+
+TEST_CASE("Depth: validating a stereo preset alias preserves the requested preset", "[Depth][ExplicitFps][RabbitRegression]") {
+    Pipeline pipeline;
+    const auto device = requireDefaultDevice(pipeline);
+    if(device->getPlatform() != Platform::RVC4) SKIP("Requires RVC4.");
+    (void)requireFirstStereoPairForTest(device);
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::STEREO, node::StereoDepth::PresetMode::FACE, 30.f, std::make_pair(640u, 400u));
+    REQUIRE_NOTHROW((void)depth->depth());
+    REQUIRE(std::get<node::StereoDepth::PresetMode>(depth->getResolvedConfig()) == node::StereoDepth::PresetMode::FACE);
+    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
 }
