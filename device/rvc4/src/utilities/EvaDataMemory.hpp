@@ -11,14 +11,6 @@
 
 namespace dai {
 
-/**
- * Buffer registered with the vision accelerator.
- *
- * The memory is DMA-BUF backed, so the camera HAL, the GPU, the DSP and the accelerator
- * can share it without copies. The implementation (allocation, registration, release)
- * lives in the private depthai-device-rvc4-vendor module; public code only uses this interface
- * and the factory functions below.
- */
 class EvaDataMemory : public OffsetMemory {
    public:
     ~EvaDataMemory() override = default;

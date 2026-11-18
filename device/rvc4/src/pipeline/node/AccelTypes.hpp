@@ -1,8 +1,5 @@
 #pragma once
 
-// Luxonis-owned enumerations for the hardware accelerator stages. The private accelerator
-// module maps them onto the vendor API; the public tree never sees the vendor types.
-
 namespace dai {
 namespace gate {
 

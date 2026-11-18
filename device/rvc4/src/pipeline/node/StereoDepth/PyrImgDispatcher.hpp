@@ -23,7 +23,6 @@ struct PyrImgConfig {
     dai::gate::ScaledownInterpolation eDsInterpolation = dai::gate::ScaledownInterpolation::BILINEAR;
 };
 
-/// Hardware image pyramid stage. The implementation lives in the private accelerator module.
 class PyrImgDispatcher {
    public:
     PyrImgDispatcher();

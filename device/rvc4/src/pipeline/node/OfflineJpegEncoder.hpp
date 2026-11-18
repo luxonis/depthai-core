@@ -16,7 +16,7 @@ namespace gate {
  *
  * Encoding is asynchronous: encode() queues one frame and returns; the completion callback runs
  * later, on the encoder's thread, with the caller's `jobTag` and the size of the JPEG written into
- * the output dma-buf. The implementation lives in the private module. The class is non-copyable
+ * the output dma-buf. The class is non-copyable
  * and usable as a by-value member.
  */
 class OfflineJpegEncoder {

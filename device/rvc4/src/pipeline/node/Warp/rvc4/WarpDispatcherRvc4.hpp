@@ -9,7 +9,6 @@
 
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
-/// Hardware mesh warp stage. The implementation lives in the private accelerator module.
 class WarpDispatcher {
    public:
     WarpDispatcher();

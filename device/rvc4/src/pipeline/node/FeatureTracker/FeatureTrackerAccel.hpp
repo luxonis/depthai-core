@@ -1,9 +1,5 @@
 #pragma once
 
-// Luxonis-owned interface to the feature tracking stages of the hardware vision accelerator:
-// corner detection, dense optical flow and descriptor calculation. The implementation lives in
-// the private accelerator module; the public tree never sees the vendor types.
-
 #include <cmath>
 #include <cstddef>
 #include <cstdint>

@@ -22,8 +22,6 @@ struct DsImgConfig {
     dai::gate::ScaledownInterpolation eDsInterpolation = dai::gate::ScaledownInterpolation::BILINEAR;
 };
 
-/// Hardware downscale stage. All instances share one accelerator session; the
-/// implementation lives in the private accelerator module.
 class DsImgDispatcher {
    public:
     DsImgDispatcher();

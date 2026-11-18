@@ -43,7 +43,7 @@ struct SensorStreamConfig {
 /**
  * Direct (shared memory) channel to one sensor of the sensor hub.
  *
- * The implementation lives in the private module. The object is movable and non-copyable;
+ * The object is movable and non-copyable;
  * a moved-from object must not be used.
  */
 class SensorDirectChannel {
@@ -119,7 +119,7 @@ struct SensorSample {
  * Reads the variable-length events of a GENERIC channel out of its circular shared buffer.
  *
  * The reader owns only the read position; the caller owns the loop and decides when to wait
- * (Status::NO_EVENT) and when to stop. The implementation lives in the private module.
+ * (Status::NO_EVENT) and when to stop.
  */
 class SensorEventReader {
    public:

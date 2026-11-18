@@ -1,5 +1,3 @@
-// Stub of the VD55H1 ToF sensor pipeline, for builds without the ST depth-map wrapper (DEPTHAI_DEVICE_TOF_VD55H1=OFF,
-// for example a build with the prebuilt private module). The ToF node reports a clear error instead of producing depth.
 #include "pipeline/node/ToF/tofVD55H1.hpp"
 
 #include <stdexcept>

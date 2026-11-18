@@ -14,11 +14,6 @@ namespace dai {
 struct ToFConfig;
 }
 
-/// VD55H1 time-of-flight depth processing.
-///
-/// The sensor pipeline (STMicroelectronics image processing library behind the depth-map
-/// wrapper) lives in the private accelerator module behind `Impl`; this class owns the
-/// public geometry helpers, the output buffers and the plane conversions.
 class tofVD55H1 {
    public:
     tofVD55H1(uint32_t rawWidth, uint32_t rawHeight, bool wantConfidence, bool wantIntensity, std::shared_ptr<spdlog::logger> logger);
@@ -73,7 +68,6 @@ class tofVD55H1 {
     std::vector<float> r2pLut;
     std::shared_ptr<spdlog::logger> logger;
 
-    // Sensor pipeline: implemented in the private accelerator module
     struct Impl;
     std::unique_ptr<Impl> impl;
 };

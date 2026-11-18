@@ -28,7 +28,6 @@ struct StereoConfig {
     dai::gate::StereoSearchDir eSearchDir = dai::gate::StereoSearchDir::L2R;
 };
 
-/// Hardware stereo matcher stage. The implementation lives in the private accelerator module.
 class StereoDepthDispatcher {
    public:
     StereoDepthDispatcher();
