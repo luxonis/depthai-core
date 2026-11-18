@@ -1,8 +1,5 @@
 /*
- * C interface between the public RVC4 firmware and the prebuilt vendor module (depthai-device-rvc4-vendor):
- * the common part. The vendor module includes only the dai_device_*.h headers of this folder, the C and C++
- * standard libraries and the sysroot. The interface has only C types, so a change of a depthai-core header can not
- * change it. A change of these headers needs a new vendor module: increase DAI_DEVICE_ABI_VERSION.
+ * C interface between the public firmware and the prebuilt vendor module. A change of these headers needs a new vendor module.
  *
  * Rules:
  *  - Each object is an opaque handle with a _create and a _destroy function.

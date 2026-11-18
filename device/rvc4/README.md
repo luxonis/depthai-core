@@ -260,6 +260,8 @@ material and cannot be published:
 * the names of the vendor tags of the camera HAL
 * ST ToF support: the VD55H1 IPP library and the depthmapwrapper
 
+It also has the calibration overrides of some devices (`src/vendor/dai_device_calibration.h`).
+
 The public code uses the vendor module only through the C interface in `src/vendor/dai_device_*.h` (the rules are in
 `src/vendor/dai_device_common.h`). The interface has only C types, and a change of it needs a new vendor module. The
 build links the module as a prebuilt archive, see [Building](#building). The DSP offload (`src/hexagon/`,

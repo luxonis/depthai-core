@@ -61,6 +61,7 @@
 #include "utilities/IMUDiscovery.hpp"
 #include "utilities/OSUtils.hpp"
 #include "utilities/StereoPairs.hpp"
+#include "vendor/dai_device_calibration.h"
 
 // #include "pipeline/PipelineRequirements.hpp"
 #include "depthai/pipeline/datatype/SystemInformationRVC4.hpp"
@@ -160,8 +161,6 @@ static std::atomic<bool> isFlashed{false};
 bool isFlashBootedMode() {
     return isFlashed;
 }
-
-#include "calibrationPatch.h"
 
 XLinkGlobalHandler_t g_xlink_glob_handler = {
     .profEnable = 0,
@@ -991,11 +990,11 @@ int main(int argc, char** args) {
     }
 
     std::string serialNumber = dai::gate::getSerialNumber();
-    if(calibrationMap.count(serialNumber)) {
+    if(const char* calibrationOverride = dai_device_calibration_override(serialNumber.c_str())) {
         try {
             // printEepromData(eepromData);
 
-            auto calibJson = calibrationMap.at(serialNumber);
+            auto calibJson = nlohmann::json::parse(calibrationOverride);
             std::cout << calibJson << std::endl;
             dai::CalibrationHandler calibHandler = dai::CalibrationHandler::fromJson(calibJson);
             eepromData = calibHandler.getEepromData();
