@@ -634,9 +634,6 @@ eeprom_status eeprom_store_config(
         if(board_data_config.deviceName.size() > sizeof(ex_data.batch2_name) - 1 + sizeof(ex_data.batch2_name) - 1) {
             return EEPROM_FIELD_TOO_LONG;
         }
-        if(board_data_config.deviceName == "Maxwell" || board_data_config.deviceName == "Leonardo") {
-            return EEPROM_INVALID_DATA;
-        }
         std::string deviceName = board_data_config.deviceName.substr(0, sizeof(ex_data.batch_name) - 1);
 
         std::string deviceName2;
@@ -999,12 +996,10 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
             // Parse out new deviceName if available, forego batch_name
             std::string batchName;
             batchName.assign(ex_data.batch_name, std::find(ex_data.batch_name, ex_data.batch_name + sizeof(ex_data.batch_name), '\0'));
-            if(batchName != "Maxwell" && batchName != "Leonardo") {
-                std::string batchName2;
-                batchName2.assign(ex_data.batch2_name, std::find(ex_data.batch2_name, ex_data.batch2_name + sizeof(ex_data.batch2_name), '\0'));
-                if(!batchName.empty() && (uint8_t)batchName[0] != 0xFF && (uint8_t)batchName2[0] != 0xFF) {
-                    board_data_config.deviceName = batchName + batchName2;
-                }
+            std::string batchName2;
+            batchName2.assign(ex_data.batch2_name, std::find(ex_data.batch2_name, ex_data.batch2_name + sizeof(ex_data.batch2_name), '\0'));
+            if(!batchName.empty() && (uint8_t)batchName[0] != 0xFF && (uint8_t)batchName2[0] != 0xFF) {
+                board_data_config.deviceName = batchName + batchName2;
             }
 
             // parse out housing extrinsics
