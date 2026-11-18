@@ -553,6 +553,14 @@ std::shared_ptr<Depth> Depth::setStereoPair(std::optional<StereoPair> stereoPair
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
+std::optional<StereoPair> Depth::getRequestedStereoPair() const {
+    return stereoPairOverride_;
+}
+
+std::optional<StereoPair> Depth::getResolvedStereoPair() const {
+    return resolvedStereoPair_;
+}
+
 std::shared_ptr<Depth> Depth::setAlignTo(Node::Output& alignTo) {
     requireNotBuilt("Depth::setAlignTo");
     alignToOutput_ = &alignTo;
@@ -1014,6 +1022,7 @@ void Depth::buildInternal() {
                             wiredResolution->second);
     }
 
+    resolvedStereoPair_ = stereoPair;
     graphBuilt_ = true;
 }
 
