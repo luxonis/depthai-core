@@ -62,7 +62,7 @@ static inline const char* dai_status_name(dai_status status) {
 }
 
 /* Text of the last call of the calling thread that failed: one sentence with the name of the driver call and the
- * name of its status. Valid until the next call of this thread that fails. Never NULL. */
+ * number of its status. Valid until the next call of this thread that fails. Never NULL. */
 const char* dai_device_last_error(void);
 
 /* ---- Log ----------------------------------------------------------------------------------------------------- */

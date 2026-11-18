@@ -1,6 +1,6 @@
 # Check of the public build images of the RVC4 firmware that depthai-core pins (DEPTHAI_DEVICE_RVC4_SDK_IMAGE in
 # cmake/Depthai/DepthaiDeviceRVC4Config.cmake): ghcr.io/luxonis/depthai-device-sdk:os-<Luxonis OS version>-<sysroot>
-# and the same tag with -dev. This workflow does not build them. The CI of depthai-device-vendor-fw makes the public
+# and the same tag with -dev. This workflow does not build them. The private CI of the vendor module makes the public
 # sysroot of Luxonis OS and builds and pushes the images with device/rvc4/docker/sdk-images.sh when the sysroot changes.
 name: RVC4 device SDK image
 

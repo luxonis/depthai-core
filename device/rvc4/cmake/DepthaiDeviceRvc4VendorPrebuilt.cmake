@@ -1,7 +1,9 @@
 # Prebuilt private module (depthai-device-rvc4-vendor, the vendor module) and prebuilt Hexagon DSP offload.
 #
 # A build with the sources of the private module (the Luxonis CI) exports them as one archive:
-#   lib/libdepthai-device-rvc4-vendor.a   the base archive (the ToF wrapper is a separate archive and is not exported)
+#   lib/libdepthai-device-rvc4-vendor.a   the base archive: one prelinked object, in which only the C interface (and
+#                                  the few symbols that the ToF part uses) are global
+#   tof/lib/, tof/PREBUILT.libraries  the ToF part (one prelinked object too) and its file name, when the build had it
 #   PREBUILT.json                  version, commits, sanitizer, vcpkg triplet, compiler, sysroot, interface defines,
 #                                  link interface
 #   PREBUILT.headers               "<sha256>  <root>/<path>" for every header that the base archive compiled against;
