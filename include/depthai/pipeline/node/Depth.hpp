@@ -1,6 +1,5 @@
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -263,8 +262,7 @@ class Depth : public DeviceNodeGroup {
     StereoWiring ensureStereoOutputs(Pipeline& pipeline,
                                      const StereoPair& pair,
                                      std::optional<std::pair<uint32_t, uint32_t>> frameSize,
-                                     const std::optional<float>& fps,
-                                     const std::function<std::pair<uint32_t, uint32_t>(std::pair<uint32_t, uint32_t>)>& adjustFrameSize = nullptr);
+                                     const std::optional<float>& fps);
 
     /// Camera frame size NAS needs for @p model: at least the model input size, width aligned to the StereoDepth (EVA) requirement.
     static std::pair<uint32_t, uint32_t> nasCameraSize(std::pair<uint32_t, uint32_t> requested, DeviceModelZoo model);

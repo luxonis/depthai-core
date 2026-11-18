@@ -1,6 +1,3 @@
-#include <fmt/format.h>
-#include <fmt/ranges.h>
-
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <chrono>
@@ -871,6 +868,7 @@ TEST_CASE("Depth: NEURAL_ASSISTED_STEREO wires NeuralAssistedStereo on RVC4") {
 
     auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO);
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
+    REQUIRE(std::holds_alternative<std::monostate>(depth->getResolvedConfig()));
     requireDepthSingleBackendChild(*depth, "NeuralAssistedStereo");
     REQUIRE(depth->hasRectifiedOutputs());
     const auto rectifiedBackend = std::dynamic_pointer_cast<node::NeuralAssistedStereo>(depth->getNodeMap().front());
@@ -880,7 +878,7 @@ TEST_CASE("Depth: NEURAL_ASSISTED_STEREO wires NeuralAssistedStereo on RVC4") {
 }
 
 namespace {
-constexpr DeviceModelZoo kNasNeuralDepthModels[] = {
+constexpr DeviceModelZoo NAS_NEURAL_DEPTH_MODELS[] = {
     DeviceModelZoo::NEURAL_DEPTH_1248X780,
     DeviceModelZoo::NEURAL_DEPTH_1056X660,
     DeviceModelZoo::NEURAL_DEPTH_960X600,
@@ -894,7 +892,7 @@ constexpr DeviceModelZoo kNasNeuralDepthModels[] = {
 };
 
 bool isNasNeuralDepthModel(DeviceModelZoo model) {
-    return std::find(std::begin(kNasNeuralDepthModels), std::end(kNasNeuralDepthModels), model) != std::end(kNasNeuralDepthModels);
+    return std::find(std::begin(NAS_NEURAL_DEPTH_MODELS), std::end(NAS_NEURAL_DEPTH_MODELS), model) != std::end(NAS_NEURAL_DEPTH_MODELS);
 }
 
 // Skips unless the default device is an RVC4 with a stereo pair and NeuralDepth support.
@@ -911,119 +909,57 @@ std::shared_ptr<Device> requireNasDevice(Pipeline& pipeline) {
 }
 }  // namespace
 
-TEST_CASE("Depth: NEURAL_ASSISTED_STEREO without config uses the default model") {
-    Pipeline pipeline;
-    auto device = requireNasDevice(pipeline);
-    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO);
-    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
-    REQUIRE(std::holds_alternative<std::monostate>(depth->getResolvedConfig()));
-}
+TEST_CASE("Depth: NEURAL_ASSISTED_STEREO streams each supported model at default and small camera sizes") {
+    const auto model = GENERATE(Catch::Generators::from_range([] {
+        // Release the probe device before the streaming pipeline connects.
+        Pipeline probe;
+        auto device = requireNasDevice(probe);
+        const auto supportedModels = device->getSupportedDeviceModels();
+        std::vector<DeviceModelZoo> models;
+        std::copy_if(supportedModels.begin(), supportedModels.end(), std::back_inserter(models), isNasNeuralDepthModel);
+        if(models.empty()) {
+            SKIP("Skipping Depth test: device reports no NeuralDepth models.");
+        }
+        return models;
+    }()));
+    const bool requestSmallSize = GENERATE(false, true);
+    CAPTURE(static_cast<int>(model), requestSmallSize);
+    const auto size = requestSmallSize ? std::make_optional(std::pair<uint32_t, uint32_t>{640, 400}) : std::nullopt;
 
-TEST_CASE("Depth: NEURAL_ASSISTED_STEREO accepts an explicit supported NeuralDepth model") {
     Pipeline pipeline;
-    auto device = requireNasDevice(pipeline);
-    const auto supportedModels = device->getSupportedDeviceModels();
-    const auto it = std::find_if(supportedModels.begin(), supportedModels.end(), isNasNeuralDepthModel);
-    if(it == supportedModels.end()) {
-        SKIP("Skipping Depth test: device reports no NeuralDepth models.");
-    }
-    const DeviceModelZoo model = *it;
-
-    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO, node::Depth::Config{model});
-    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO, node::Depth::Config{model}, kDepthStereoFps, size);
+    PipelineStopGuard guard(pipeline);
+    auto depthQueue = depth->depth().createOutputQueue();
     requireDepthSingleBackendChild(*depth, "NeuralAssistedStereo");
     REQUIRE(depth->getResolvedConfig() == node::Depth::Config{model});
-    const auto backend = std::dynamic_pointer_cast<node::NeuralAssistedStereo>(depth->getNodeMap().front());
-    REQUIRE(backend != nullptr);
+    pipeline.start();
+    const auto frame = requireStreamFrame(depthQueue, std::chrono::seconds(60));
+    const auto [modelWidth, modelHeight] = node::NeuralDepth::getInputSize(model);
+    REQUIRE(frame->getWidth() >= static_cast<uint32_t>(modelWidth));
+    REQUIRE(frame->getHeight() >= static_cast<uint32_t>(modelHeight));
+    REQUIRE(frame->getWidth() % 128 == 0);
 }
 
-TEST_CASE("Depth: NEURAL_ASSISTED_STEREO produces depth with every supported NeuralDepth model") {
-    std::vector<DeviceModelZoo> models;
-    {
-        // Release the device again before the per-model pipelines below connect to it.
-        Pipeline probe;
-        auto probeDevice = requireNasDevice(probe);
-        const auto supportedModels = probeDevice->getSupportedDeviceModels();
-        std::copy_if(supportedModels.begin(), supportedModels.end(), std::back_inserter(models), isNasNeuralDepthModel);
-    }
-    if(models.empty()) {
-        SKIP("Skipping Depth test: device reports no NeuralDepth models.");
-    }
-
-    std::vector<std::string> failures;
-    for(const auto model : models) {
-        try {
-            Pipeline pipeline;
-            auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO, node::Depth::Config{model});
-            PipelineStopGuard guard(pipeline);
-            auto depthQueue = depth->depth().createOutputQueue();
-            pipeline.start();
-            bool timedOut = false;
-            auto frame = depthQueue->get<dai::ImgFrame>(std::chrono::seconds(60), timedOut);
-            if(timedOut || frame == nullptr) {
-                failures.push_back(fmt::format("model {}: no depth frame", static_cast<int>(model)));
-            }
-        } catch(const std::exception& e) {
-            failures.push_back(fmt::format("model {}: {}", static_cast<int>(model), e.what()));
-        }
-    }
-    INFO(fmt::format("{}", fmt::join(failures, "; ")));
-    REQUIRE(failures.empty());
-}
-
-TEST_CASE("Depth: NEURAL_ASSISTED_STEREO enlarges camera outputs smaller than the model input") {
-    // NeuralDepth inside NAS outputs a disparity at the model size; Vpp rejects it when the camera image is smaller.
-    std::vector<DeviceModelZoo> models;
-    {
-        Pipeline probe;
-        auto probeDevice = requireNasDevice(probe);
-        const auto supportedModels = probeDevice->getSupportedDeviceModels();
-        std::copy_if(supportedModels.begin(), supportedModels.end(), std::back_inserter(models), isNasNeuralDepthModel);
-    }
-    if(models.empty()) {
-        SKIP("Skipping Depth test: device reports no NeuralDepth models.");
-    }
-    constexpr std::pair<uint32_t, uint32_t> kSmallSize{640, 400};
-
-    std::vector<std::string> failures;
-    for(const auto model : models) {
-        try {
-            Pipeline pipeline;
-            auto depth =
-                pipeline.create<node::Depth>()->build(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO, node::Depth::Config{model}, kDepthStereoFps, kSmallSize);
-            PipelineStopGuard guard(pipeline);
-            auto depthQueue = depth->depth().createOutputQueue();
-            pipeline.start();
-            bool timedOut = false;
-            auto frame = depthQueue->get<dai::ImgFrame>(std::chrono::seconds(30), timedOut);
-            const auto [modelW, modelH] = node::NeuralDepth::getInputSize(model);
-            if(timedOut || frame == nullptr) {
-                failures.push_back(fmt::format("model {}: no depth frame", static_cast<int>(model)));
-            } else if(frame->getWidth() < static_cast<uint32_t>(modelW) || frame->getHeight() < static_cast<uint32_t>(modelH)) {
-                failures.push_back(
-                    fmt::format("model {}: depth frame {}x{} smaller than model input", static_cast<int>(model), frame->getWidth(), frame->getHeight()));
-            }
-        } catch(const std::exception& e) {
-            failures.push_back(fmt::format("model {}: {}", static_cast<int>(model), e.what()));
-        }
-    }
-    INFO(fmt::format("{}", fmt::join(failures, "; ")));
-    REQUIRE(failures.empty());
-}
-
-TEST_CASE("Depth: NEURAL_ASSISTED_STEREO aligns an unaligned requested width to 128") {
+TEST_CASE("Depth: NEURAL_ASSISTED_STEREO aligns requested and pre-existing camera widths to 128") {
+    const bool preexistingCameras = GENERATE(false, true);
+    CAPTURE(preexistingCameras);
     Pipeline pipeline;
     auto device = requireNasDevice(pipeline);
-    // 960 is not a multiple of 128 and makes the StereoDepth EVA pyramid assert; Depth must enlarge it to 1024x640.
-    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO, std::nullopt, std::pair<uint32_t, uint32_t>{960, 600});
+    // 960x600 must become 1024x640, whether given to Depth or inherited from existing outputs.
+    constexpr std::pair<uint32_t, uint32_t> REQUESTED_SIZE{960, 600};
+    if(preexistingCameras) {
+        const auto pair = requireFirstStereoPairForTest(device);
+        for(const auto socket : {pair.left, pair.right}) {
+            auto camera = pipeline.create<node::Camera>()->build(socket, std::nullopt, kDepthStereoFps);
+            REQUIRE(camera->requestOutput(REQUESTED_SIZE, std::nullopt, ImgResizeMode::CROP, kDepthStereoFps) != nullptr);
+        }
+    }
+    const auto size = preexistingCameras ? std::nullopt : std::make_optional(REQUESTED_SIZE);
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO, kDepthStereoFps, size);
     PipelineStopGuard guard(pipeline);
     auto depthQueue = depth->depth().createOutputQueue();
     pipeline.start();
-    bool timedOut = false;
-    auto frame = depthQueue->get<dai::ImgFrame>(std::chrono::seconds(30), timedOut);
-    REQUIRE_FALSE(timedOut);
-    REQUIRE(frame != nullptr);
-    REQUIRE(frame->getWidth() % 128 == 0);
+    const auto frame = requireStreamFrame(depthQueue, kStreamFrameTimeout);
     REQUIRE(frame->getWidth() == 1024);
     REQUIRE(frame->getHeight() == 640);
 }
@@ -1048,10 +984,10 @@ TEST_CASE("Depth: NEURAL_ASSISTED_STEREO rejects invalid configs") {
     }
     SECTION("model not available on device") {
         const auto supportedModels = device->getSupportedDeviceModels();
-        const auto* missing = std::find_if(std::begin(kNasNeuralDepthModels), std::end(kNasNeuralDepthModels), [&](DeviceModelZoo m) {
+        const auto* missing = std::find_if(std::begin(NAS_NEURAL_DEPTH_MODELS), std::end(NAS_NEURAL_DEPTH_MODELS), [&](DeviceModelZoo m) {
             return std::find(supportedModels.begin(), supportedModels.end(), m) == supportedModels.end();
         });
-        if(missing == std::end(kNasNeuralDepthModels)) {
+        if(missing == std::end(NAS_NEURAL_DEPTH_MODELS)) {
             SKIP("Skipping Depth test: device supports every NeuralDepth model.");
         }
         depth->setConfig(*missing);
