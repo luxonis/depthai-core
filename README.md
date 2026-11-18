@@ -281,9 +281,14 @@ The generated integration file also specifies include paths without requiring in
 ## RVC4 device firmware
 
 The device-side firmware of RVC4 devices is part of this repository: see [device/rvc4](device/rvc4/README.md). It
-compiles the node definitions and message types of the same commit as the host library. A host build does not build
-the firmware: it embeds the firmware package that `cmake/Depthai/DepthaiDeviceRVC4Config.cmake` pins. To embed a
-package that you built, configure with `-D DEPTHAI_DEVICE_RVC4_FWP_PATH=<path>/depthai-device-rvc4-fwp.tar.xz`.
+compiles the node definitions and message types of the same commit as the host library. The firmware package that a
+host build embeds is one of:
+
+* by default, a build of `device/rvc4` of this checkout: each build of the library builds the firmware in its build
+  container, so the build needs bash and Docker ([device/rvc4](device/rvc4/README.md), Building);
+* with `-D DEPTHAI_DEVICE_RVC4_VERSION=<version>`, the package of that version, downloaded from the artifact server
+  (`cmake/Depthai/DepthaiDeviceRVC4Config.cmake` sets no version);
+* with `-D DEPTHAI_DEVICE_RVC4_FWP_PATH=<path>/depthai-device-rvc4-fwp.tar.xz`, a package that you have.
 
 ## CMake options
 Many features of the library can be disabled or enabled using CMake options.

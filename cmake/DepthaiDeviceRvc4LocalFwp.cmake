@@ -1,5 +1,5 @@
-# Embeds a local RVC4 firmware package in the library, in place of the package that
-# cmake/Depthai/DepthaiDeviceRVC4Config.cmake pins:
+# Embeds a local RVC4 firmware package in the library, in place of the firmware that the build builds from
+# device/rvc4 or downloads (DEPTHAI_DEVICE_RVC4_VERSION):
 #
 #   cmake -S . -B build -D DEPTHAI_DEVICE_RVC4_FWP_PATH=<path>/depthai-device-rvc4-fwp.tar.xz
 #
@@ -11,7 +11,7 @@
 # while you iterate on the firmware: a new embedded package changes the version, and the library is compiled again.
 #
 # DepthaiDeviceRvc4LocalFwp(<package path> <output folder> <version variable> <resource list variable>)
-#   <version variable>        in: pinned version (gives the base version), out: version of the local package
+#   <version variable>        in: DEPTHAI_DEVICE_RVC4_VERSION (gives the base version), out: version of the local package
 #   <resource list variable>  out: files to embed
 function(DepthaiDeviceRvc4LocalFwp fwp_path output_dir version_var resource_list_var)
     # A relative path is relative to the source directory
@@ -22,8 +22,12 @@ function(DepthaiDeviceRvc4LocalFwp fwp_path output_dir version_var resource_list
 
     file(SHA256 "${_fwp}" _sha256)
     string(SUBSTRING "${_sha256}" 0 12 _short_sha256)
-    # "0.0.1+<commit>" or "0.0.1" -> "0.0.1"
+    # "0.0.1+<commit>" or "0.0.1" -> "0.0.1"; no version: the version of device/rvc4
     string(REGEX REPLACE "\\+.*$" "" _base_version "${${version_var}}")
+    if(_base_version STREQUAL "" AND EXISTS "${CMAKE_SOURCE_DIR}/device/rvc4/version.txt")
+        file(STRINGS "${CMAKE_SOURCE_DIR}/device/rvc4/version.txt" _base_version LIMIT_COUNT 1)
+        string(STRIP "${_base_version}" _base_version)
+    endif()
     set(_version "${_base_version}+local.${_short_sha256}")
 
     # configure_file makes the configure step run again when the package changes

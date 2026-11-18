@@ -188,8 +188,13 @@ code completion and one-click debugging, see [vscode_development](vscode_develop
 
 ## Running a custom build with depthai-core
 
-A host build of `depthai-core` contains the firmware package that it pins. To run your own build instead, point
-`depthai-core` at your package at run time:
+A host build of `depthai-core` builds the firmware from this directory and embeds it, when
+`cmake/Depthai/DepthaiDeviceRVC4Config.cmake` sets no `DEPTHAI_DEVICE_RVC4_VERSION` (the default). Each build of the
+library runs `create_deployment_artifacts.sh` for the target that fits the host build (`rvc4`, or `rvc4-tsan` /
+`rvc4-asan-ubsan` for a sanitizer build), and embeds the package as version `<version>+local.<commit>`. With
+`-D DEPTHAI_DEVICE_RVC4_VERSION=<version>` the host build downloads the package of that version instead.
+
+To run another package without a new host build, point `depthai-core` at it at run time:
 
 ```bash
 export DEPTHAI_DEVICE_RVC4_FWP=/path/to/depthai-core/device/rvc4/build_docker_arm64_rvc4/RelWithDebInfo/depthai-device-rvc4-fwp.tar.xz
@@ -199,7 +204,7 @@ Then run any `depthai-core` example or your own application. `depthai-core` logs
 uploads your package to the device and starts it. Build the host library and the firmware from the same commit, so
 that the pipeline schema matches.
 
-To put your package into the host library, in place of the pinned package, configure the host build with the path:
+To put a package that you have into the host library, configure the host build with the path:
 
 ```bash
 cmake -S . -B build -D DEPTHAI_DEVICE_RVC4_FWP_PATH=$PWD/device/rvc4/build_docker_arm64_rvc4/RelWithDebInfo/depthai-device-rvc4-fwp.tar.xz
