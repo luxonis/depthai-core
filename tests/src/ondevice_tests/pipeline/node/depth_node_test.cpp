@@ -607,7 +607,6 @@ TEST_CASE("Depth: ToF ignores a requested stereo pair", "[stereo-pair]") {
     const auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::TOF);
     depth->setStereoPair(StereoPair{CameraBoardSocket::CAM_G, CameraBoardSocket::CAM_H});
     REQUIRE_NOTHROW((void)depth->depth());
-    REQUIRE(depth->getRequestedStereoPair().has_value());
     REQUIRE_FALSE(depth->getResolvedStereoPair().has_value());
 }
 

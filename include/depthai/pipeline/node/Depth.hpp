@@ -213,13 +213,6 @@ class Depth : public DeviceNodeGroup {
     std::shared_ptr<Depth> setStereoPair(std::optional<StereoPair> stereoPair);
 
     /**
-     * Get the requested stereo pair, or std::nullopt when using the device's first pair.
-     */
-    [[nodiscard]] std::optional<StereoPair> getRequestedStereoPair() const {
-        return stereoPairOverride_;
-    }
-
-    /**
      * Get the stereo pair actually wired, including metadata reported by the device.
      * Returns std::nullopt before successful wiring or when the resolved algorithm is TOF.
      */

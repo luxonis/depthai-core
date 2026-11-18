@@ -28,6 +28,10 @@ struct DepthTestAccess {
         return Depth::selectStereoPair(pairs, requested);
     }
 
+    static StereoPair selectStereoPair(const Depth& depth, const std::vector<StereoPair>& pairs) {
+        return Depth::selectStereoPair(pairs, depth.stereoPairOverride_);
+    }
+
     static std::pair<Depth::Algorithm, Depth::Config> selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                                                     float targetFps,
                                                                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
@@ -141,16 +145,20 @@ TEST_CASE("Depth stereo pair selection rejects missing and unavailable pairs", "
 
 TEST_CASE("Depth stereo pair overrides can be reset without changing the algorithm", "[Depth][stereo-pair]") {
     const auto depth = Depth::create();
-    REQUIRE_FALSE(depth->getRequestedStereoPair().has_value());
     REQUIRE_FALSE(depth->getResolvedStereoPair().has_value());
+    const dai::StereoPair first{dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C};
     const dai::StereoPair pair{dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_D};
+    const std::vector<dai::StereoPair> pairs{first, pair};
+    REQUIRE(dai::node::DepthTestAccess::selectStereoPair(*depth, pairs).left == first.left);
+    REQUIRE(dai::node::DepthTestAccess::selectStereoPair(*depth, pairs).right == first.right);
     REQUIRE(depth->setStereoPair(pair) == depth);
     depth->build(Depth::Algorithm::STEREO, StereoDepth::PresetMode::DEFAULT);
-    REQUIRE(depth->getRequestedStereoPair()->left == pair.left);
-    REQUIRE(depth->getRequestedStereoPair()->right == pair.right);
+    REQUIRE(dai::node::DepthTestAccess::selectStereoPair(*depth, pairs).left == pair.left);
+    REQUIRE(dai::node::DepthTestAccess::selectStereoPair(*depth, pairs).right == pair.right);
     REQUIRE_FALSE(depth->getResolvedStereoPair().has_value());
     depth->setStereoPair(std::nullopt);
-    REQUIRE_FALSE(depth->getRequestedStereoPair().has_value());
+    REQUIRE(dai::node::DepthTestAccess::selectStereoPair(*depth, pairs).left == first.left);
+    REQUIRE(dai::node::DepthTestAccess::selectStereoPair(*depth, pairs).right == first.right);
     REQUIRE(depth->getRequestedAlgorithm() == Depth::Algorithm::STEREO);
     REQUIRE(std::get<StereoDepth::PresetMode>(*depth->getRequestedConfig()) == StereoDepth::PresetMode::DEFAULT);
 }
@@ -159,12 +167,13 @@ TEST_CASE("Depth stereo pair setter rejects ambiguous sockets without changing t
     const auto depth = Depth::create();
     const dai::StereoPair pair{dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C};
     depth->setStereoPair(pair);
+    const std::vector<dai::StereoPair> pairs{pair};
     const auto invalid = GENERATE(dai::StereoPair{dai::CameraBoardSocket::AUTO, dai::CameraBoardSocket::CAM_C},
                                   dai::StereoPair{dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::AUTO},
                                   dai::StereoPair{dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_B});
     REQUIRE_THROWS_WITH(depth->setStereoPair(invalid), Catch::Matchers::ContainsSubstring("two distinct, explicit camera sockets"));
-    REQUIRE(depth->getRequestedStereoPair()->left == pair.left);
-    REQUIRE(depth->getRequestedStereoPair()->right == pair.right);
+    REQUIRE(dai::node::DepthTestAccess::selectStereoPair(*depth, pairs).left == pair.left);
+    REQUIRE(dai::node::DepthTestAccess::selectStereoPair(*depth, pairs).right == pair.right);
 }
 
 TEST_CASE("Depth::selectBackend picks NeuralDepth model whose tensor band fits the user resolution", "[Depth]") {

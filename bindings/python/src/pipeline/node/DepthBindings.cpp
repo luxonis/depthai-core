@@ -54,7 +54,6 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
                     DOC(dai, node, Depth, getDefaultAlgorithm))
         .def("setAlgorithm", &Depth::setAlgorithm, py::arg("algorithm"), DOC(dai, node, Depth, setAlgorithm))
         .def("setStereoPair", &Depth::setStereoPair, py::arg("stereoPair"), DOC(dai, node, Depth, setStereoPair))
-        .def("getRequestedStereoPair", &Depth::getRequestedStereoPair, DOC(dai, node, Depth, getRequestedStereoPair))
         .def("getResolvedStereoPair", &Depth::getResolvedStereoPair, DOC(dai, node, Depth, getResolvedStereoPair))
         .def(
             "getRequestedConfig",
