@@ -109,16 +109,12 @@ inline int readIntLE(const uint8_t* data) {
 }
 
 template <class T>
-inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, std::vector<uint8_t>& data, long fd) {
+inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, const std::shared_ptr<Memory>& data) {
     auto tmp = std::make_shared<T>();
 
     // deserialize
     utility::deserialize(metadata, size, *tmp);
-    if(fd < 0) {
-        tmp->data = std::make_shared<dai::VectorMemory>(std::move(data));
-    } else {
-        tmp->data = std::make_shared<dai::SharedMemory>(fd);
-    }
+    tmp->data = data;
 
     return tmp;
 }
@@ -167,23 +163,23 @@ static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* 
 }
 
 std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t* const packet) {
+    const auto header = parseHeader(packet);
+    const auto bufferLength = std::get<2>(header);
+    std::shared_ptr<Memory> data;
+    if(packet->fd >= 0) {
+        data = std::make_shared<SharedMemory>(packet->fd);
+    } else {
+        data = std::make_shared<VectorMemory>(std::vector<uint8_t>(packet->data, packet->data + bufferLength));
+    }
+    return parseMessage(packet, data);
+}
+
+std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t* packet, const std::shared_ptr<Memory>& data) {
     DatatypeEnum objectType;
     size_t serializedObjectSize;
     size_t bufferLength;
-    long fd;
     std::tie(objectType, serializedObjectSize, bufferLength) = parseHeader(packet);
     auto* const metadataStart = packet->data + bufferLength;
-
-    // copy data part
-    if(packet->data == nullptr && bufferLength > 0) {
-        throw std::runtime_error("Bad packet, couldn't parse (null data buffer)");
-    }
-    std::vector<uint8_t> data;
-    if(bufferLength > 0) {
-        data.assign(packet->data, packet->data + bufferLength);
-    }
-
-    fd = packet->fd;
 
     // Create corresponding object
     switch(objectType) {
@@ -193,7 +189,7 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return pBuf;
         }
         case DatatypeEnum::Buffer:
-            return parseDatatype<Buffer>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<Buffer>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::Transformable:
@@ -202,212 +198,212 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
                 "Transformable messages");
 
         case DatatypeEnum::ImgFrame:
-            return parseDatatype<ImgFrame>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<ImgFrame>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::SegmentationMask:
-            return parseDatatype<SegmentationMask>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<SegmentationMask>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::EncodedFrame:
-            return parseDatatype<EncodedFrame>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<EncodedFrame>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::NNData:
-            return parseDatatype<NNData>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<NNData>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::ImageManipConfig:
-            return parseDatatype<ImageManipConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<ImageManipConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::ImageAlignConfig:
-            return parseDatatype<ImageAlignConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<ImageAlignConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::AlignConfig:
-            return parseDatatype<AlignConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<AlignConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::CameraControl:
-            return parseDatatype<CameraControl>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<CameraControl>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::GateControl:
-            return parseDatatype<GateControl>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<GateControl>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::ImgDetections:
-            return parseDatatype<ImgDetections>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<ImgDetections>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::SpatialImgDetections:
-            return parseDatatype<SpatialImgDetections>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<SpatialImgDetections>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::SystemInformation:
-            return parseDatatype<SystemInformation>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<SystemInformation>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::SystemInformationRVC4:
-            return parseDatatype<SystemInformationRVC4>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<SystemInformationRVC4>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::SpatialLocationCalculatorData:
-            return parseDatatype<SpatialLocationCalculatorData>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<SpatialLocationCalculatorData>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::SpatialLocationCalculatorConfig:
-            return parseDatatype<SpatialLocationCalculatorConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<SpatialLocationCalculatorConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::DetectionParserConfig:
-            return parseDatatype<DetectionParserConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<DetectionParserConfig>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::SegmentationParserConfig:
-            return parseDatatype<SegmentationParserConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<SegmentationParserConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::AprilTags:
-            return parseDatatype<AprilTags>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<AprilTags>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::AprilTagConfig:
-            return parseDatatype<AprilTagConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<AprilTagConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::Tracklets:
-            return parseDatatype<Tracklets>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<Tracklets>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::IMUData:
-            return parseDatatype<IMUData>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<IMUData>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::StereoDepthConfig:
-            return parseDatatype<StereoDepthConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<StereoDepthConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::NeuralDepthConfig:
-            return parseDatatype<NeuralDepthConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<NeuralDepthConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::GPUStereoConfig:
-            return parseDatatype<GPUStereoConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<GPUStereoConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::EdgeDetectorConfig:
-            return parseDatatype<EdgeDetectorConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<EdgeDetectorConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::TrackedFeatures:
-            return parseDatatype<TrackedFeatures>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<TrackedFeatures>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::FeatureTrackerConfig:
-            return parseDatatype<FeatureTrackerConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<FeatureTrackerConfig>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::BenchmarkReport:
-            return parseDatatype<BenchmarkReport>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<BenchmarkReport>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::ThermalConfig:
-            return parseDatatype<ThermalConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<ThermalConfig>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::ToFConfig:
-            return parseDatatype<ToFConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<ToFConfig>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::PointCloudConfig:
-            return parseDatatype<PointCloudConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<PointCloudConfig>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::PointCloudData:
-            return parseDatatype<PointCloudData>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<PointCloudData>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::MapData:
-            return parseDatatype<MapData>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<MapData>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::PipelineEvent:
-            return parseDatatype<PipelineEvent>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<PipelineEvent>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::PipelineState:
-            return parseDatatype<PipelineState>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<PipelineState>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::PipelineEventAggregationConfig:
-            return parseDatatype<PipelineEventAggregationConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<PipelineEventAggregationConfig>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::MessageGroup:
-            return parseDatatype<MessageGroup>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<MessageGroup>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::TransformData:
-            return parseDatatype<TransformData>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<TransformData>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::Odometry:
-            return parseDatatype<Odometry>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<Odometry>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::ImgAnnotations:
-            return parseDatatype<ImgAnnotations>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<ImgAnnotations>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::ImageFiltersConfig:
-            return parseDatatype<ImageFiltersConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<ImageFiltersConfig>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
-            return parseDatatype<ToFDepthConfidenceFilterConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<ToFDepthConfidenceFilterConfig>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::RGBDData:
-            return parseDatatype<RGBDData>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<RGBDData>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::ObjectTrackerConfig:
-            return parseDatatype<ObjectTrackerConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<ObjectTrackerConfig>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::VppConfig: {
-            return parseDatatype<VppConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<VppConfig>(metadataStart, serializedObjectSize, data);
             break;
         }
         case DatatypeEnum::ImgDetectionsFilterConfig:
-            return parseDatatype<ImgDetectionsFilterConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<ImgDetectionsFilterConfig>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::PacketizedData: {
-            return parseDatatype<PacketizedData>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<PacketizedData>(metadataStart, serializedObjectSize, data);
         } break;
 #ifdef DEPTHAI_HAVE_BETA
         case DatatypeEnum::Classifications:
-            return parseDatatype<beta::Classifications>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::Classifications>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::Keypoints:
-            return parseDatatype<beta::Keypoints>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::Keypoints>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::Clusters:
-            return parseDatatype<beta::Clusters>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::Clusters>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::Map2D:
-            return parseDatatype<beta::Map2D>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::Map2D>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::Lines:
-            return parseDatatype<beta::Lines>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::Lines>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::Predictions:
-            return parseDatatype<beta::Predictions>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::Predictions>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::FastSAMParserConfig:
-            return parseDatatype<beta::FastSAMParserConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::FastSAMParserConfig>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::HRNetParserConfig:
-            return parseDatatype<beta::HRNetParserConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::HRNetParserConfig>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::MLSDParserConfig:
-            return parseDatatype<beta::MLSDParserConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::MLSDParserConfig>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::MPPalmDetectionParserConfig:
-            return parseDatatype<beta::MPPalmDetectionParserConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::MPPalmDetectionParserConfig>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::PPTextDetectionParserConfig:
-            return parseDatatype<beta::PPTextDetectionParserConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::PPTextDetectionParserConfig>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::RFDETRParserConfig:
-            return parseDatatype<beta::RFDETRParserConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::RFDETRParserConfig>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::SCRFDParserConfig:
-            return parseDatatype<beta::SCRFDParserConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::SCRFDParserConfig>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::SuperAnimalParserConfig:
-            return parseDatatype<beta::SuperAnimalParserConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::SuperAnimalParserConfig>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::YuNetParserConfig:
-            return parseDatatype<beta::YuNetParserConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::YuNetParserConfig>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::ClassificationSequenceParserConfig:
-            return parseDatatype<beta::ClassificationSequenceParserConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::ClassificationSequenceParserConfig>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::MapOutputParserConfig:
-            return parseDatatype<beta::MapOutputParserConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::MapOutputParserConfig>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::XFeatMonoParserConfig:
-            return parseDatatype<beta::XFeatMonoParserConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::XFeatMonoParserConfig>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::XFeatStereoParserConfig:
-            return parseDatatype<beta::XFeatStereoParserConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::XFeatStereoParserConfig>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::MultiDeviceCalibrationControl:
-            return parseDatatype<beta::MultiDeviceCalibrationControl>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::MultiDeviceCalibrationControl>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::MultiDeviceCalibrationResult:
-            return parseDatatype<beta::MultiDeviceCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<beta::MultiDeviceCalibrationResult>(metadataStart, serializedObjectSize, data);
 #else
         case DatatypeEnum::Classifications:
         case DatatypeEnum::Keypoints:
@@ -434,31 +430,31 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
 #endif  // DEPTHAI_HAVE_BETA
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
         case DatatypeEnum::DynamicCalibrationControl:
-            return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::AutoCalibrationConfig:
-            return parseDatatype<AutoCalibrationConfig>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<AutoCalibrationConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::DynamicCalibrationResult:
-            return parseDatatype<DynamicCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<DynamicCalibrationResult>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::AutoCalibrationResult:
-            return parseDatatype<AutoCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<AutoCalibrationResult>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::CalibrationMetrics:
-            return parseDatatype<CalibrationMetrics>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<CalibrationMetrics>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::CalibrationQuality:
-            return parseDatatype<CalibrationQuality>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<CalibrationQuality>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::CoverageData:
-            return parseDatatype<CoverageData>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<CoverageData>(metadataStart, serializedObjectSize, data);
             break;
 #else
         // Explicitly enum these in this switch state:
@@ -480,7 +476,24 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
 }
 
 std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(StreamPacketDesc packet) {
-    return parseMessage(&packet);
+    if(packet.fd >= 0) return parseMessage(&packet);
+    const auto header = parseHeader(&packet);
+    auto data = std::make_shared<StreamPacketMemory>(std::move(packet));
+    auto message = parseMessage(data.get(), data);
+    data->setSize(std::get<2>(header));
+    return message;
+}
+
+std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(std::vector<uint8_t> packet) {
+    auto data = std::make_shared<VectorMemory>(std::move(packet));
+    streamPacketDesc_t descriptor{};
+    descriptor.data = data->getData().data();
+    descriptor.length = static_cast<uint32_t>(data->getSize());
+    descriptor.fd = -1;
+    const auto header = parseHeader(&descriptor);
+    auto message = parseMessage(&descriptor, data);
+    data->setSize(std::get<2>(header));
+    return message;
 }
 
 std::vector<std::uint8_t> StreamMessageParser::serializeMetadata(const ADatatype& message) {

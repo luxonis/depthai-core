@@ -6,13 +6,14 @@
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/types.hpp>
 #include <opencv2/imgproc.hpp>
+#include <utility>
 
 // #include "spdlog/spdlog.h"
 
 namespace dai {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch-enum"
-ImgFrame& ImgFrame::setFrame(cv::Mat frame) {
+ImgFrame& ImgFrame::setFrame(const cv::Mat frame) {
     std::vector<uint8_t> dataVec;
     dataVec.reserve(frame.total() * frame.elemSize());
     if(!frame.isContinuous()) {
@@ -20,9 +21,9 @@ ImgFrame& ImgFrame::setFrame(cv::Mat frame) {
             dataVec.insert(dataVec.end(), frame.ptr(i), frame.ptr(i) + frame.cols * frame.elemSize());
         }
     } else {
-        dataVec.insert(dataVec.begin(), frame.datastart, frame.dataend);
+        dataVec.insert(dataVec.begin(), frame.data, frame.data + frame.total() * frame.elemSize());
     }
-    setData(dataVec);
+    setData(std::move(dataVec));
     return *this;
 }
 
@@ -262,19 +263,28 @@ cv::Mat ImgFrame::getCvFrame(cv::MatAllocator* allocator) {
     return output;
 }
 
-ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
+ImgFrame& ImgFrame::setCvFrame(const cv::Mat mat, Type type) {
     cv::Mat output;
     setType(type);
     setSize(mat.cols, mat.rows);
     unsigned int size = mat.cols * mat.rows;
 
-    auto setPlanarDataVec = [&output, size](std::vector<uint8_t>& dataVec, size_t offsetB, size_t offsetG, size_t offsetR, size_t stride, int cvType) {
-        cv::Mat chB(output.rows, output.cols, cvType, dataVec.data() + size * offsetB, stride);
-        cv::Mat chG(output.rows, output.cols, cvType, dataVec.data() + size * offsetG, stride);
-        cv::Mat chR(output.rows, output.cols, cvType, dataVec.data() + size * offsetR, stride);
-        std::vector<cv::Mat> channels = {chB, chG, chR};  // assumes mat is BGR
-        cv::split(output, channels);
+    // Matching depths can share the input until the final copy into ImgFrame.
+    auto convertInputDepth = [&](int depth) {
+        if(mat.depth() == depth) return mat;
+        cv::Mat converted;
+        mat.convertTo(converted, depth);
+        return converted;
     };
+
+    auto setPlanarDataVec =
+        [size](const cv::Mat& input, std::vector<uint8_t>& dataVec, size_t offsetB, size_t offsetG, size_t offsetR, size_t stride, int cvType) {
+            cv::Mat chB(input.rows, input.cols, cvType, dataVec.data() + size * offsetB, stride);
+            cv::Mat chG(input.rows, input.cols, cvType, dataVec.data() + size * offsetG, stride);
+            cv::Mat chR(input.rows, input.cols, cvType, dataVec.data() + size * offsetR, stride);
+            std::vector<cv::Mat> channels = {chB, chG, chR};  // assumes mat is BGR
+            cv::split(input, channels);
+        };
 
     switch(type) {
         case Type::RGB888i: {
@@ -292,8 +302,8 @@ ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
         case Type::BGR888i: {
             CV_Assert(mat.channels() == 3);
             fb.stride = mat.cols * 3;
-            mat.convertTo(output, CV_8UC3);
-            setFrame(output);
+            const cv::Mat input = convertInputDepth(CV_8U);
+            setFrame(input);
         } break;
 
         case Type::RGB161616: {
@@ -316,8 +326,8 @@ ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
         case Type::BGRF16F16F16i: {
             CV_Assert(mat.channels() == 3);
             fb.stride = mat.cols * 3 * 2;
-            mat.convertTo(output, CV_16FC3);
-            setFrame(output);
+            const cv::Mat input = convertInputDepth(CV_16F);
+            setFrame(input);
         } break;
 
         case Type::RGB888p: {
@@ -326,10 +336,10 @@ ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
             fb.p1Offset = 0;
             fb.p2Offset = size;
             fb.p3Offset = size * 2;
-            mat.convertTo(output, CV_8UC3);
+            const cv::Mat input = convertInputDepth(CV_8U);
             std::vector<uint8_t> dataVec(size * 3);
-            setPlanarDataVec(dataVec, 2, 1, 0, fb.stride, CV_8UC1);  // R channel is first == 0 offset
-            setData(dataVec);
+            setPlanarDataVec(input, dataVec, 2, 1, 0, fb.stride, CV_8UC1);  // R channel is first == 0 offset
+            setData(std::move(dataVec));
         } break;
 
         case Type::RGBF16F16F16p: {
@@ -339,9 +349,9 @@ ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
             fb.p2Offset = size * 2;
             fb.p3Offset = size * 4;
             std::vector<uint8_t> dataVec(size * 3 * 2);
-            mat.convertTo(output, CV_16FC3);
-            setPlanarDataVec(dataVec, 2 * 2, 1 * 2, 0, fb.stride, CV_16FC1);  // R channel is first == 0 offset
-            setData(dataVec);
+            const cv::Mat input = convertInputDepth(CV_16F);
+            setPlanarDataVec(input, dataVec, 2 * 2, 1 * 2, 0, fb.stride, CV_16FC1);  // R channel is first == 0 offset
+            setData(std::move(dataVec));
         } break;
 
         case Type::BGR888p: {
@@ -351,9 +361,9 @@ ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
             fb.p3Offset = size * 2;
 
             std::vector<uint8_t> dataVec(size * 3);
-            mat.convertTo(output, CV_8UC3);
-            setPlanarDataVec(dataVec, 0, 1, 2, fb.stride, CV_8UC1);  // B channel is first
-            setData(dataVec);
+            const cv::Mat input = convertInputDepth(CV_8U);
+            setPlanarDataVec(input, dataVec, 0, 1, 2, fb.stride, CV_8UC1);  // B channel is first
+            setData(std::move(dataVec));
         } break;
 
         case Type::BGRF16F16F16p: {
@@ -363,9 +373,9 @@ ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
             fb.p2Offset = size * 2;
             fb.p3Offset = size * 4;
             std::vector<uint8_t> dataVec(size * 3 * 2);
-            mat.convertTo(output, CV_16FC3);
-            setPlanarDataVec(dataVec, 0, 1 * 2, 2 * 2, fb.stride, CV_16FC1);  // B channel is first
-            setData(dataVec);
+            const cv::Mat input = convertInputDepth(CV_16F);
+            setPlanarDataVec(input, dataVec, 0, 1 * 2, 2 * 2, fb.stride, CV_16FC1);  // B channel is first
+            setData(std::move(dataVec));
         } break;
 
         case Type::YUV420p: {
@@ -403,42 +413,46 @@ ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
             cv::Mat chromaPlane2(chromaRows, chromaCols, CV_8UC1, output.ptr() + ySize + uvSize);  // if NV12: V plane, if NV21: U plane
             std::vector<cv::Mat> channels = {chromaPlane1, chromaPlane2};
             cv::merge(channels, uvDest);
-            setData(dataVec);
+            setData(std::move(dataVec));
         } break;
 
         case Type::RAW8:
         case Type::GRAY8: {
             fb.stride = mat.cols;
-            mat.convertTo(output, CV_8UC1);
-            if(output.channels() == 3) {
-                cv::cvtColor(output, output, cv::ColorConversionCodes::COLOR_BGR2GRAY);
+            const cv::Mat input = convertInputDepth(CV_8U);
+            if(input.channels() == 3) {
+                cv::cvtColor(input, output, cv::ColorConversionCodes::COLOR_BGR2GRAY);
+                setFrame(output);
+            } else {
+                setFrame(input);
             }
-            setFrame(output);
         } break;
         case Type::RAW14:
         case Type::RAW12:
         case Type::RAW10:
         case Type::RAW16: {
             fb.stride = mat.cols * 2;
-            mat.convertTo(output, CV_16UC1);
-            if(output.channels() == 3) {
-                cv::cvtColor(output, output, cv::ColorConversionCodes::COLOR_BGR2GRAY);
+            const cv::Mat input = convertInputDepth(CV_16U);
+            if(input.channels() == 3) {
+                cv::cvtColor(input, output, cv::ColorConversionCodes::COLOR_BGR2GRAY);
+                setFrame(output);
+            } else {
+                setFrame(input);
             }
-            setFrame(output);
         } break;
 
         case Type::RAW32: {
             CV_Assert(mat.channels() == 1);
             fb.stride = mat.cols * 4;
-            mat.convertTo(output, CV_32SC1);
-            setFrame(output);
+            const cv::Mat input = convertInputDepth(CV_32S);
+            setFrame(input);
         } break;
 
         case Type::GRAYF16: {
             CV_Assert(mat.channels() == 1);
             fb.stride = mat.cols * 2;
-            mat.convertTo(output, CV_16FC1);
-            setFrame(output);
+            const cv::Mat input = convertInputDepth(CV_16F);
+            setFrame(input);
         } break;
 
         default:

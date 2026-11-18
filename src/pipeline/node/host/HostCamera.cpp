@@ -29,7 +29,9 @@ void HostCamera::run() {
         imgFrame->setWidth(frameResized.cols);
         imgFrame->setHeight(frameResized.rows);
 
-        cv::imshow("HostCameraPreview", imgFrame->getCvFrame());
+        cv::Mat preview;
+        cv::cvtColor(frameResized, preview, cv::COLOR_RGB2BGR);
+        cv::imshow("HostCameraPreview", preview);
         // Send message
         out.send(imgFrame);
     }
