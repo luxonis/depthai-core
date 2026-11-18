@@ -52,7 +52,7 @@ class Depth : public DeviceNodeGroup {
     };
 
     /**
-     * Algorithm-specific configuration (DeviceModelZoo for NEURAL, StereoDepth::PresetMode for STEREO,
+     * Algorithm-specific configuration (DeviceModelZoo for NEURAL or NEURAL_ASSISTED_STEREO, StereoDepth::PresetMode for STEREO,
      * or std::monostate for backends without a selectable profile).
      */
     using Config = std::variant<std::monostate, DeviceModelZoo, StereoDepth::PresetMode>;
@@ -263,6 +263,9 @@ class Depth : public DeviceNodeGroup {
                                      const StereoPair& pair,
                                      std::optional<std::pair<uint32_t, uint32_t>> frameSize,
                                      const std::optional<float>& fps);
+
+    /// Camera frame size NAS needs for @p model: at least the model input size, width aligned to the StereoDepth (EVA) requirement.
+    static std::pair<uint32_t, uint32_t> nasCameraSize(std::pair<uint32_t, uint32_t> requested, DeviceModelZoo model);
 
     void wireAlignment(Algorithm active, const std::shared_ptr<Device>& device);
 

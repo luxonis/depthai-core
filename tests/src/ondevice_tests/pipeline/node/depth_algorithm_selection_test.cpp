@@ -32,6 +32,10 @@ struct DepthTestAccess {
         return {selection.algorithm, selection.config};
     }
 
+    static std::pair<uint32_t, uint32_t> nasCameraSize(std::pair<uint32_t, uint32_t> requested, DeviceModelZoo model) {
+        return Depth::nasCameraSize(requested, model);
+    }
+
     static std::pair<Depth::Algorithm, Depth::Config> selectNonRvc4Backend(const std::vector<Depth::Algorithm>& supportedAlgorithms) {
         const auto selection = Depth::selectBackend(Platform::RVC2, std::nullopt, 30.f, supportedAlgorithms);
         return {selection.algorithm, selection.config};
@@ -221,4 +225,16 @@ TEST_CASE("Depth rectified access forwards backend outputs and locks configurati
     REQUIRE(&depth->rectifiedRight() == &stereo->rectifiedRight);
     REQUIRE(&depth->depth() == &stereo->depth);
     REQUIRE_THROWS(depth->setAlgorithm(Depth::Algorithm::TOF));
+}
+
+TEST_CASE("Depth::nasCameraSize enlarges to the model size and aligns width to 128", "[Depth]") {
+    using Size = std::pair<uint32_t, uint32_t>;
+    using Access = dai::node::DepthTestAccess;
+    REQUIRE(Access::nasCameraSize({640, 400}, DeviceModelZoo::NEURAL_DEPTH_1248X780) == Size{1280, 800});
+    REQUIRE(Access::nasCameraSize({640, 400}, DeviceModelZoo::NEURAL_DEPTH_1056X660) == Size{1152, 720});
+    REQUIRE(Access::nasCameraSize({640, 400}, DeviceModelZoo::NEURAL_DEPTH_960X600) == Size{1024, 640});
+    REQUIRE(Access::nasCameraSize({640, 400}, DeviceModelZoo::NEURAL_DEPTH_864X540) == Size{896, 560});
+    REQUIRE(Access::nasCameraSize({960, 600}, DeviceModelZoo::NEURAL_DEPTH_NANO) == Size{1024, 640});
+    REQUIRE(Access::nasCameraSize({1280, 800}, DeviceModelZoo::NEURAL_DEPTH_NANO) == Size{1280, 800});
+    REQUIRE(Access::nasCameraSize({640, 400}, DeviceModelZoo::NEURAL_DEPTH_NANO) == Size{640, 400});
 }

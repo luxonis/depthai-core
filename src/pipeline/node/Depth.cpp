@@ -22,6 +22,8 @@ namespace {
 constexpr DeviceModelZoo DEFAULT_NEURAL_DEPTH_MODEL = DeviceModelZoo::NEURAL_DEPTH_MEDIUM;
 constexpr DeviceModelZoo DEFAULT_NAS_NEURAL_MODEL = DeviceModelZoo::NEURAL_DEPTH_NANO;
 constexpr bool DEFAULT_NAS_RECTIFY = true;
+// NAS runs StereoDepth on the camera frames; the EVA pyramid stage asserts (PYR: eStatus == EVA_SUCCESS) unless the width is a multiple of 128.
+constexpr uint32_t NAS_STEREO_WIDTH_ALIGNMENT = 128;
 constexpr float DEFAULT_TARGET_FPS = 30.f;
 constexpr float SELECTION_FPS_SAFETY_MARGIN = 0.9f;
 constexpr float NEURAL_TENSOR_COVER_SCALE = 1.4142135f;
@@ -78,6 +80,14 @@ bool modelPassesOptionalFilter(DeviceModelZoo model, const std::vector<DeviceMod
 
 bool isModelSupportedByDevice(DeviceModelZoo model, const std::vector<DeviceModelZoo>& supportedModels) {
     return std::find(supportedModels.begin(), supportedModels.end(), model) != supportedModels.end();
+}
+
+// True when the model is one of the NeuralDepth models the Depth node knows how to drive.
+bool isNeuralDepthModel(DeviceModelZoo model) {
+    return std::any_of(BACKEND_PROFILES.begin(), BACKEND_PROFILES.end(), [model](const BackendProfile& profile) {
+        const auto* m = std::get_if<DeviceModelZoo>(&profile.config);
+        return profile.algorithm == Depth::Algorithm::NEURAL && m != nullptr && *m == model;
+    });
 }
 
 bool supportsAlgorithm(const std::vector<Depth::Algorithm>& supported, Depth::Algorithm algorithm) {
@@ -185,6 +195,13 @@ void validateExplicitConfig(Depth::Algorithm algorithm,
             DAI_CHECK_V(std::holds_alternative<StereoDepth::PresetMode>(config), "Depth config for STEREO must be a StereoDepth::PresetMode.");
             break;
         case Depth::Algorithm::NEURAL_ASSISTED_STEREO:
+            if(const auto* model = std::get_if<DeviceModelZoo>(&config)) {
+                DAI_CHECK_V(isModelSupportedByDevice(*model, supportedModels), "Depth selected NAS neural model is not available on this device.");
+                DAI_CHECK_V(isNeuralDepthModel(*model), "Depth selected NAS model is not a NeuralDepth model.");
+            } else {
+                DAI_CHECK_V(std::holds_alternative<std::monostate>(config), "Depth config for NAS must be a DeviceModelZoo NeuralDepth model or empty.");
+            }
+            break;
         case Depth::Algorithm::GPU_STEREO:
         case Depth::Algorithm::TOF:
         case Depth::Algorithm::TOF_STEREO_FUSION:
@@ -195,11 +212,11 @@ void validateExplicitConfig(Depth::Algorithm algorithm,
     }
 }
 
-DeviceModelZoo neuralModelFromConfig(const Depth::Config& config) {
+DeviceModelZoo neuralModelFromConfig(const Depth::Config& config, DeviceModelZoo defaultModel = DEFAULT_NEURAL_DEPTH_MODEL) {
     if(const auto* m = std::get_if<DeviceModelZoo>(&config)) {
         return *m;
     }
-    return DEFAULT_NEURAL_DEPTH_MODEL;
+    return defaultModel;
 }
 
 StereoDepth::PresetMode stereoPresetFromConfig(const Depth::Config& config) {
@@ -675,8 +692,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     const auto supported = getSupportedAlgorithms(device);
 
     if(configOverride_) {
-        validateExplicitConfig(
-            algorithmOverride_, *configOverride_, supported, algorithmOverride_ == Algorithm::NEURAL ? supportedModels : std::vector<DeviceModelZoo>{});
+        validateExplicitConfig(algorithmOverride_, *configOverride_, supported, supportedModels);
         resolved_ = {algorithmOverride_, *configOverride_};
         if(resolved_.algorithm == Algorithm::STEREO && sizeOverride_) {
             validateStereoDepthResolution(sizeOverride_->first, sizeOverride_->second);
@@ -760,6 +776,20 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     }
 }
 
+std::pair<uint32_t, uint32_t> Depth::nasCameraSize(std::pair<uint32_t, uint32_t> requested, DeviceModelZoo model) {
+    // NeuralDepth inside NAS outputs a disparity at the model size; the camera frames must not be smaller than that.
+    const auto [modelWidth, modelHeight] = NeuralDepth::getInputSize(model);
+    uint32_t width = std::max(requested.first, static_cast<uint32_t>(modelWidth));
+    uint32_t height = std::max(requested.second, static_cast<uint32_t>(modelHeight));
+    if(width % NAS_STEREO_WIDTH_ALIGNMENT != 0) {
+        const uint32_t alignedWidth = (width + NAS_STEREO_WIDTH_ALIGNMENT - 1) / NAS_STEREO_WIDTH_ALIGNMENT * NAS_STEREO_WIDTH_ALIGNMENT;
+        // Keep the aspect ratio, round the height up to an even number.
+        height = (static_cast<uint32_t>((static_cast<uint64_t>(height) * alignedWidth + width - 1) / width) + 1) / 2 * 2;
+        width = alignedWidth;
+    }
+    return {width, height};
+}
+
 Depth::StereoWiring Depth::ensureStereoOutputs(Pipeline& pipeline,
                                                const StereoPair& pair,
                                                std::optional<std::pair<uint32_t, uint32_t>> frameSize,
@@ -782,6 +812,10 @@ Depth::StereoWiring Depth::ensureStereoOutputs(Pipeline& pipeline,
         if(const auto existingSize = sizeFromExistingCameras(left, right)) {
             outputSize = existingSize;
         }
+    }
+    // Apply NAS requirements after inheriting any pre-existing camera size.
+    if(outputSize && resolved_.algorithm == Algorithm::NEURAL_ASSISTED_STEREO) {
+        outputSize = nasCameraSize(*outputSize, neuralModelFromConfig(resolved_.config, DEFAULT_NAS_NEURAL_MODEL));
     }
     const std::optional<float>& outputFps = fps;
 
@@ -905,8 +939,9 @@ void Depth::buildInternal() {
         case Algorithm::NEURAL_ASSISTED_STEREO: {
             nasBackend_ = std::make_shared<NeuralAssistedStereo>(device);
             add(nasBackend_);
+            const auto nasModel = neuralModelFromConfig(resolved_.config, DEFAULT_NAS_NEURAL_MODEL);
             const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), sizeOverride_, stereoOutputFps_);
-            nasBackend_->build(*stereo.left, *stereo.right, DEFAULT_NAS_NEURAL_MODEL, DEFAULT_NAS_RECTIFY);
+            nasBackend_->build(*stereo.left, *stereo.right, nasModel, DEFAULT_NAS_RECTIFY);
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
             depthOut_ = &(*nasBackend_->stereoDepth).depth;
 #else
