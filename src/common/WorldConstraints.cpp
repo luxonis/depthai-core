@@ -77,29 +77,92 @@ int32_t int32FromJson(const nlohmann::json& value, const std::string& what) {
     return static_cast<int32_t>(wide);
 }
 
-/// A socket given as its number, its name ("CAM_B") or the letter alone ("b"), in any case. Throws std::invalid_argument otherwise.
+/// Number of marker ids in a dictionary, 0 for a value outside the enumeration.
+int32_t dictionaryMarkerCount(ArucoDictionary dictionary) {
+    switch(dictionary) {
+        case ArucoDictionary::DICT_4X4_50:
+        case ArucoDictionary::DICT_5X5_50:
+        case ArucoDictionary::DICT_6X6_50:
+        case ArucoDictionary::DICT_7X7_50:
+            return 50;
+        case ArucoDictionary::DICT_4X4_100:
+        case ArucoDictionary::DICT_5X5_100:
+        case ArucoDictionary::DICT_6X6_100:
+        case ArucoDictionary::DICT_7X7_100:
+            return 100;
+        case ArucoDictionary::DICT_4X4_250:
+        case ArucoDictionary::DICT_5X5_250:
+        case ArucoDictionary::DICT_6X6_250:
+        case ArucoDictionary::DICT_7X7_250:
+            return 250;
+        case ArucoDictionary::DICT_4X4_1000:
+        case ArucoDictionary::DICT_5X5_1000:
+        case ArucoDictionary::DICT_6X6_1000:
+        case ArucoDictionary::DICT_7X7_1000:
+            return 1000;
+        case ArucoDictionary::DICT_ARUCO_ORIGINAL:
+            return 1024;
+        case ArucoDictionary::DICT_APRILTAG_16h5:
+            return 30;
+        case ArucoDictionary::DICT_APRILTAG_25h9:
+            return 35;
+        case ArucoDictionary::DICT_APRILTAG_36h10:
+            return 2320;
+        case ArucoDictionary::DICT_APRILTAG_36h11:
+            return 587;
+    }
+    return 0;
+}
+
+/// Throws std::invalid_argument unless value is an object whose keys are all among allowed. what names the object in the message.
+void requireObjectWithKeys(const nlohmann::json& value, const std::string& what, const std::vector<std::string>& allowed) {
+    if(!value.is_object()) {
+        throw std::invalid_argument("WorldConstraints: " + what + " must be a JSON object, got " + value.dump());
+    }
+    for(const auto& item : value.items()) {
+        if(std::find(allowed.begin(), allowed.end(), item.key()) != allowed.end()) {
+            continue;
+        }
+        std::string accepted;
+        for(const auto& key : allowed) {
+            accepted += (accepted.empty() ? "\"" : ", \"") + key + "\"";
+        }
+        throw std::invalid_argument("WorldConstraints: unknown key \"" + item.key() + "\" in " + what + ", the accepted keys are " + accepted);
+    }
+}
+
+/// The member key of entry, which must be present. what names the entry in the message.
+const nlohmann::json& requiredMember(const nlohmann::json& entry, const char* key, const std::string& what) {
+    const auto it = entry.find(key);
+    if(it == entry.end()) {
+        throw std::invalid_argument("WorldConstraints: " + what + " needs \"" + key + "\", got " + entry.dump());
+    }
+    return *it;
+}
+
+/// The entries of the list named key; an absent list is empty. Throws std::invalid_argument for anything but an array.
+std::vector<nlohmann::json> listFromJson(const nlohmann::json& json, const char* key) {
+    const auto it = json.find(key);
+    if(it == json.end()) {
+        return {};
+    }
+    if(!it->is_array()) {
+        throw std::invalid_argument(std::string("WorldConstraints: \"") + key + "\" must be an array of entries, got " + it->dump());
+    }
+    return {it->begin(), it->end()};
+}
+
+/// A socket given by its name, "CAM_A" to "CAM_J", in any case. Throws std::invalid_argument otherwise.
 CameraBoardSocket socketFromJson(const nlohmann::json& value) {
-    if(value.is_number_integer()) {
-        const auto number = int32FromJson(value, "socket");
-        const auto socket = static_cast<CameraBoardSocket>(number);
-        if(!isKnownSocket(socket)) {
-            throw std::invalid_argument("WorldConstraints: unknown socket " + std::to_string(number));
-        }
-        return socket;
-    }
-    if(!value.is_string()) {
-        throw std::invalid_argument("WorldConstraints: a socket must be a name such as \"CAM_A\"");
-    }
-    auto name = upper(value.get<std::string>());
-    if(name.size() == 1) {
-        name = "CAM_" + name;
-    }
-    for(int socket = static_cast<int>(CameraBoardSocket::CAM_A); socket <= static_cast<int>(CameraBoardSocket::CAM_J); ++socket) {
-        if(toString(static_cast<CameraBoardSocket>(socket)) == name) {
-            return static_cast<CameraBoardSocket>(socket);
+    if(value.is_string()) {
+        const auto name = upper(value.get<std::string>());
+        for(int socket = static_cast<int>(CameraBoardSocket::CAM_A); socket <= static_cast<int>(CameraBoardSocket::CAM_J); ++socket) {
+            if(toString(static_cast<CameraBoardSocket>(socket)) == name) {
+                return static_cast<CameraBoardSocket>(socket);
+            }
         }
     }
-    throw std::invalid_argument("WorldConstraints: unknown socket \"" + value.get<std::string>() + "\"");
+    throw std::invalid_argument("WorldConstraints: a socket must be one of \"CAM_A\" to \"CAM_J\", got " + value.dump());
 }
 
 /// A marker id, which must be a non-negative integer. Throws std::invalid_argument otherwise.
@@ -110,24 +173,30 @@ int32_t markerIdFromJson(const nlohmann::json& value) {
     return int32FromJson(value, "marker id");
 }
 
-/// An array of marker ids, each checked by markerIdFromJson(). Throws std::invalid_argument for anything but an array.
-std::vector<int32_t> markerIdsFromJson(const nlohmann::json& value) {
-    if(!value.is_array()) {
-        throw std::invalid_argument("WorldConstraints: expected an array of marker ids, got " + value.dump());
+/// A length in meters given as a JSON number. Throws std::invalid_argument for anything else and for a number
+/// outside the range of float; validate() checks the sign.
+float lengthFromJson(const nlohmann::json& value, const std::string& what) {
+    if(!value.is_number()) {
+        throw std::invalid_argument("WorldConstraints: " + what + " must be a number of meters, got " + value.dump());
     }
-    std::vector<int32_t> ids;
-    for(const auto& id : value) {
-        ids.push_back(markerIdFromJson(id));
+    const auto length = value.get<double>();
+    if(!std::isfinite(length) || std::abs(length) > static_cast<double>(std::numeric_limits<float>::max())) {
+        throw std::invalid_argument("WorldConstraints: " + what + " is out of range: " + value.dump());
     }
-    return ids;
+    return static_cast<float>(length);
 }
 
-/// The "distance" of a distance entry, in meters. Throws std::invalid_argument when it is missing or not a number.
-float distanceFromJson(const nlohmann::json& entry) {
-    if(!entry.contains("distance") || !entry.at("distance").is_number()) {
-        throw std::invalid_argument("WorldConstraints: every distance entry needs a numeric \"distance\"");
+/// The value of an enumeration named like one of its enumerators, in any case. Throws std::invalid_argument otherwise.
+template <typename Enum>
+Enum enumFromJson(const nlohmann::json& value, const char* key, const std::vector<std::pair<Enum, const char*>>& names) {
+    std::string accepted;
+    for(const auto& [enumerator, name] : names) {
+        if(value.is_string() && upper(value.get<std::string>()) == upper(name)) {
+            return enumerator;
+        }
+        accepted += (accepted.empty() ? "\"" : ", \"") + std::string(name) + "\"";
     }
-    return entry.at("distance").get<float>();
+    throw std::invalid_argument(std::string("WorldConstraints: \"") + key + "\" must be one of " + accepted + ", got " + value.dump());
 }
 
 }  // namespace
@@ -142,11 +211,9 @@ std::string toString(ArucoDictionary dictionary) {
 }
 
 ArucoDictionary arucoDictionaryFromString(const std::string& name) {
-    const auto wanted = upper(name);
     for(const auto& [value, candidate] : dictionaryNames()) {
         // Compare without case: the AprilTag names keep a lowercase "h" (DICT_APRILTAG_36h11).
-        const auto candidateUpper = upper(candidate);
-        if(wanted == candidateUpper || wanted == candidateUpper.substr(5)) {
+        if(upper(name) == upper(candidate)) {
             return value;
         }
     }
@@ -163,9 +230,9 @@ std::string toString(MarkerType type) {
 }
 
 MarkerType markerTypeFromString(const std::string& name) {
-    const auto wanted = upper(name);
     for(const auto& [value, candidate] : markerTypeNames()) {
-        if(wanted == candidate) {
+        // Compare without case: the AprilTag names keep a lowercase "h" (DICT_APRILTAG_36h11).
+        if(upper(name) == upper(candidate)) {
             return value;
         }
     }
@@ -181,56 +248,50 @@ WorldConstraints WorldConstraints::fromJson(const nlohmann::json& json) {
 }
 
 WorldConstraints WorldConstraints::parseJson(const nlohmann::json& json) {
-    if(!json.is_object()) {
-        throw std::invalid_argument("WorldConstraints: expected a JSON object");
-    }
-    WorldConstraints constraints;
-    if(json.contains("markerType")) {
-        const auto& type = json.at("markerType");
-        constraints.markerType = type.is_string() ? markerTypeFromString(type.get<std::string>()) : static_cast<MarkerType>(int32FromJson(type, "markerType"));
-    }
-    for(const char* key : {"arucoDictionary", "dictionary"}) {
-        if(!json.contains(key)) {
-            continue;
-        }
-        const auto& dictionary = json.at(key);
-        constraints.arucoDictionary = dictionary.is_string() ? arucoDictionaryFromString(dictionary.get<std::string>())
-                                                             : static_cast<ArucoDictionary>(int32FromJson(dictionary, "arucoDictionary"));
-        break;
-    }
-    if(json.contains("lengthUnit")) {
+    // Strict on purpose: a document that is not exactly the documented form is an error, never a guess.
+    if(json.is_object() && json.contains("lengthUnit")) {
         throw std::invalid_argument("WorldConstraints: \"lengthUnit\" is not supported, every distance and size is in meters");
     }
-    for(const auto& entry : json.value("markerDistances", nlohmann::json::array())) {
-        MarkerDistance distance;
-        if(entry.contains("markers")) {
-            const auto markers = markerIdsFromJson(entry.at("markers"));
-            if(markers.size() != 2) {
-                throw std::invalid_argument("WorldConstraints: \"markers\" of a marker distance needs exactly two ids");
-            }
-            distance.markerA = markers[0];
-            distance.markerB = markers[1];
-        } else {
-            distance.markerA = markerIdFromJson(entry.at("markerA"));
-            distance.markerB = markerIdFromJson(entry.at("markerB"));
+    requireObjectWithKeys(json, "the constraints", {"markerType", "arucoDictionary", "markerDistances", "socketDistances", "markerSizes"});
+    WorldConstraints constraints;
+    if(json.contains("markerType")) {
+        constraints.markerType = enumFromJson(json.at("markerType"), "markerType", markerTypeNames());
+    }
+    if(json.contains("arucoDictionary")) {
+        if(constraints.markerType != MarkerType::ARUCO) {
+            throw std::invalid_argument("WorldConstraints: \"arucoDictionary\" applies to markerType \"aruco\" only, remove it for \""
+                                        + toString(constraints.markerType) + "\"");
         }
-        distance.distance = distanceFromJson(entry);
+        constraints.arucoDictionary = enumFromJson(json.at("arucoDictionary"), "arucoDictionary", dictionaryNames());
+    }
+    for(const auto& entry : listFromJson(json, "markerDistances")) {
+        const std::string what = "a \"markerDistances\" entry";
+        requireObjectWithKeys(entry, what, {"markers", "distance"});
+        const auto& markers = requiredMember(entry, "markers", what);
+        if(!markers.is_array() || markers.size() != 2) {
+            throw std::invalid_argument("WorldConstraints: \"markers\" of a marker distance must be an array of two marker ids, got " + markers.dump());
+        }
+        MarkerDistance distance;
+        distance.markerA = markerIdFromJson(markers[0]);
+        distance.markerB = markerIdFromJson(markers[1]);
+        distance.distance = lengthFromJson(requiredMember(entry, "distance", what), "\"distance\" of " + what);
         constraints.markerDistances.push_back(distance);
     }
-    for(const auto& entry : json.value("socketDistances", nlohmann::json::array())) {
+    for(const auto& entry : listFromJson(json, "socketDistances")) {
+        const std::string what = "a \"socketDistances\" entry";
+        requireObjectWithKeys(entry, what, {"marker", "socket", "distance"});
         MarkerSocketDistance distance;
-        distance.marker = markerIdFromJson(entry.at("marker"));
-        distance.socket = socketFromJson(entry.at("socket"));
-        distance.distance = distanceFromJson(entry);
+        distance.marker = markerIdFromJson(requiredMember(entry, "marker", what));
+        distance.socket = socketFromJson(requiredMember(entry, "socket", what));
+        distance.distance = lengthFromJson(requiredMember(entry, "distance", what), "\"distance\" of " + what);
         constraints.socketDistances.push_back(distance);
     }
-    for(const auto& entry : json.value("markerSizes", nlohmann::json::array())) {
-        if(!entry.contains("size") || !entry.at("size").is_number()) {
-            throw std::invalid_argument("WorldConstraints: every marker size entry needs a numeric \"size\"");
-        }
+    for(const auto& entry : listFromJson(json, "markerSizes")) {
+        const std::string what = "a \"markerSizes\" entry";
+        requireObjectWithKeys(entry, what, {"marker", "size"});
         MarkerSize size;
-        size.marker = markerIdFromJson(entry.at("marker"));
-        size.size = entry.at("size").get<float>();
+        size.marker = markerIdFromJson(requiredMember(entry, "marker", what));
+        size.size = lengthFromJson(requiredMember(entry, "size", what), "\"size\" of " + what);
         constraints.markerSizes.push_back(size);
     }
     constraints.validate();
@@ -246,6 +307,10 @@ WorldConstraints WorldConstraints::fromJsonString(const std::string& json) {
 }
 
 WorldConstraints WorldConstraints::fromFile(const std::filesystem::path& path) {
+    std::error_code error;
+    if(!std::filesystem::is_regular_file(path, error)) {
+        throw std::invalid_argument("WorldConstraints: " + path.string() + " is not a file");
+    }
     std::ifstream stream(path);
     if(!stream) {
         throw std::invalid_argument("WorldConstraints: cannot open " + path.string());
@@ -305,11 +370,15 @@ bool WorldConstraints::empty() const {
 void WorldConstraints::validate() const {
     const auto checkDistance = [](float distance, const std::string& what) {
         if(!std::isfinite(distance) || distance <= 0.0f) {
-            throw std::invalid_argument("WorldConstraints: " + what + " must be a positive distance");
+            throw std::invalid_argument("WorldConstraints: " + what + " must be a positive, finite number of meters, got " + std::to_string(distance));
         }
     };
+    std::set<std::pair<int32_t, int32_t>> measuredPairs;
     for(const auto& distance : markerDistances) {
         const std::string what = "distance between markers " + std::to_string(distance.markerA) + " and " + std::to_string(distance.markerB);
+        if(!measuredPairs.insert(std::minmax(distance.markerA, distance.markerB)).second) {
+            throw std::invalid_argument("WorldConstraints: " + what + " is given twice");
+        }
         if(distance.markerA < 0 || distance.markerB < 0) {
             throw std::invalid_argument("WorldConstraints: " + what + " needs non-negative marker ids");
         }
@@ -318,8 +387,12 @@ void WorldConstraints::validate() const {
         }
         checkDistance(distance.distance, what);
     }
+    std::set<std::pair<int32_t, CameraBoardSocket>> measuredSockets;
     for(const auto& distance : socketDistances) {
         const std::string what = "distance between marker " + std::to_string(distance.marker) + " and " + toString(distance.socket);
+        if(!measuredSockets.insert({distance.marker, distance.socket}).second) {
+            throw std::invalid_argument("WorldConstraints: " + what + " is given twice");
+        }
         if(distance.marker < 0) {
             throw std::invalid_argument("WorldConstraints: " + what + " needs a non-negative marker id");
         }
@@ -344,6 +417,15 @@ void WorldConstraints::validate() const {
     }
     if(toString(arucoDictionary) == "UNKNOWN") {
         throw std::invalid_argument("WorldConstraints: unknown arucoDictionary " + std::to_string(static_cast<int32_t>(arucoDictionary)));
+    }
+    if(markerType == MarkerType::ARUCO) {
+        const auto count = dictionaryMarkerCount(arucoDictionary);
+        for(const auto id : utility::referencedMarkerIds(*this)) {
+            if(id >= count) {
+                throw std::invalid_argument("WorldConstraints: " + toString(arucoDictionary) + " has marker ids 0.." + std::to_string(count - 1) + ", got "
+                                            + std::to_string(id));
+            }
+        }
     }
     if(markerType == MarkerType::LUXONIS) {
         for(const auto id : utility::referencedMarkerIds(*this)) {

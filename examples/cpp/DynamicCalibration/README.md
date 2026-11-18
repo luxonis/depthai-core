@@ -107,7 +107,7 @@ This folder contains minimal, end-to-end **C++** examples that use **`dai::node:
 }
 ```
 
-Any of the three lists may be left out. `markerSizes` needs no tape measure in the scene: the printed size of a
+The file is read strictly: an unknown or misspelled key, an unknown name (names such as `"aruco"`, `"DICT_4X4_50"`, `"CAM_A"` match in any case), a marker id outside the dictionary or the same measurement given twice raises an error. Any of the three lists may be left out. `markerSizes` needs no tape measure in the scene: the printed size of a
 marker tells each camera how far away the marker is. The size of an ArUco marker is the length of a side of its
 black square, the size of a Luxonis Marker is the outer diameter of its ring.
 

@@ -13,6 +13,7 @@
 #include <limits>
 #include <map>
 #include <mutex>
+#include <numeric>
 #include <optional>
 #include <pipeline/ThreadedNodeImpl.hpp>
 #include <set>
@@ -284,7 +285,7 @@ void DynamicCalibration::setWorldConstraints(const WorldConstraints& constraints
     DAI_CHECK_V(!getParentPipeline().isBuilt(), "DynamicCalibration::setWorldConstraints: cannot change the world constraints once the pipeline is built");
     constraints.validate();
     if(constraints.empty()) {
-        throw std::invalid_argument("DynamicCalibration::setWorldConstraints: at least one marker or socket distance is required");
+        throw std::invalid_argument("DynamicCalibration::setWorldConstraints: at least one marker distance, socket distance or marker size is required");
     }
     properties.worldConstraints = constraints;
 }
@@ -314,6 +315,51 @@ void DynamicCalibration::warnMetricReferenceMissing(const std::string& reason) {
     } else {
         logger->debug("Marker constraints not applied: {}", reason);
     }
+}
+
+void DynamicCalibration::warnConstraintMismatch(const std::string& reason) {
+    // Once at warning level per node instance, then at debug: every calibration attempt publishes the reason in its result.
+    if(!constraintMismatchWarningIssued) {
+        logger->warn("Calibration rejected: {}", reason);
+        constraintMismatchWarningIssued = true;
+    } else {
+        logger->debug("Calibration rejected: {}", reason);
+    }
+}
+
+void DynamicCalibration::trackMissingMarkers(bool accepted) {
+    constexpr std::chrono::seconds kMarkersMissingWarnAfter{5};
+    constexpr std::chrono::seconds kMarkersMissingWarnPeriod{30};
+    const auto now = std::chrono::steady_clock::now();
+    if(accepted) {
+        if(markersMissingReportedAt) {
+            logger->info("Every configured marker is seen by two cameras again, image sets are loaded");
+        }
+        markersMissingSince.reset();
+        markersMissingReportedAt.reset();
+        return;
+    }
+    if(!markersMissingSince) {
+        markersMissingSince = now;
+    }
+    const bool due =
+        markersMissingReportedAt ? now - *markersMissingReportedAt >= kMarkersMissingWarnPeriod : now - *markersMissingSince >= kMarkersMissingWarnAfter;
+    if(!due || !lastMarkerCoverage) {
+        return;
+    }
+    markersMissingReportedAt = now;
+    std::string tooSmall;
+    for(const auto& [id, sizePx] : lastMarkerCoverage->tooSmallPx) {
+        tooSmall += fmt::format("{}{} ({:.1f} px)", tooSmall.empty() ? "" : ", ", id, sizePx);
+    }
+    const bool noneSeen = lastMarkerCoverage->seenBy.empty() && lastMarkerCoverage->tooSmallPx.empty();
+    logger->warn("No image set loaded for {} s, markers not seen by two cameras: {}{}. Calibration waits until every configured marker is visible{}",
+                 std::chrono::duration_cast<std::chrono::seconds>(now - *markersMissingSince).count(),
+                 joinIds(lastMarkerCoverage->missingMarkers),
+                 tooSmall.empty() ? "" : fmt::format(", too small (minimum {:.0f} px): {}", DclUtils::kMinMarkerSizePx, tooSmall),
+                 noneSeen ? fmt::format("; none of them has been detected, check markerType{} and the marker ids",
+                                        properties.worldConstraints && properties.worldConstraints->markerType == MarkerType::ARUCO ? " / arucoDictionary" : "")
+                          : "");
 }
 
 const DynamicCalibration::ConnectedSensor* DynamicCalibration::findConnectedSensor(CameraBoardSocket socket) const {
@@ -661,6 +707,249 @@ CoverageData::MarkerCoverage DclUtils::markerCoverage(const WorldConstraints& co
     return coverage;
 }
 
+double DclUtils::ConstraintResidual::relativeError() const {
+    return configured > 0.0 ? std::abs(measured - configured) / configured : std::numeric_limits<double>::infinity();
+}
+
+bool DclUtils::ConstraintResidual::fits() const {
+    return std::abs(measured - configured) <= std::max(kMaxConstraintRelativeError * configured, kMaxConstraintError);
+}
+
+bool DclUtils::epipolarErrorContradictsConstraints(double currentPx, double newPx) {
+    return newPx > kMaxConstrainedEpipolarErrorPx && newPx > kMaxConstrainedEpipolarErrorGrowth * currentPx;
+}
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+namespace {
+
+/// A camera of the consistency check in OpenCV form.
+struct ReconstructionCamera {
+    cv::Matx33d intrinsics;
+    std::vector<double> distortion;
+    bool fisheye = false;
+    cv::Matx33d rotation;  // base to camera
+    cv::Vec3d translation;
+
+    /// The pixels as points of the normalized image plane, lens distortion removed.
+    std::vector<cv::Point2d> normalized(const std::vector<cv::Point2d>& pixels) const {
+        std::vector<cv::Point2d> points;
+        if(pixels.empty()) {
+            return points;
+        }
+        if(fisheye) {
+            cv::fisheye::undistortPoints(pixels, points, intrinsics, distortion);
+        } else {
+            cv::undistortPoints(pixels, points, intrinsics, distortion);
+        }
+        return points;
+    }
+    cv::Vec3d toCamera(const cv::Vec3d& basePoint) const {
+        return rotation * basePoint + translation;
+    }
+    cv::Vec3d center() const {
+        return -(rotation.t() * translation);
+    }
+};
+
+std::optional<ReconstructionCamera> toReconstructionCamera(const DclUtils::MetricCamera& camera) {
+    if(camera.intrinsics.size() != 3 || camera.baseToCamera.size() < 3) {
+        return std::nullopt;
+    }
+    ReconstructionCamera converted;
+    for(int row = 0; row < 3; ++row) {
+        if(camera.intrinsics[row].size() != 3 || camera.baseToCamera[row].size() != 4) {
+            return std::nullopt;
+        }
+        for(int col = 0; col < 3; ++col) {
+            converted.intrinsics(row, col) = camera.intrinsics[row][col];
+            converted.rotation(row, col) = camera.baseToCamera[row][col];
+        }
+        converted.translation[row] = camera.baseToCamera[row][3];
+    }
+    converted.fisheye = camera.distortionModel == CameraModel::Fisheye;
+    // OpenCV takes 4 fisheye coefficients and 4, 5, 8, 12 or 14 perspective ones.
+    const size_t count = converted.fisheye ? 4
+                                           : (camera.distortion.size() >= 14  ? 14
+                                              : camera.distortion.size() >= 8 ? 8
+                                              : camera.distortion.size() >= 5 ? 5
+                                                                              : 0);
+    converted.distortion.assign(camera.distortion.begin(), camera.distortion.begin() + static_cast<std::ptrdiff_t>(std::min(count, camera.distortion.size())));
+    if(converted.fisheye) {
+        converted.distortion.resize(4, 0.0);
+    }
+    return converted;
+}
+
+/// The point of the base frame seen at the given normalized image points, by linear triangulation; none when fewer
+/// than two cameras see it or it does not lie in front of all of them.
+std::optional<cv::Vec3d> triangulate(const std::vector<std::pair<const ReconstructionCamera*, cv::Point2d>>& views) {
+    if(views.size() < 2) {
+        return std::nullopt;
+    }
+    cv::Mat system(static_cast<int>(2 * views.size()), 4, CV_64F);
+    for(size_t idx = 0; idx < views.size(); ++idx) {
+        const auto& [camera, point] = views[idx];
+        for(int col = 0; col < 4; ++col) {
+            const auto entry = [&](int row) { return col < 3 ? camera->rotation(row, col) : camera->translation[row]; };
+            system.at<double>(static_cast<int>(2 * idx), col) = point.x * entry(2) - entry(0);
+            system.at<double>(static_cast<int>(2 * idx + 1), col) = point.y * entry(2) - entry(1);
+        }
+    }
+    cv::Mat solution;
+    cv::SVD::solveZ(system, solution);
+    const double w = solution.at<double>(3);
+    if(std::abs(w) < 1e-12) {
+        return std::nullopt;
+    }
+    const cv::Vec3d point(solution.at<double>(0) / w, solution.at<double>(1) / w, solution.at<double>(2) / w);
+    for(const auto& view : views) {
+        if(!(view.first->toCamera(point)[2] > 0.0)) {
+            return std::nullopt;
+        }
+    }
+    return point;
+}
+
+std::optional<double> median(std::vector<double> values) {
+    if(values.empty()) {
+        return std::nullopt;
+    }
+    const auto middle = values.begin() + static_cast<std::ptrdiff_t>(values.size() / 2);
+    std::nth_element(values.begin(), middle, values.end());
+    return *middle;
+}
+
+}  // namespace
+
+std::vector<DclUtils::ConstraintResidual> DclUtils::worldConstraintResiduals(const WorldConstraints& constraints,
+                                                                             const std::deque<MarkerObservationSet>& observationSets,
+                                                                             const std::map<CameraBoardSocket, MetricCamera>& cameras) {
+    std::map<CameraBoardSocket, ReconstructionCamera> converted;
+    for(const auto& [socket, camera] : cameras) {
+        if(auto reconstruction = toReconstructionCamera(camera)) {
+            converted.emplace(socket, std::move(*reconstruction));
+        }
+    }
+    const auto toPixels = [](const std::vector<std::array<float, 2>>& points) {
+        std::vector<cv::Point2d> pixels;
+        pixels.reserve(points.size());
+        for(const auto& point : points) {
+            pixels.emplace_back(point[0], point[1]);
+        }
+        return pixels;
+    };
+
+    // Per configured measurement, in configuration order, its reconstructed value in every frame set.
+    std::vector<std::vector<double>> markerDistances(constraints.markerDistances.size());
+    std::vector<std::vector<double>> socketDistances(constraints.socketDistances.size());
+    std::vector<std::vector<double>> markerSizes(constraints.markerSizes.size());
+    for(const auto& set : observationSets) {
+        std::map<int32_t, cv::Vec3d> points;
+        for(const auto& [markerId, centers] : set.centers) {
+            std::vector<std::pair<const ReconstructionCamera*, cv::Point2d>> views;
+            for(const auto& [socket, center] : centers) {
+                const auto camera = converted.find(socket);
+                if(camera != converted.end()) {
+                    views.emplace_back(&camera->second, camera->second.normalized({cv::Point2d(center[0], center[1])}).front());
+                }
+            }
+            if(const auto point = triangulate(views)) {
+                points.emplace(markerId, *point);
+            }
+        }
+        for(size_t idx = 0; idx < constraints.markerDistances.size(); ++idx) {
+            const auto a = points.find(constraints.markerDistances[idx].markerA);
+            const auto b = points.find(constraints.markerDistances[idx].markerB);
+            if(a != points.end() && b != points.end()) {
+                markerDistances[idx].push_back(cv::norm(a->second - b->second));
+            }
+        }
+        for(size_t idx = 0; idx < constraints.socketDistances.size(); ++idx) {
+            const auto point = points.find(constraints.socketDistances[idx].marker);
+            const auto camera = converted.find(constraints.socketDistances[idx].socket);
+            if(point != points.end() && camera != converted.end()) {
+                socketDistances[idx].push_back(cv::norm(point->second - camera->second.center()));
+            }
+        }
+        for(size_t idx = 0; idx < constraints.markerSizes.size(); ++idx) {
+            const auto markerId = constraints.markerSizes[idx].marker;
+            const auto outlines = set.outlines.find(markerId);
+            const auto point = points.find(markerId);
+            if(outlines == set.outlines.end() || point == points.end()) {
+                continue;
+            }
+            if(constraints.markerType == MarkerType::ARUCO) {
+                // The side of the square between its triangulated corners.
+                std::vector<cv::Vec3d> corners;
+                for(size_t corner = 0; corner < 4; ++corner) {
+                    std::vector<std::pair<const ReconstructionCamera*, cv::Point2d>> views;
+                    for(const auto& [socket, outline] : outlines->second) {
+                        const auto camera = converted.find(socket);
+                        if(camera != converted.end() && outline.corners.size() == 4) {
+                            views.emplace_back(&camera->second, camera->second.normalized(toPixels({outline.corners[corner]})).front());
+                        }
+                    }
+                    if(const auto position = triangulate(views)) {
+                        corners.push_back(*position);
+                    }
+                }
+                if(corners.size() == 4) {
+                    double perimeter = 0.0;
+                    for(size_t corner = 0; corner < 4; ++corner) {
+                        perimeter += cv::norm(corners[corner] - corners[(corner + 1) % 4]);
+                    }
+                    markerSizes[idx].push_back(perimeter / 4.0);
+                }
+            } else {
+                // The ring is a circle: its largest angular radius is not foreshortened, so it gives the diameter at the
+                // triangulated range of the center.
+                std::vector<double> diameters;
+                const auto centers = set.centers.find(markerId);
+                for(const auto& [socket, outline] : outlines->second) {
+                    const auto camera = converted.find(socket);
+                    if(camera == converted.end() || outline.outerEdge.empty() || centers == set.centers.end() || centers->second.count(socket) == 0) {
+                        continue;
+                    }
+                    const auto& centerPx = centers->second.at(socket);
+                    const auto centerPoint = camera->second.normalized({cv::Point2d(centerPx[0], centerPx[1])}).front();
+                    const auto centerRay = cv::normalize(cv::Vec3d(centerPoint.x, centerPoint.y, 1.0));
+                    double largestAngle = 0.0;
+                    for(const auto& edge : camera->second.normalized(toPixels(outline.outerEdge))) {
+                        const auto ray = cv::normalize(cv::Vec3d(edge.x, edge.y, 1.0));
+                        largestAngle = std::max(largestAngle, std::acos(std::clamp(ray.dot(centerRay), -1.0, 1.0)));
+                    }
+                    diameters.push_back(2.0 * cv::norm(camera->second.toCamera(point->second)) * std::tan(largestAngle));
+                }
+                if(!diameters.empty()) {
+                    markerSizes[idx].push_back(std::accumulate(diameters.begin(), diameters.end(), 0.0) / static_cast<double>(diameters.size()));
+                }
+            }
+        }
+    }
+
+    std::vector<ConstraintResidual> residuals;
+    for(size_t idx = 0; idx < constraints.markerDistances.size(); ++idx) {
+        const auto& distance = constraints.markerDistances[idx];
+        if(const auto measured = median(markerDistances[idx])) {
+            residuals.push_back({fmt::format("the distance between markers {} and {}", distance.markerA, distance.markerB), distance.distance, *measured});
+        }
+    }
+    for(size_t idx = 0; idx < constraints.socketDistances.size(); ++idx) {
+        const auto& distance = constraints.socketDistances[idx];
+        if(const auto measured = median(socketDistances[idx])) {
+            residuals.push_back(
+                {fmt::format("the distance between marker {} and {}", distance.marker, toString(distance.socket)), distance.distance, *measured});
+        }
+    }
+    for(size_t idx = 0; idx < constraints.markerSizes.size(); ++idx) {
+        if(const auto measured = median(markerSizes[idx])) {
+            residuals.push_back({fmt::format("the size of marker {}", constraints.markerSizes[idx].marker), constraints.markerSizes[idx].size, *measured});
+        }
+    }
+    return residuals;
+}
+#endif
+
 #define DCL_PERSPECTIVE_DISTORTION_SIZE (14)
 #define DCL_FISHEYE_DISTORTION_SIZE (4)
 
@@ -952,6 +1241,46 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         }
     }
 
+    if(!worldConstraints.empty()) {
+        // A wrong measurement still yields a calibration, and a badly wrong one: reject it instead of returning it.
+        std::string mismatch;
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+        std::map<CameraBoardSocket, DclUtils::MetricCamera> cameras;
+        for(const auto& sensor : connectedSensors) {
+            cameras[sensor.socket] = {sensor.intrinsics, sensor.distortion, sensor.distortionModel, calibratedPoses.at(sensor.socket)};
+        }
+        for(const auto& sensor : auxiliarySensors) {
+            const auto pose = DclUtils::calibrationHandleToTransform(DclUtils::convertDaiCalibrationToDcl(
+                currentHandler, daiSocketBase, sensor.socket, sensor.intrinsics, sensor.distortion, sensor.distortionModel));
+            cameras[sensor.socket] = {sensor.intrinsics, sensor.distortion, sensor.distortionModel, pose};
+        }
+        for(const auto& residual : DclUtils::worldConstraintResiduals(*properties.worldConstraints, markerObservations, cameras)) {
+            logger->debug("Marker constraints: {} configured {:.4f} m, reconstructed {:.4f} m", residual.what, residual.configured, residual.measured);
+            if(!residual.fits()) {
+                mismatch += fmt::format("{}{} is configured as {:.3f} m but is {:.3f} m in the calibrated result",
+                                        mismatch.empty() ? "" : "; ",
+                                        residual.what,
+                                        residual.configured,
+                                        residual.measured);
+            }
+        }
+#endif
+        if(mismatch.empty() && !connectedSensors.empty()) {
+            const auto& referenceSensor = connectedSensors.front();
+            const auto scalePx = sampsonErrorScalePx(currentHandler, referenceSensor.socket, referenceSensor.resolution);
+            const auto currentPx = sampsonErrorToPixels(static_cast<float>(dclResult.value.sampsonErrorCurrent), scalePx);
+            const auto newPx = sampsonErrorToPixels(static_cast<float>(dclResult.value.sampsonErrorNew), scalePx);
+            if(DclUtils::epipolarErrorContradictsConstraints(currentPx, newPx)) {
+                mismatch = fmt::format("the epipolar error of the image features rises from {:.2f} px to {:.2f} px when they are applied", currentPx, newPx);
+            }
+        }
+        if(!mismatch.empty()) {
+            const auto message = "World constraints do not fit the scene: " + mismatch + ". Check the measured values (meters), marker ids and sockets";
+            warnConstraintMismatch(message);
+            return reportCalibrationFailure(message);
+        }
+    }
+
     // Factory data is only needed to place cameras that DCL did not observe.
     // Metrics-only use and fully observed rigs do not require factory EEPROM.
     const bool hasUnobservedCameras = calibratedPoses.size() < socketsInHandler.size();
@@ -1084,7 +1413,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
                 // Once per marker: a configured marker that is seen but too small is otherwise a silent loss of constraints.
                 if(markerSizeWarningIssued.insert(markerId).second) {
                     logger->warn(
-                        "Marker {} is only {:.0f} px across in {}, below the {:.0f} px minimum, and is ignored: move the camera closer or print it larger",
+                        "Marker {} is only {:.1f} px across in {}, below the {:.0f} px minimum, and is ignored: move the camera closer or print it larger",
                         markerId,
                         sizePx,
                         toString(connectedSensors[idx].socket),
@@ -1107,6 +1436,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
             }
         }
         lastMarkerCoverage = DclUtils::markerCoverage(*properties.worldConstraints, observations, tooSmallPx, markerObservations.size());
+        trackMissingMarkers(lastMarkerCoverage->accepted);
         if(!lastMarkerCoverage->accepted) {
             logger->trace("Image set skipped, markers not seen by two cameras: {}", joinIds(lastMarkerCoverage->missingMarkers));
             return DynamicCalibration::ErrorCode::MARKERS_NOT_VISIBLE;
@@ -1327,11 +1657,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
 
 DynamicCalibration::ErrorCode DynamicCalibration::initializeAuxiliarySensors(const EepromData& eepromData) {
     const auto& constraints = *properties.worldConstraints;
+    // A configuration that cannot work on this device stops the pipeline (the node thread rethrows as a runtime
+    // error): a node that only logs and idles leaves every loadImage / result read waiting forever.
     try {
         constraints.validate();
     } catch(const std::exception& ex) {
-        logger->error("Invalid marker constraints: {}", ex.what());
-        return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
+        throw std::runtime_error(std::string("DynamicCalibration: invalid world constraints: ") + ex.what());
     }
     for(const auto socket : utility::referencedSockets(constraints)) {
         if(findConnectedSensor(socket) != nullptr) {
@@ -1339,8 +1670,14 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializeAuxiliarySensors(con
         }
         const auto cameraIt = eepromData.cameraData.find(socket);
         if(cameraIt == eepromData.cameraData.end() || std::find(socketsInHandler.begin(), socketsInHandler.end(), socket) == socketsInHandler.end()) {
-            logger->error("Marker constraints refer to socket {} which has no calibration on this device", toString(socket));
-            return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
+            std::string calibrated;
+            for(const auto calibratedSocket : socketsInHandler) {
+                calibrated += (calibrated.empty() ? "" : ", ") + toString(calibratedSocket);
+            }
+            throw std::runtime_error(
+                fmt::format("DynamicCalibration: world constraints refer to socket {}, which has no calibration on this device (calibrated sockets: {})",
+                            toString(socket),
+                            calibrated.empty() ? "none" : calibrated));
         }
         const auto& info = cameraIt->second;
         ConnectedSensor sensor{socket,

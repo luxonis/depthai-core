@@ -43,8 +43,7 @@ enum class ArucoDictionary : int32_t {
 
 /// Name of the enumerator, such as "DICT_4X4_50"; "UNKNOWN" for a value outside the enumeration.
 std::string toString(ArucoDictionary dictionary);
-/// The dictionary named like the enumerator, matched regardless of case and with or without the "DICT_" prefix.
-/// Throws std::invalid_argument for a name that is not a dictionary.
+/// The dictionary named like the enumerator, matched regardless of case. Throws std::invalid_argument for any other name.
 ArucoDictionary arucoDictionaryFromString(const std::string& name);
 
 /**
@@ -58,7 +57,7 @@ enum class MarkerType : int32_t {
 constexpr int32_t kLuxonisMarkerIdMax = 5;
 /// Name of the enumerator, "ARUCO" or "LUXONIS"; "UNKNOWN" for a value outside the enumeration.
 std::string toString(MarkerType type);
-/// The marker type named like the enumerator, matched regardless of case. Throws std::invalid_argument otherwise.
+/// The marker type named like the enumerator, matched regardless of case. Throws std::invalid_argument for any other name.
 MarkerType markerTypeFromString(const std::string& name);
 
 /**
@@ -75,8 +74,8 @@ MarkerType markerTypeFromString(const std::string& name);
  * optional LengthUnit to convert from. The JSON form accepted by fromJson() is:
  *
  *     {
- *       "markerType": "aruco",                  // optional, default aruco; "luxonis" for Luxonis Markers
- *       "arucoDictionary": "DICT_4X4_50",       // optional, default DICT_4X4_50 ("dictionary" is accepted too); ARUCO only
+ *       "markerType": "aruco",                  // optional, default "aruco"; "luxonis" for Luxonis Markers
+ *       "arucoDictionary": "DICT_4X4_50",       // optional, default "DICT_4X4_50"; allowed with "aruco" only
  *       "markerDistances": [ {"markers": [37, 43], "distance": 0.84} ],
  *       "socketDistances": [ {"marker": 37, "socket": "CAM_A", "distance": 1.68} ],
  *       "markerSizes": [ {"marker": 37, "size": 0.10} ]
@@ -85,9 +84,12 @@ MarkerType markerTypeFromString(const std::string& name);
  * The size of an ArUco marker is the length of a side of its black square, the distance between two neighbouring
  * corners; the size of a Luxonis Marker is the outer diameter of its lens ring. Any of the three lists may be empty;
  * at least one entry is required for the constraints to have an effect. Only the markers named by an entry are
- * looked for; any other marker in the scene is ignored. Names are matched regardless of case; the
- * dictionary may omit its "DICT_" prefix, a socket may be given as "A" or its number, and a marker distance may
- * name its ends as {"markerA": 37, "markerB": 43, "distance": 0.84}. A "lengthUnit" key is rejected.
+ * looked for; any other marker in the scene is ignored.
+ *
+ * The JSON form is strict: fromJson() throws for anything that is not the form above. That covers a key that is
+ * not listed (a misspelled list would otherwise be ignored silently, "lengthUnit" included), a name that is not an
+ * enumerator name ("ARUCO", "DICT_4X4_50", "CAM_A"; matched regardless of case), a value of the wrong type, and
+ * everything validate() rejects.
  */
 struct WorldConstraints {
     /// Distance between the reference points of two markers, in meters.
@@ -142,10 +144,11 @@ struct WorldConstraints {
 
     /// True when neither a distance nor a marker size is given.
     bool empty() const;
-    /// Throws std::invalid_argument when a distance or size is not positive, a distance refers to the same marker
-    /// twice, a marker has two sizes, an entry names a negative marker id or the AUTO socket, markerType /
-    /// arucoDictionary is not one of the enumerators, or a LUXONIS configuration refers to a marker id above
-    /// kLuxonisMarkerIdMax.
+    /// Throws std::invalid_argument when a distance or size is not positive and finite, a distance refers to the
+    /// same marker twice, a pair of markers, a marker and socket, or a marker size is measured twice, an entry
+    /// names a negative marker id or the AUTO socket, markerType / arucoDictionary is not one of the enumerators,
+    /// an ARUCO configuration refers to a marker id its dictionary does not contain, or a LUXONIS configuration
+    /// refers to a marker id above kLuxonisMarkerIdMax.
     void validate() const;
 
     DEPTHAI_SERIALIZE_DECL(WorldConstraints, markerType, arucoDictionary, markerDistances, socketDistances, markerSizes);
