@@ -104,50 +104,6 @@ struct DclUtils {
                                                        const MarkerObservationSet& observations,
                                                        const std::map<int32_t, float>& tooSmallPx,
                                                        size_t observationSets);
-
-    /// A camera as the consistency check of the world constraints needs it: intrinsics in pixels of the observed
-    /// image, and the pose that takes a point of the base frame, in meters, into the camera frame.
-    struct MetricCamera {
-        std::vector<std::vector<float>> intrinsics;
-        std::vector<float> distortion;
-        CameraModel distortionModel = CameraModel::Perspective;
-        std::vector<std::vector<float>> baseToCamera;
-    };
-    /// One configured measurement next to what the cameras reconstruct for it, both in meters.
-    struct ConstraintResidual {
-        std::string what;
-        double configured = 0.0;
-        double measured = 0.0;
-        /// |measured - configured| / configured
-        double relativeError() const;
-        /// False when the two values are further apart than both kMaxConstraintRelativeError and kMaxConstraintError.
-        bool fits() const;
-    };
-    /// A measurement that the calibrated cameras reconstruct further than this from its configured value does not
-    /// describe the scene: a wrong number, unit or marker id. The limit is the larger of a fraction of the
-    /// configured value and a length in meters, which keeps the noise of short distances and small markers out.
-    /// Correct constraints stay within about 6 % on a 7.5 cm baseline at 1-2 m.
-    static constexpr double kMaxConstraintRelativeError = 0.15;
-    static constexpr double kMaxConstraintError = 0.01;
-    /// Applying the constraints must not push the epipolar error of the image features above this many pixels and
-    /// above kMaxConstrainedEpipolarErrorGrowth times the error of the calibration in use.
-    static constexpr double kMaxConstrainedEpipolarErrorPx = 0.5;
-    static constexpr double kMaxConstrainedEpipolarErrorGrowth = 2.0;
-    /// True when the epipolar error of a calibration refined by world constraints says they contradict the images.
-    static bool epipolarErrorContradictsConstraints(double currentPx, double newPx);
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    /**
-     * Compares every configured measurement with the scene the cameras reconstruct from the collected marker
-     * observations: marker points are triangulated from all cameras that saw them, a marker distance is the distance
-     * between two points, a socket distance the distance from a point to the camera center, and a marker size is
-     * taken from the triangulated corners (ARUCO) or the angular size of the ring at the triangulated range
-     * (LUXONIS). The reported value is the median over the frame sets. Measurements that no frame set lets the
-     * cameras reconstruct are left out. cameras holds every socket the constraints or observations refer to.
-     */
-    static std::vector<ConstraintResidual> worldConstraintResiduals(const WorldConstraints& constraints,
-                                                                    const std::deque<MarkerObservationSet>& observationSets,
-                                                                    const std::map<CameraBoardSocket, MetricCamera>& cameras);
-#endif
 };
 
 }  // namespace node

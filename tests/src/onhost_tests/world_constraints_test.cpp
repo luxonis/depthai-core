@@ -4,10 +4,13 @@
 #include <depthai/depthai.hpp>
 #include <deque>
 #include <filesystem>
+#include <limits>
 #include <map>
 #include <memory>
 
+#include "../../../src/pipeline/node/DynamicCalibrationTransforms.hpp"
 #include "../../../src/pipeline/node/DynamicCalibrationUtils.hpp"
+#include "../../../src/pipeline/node/WorldConstraintsValidation.hpp"
 #include "../../../src/utility/WorldConstraintsUtils.hpp"
 
 // After the depthai headers: the DCL headers define macros that collide with depthai enumerators.
@@ -251,18 +254,22 @@ TEST_CASE("WorldConstraints JSON is strict", "[WorldConstraints]") {
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 TEST_CASE("DynamicCalibration compares world constraints with the reconstructed scene", "[WorldConstraints]") {
-    using dai::node::DclUtils;
-    // Two ideal cameras 7.5 cm apart looking along +z, 500 px focal length; the base frame is the left camera.
-    const auto camera = [](float x) {
-        DclUtils::MetricCamera metric;
-        metric.intrinsics = {{500.f, 0.f, 640.f}, {0.f, 500.f, 400.f}, {0.f, 0.f, 1.f}};
-        metric.distortion = std::vector<float>(14, 0.f);
-        metric.baseToCamera = {{1.f, 0.f, 0.f, -x}, {0.f, 1.f, 0.f, 0.f}, {0.f, 0.f, 1.f, 0.f}, {0.f, 0.f, 0.f, 1.f}};
-        return metric;
-    };
-    const std::map<Socket, DclUtils::MetricCamera> cameras = {{Socket::CAM_B, camera(0.f)}, {Socket::CAM_C, camera(0.075f)}, {Socket::CAM_A, camera(0.0375f)}};
+    namespace validation = dai::node::detail;
+    const std::vector<std::vector<float>> intrinsics = {{500.f, 0.f, 640.f}, {0.f, 500.f, 400.f}, {0.f, 0.f, 1.f}};
+    const std::vector<std::vector<float>> identity = {{1.f, 0.f, 0.f}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}};
+    const std::map<Socket, float> positions = {{Socket::CAM_B, 0.f}, {Socket::CAM_C, 0.075f}, {Socket::CAM_A, 0.0375f}};
+    const validation::ObservationCamera observed{intrinsics, std::vector<float>(14, 0.f), dai::CameraModel::Perspective};
+    const std::map<Socket, validation::ObservationCamera> cameras = {{Socket::CAM_B, observed}, {Socket::CAM_C, observed}};
+    dai::CalibrationHandler calibration;
+    for(const auto& [socket, x] : positions) {
+        calibration.setCameraIntrinsics(socket, intrinsics, 1280, 800);
+        calibration.setDistortionCoefficients(socket, std::vector<float>(14, 0.f));
+        calibration.setCameraType(socket, dai::CameraModel::Perspective);
+    }
+    calibration.setCameraExtrinsics(Socket::CAM_B, Socket::CAM_C, identity, {-7.5f, 0.f, 0.f});
+    calibration.setCameraExtrinsics(Socket::CAM_C, Socket::CAM_A, identity, {3.75f, 0.f, 0.f});
     const auto project = [&](Socket socket, const std::array<double, 3>& point) {
-        const double x = point[0] + cameras.at(socket).baseToCamera[0][3];
+        const double x = point[0] - positions.at(socket);
         return std::array<float, 2>{static_cast<float>(500.0 * x / point[2] + 640.0), static_cast<float>(500.0 * point[1] / point[2] + 400.0)};
     };
     // Markers 1 and 2 are 0.5 m apart, 2 m in front of the cameras; marker 1 is a 10 cm square facing them.
@@ -282,37 +289,94 @@ TEST_CASE("DynamicCalibration compares world constraints with the reconstructed 
     constraints.markerDistances = {{1, 2, 0.5f}};
     constraints.socketDistances = {{2, Socket::CAM_A, static_cast<float>(std::hypot(0.25 - 0.0375, 2.0))}};
     constraints.markerSizes = {{1, 0.10f}};
-    auto residuals = DclUtils::worldConstraintResiduals(constraints, sets, cameras);
+    auto residuals = validation::worldConstraintResiduals(constraints, sets, calibration, Socket::CAM_B, cameras);
     REQUIRE(residuals.size() == 3);
     for(const auto& residual : residuals) {
-        INFO(residual.what << ": configured " << residual.configured << ", measured " << residual.measured);
-        REQUIRE(residual.relativeError() < 0.01);
+        REQUIRE(residual.measured.has_value());
+        INFO(residual.what << ": configured " << residual.configured << ", measured " << *residual.measured);
+        REQUIRE(residual.fits());
+        REQUIRE(*residual.measured == Catch::Approx(residual.configured).epsilon(0.01));
     }
+    auto factory = calibration;
+    factory.updateCameraExtrinsics(Socket::CAM_C, Socket::CAM_A, identity, {200.f, 0.f, 0.f});
+    const std::map<Socket, std::vector<std::vector<float>>> calibratedPoses = {
+        {Socket::CAM_B, calibration.getCameraExtrinsics(Socket::CAM_B, Socket::CAM_B, false, dai::LengthUnit::METER)},
+        {Socket::CAM_C, calibration.getCameraExtrinsics(Socket::CAM_B, Socket::CAM_C, false, dai::LengthUnit::METER)}};
+    const auto assembled = validation::assembleDynamicCalibration(
+        calibration, factory, {Socket::CAM_B, Socket::CAM_C, Socket::CAM_A}, calibratedPoses, false, {{Socket::CAM_B, Socket::CAM_C}}, dai::Platform::RVC2);
+    const auto assembledResiduals = validation::worldConstraintResiduals(constraints, sets, assembled, Socket::CAM_B, cameras);
+    REQUIRE(assembledResiduals[0].fits());
+    REQUIRE(assembledResiduals[1].measured.has_value());
+    REQUIRE(*assembledResiduals[1].measured == Catch::Approx(std::hypot(0.25 + 1.925, 2.0)).epsilon(0.01));
+    REQUIRE_FALSE(assembledResiduals[1].fits());
+    REQUIRE(assembledResiduals[2].fits());
+    // Choosing another reconstruction frame must not change any measurement.
+    const auto otherBase = validation::worldConstraintResiduals(constraints, sets, calibration, Socket::CAM_C, cameras);
+    for(size_t i = 0; i < residuals.size(); ++i) REQUIRE(*otherBase[i].measured == Catch::Approx(*residuals[i].measured));
+    // Image transformation intrinsics can differ from EEPROM intrinsics after cropping.
+    auto croppedSets = sets;
+    for(auto& set : croppedSets) {
+        for(auto& [id, centers] : set.centers)
+            for(auto& [socket, center] : centers) {
+                center[0] -= 200.f;
+                center[1] -= 100.f;
+            }
+        for(auto& [id, outlines] : set.outlines)
+            for(auto& [socket, outline] : outlines)
+                for(auto& corner : outline.corners) {
+                    corner[0] -= 200.f;
+                    corner[1] -= 100.f;
+                }
+    }
+    auto croppedCameras = cameras;
+    for(auto& [socket, camera] : croppedCameras) {
+        camera.intrinsics[0][2] -= 200.f;
+        camera.intrinsics[1][2] -= 100.f;
+    }
+    const auto croppedResiduals = validation::worldConstraintResiduals(constraints, croppedSets, calibration, Socket::CAM_B, croppedCameras);
+    for(size_t i = 0; i < residuals.size(); ++i) REQUIRE(*croppedResiduals[i].measured == Catch::Approx(*residuals[i].measured));
     // A distance typed in centimeters and a wrong marker size stand out; the correct socket distance does not.
     constraints.markerDistances = {{1, 2, 50.f}};
     constraints.markerSizes = {{1, 0.15f}};
-    residuals = DclUtils::worldConstraintResiduals(constraints, sets, cameras);
+    residuals = validation::worldConstraintResiduals(constraints, sets, calibration, Socket::CAM_B, cameras);
     REQUIRE(residuals.size() == 3);
     REQUIRE(residuals[0].what == "the distance between markers 1 and 2");
-    REQUIRE(residuals[0].measured == Catch::Approx(0.5).epsilon(0.01));
+    REQUIRE(*residuals[0].measured == Catch::Approx(0.5).epsilon(0.01));
     REQUIRE_FALSE(residuals[0].fits());
     REQUIRE(residuals[1].fits());
-    REQUIRE(residuals[2].measured == Catch::Approx(0.10).epsilon(0.01));
+    REQUIRE(*residuals[2].measured == Catch::Approx(0.10).epsilon(0.01));
     REQUIRE_FALSE(residuals[2].fits());
     // Short lengths get an absolute allowance on top of the relative one.
-    REQUIRE(DclUtils::ConstraintResidual{"", 0.05, 0.058}.fits());
-    REQUIRE_FALSE(DclUtils::ConstraintResidual{"", 0.05, 0.062}.fits());
-    REQUIRE(DclUtils::ConstraintResidual{"", 1.0, 1.14}.fits());
-    REQUIRE_FALSE(DclUtils::ConstraintResidual{"", 1.0, 0.84}.fits());
+    REQUIRE(validation::ConstraintResidual{"", 0.05, 0.058}.fits());
+    REQUIRE_FALSE(validation::ConstraintResidual{"", 0.05, 0.062}.fits());
+    REQUIRE(validation::ConstraintResidual{"", 1.0, 1.14}.fits());
+    REQUIRE_FALSE(validation::ConstraintResidual{"", 1.0, 0.84}.fits());
     // A marker no frame set shows to two cameras has nothing to compare with.
     constraints.markerSizes = {{7, 0.10f}};
-    REQUIRE(DclUtils::worldConstraintResiduals(constraints, sets, cameras).size() == 2);
+    residuals = validation::worldConstraintResiduals(constraints, sets, calibration, Socket::CAM_B, cameras);
+    REQUIRE(residuals.size() == 3);
+    REQUIRE_FALSE(residuals[2].measured.has_value());
+    REQUIRE_FALSE(residuals[2].fits());
+    // Failed triangulation must reject constraints rather than disappearing from the check.
+    auto singleView = sets;
+    for(auto& set : singleView)
+        for(auto& [id, centers] : set.centers) centers.erase(Socket::CAM_C);
+    const auto unavailable = validation::worldConstraintResiduals(constraints, singleView, calibration, Socket::CAM_B, cameras);
+    REQUIRE(unavailable.size() == 3);
+    for(const auto& residual : unavailable) {
+        REQUIRE_FALSE(residual.measured.has_value());
+        REQUIRE_FALSE(residual.fits());
+    }
+    REQUIRE_FALSE(validation::ConstraintResidual{"", 1.0, std::numeric_limits<double>::quiet_NaN()}.fits());
+    REQUIRE_FALSE(validation::ConstraintResidual{"", 1.0, std::numeric_limits<double>::infinity()}.fits());
 
     // The epipolar error may not grow past both limits when constraints are applied.
-    REQUIRE_FALSE(DclUtils::epipolarErrorContradictsConstraints(0.22, 0.23));
-    REQUIRE_FALSE(DclUtils::epipolarErrorContradictsConstraints(3.0, 0.6));
-    REQUIRE_FALSE(DclUtils::epipolarErrorContradictsConstraints(0.1, 0.4));
-    REQUIRE(DclUtils::epipolarErrorContradictsConstraints(0.22, 1.26));
+    REQUIRE_FALSE(validation::epipolarErrorContradictsConstraints(0.22, 0.23));
+    REQUIRE_FALSE(validation::epipolarErrorContradictsConstraints(3.0, 0.6));
+    REQUIRE_FALSE(validation::epipolarErrorContradictsConstraints(0.1, 0.4));
+    REQUIRE(validation::epipolarErrorContradictsConstraints(0.22, 1.26));
+    REQUIRE(validation::epipolarErrorContradictsConstraints(0.22, std::numeric_limits<double>::quiet_NaN()));
+    REQUIRE(validation::epipolarErrorContradictsConstraints(std::numeric_limits<double>::infinity(), 0.22));
 }
 #endif
 

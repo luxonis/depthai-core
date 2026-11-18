@@ -107,7 +107,7 @@ This folder contains minimal, end-to-end **C++** examples that use **`dai::node:
 }
 ```
 
-Unknown or misspelled keys, malformed values, marker ids outside the dictionary and duplicate measurements raise an error. Names match regardless of case. Existing aliases (`dictionary`, dictionary names without `DICT_`, socket letters or numbers, numeric enums and `markerA` / `markerB`) remain accepted; conflicting aliases raise an error. Any of the three lists may be left out. `markerSizes` needs no tape measure in the scene: the printed size of a
+Unknown or misspelled keys, malformed values, marker ids outside the dictionary and duplicate measurements raise an error. Names match regardless of case. Existing aliases (`dictionary`, dictionary names without `DICT_`, socket letters or numbers, numeric enums and `markerA` / `markerB`) remain accepted; conflicting aliases raise an error. The calibration checks reconstructed measurements against the final assembled camera poses and rejects measurements it cannot reconstruct. Any of the three lists may be left out. `markerSizes` needs no tape measure in the scene: the printed size of a
 marker tells each camera how far away the marker is. The size of an ArUco marker is the length of a side of its
 black square, the size of a Luxonis Marker is the outer diameter of its ring.
 
