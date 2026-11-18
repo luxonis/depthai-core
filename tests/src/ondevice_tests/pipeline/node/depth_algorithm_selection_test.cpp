@@ -145,7 +145,6 @@ TEST_CASE("Depth stereo pair selection rejects missing and unavailable pairs", "
 
 TEST_CASE("Depth stereo pair overrides can be reset without changing the algorithm", "[Depth][stereo-pair]") {
     const auto depth = Depth::create();
-    REQUIRE_FALSE(depth->getResolvedStereoPair().has_value());
     const dai::StereoPair first{dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C};
     const dai::StereoPair pair{dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_D};
     const std::vector<dai::StereoPair> pairs{first, pair};
@@ -155,7 +154,6 @@ TEST_CASE("Depth stereo pair overrides can be reset without changing the algorit
     depth->build(Depth::Algorithm::STEREO, StereoDepth::PresetMode::DEFAULT);
     REQUIRE(dai::node::DepthTestAccess::selectStereoPair(*depth, pairs).left == pair.left);
     REQUIRE(dai::node::DepthTestAccess::selectStereoPair(*depth, pairs).right == pair.right);
-    REQUIRE_FALSE(depth->getResolvedStereoPair().has_value());
     depth->setStereoPair(std::nullopt);
     REQUIRE(dai::node::DepthTestAccess::selectStereoPair(*depth, pairs).left == first.left);
     REQUIRE(dai::node::DepthTestAccess::selectStereoPair(*depth, pairs).right == first.right);

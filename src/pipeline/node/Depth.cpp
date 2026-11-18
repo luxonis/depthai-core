@@ -1014,7 +1014,6 @@ void Depth::buildInternal() {
                             wiredResolution->second);
     }
 
-    resolvedStereoPair_ = stereoPair;
     graphBuilt_ = true;
 }
 

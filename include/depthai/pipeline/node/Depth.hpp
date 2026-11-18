@@ -213,14 +213,6 @@ class Depth : public DeviceNodeGroup {
     std::shared_ptr<Depth> setStereoPair(std::optional<StereoPair> stereoPair);
 
     /**
-     * Get the stereo pair actually wired, including metadata reported by the device.
-     * Returns std::nullopt before successful wiring or when the resolved algorithm is TOF.
-     */
-    [[nodiscard]] std::optional<StereoPair> getResolvedStereoPair() const {
-        return resolvedStereoPair_;
-    }
-
-    /**
      * Get the requested config override, if any.
      * @return Config override, or std::nullopt when config is auto-picked
      */
@@ -296,7 +288,6 @@ class Depth : public DeviceNodeGroup {
     std::optional<std::pair<uint32_t, uint32_t>> sizeOverride_{};
     std::optional<Config> configOverride_{};
     std::optional<StereoPair> stereoPairOverride_{};
-    std::optional<StereoPair> resolvedStereoPair_{};
     Node::Output* alignToOutput_{nullptr};
 
     Node::Output* depthOut_{nullptr};
