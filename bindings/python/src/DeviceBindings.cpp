@@ -676,6 +676,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.getCameraSensorNames();
             },
             DOC(dai, DeviceBase, getCameraSensorNames))
+        .def("getCameraStats", &DeviceBase::getCameraStats, py::call_guard<py::gil_scoped_release>(), DOC(dai, DeviceBase, getCameraStats))
         .def(
             "getStereoPairs",
             [](DeviceBase& d) {
