@@ -100,9 +100,6 @@ struct WorldConstraints {
         int32_t markerA = -1;
         int32_t markerB = -1;
         float distance = 0.0f;
-        bool operator==(const MarkerDistance& other) const {
-            return markerA == other.markerA && markerB == other.markerB && distance == other.distance;
-        }
         DEPTHAI_SERIALIZE_DECL(MarkerDistance, markerA, markerB, distance);
     };
 
@@ -115,9 +112,6 @@ struct WorldConstraints {
         int32_t marker = -1;
         CameraBoardSocket socket = CameraBoardSocket::AUTO;
         float distance = 0.0f;
-        bool operator==(const MarkerSocketDistance& other) const {
-            return marker == other.marker && socket == other.socket && distance == other.distance;
-        }
         DEPTHAI_SERIALIZE_DECL(MarkerSocketDistance, marker, socket, distance);
     };
 
@@ -128,9 +122,6 @@ struct WorldConstraints {
         MarkerSize(int32_t marker, float size, LengthUnit unit = LengthUnit::METER);
         int32_t marker = -1;
         float size = 0.0f;
-        bool operator==(const MarkerSize& other) const {
-            return marker == other.marker && size == other.size;
-        }
         DEPTHAI_SERIALIZE_DECL(MarkerSize, marker, size);
     };
 

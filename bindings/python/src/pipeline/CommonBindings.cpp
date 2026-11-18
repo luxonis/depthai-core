@@ -1,8 +1,6 @@
 #include "CommonBindings.hpp"
 
-#include <fmt/format.h>
 #include <pybind11/detail/common.h>
-#include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl/filesystem.h>
 #include <pybind11/stl_bind.h>
@@ -124,19 +122,6 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<WorldConstraints::MarkerSocketDistance> markerSocketDistance(
         worldConstraints, "MarkerSocketDistance", DOC(dai, WorldConstraints, MarkerSocketDistance));
     py::class_<WorldConstraints::MarkerSize> markerSize(worldConstraints, "MarkerSize", DOC(dai, WorldConstraints, MarkerSize));
-    // Opaque lists: WorldConstraints.markerDistances and the like are references into the struct, not copies, so
-    // append(), extend(), del and item assignment take effect. A plain Python list can still be assigned.
-    const auto bindEntryList = [&worldConstraints](auto* tag, const char* name) {
-        using List = std::remove_pointer_t<decltype(tag)>;
-        py::bind_vector<List>(worldConstraints, name).def("__repr__", [name = std::string(name)](const py::object& self) {
-            return name + "(" + std::string(py::str(py::list(self))) + ")";
-        });
-        py::implicitly_convertible<py::list, List>();
-        py::implicitly_convertible<py::tuple, List>();
-    };
-    bindEntryList(static_cast<std::vector<WorldConstraints::MarkerDistance>*>(nullptr), "MarkerDistanceList");
-    bindEntryList(static_cast<std::vector<WorldConstraints::MarkerSocketDistance>*>(nullptr), "MarkerSocketDistanceList");
-    bindEntryList(static_cast<std::vector<WorldConstraints::MarkerSize>*>(nullptr), "MarkerSizeList");
     py::class_<MarkerOutline> markerOutline(m, "MarkerOutline", DOC(dai, MarkerOutline));
     py::class_<MarkerObservationSet> markerObservationSet(m, "MarkerObservationSet", DOC(dai, MarkerObservationSet));
     py::enum_<CameraExposureOffset> cameraExposureOffset(m, "CameraExposureOffset");
@@ -374,12 +359,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              "The distance between two markers, given in unit (meters by default) and stored in meters.")
         .def_readwrite("markerA", &WorldConstraints::MarkerDistance::markerA)
         .def_readwrite("markerB", &WorldConstraints::MarkerDistance::markerB)
-        .def_readwrite("distance", &WorldConstraints::MarkerDistance::distance, "Meters")
-        .def(py::self == py::self)
-        .def("__repr__", [](const WorldConstraints::MarkerDistance& d) {
-            return "MarkerDistance(markerA=" + std::to_string(d.markerA) + ", markerB=" + std::to_string(d.markerB)
-                   + ", distance=" + fmt::format("{}", d.distance) + ")";
-        });
+        .def_readwrite("distance", &WorldConstraints::MarkerDistance::distance, "Meters");
     markerSocketDistance.def(py::init<>())
         .def(py::init<int32_t, CameraBoardSocket, float, LengthUnit>(),
              py::arg("marker"),
@@ -389,12 +369,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              "The distance between a marker and a camera socket, given in unit (meters by default) and stored in meters.")
         .def_readwrite("marker", &WorldConstraints::MarkerSocketDistance::marker)
         .def_readwrite("socket", &WorldConstraints::MarkerSocketDistance::socket)
-        .def_readwrite("distance", &WorldConstraints::MarkerSocketDistance::distance, "Meters")
-        .def(py::self == py::self)
-        .def("__repr__", [](const WorldConstraints::MarkerSocketDistance& d) {
-            return "MarkerSocketDistance(marker=" + std::to_string(d.marker) + ", socket=" + toString(d.socket) + ", distance=" + fmt::format("{}", d.distance)
-                   + ")";
-        });
+        .def_readwrite("distance", &WorldConstraints::MarkerSocketDistance::distance, "Meters");
     markerSize.def(py::init<>())
         .def(py::init<int32_t, float, LengthUnit>(),
              py::arg("marker"),
@@ -402,11 +377,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("unit") = LengthUnit::METER,
              "The printed size of a marker, given in unit (meters by default) and stored in meters.")
         .def_readwrite("marker", &WorldConstraints::MarkerSize::marker)
-        .def_readwrite("size", &WorldConstraints::MarkerSize::size, "Meters")
-        .def(py::self == py::self)
-        .def("__repr__", [](const WorldConstraints::MarkerSize& s) {
-            return "MarkerSize(marker=" + std::to_string(s.marker) + ", size=" + fmt::format("{}", s.size) + ")";
-        });
+        .def_readwrite("size", &WorldConstraints::MarkerSize::size, "Meters");
     worldConstraints.def(py::init<>())
         .def_readwrite("markerType", &WorldConstraints::markerType, DOC(dai, WorldConstraints, markerType))
         .def_readwrite("arucoDictionary", &WorldConstraints::arucoDictionary, DOC(dai, WorldConstraints, arucoDictionary))
@@ -418,9 +389,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def(
             "toJson", [](const WorldConstraints& constraints) { return constraints.toJson().dump(); }, DOC(dai, WorldConstraints, toJson))
         .def("empty", &WorldConstraints::empty, DOC(dai, WorldConstraints, empty))
-        .def("validate", &WorldConstraints::validate, DOC(dai, WorldConstraints, validate))
-        .def("__eq__", [](const WorldConstraints& a, const WorldConstraints& b) { return a.toJson() == b.toJson(); })
-        .def("__repr__", [](const WorldConstraints& constraints) { return "WorldConstraints(" + constraints.toJson().dump() + ")"; });
+        .def("validate", &WorldConstraints::validate, DOC(dai, WorldConstraints, validate));
     markerOutline.def(py::init<>())
         .def_readwrite("corners", &MarkerOutline::corners, DOC(dai, MarkerOutline, corners))
         .def_readwrite("outerEdge", &MarkerOutline::outerEdge, DOC(dai, MarkerOutline, outerEdge))
