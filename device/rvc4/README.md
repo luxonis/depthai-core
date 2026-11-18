@@ -51,8 +51,8 @@ utility_scripts/        Developer helpers: build, deploy, debug, core dumps, lic
 
 The firmware is cross-compiled in a Docker image on an x86-64 host. These images can build it:
 
-* the public build images `ghcr.io/luxonis/depthai-device-sdk:<sysroot version>` (for the release firmware) and
-  `:<sysroot version>-dev` (the same plus the sanitizer libraries): Ubuntu 22.04, the Arm GNU Toolchain 11.3.rel1
+* the public build images `ghcr.io/luxonis/depthai-device-sdk:os-<OS version>-<sysroot>` (for the release firmware)
+  and the same tag with `-dev` (the same plus the sanitizer libraries): Ubuntu 22.04, the cross compiler of Ubuntu (GCC 11.4)
   and the public sysroot of Luxonis OS. Anyone can use them, see [Public build container](#public-build-container).
 * the Luxonis OS SDK image: the OpenEmbedded toolchain, the full sysroot and the Hexagon SDK (Luxonis licensees).
 
@@ -142,8 +142,14 @@ Luxonis builds and publishes two images from `docker/Dockerfile.sdk`. You pull t
 
 | Image | For | Content |
 |---|---|---|
-| `ghcr.io/luxonis/depthai-device-sdk:<sysroot version>` | the release firmware (target `rvc4`) | Ubuntu 22.04, the build tools, the Arm GNU Toolchain without the parts that the firmware build does not use, the public sysroot, the FastCV headers |
-| `ghcr.io/luxonis/depthai-device-sdk:<sysroot version>-dev` | the targets `rvc4-tsan` and `rvc4-asan-ubsan`, and `start_dev_shell.sh` | the same plus the sanitizer libraries of the toolchain |
+| `ghcr.io/luxonis/depthai-device-sdk:os-<OS version>-<sysroot>` | the release firmware (target `rvc4`) | Ubuntu 22.04, the build tools, the cross compiler of Ubuntu (`g++-11-aarch64-linux-gnu`, GCC 11.4 and binutils 2.38, the versions of the Luxonis OS SDK) without its own C library, the public sysroot of Luxonis OS `<OS version>`, the FastCV headers |
+| `ghcr.io/luxonis/depthai-device-sdk:os-<OS version>-<sysroot>-dev` | the targets `rvc4-tsan` and `rvc4-asan-ubsan`, and `start_dev_shell.sh` | the same plus the sanitizer libraries of the compiler |
+
+`<sysroot>` is the start of the sha256 of the public sysroot. A tag with it never moves to another image. The tags
+`os-<OS version>` and `os-<OS version>-dev` are the newest images for that OS version. depthai-core pins the image
+in `cmake/Depthai/DepthaiDeviceRVC4Config.cmake` (`DEPTHAI_DEVICE_RVC4_SDK_IMAGE`), and the build scripts use the
+pinned image when `DEPTHAI_DEVICE_SDK_IMAGE` is not set. The OS version of the image is the one of the prebuilt
+vendor module (`DEPTHAI_DEVICE_RVC4_VENDOR_VERSION`): the build compares them.
 
 The images have no Qualcomm software that Luxonis may not redistribute: the sysroot has link stubs of the Qualcomm
 libraries (same names and symbols, no code; the device has the real libraries). Two Qualcomm SDKs give headers to
@@ -166,15 +172,17 @@ the build:
 `install-hexagon-sdk.sh` in the images puts the Qualcomm Hexagon SDK into an image of your own, to build the DSP
 offload from source. `HEXAGON_SDK_DIR` (see above) does the same without a new image.
 
-To build the images yourself (the sysroot tarball is downloaded and its sha256 is checked):
+The public sysroot is made in the CI of `depthai-device-vendor-fw`, from the Luxonis OS SDK image. When the sysroot
+changes, that CI builds both images with `docker/sdk-images.sh`, checks them and pushes them:
 
 ```bash
-docker build -f docker/Dockerfile.sdk --target release -t depthai-device-sdk docker
-docker build -f docker/Dockerfile.sdk --target dev -t depthai-device-sdk:dev docker
+docker/sdk-images.sh build rvc4-public-sysroot-<version>.tar.xz   # build, tag and check both images
+docker/sdk-images.sh push rvc4-public-sysroot-<version>.tar.xz    # push the four tags
+docker/sdk-images.sh check                                        # check the pinned images
 ```
 
-`RVC4_SYSROOT_URL` can also be the name of a sysroot tarball in `docker/`; `RVC4_SYSROOT_SHA256` must match it.
-The GitHub workflow `containers_device_rvc4_sdk.yml` builds both images and pushes them when `docker/` changes.
+The GitHub workflow `containers_device_rvc4_sdk.yml` checks the pinned images when `docker/` or the pin changes. It
+does not build them.
 
 For iteration, do not rebuild from scratch. Start a shell in the SDK container with `./start_dev_shell.sh rvc4`
 and run an incremental build:

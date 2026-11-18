@@ -7,9 +7,10 @@
 #         (plus depthai-device-rvc4-fwp-LICENSE and the SPDX / CycloneDX SBOMs next to it)
 #
 # Environment:
-#   DEPTHAI_DEVICE_SDK_IMAGE  Build image. Default: the public image ghcr.io/luxonis/depthai-device-sdk:<sysroot version
-#                             in docker/Dockerfile.sdk> for rvc4, and the same tag with -dev (it adds the sanitizer
-#                             libraries) for rvc4-asan-ubsan and rvc4-tsan.
+#   DEPTHAI_DEVICE_SDK_IMAGE  Build image. Default: the public image that depthai-core pins
+#                             (DEPTHAI_DEVICE_RVC4_SDK_IMAGE in ../../cmake/Depthai/DepthaiDeviceRVC4Config.cmake) for
+#                             rvc4, and the same tag with -dev (it adds the sanitizer libraries) for rvc4-asan-ubsan
+#                             and rvc4-tsan.
 #   DEPTHAI_ACCEPT_QUALCOMM_LICENSE
 #                             yes: the first build with the public image downloads the parts of QAIRT (Qualcomm AI
 #                             Runtime SDK) that the build uses from Qualcomm, about 10 MB, and you accept the license

@@ -4,12 +4,10 @@
 # the public image to use when DEPTHAI_DEVICE_SDK_IMAGE is not set; release also means the build of the release
 # firmware, target rvc4). Out: DEPTHAI_DEVICE_SDK_IMAGE, CONTAINER_ARGS, DEPTHAI_DEVICE_DEBUG_INFO.
 
+# The default is the image that depthai-core pins (DEPTHAI_DEVICE_RVC4_SDK_IMAGE in
+# cmake/Depthai/DepthaiDeviceRVC4Config.cmake). The release image has no sanitizer libraries. The dev image adds them.
 if [ -z "${DEPTHAI_DEVICE_SDK_IMAGE:-}" ]; then
-    DEPTHAI_DEVICE_SDK_IMAGE="ghcr.io/luxonis/depthai-device-sdk:$(sed -n 's/^ARG RVC4_SYSROOT_VERSION=//p' "$SOURCE_DIR/docker/Dockerfile.sdk")"
-    # The release image has no sanitizer libraries. The dev image adds them.
-    if [ "${DEPTHAI_DEVICE_SDK_IMAGE_KIND:-release}" = dev ]; then
-        DEPTHAI_DEVICE_SDK_IMAGE="$DEPTHAI_DEVICE_SDK_IMAGE-dev"
-    fi
+    DEPTHAI_DEVICE_SDK_IMAGE=$("$SOURCE_DIR/docker/sdk-images.sh" pinned "${DEPTHAI_DEVICE_SDK_IMAGE_KIND:-release}") || exit 1
 fi
 echo "Build image: $DEPTHAI_DEVICE_SDK_IMAGE"
 

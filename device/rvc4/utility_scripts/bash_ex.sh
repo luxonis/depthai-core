@@ -3,7 +3,7 @@
 # The image is DEPTHAI_DEVICE_SDK_IMAGE, or the default of start_dev_shell.sh (docker/container-env.sh).
 
 ROOT_DIR="$(dirname "${BASH_SOURCE[0]}")/.."
-DEFAULT_IMAGE="ghcr.io/luxonis/depthai-device-sdk:$(sed -n 's/^ARG RVC4_SYSROOT_VERSION=//p' "$ROOT_DIR/docker/Dockerfile.sdk")"
+DEFAULT_IMAGE=$("$ROOT_DIR/docker/sdk-images.sh" pinned release)
 IMAGE="${DEPTHAI_DEVICE_SDK_IMAGE:-$DEFAULT_IMAGE}"
 
 CONTAINER=$(docker ps --filter "ancestor=$IMAGE" --format '{{.ID}}' | head -n 1)

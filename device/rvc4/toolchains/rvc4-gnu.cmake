@@ -1,11 +1,12 @@
-# Toolchain for the RVC4 firmware: the Arm GNU Toolchain (aarch64-none-linux-gnu, GCC 11.3) with a plain sysroot
+# Toolchain for the RVC4 firmware: a GNU cross compiler for aarch64 Linux (the public build image has GCC 11.4 of Ubuntu,
+# aarch64-linux-gnu) with a plain sysroot
 # directory, as in the public build container (docker/Dockerfile.sdk). No OpenEmbedded SDK environment is needed.
 #
 # Inputs, each read from the CMake variable first and from the environment variable of the same name second
 # (CMakeLists.txt exports both, because the vcpkg port builds load this file too and see only the environment):
 #   DEPTHAI_DEVICE_RVC4_SYSROOT            sysroot directory with usr/include, usr/lib and lib
-#   DEPTHAI_DEVICE_RVC4_TOOLCHAIN_PREFIX   compiler prefix, for example /opt/arm-gnu-toolchain/bin/aarch64-none-linux-gnu-
-#                                          default: aarch64-none-linux-gnu-gcc, then aarch64-linux-gnu-gcc, on PATH
+#   DEPTHAI_DEVICE_RVC4_TOOLCHAIN_PREFIX   compiler prefix, for example /usr/bin/aarch64-linux-gnu-
+#                                          default: aarch64-linux-gnu-gcc, then aarch64-none-linux-gnu-gcc, on PATH
 #
 # The flags are the ones of the Luxonis OS SDK (OpenEmbedded) build, so that both toolchains build the firmware the
 # same way. They go into the *_FLAGS_INIT variables, so the cache keeps control of CMAKE_<LANG>_FLAGS.
@@ -37,10 +38,10 @@ if(DEPTHAI_DEVICE_RVC4_TOOLCHAIN_PREFIX)
 elseif(NOT "$ENV{DEPTHAI_DEVICE_RVC4_TOOLCHAIN_PREFIX}" STREQUAL "")
     set(_rvc4_prefix "$ENV{DEPTHAI_DEVICE_RVC4_TOOLCHAIN_PREFIX}")
 else()
-    find_program(_rvc4_gnu_gcc NAMES aarch64-none-linux-gnu-gcc aarch64-linux-gnu-gcc)
+    find_program(_rvc4_gnu_gcc NAMES aarch64-linux-gnu-gcc aarch64-none-linux-gnu-gcc)
     if(NOT _rvc4_gnu_gcc)
-        message(FATAL_ERROR "rvc4-gnu.cmake: no aarch64-none-linux-gnu-gcc or aarch64-linux-gnu-gcc on PATH. Install the Arm GNU "
-                            "Toolchain (aarch64-none-linux-gnu) or set DEPTHAI_DEVICE_RVC4_TOOLCHAIN_PREFIX.")
+        message(FATAL_ERROR "rvc4-gnu.cmake: no aarch64-linux-gnu-gcc or aarch64-none-linux-gnu-gcc on PATH. Install a GCC 11 "
+                            "cross compiler (Ubuntu 22.04: g++-11-aarch64-linux-gnu) or set DEPTHAI_DEVICE_RVC4_TOOLCHAIN_PREFIX.")
     endif()
     string(REGEX REPLACE "gcc$" "" _rvc4_prefix "${_rvc4_gnu_gcc}")
 endif()
@@ -64,15 +65,16 @@ foreach(_rvc4_var CC CXX CPP ASM CFLAGS CXXFLAGS CPPFLAGS ASMFLAGS LDFLAGS)
     unset(ENV{${_rvc4_var}})
 endforeach()
 
-# Generic armv8-a, as the OS build: no -march or -mcpu
+# Generic armv8-a, as the OS build: no -march or -mcpu. The cross compiler of Ubuntu turns on stack clash protection by
+# default; the compiler of the OS build does not, so it is turned off.
 set(_rvc4_compile_flags
-    -mbranch-protection=standard -fstack-protector-strong -fPIE -D_FORTIFY_SOURCE=2 -Wa,--noexecstack
+    -mbranch-protection=standard -fstack-protector-strong -fno-stack-clash-protection -fPIE -D_FORTIFY_SOURCE=2 -Wa,--noexecstack
     -Wformat -Wformat-security -Werror=format-security
     -O2 -g -fexpensive-optimizations -frename-registers -ftree-vectorize -finline-functions -finline-limit=64
     -Wno-error=maybe-uninitialized -Wno-error=unused-result)
 set(_rvc4_link_flags -Wl,-O1 -Wl,--hash-style=gnu -Wl,--as-needed -Wl,-z,relro,-z,now,-z,noexecstack -Wl,--build-id=sha1)
 # The GCC runtime objects of the device OS (crtbegin*.o, crtend*.o, libgcc.a, libgcc_eh.a in usr/lib/<target>/<gcc version>/)
-# carry the AArch64 BTI/PAC property note that the objects of the Arm toolchain lack. The linker enables branch
+# carry the AArch64 BTI/PAC property note that the objects of the cross compiler lack. The linker enables branch
 # protection only when every input has the note, so -B makes the compiler driver take the objects of the OS.
 file(GLOB _rvc4_gcc_runtime_dirs LIST_DIRECTORIES true "${_rvc4_sysroot}/usr/lib/aarch64-*-linux/*")
 set(_rvc4_gcc_runtime_flag "")

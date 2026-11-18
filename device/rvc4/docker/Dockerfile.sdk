@@ -1,14 +1,19 @@
 # syntax=docker/dockerfile:1
 #
-# Public build images of the RVC4 firmware: Ubuntu 22.04, the Arm GNU Toolchain 11.3.rel1 (aarch64-none-linux-gnu)
-# and the public sysroot of Luxonis OS at /opt/rvc4-sysroot. The sysroot has link stubs, not the code, of the
-# Qualcomm libraries that the firmware links; the device has the real libraries.
+# Public build images of the RVC4 firmware: Ubuntu 22.04, the cross compiler of Ubuntu (g++-11-aarch64-linux-gnu:
+# GCC 11.4 and binutils 2.38, the same versions as the Luxonis OS SDK) and the public sysroot of Luxonis OS at
+# /opt/rvc4-sysroot. The sysroot has link stubs, not the code, of the Qualcomm libraries that the firmware links; the
+# device has the real libraries. All software of the images comes from the Ubuntu archive (its source code is there),
+# except the sysroot and the FastCV headers.
 #
 # This file gives two images (docker build --target <name>):
 #   release  the default image: what the build of the release firmware (target rvc4) needs
-#   dev      release plus the sanitizer libraries of the toolchain (targets rvc4-tsan and rvc4-asan-ubsan)
-# Luxonis publishes both: ghcr.io/luxonis/depthai-device-sdk:<sysroot version> and :<sysroot version>-dev
-# (.github/workflows/containers_device_rvc4_sdk.yml). The build scripts take the one that the target needs.
+#   dev      release plus the sanitizer libraries of the compiler (targets rvc4-tsan and rvc4-asan-ubsan)
+# Luxonis publishes both as ghcr.io/luxonis/depthai-device-sdk:os-<Luxonis OS version>-<sysroot> and the same tag with
+# -dev. The CI of the private repository depthai-device-vendor-fw makes the public sysroot and builds and pushes the
+# images with sdk-images.sh (in this folder) when the sysroot changes. depthai-core pins the image in
+# cmake/Depthai/DepthaiDeviceRVC4Config.cmake (DEPTHAI_DEVICE_RVC4_SDK_IMAGE). The build scripts take the image that
+# the target needs.
 #
 # Qualcomm SDKs that the build uses:
 #   FastCV        headers in the images (published by Qualcomm Innovation Center under BSD-3-Clause-Clear, see below)
@@ -17,9 +22,8 @@
 #   Hexagon SDK   optional, not in the images: builds the DSP offload from source instead of taking it prebuilt
 #                 (sdk/install-hexagon-sdk.sh in a derived image, or HEXAGON_SDK_DIR of the build scripts)
 #
-# Build, with this directory as the build context (without --target the result is the release image):
-#   docker build -f Dockerfile.sdk -t depthai-device-sdk device/rvc4/docker
-# RVC4_SYSROOT_URL can also be the name of a sysroot tarball in the build context; RVC4_SYSROOT_SHA256 must match it.
+# Build with sdk-images.sh: it gives the sysroot tarball to the build as the build context 'sysroot' and sets the tags.
+#   ./sdk-images.sh build <path of rvc4-public-sysroot-<version>.tar.xz>
 FROM ubuntu:22.04 AS base
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -34,48 +38,60 @@ ARG NUMPY_VERSION=2.2.6
 RUN pip3 install --no-cache-dir "numpy==${NUMPY_VERSION}"
 
 
-# The cross toolchain in two parts: /toolchain for both images, /toolchain-sanitizers for the dev image only.
-# The checksum is the one that Arm publishes next to the tarball. Not extracted, because the firmware build does not
-# use them: the toolchain's own glibc (the build uses the sysroot of the OS), the debugger, the documentation, the
-# Fortran compiler, the LTO compiler and the static C++ library.
-FROM base AS toolchain
-ARG ARM_TOOLCHAIN_URL=https://developer.arm.com/-/media/Files/downloads/gnu/11.3.rel1/binrel/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-linux-gnu.tar.xz
-ARG ARM_TOOLCHAIN_SHA256=50cdef6c5baddaa00f60502cc8b59cc11065306ae575ad2f51e412a9b2a90364
-RUN curl -fsSL --retry 3 -o /tmp/arm-gnu-toolchain.tar.xz "$ARM_TOOLCHAIN_URL" \
-    && echo "$ARM_TOOLCHAIN_SHA256  /tmp/arm-gnu-toolchain.tar.xz" | sha256sum -c - \
-    && mkdir -p /toolchain /toolchain-sanitizers \
-    && tar -xJf /tmp/arm-gnu-toolchain.tar.xz --strip-components=1 -C /toolchain \
-        --exclude='*/aarch64-none-linux-gnu/libc' --exclude='*/share/doc' --exclude='*/share/info' \
-        --exclude='*/share/man' --exclude='*/share/locale' --exclude='*/bin/*-gdb*' --exclude='*/bin/*-lto-dump' \
-        --exclude='*gfortran*' --exclude='*/f951' --exclude='*/finclude' --exclude='*/libcaf_single*' \
-        --exclude='*/lto1' --exclude='*/libstdc++.a' --exclude='*/libstdc++fs.a' --exclude='*/libsupc++.a' \
-    && rm -f /tmp/arm-gnu-toolchain.tar.xz \
-    && cd /toolchain \
-    && find . \( -name 'lib*san.*' -o -name 'lib*san_preinit.o' -o -name 'libsanitizer.spec' \) > /tmp/sanitizer-files \
-    && while read -r f; do mkdir -p "/toolchain-sanitizers/$(dirname "$f")" && mv "$f" "/toolchain-sanitizers/$f" || exit 1; done < /tmp/sanitizer-files \
+# The cross compiler. aarch64-linux-gnu-gcc, -g++ and -cpp point to version GCC_CROSS_VERSION.
+# The packages also install a glibc and kernel headers of Ubuntu for aarch64 (libc6-arm64-cross, libc6-dev-arm64-cross,
+# linux-libc-dev-arm64-cross) and the libstdc++ and libgcc_s of GCC 12 (libstdc++6-arm64-cross, libgcc-s1-arm64-cross).
+# The compiler and the linker search them before the sysroot, so their files are removed: the firmware build takes the
+# headers, the C library, the start files, libstdc++ and libgcc_s of the OS sysroot (/opt/rvc4-sysroot, GCC 11.4), the
+# libraries that the device loads. A link against the libstdc++ of GCC 12 would need GLIBCXX_3.4.30, which the device
+# does not have. The static libstdc++ of the compiler is removed too, so that the linker does not take it in place of the
+# shared libstdc++ of the OS. The C++ headers of the compiler (GCC 11.4) stay.
+# The sanitizer libraries move to /toolchain-sanitizers; only the dev image puts them back.
+FROM base AS cross
+ARG DEBIAN_FRONTEND=noninteractive
+ARG GCC_CROSS_VERSION=11
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends "g++-${GCC_CROSS_VERSION}-aarch64-linux-gnu" binutils-aarch64-linux-gnu \
+    && rm -rf /var/lib/apt/lists/* \
+    && for tool in gcc g++ cpp gcc-ar gcc-nm gcc-ranlib; do \
+        ln -sf "aarch64-linux-gnu-${tool}-${GCC_CROSS_VERSION}" "/usr/bin/aarch64-linux-gnu-${tool}" || exit 1; \
+    done \
+    && dpkg -L libc6-arm64-cross libc6-dev-arm64-cross linux-libc-dev-arm64-cross libstdc++6-arm64-cross libgcc-s1-arm64-cross \
+        > /tmp/ubuntu-libc-files \
+    && while read -r f; do if [ -f "$f" ] || [ -L "$f" ]; then rm -f "$f" || exit 1; fi; done < /tmp/ubuntu-libc-files \
+    && rm -f /tmp/ubuntu-libc-files \
+    && cd "/usr/lib/gcc-cross/aarch64-linux-gnu/${GCC_CROSS_VERSION}" \
+    && rm -f libstdc++.so libgcc_s.so libstdc++.a libstdc++fs.a libsupc++.a \
+    && cd / \
+    && test ! -e /usr/aarch64-linux-gnu/include/stdio.h \
+    && test ! -e /usr/aarch64-linux-gnu/lib/libstdc++.so.6 \
+    && test -e /usr/aarch64-linux-gnu/include/c++/${GCC_CROSS_VERSION}/vector \
+    && find /usr/aarch64-linux-gnu/lib /usr/lib/gcc-cross/aarch64-linux-gnu \
+        \( -name 'lib*san.*' -o -name 'lib*san.so.*' -o -name 'lib*san_preinit.o' -o -name 'libsanitizer.spec' \) > /tmp/sanitizer-files \
+    && mkdir -p /toolchain-sanitizers \
+    && tar -cf - -T /tmp/sanitizer-files | tar -xf - -C /toolchain-sanitizers \
+    && xargs rm -f < /tmp/sanitizer-files \
     && rm -f /tmp/sanitizer-files \
-    && test -f /toolchain-sanitizers/aarch64-none-linux-gnu/lib64/libasan.so \
-    && test -f /toolchain-sanitizers/aarch64-none-linux-gnu/lib64/libtsan.so \
-    && test -f /toolchain-sanitizers/aarch64-none-linux-gnu/lib64/libubsan.so
+    && test -e /toolchain-sanitizers/usr/aarch64-linux-gnu/lib/libasan.so.6 \
+    && test -e /toolchain-sanitizers/usr/aarch64-linux-gnu/lib/libtsan.so.0 \
+    && test -e /toolchain-sanitizers/usr/aarch64-linux-gnu/lib/libubsan.so.1 \
+    && test "$(aarch64-linux-gnu-g++ -print-file-name=libasan.so)" = libasan.so
 
 
-FROM base AS release
-COPY --from=toolchain /toolchain /opt/arm-gnu-toolchain
+FROM cross AS release
 
-ARG RVC4_SYSROOT_VERSION=ca10306
-ARG RVC4_SYSROOT_URL=https://artifacts.luxonis.com/artifactory/luxonis-rvc4-snapshot-local/depthai-device-rvc4-sdk/${RVC4_SYSROOT_VERSION}/rvc4-public-sysroot-${RVC4_SYSROOT_VERSION}.tar.xz
-ARG RVC4_SYSROOT_SHA256=23fdb84a9165f2e1801df7b8883ba2a01e8ea8689e031733378bed10946738c1
-RUN --mount=type=bind,target=/context \
+# The public sysroot of Luxonis OS (made in the CI of depthai-device-vendor-fw). The build context 'sysroot'
+# (docker build --build-context sysroot=<folder>) has it as rvc4-public-sysroot.tar.xz; RVC4_SYSROOT_SHA256 is the
+# sha256 of that file. Without that build context, docker looks for an image named 'sysroot' and the build fails.
+ARG RVC4_SYSROOT_SHA256
+ARG RVC4_OS_VERSION
+RUN --mount=type=bind,from=sysroot,target=/sysroot-input \
     set -eu; \
-    if [ -f "/context/$RVC4_SYSROOT_URL" ]; then \
-        cp "/context/$RVC4_SYSROOT_URL" /tmp/rvc4-sysroot.tar.xz; \
-    else \
-        curl -fsSL --retry 3 -o /tmp/rvc4-sysroot.tar.xz "$RVC4_SYSROOT_URL"; \
-    fi; \
-    echo "$RVC4_SYSROOT_SHA256  /tmp/rvc4-sysroot.tar.xz" | sha256sum -c -; \
-    tar -xJf /tmp/rvc4-sysroot.tar.xz -C /opt; \
-    rm -f /tmp/rvc4-sysroot.tar.xz; \
-    test -f /opt/rvc4-sysroot/usr/include/python3.10/Python.h
+    test -n "$RVC4_SYSROOT_SHA256" && test -n "$RVC4_OS_VERSION"; \
+    echo "$RVC4_SYSROOT_SHA256  /sysroot-input/rvc4-public-sysroot.tar.xz" | sha256sum -c -; \
+    tar -xJf /sysroot-input/rvc4-public-sysroot.tar.xz -C /opt; \
+    test -f /opt/rvc4-sysroot/usr/include/python3.10/Python.h; \
+    grep -q "^os-release: Luxonis OS RVC4 $RVC4_OS_VERSION " /opt/rvc4-sysroot/VERSION
 
 # FastCV: the firmware calls a few FastCV functions. The device has the library and the sysroot has its link stub, so
 # the build needs only the headers. Qualcomm Innovation Center publishes them under BSD-3-Clause-Clear in the
@@ -94,13 +110,22 @@ COPY sdk/install-hexagon-sdk.sh /usr/local/bin/
 
 # HEXAGON_SDK_ROOT is where install-hexagon-sdk.sh puts the SDK. The firmware build uses it only when the SDK is there.
 ENV DEPTHAI_DEVICE_RVC4_SYSROOT=/opt/rvc4-sysroot \
-    HEXAGON_SDK_ROOT=/opt/Hexagon_SDK \
-    PATH=/opt/arm-gnu-toolchain/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    HEXAGON_SDK_ROOT=/opt/Hexagon_SDK
+
+# RVC4_CORE_REVISION: the depthai-core commit of this Dockerfile
+ARG RVC4_CORE_REVISION=unknown
+LABEL org.opencontainers.image.title="depthai-device-sdk" \
+      org.opencontainers.image.description="Public build image of the DepthAI RVC4 firmware" \
+      org.opencontainers.image.source="https://github.com/luxonis/depthai-core" \
+      org.opencontainers.image.revision="$RVC4_CORE_REVISION" \
+      com.luxonis.rvc4.os-version="$RVC4_OS_VERSION" \
+      com.luxonis.rvc4.sysroot-sha256="$RVC4_SYSROOT_SHA256"
 
 
-# The sanitizer libraries of the toolchain, for the targets rvc4-tsan and rvc4-asan-ubsan
+# The sanitizer libraries of the compiler, for the targets rvc4-tsan and rvc4-asan-ubsan
 FROM release AS dev
-COPY --from=toolchain /toolchain-sanitizers /opt/arm-gnu-toolchain
+RUN cp -a /toolchain-sanitizers/. / \
+    && test -f "$(aarch64-linux-gnu-g++ -print-file-name=libasan.so)"
 
 
 # A build without --target gives the release image
