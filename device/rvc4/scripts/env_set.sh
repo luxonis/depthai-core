@@ -14,6 +14,6 @@ export ADSP_LIBRARY_PATH="/opt/qcom/aistack/qairt/${QAIRT_SNPE_VERSION}/lib/hexa
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/qcom/aistack/qairt/${QAIRT_SNPE_VERSION}/lib/aarch64-oe-linux-gcc11.2/"
 echo "interceptor_via_fun:evaInitWarp" > /tmp/asan.supp
 export ASAN_OPTIONS=alloc_dealloc_mismatch=0:abort_on_error=1:suppressions=/tmp/asan.supp
-# camera.qcom.so pulls in libclang_rt.ubsan_standalone whose deadly-signal handler
+# the camera HAL module pulls in libclang_rt.ubsan_standalone whose deadly-signal handler
 # would swallow SIGSEGV and _exit(1) without a core dump - keep it disarmed
 export UBSAN_OPTIONS=handle_segv=0:handle_sigbus=0:handle_sigill=0:handle_sigfpe=0:handle_abort=0:handle_sigtrap=0

@@ -395,7 +395,7 @@ std::string selectSensorDriversFromCbaEeproms() {
 // The camera HAL reads the same name, like LUX_SC_CLIENT_VERSION_MAJOR and LUX_SC_CLIENT_VERSION_MINOR
 constexpr const char* SENSOR_SELECT_ENV = "LUX_SC_CLIENT_SENSOR_SELECT";
 
-// The camera HAL enumerates and probes the sensors while camera.qcom.so is being loaded by hw_get_module(), so the
+// The camera HAL enumerates and probes the sensors while its module is being loaded by hw_get_module(), so the
 // selection has to be in the environment by then. It is only a preference, the camera HAL falls back to probing for the
 // sensor's chip ID. Always set, so a value inherited from the parent process never leaks in
 void setSensorSelectionEnv() {
