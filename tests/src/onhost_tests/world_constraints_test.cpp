@@ -74,13 +74,12 @@ TEST_CASE("WorldConstraints parses the documented JSON form", "[WorldConstraints
     REQUIRE(roundTrip.markerSizes[0].size == Catch::Approx(0.15f));
     REQUIRE(fromWire.markerSizes[0].marker == 43);
 
-    // Names match regardless of case, including the AprilTag names with their lowercase "h"; nothing else is repaired.
+    // Keep all documented dictionary spellings, including names without DICT_.
     for(const char* spelling : {"DICT_APRILTAG_36h11", "DICT_APRILTAG_36H11", "dict_apriltag_36h11"}) {
         REQUIRE(dai::arucoDictionaryFromString(spelling) == dai::ArucoDictionary::DICT_APRILTAG_36h11);
     }
-    for(const char* spelling : {"APRILTAG_36h11", "4X4_50"}) {
-        REQUIRE_THROWS_AS(dai::arucoDictionaryFromString(spelling), std::invalid_argument);
-    }
+    REQUIRE(dai::arucoDictionaryFromString("APRILTAG_36h11") == dai::ArucoDictionary::DICT_APRILTAG_36h11);
+    REQUIRE(dai::arucoDictionaryFromString("4X4_50") == dai::ArucoDictionary::DICT_4X4_50);
     REQUIRE(dai::markerTypeFromString("luxonis") == dai::MarkerType::LUXONIS);
     for(const auto dictionary : {dai::ArucoDictionary::DICT_APRILTAG_16h5,
                                  dai::ArucoDictionary::DICT_APRILTAG_25h9,
@@ -95,6 +94,24 @@ TEST_CASE("WorldConstraints parses the documented JSON form", "[WorldConstraints
         REQUIRE(dai::WorldConstraints::fromJson(apriltag.toJson()).arucoDictionary == dictionary);
         REQUIRE(dai::WorldConstraints::fromJsonString(apriltag.toJson().dump()).arucoDictionary == dictionary);
     }
+}
+
+TEST_CASE("WorldConstraints preserves documented aliases and rejects conflicts", "[WorldConstraints]") {
+    using dai::WorldConstraints;
+    const auto aliases = WorldConstraints::fromJsonString(
+        R"({"dictionary":"4X4_100", "markerDistances":[{"markerA":1,"markerB":2,"distance":0.5}], "socketDistances":[{"marker":2,"socket":"b","distance":1.0}]})");
+    REQUIRE(aliases.arucoDictionary == dai::ArucoDictionary::DICT_4X4_100);
+    REQUIRE(aliases.markerDistances[0].markerA == 1);
+    REQUIRE(aliases.markerDistances[0].markerB == 2);
+    REQUIRE(aliases.socketDistances[0].socket == Socket::CAM_B);
+    const auto numeric = WorldConstraints::fromJson({{"markerType", static_cast<int>(dai::MarkerType::ARUCO)},
+                                                     {"arucoDictionary", static_cast<int>(dai::ArucoDictionary::DICT_4X4_50)},
+                                                     {"socketDistances", {{{"marker", 1}, {"socket", static_cast<int>(Socket::CAM_C)}, {"distance", 1.0}}}}});
+    REQUIRE(numeric.socketDistances[0].socket == Socket::CAM_C);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"dictionary":"4X4_100","arucoDictionary":"DICT_4X4_50"})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances":[{"markers":[1,2],"markerA":3,"distance":1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"dictionary":999})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType":0.5})"), std::invalid_argument);
 }
 
 TEST_CASE("WorldConstraints rejects malformed input", "[WorldConstraints]") {
@@ -117,7 +134,7 @@ TEST_CASE("WorldConstraints rejects malformed input", "[WorldConstraints]") {
     REQUIRE(luxonis.toJson().at("markerType") == "LUXONIS");
     REQUIRE_FALSE(luxonis.toJson().contains("arucoDictionary"));
     REQUIRE(WorldConstraints::fromJson(luxonis.toJson()).markerType == dai::MarkerType::LUXONIS);
-    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": 1})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": 99})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"dictionary": "DICT_9X9", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
                       std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString("[1, 2]"), std::invalid_argument);
@@ -155,7 +172,7 @@ TEST_CASE("WorldConstraints rejects malformed input", "[WorldConstraints]") {
         luxonisSizes.markerSizes = {{6, 0.1f}};
         REQUIRE_THROWS_AS(luxonisSizes.validate(), std::invalid_argument);
     }
-    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"arucoDictionary": 4, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"arucoDictionary": -1, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
                       std::invalid_argument);
     {
         WorldConstraints negative;
@@ -194,12 +211,10 @@ TEST_CASE("WorldConstraints JSON is strict", "[WorldConstraints]") {
     // A key outside the documented form is an error: a misspelled list would otherwise be dropped without a word.
     REQUIRE(rejected(R"({"markerDistance": [{"markers": [1, 2], "distance": 1}]})", "unknown key \"markerDistance\""));
     REQUIRE(rejected(R"({"markersizes": [{"marker": 1, "size": 0.1}]})", "unknown key \"markersizes\""));
-    REQUIRE(rejected(R"({"dictionary": "DICT_4X4_50", "markerSizes": [{"marker": 1, "size": 0.1}]})", "unknown key \"dictionary\""));
     REQUIRE(rejected(R"({"markerDistances": [{"markers": [1, 2], "distance": 1, "unit": "cm"}]})", "unknown key \"unit\""));
-    REQUIRE(rejected(R"({"markerDistances": [{"markerA": 1, "markerB": 2, "distance": 1}]})", "unknown key \"markerA\""));
     REQUIRE(rejected(R"({"markerSizes": [{"marker": 1, "size": 0.1, "sise": 0.2}]})", "unknown key \"sise\""));
     REQUIRE(rejected(R"({"lengthUnit": "cm"})", "every distance and size is in meters"));
-    // Names match in any case but are not repaired: no missing prefix, no socket letter or number, no enumerator number.
+    // Names match in any case; previously documented aliases still work.
     REQUIRE(WorldConstraints::fromJsonString(
                 R"({"markerType": "Aruco", "arucoDictionary": "dict_4x4_100", "socketDistances": [{"marker": 1, "socket": "cam_b", "distance": 1}]})")
                 .socketDistances[0]
@@ -207,19 +222,17 @@ TEST_CASE("WorldConstraints JSON is strict", "[WorldConstraints]") {
             == Socket::CAM_B);
     REQUIRE(WorldConstraints::fromJsonString(R"({"markerType": "luxonis", "markerSizes": [{"marker": 1, "size": 0.1}]})").markerType
             == dai::MarkerType::LUXONIS);
-    REQUIRE(rejected(R"({"markerType": "cctag", "markerSizes": [{"marker": 1, "size": 0.1}]})", "\"markerType\" must be one of \"ARUCO\", \"LUXONIS\""));
-    REQUIRE(rejected(R"({"arucoDictionary": "4X4_50", "markerSizes": [{"marker": 1, "size": 0.1}]})", "\"arucoDictionary\" must be one of"));
-    REQUIRE(rejected(R"({"arucoDictionary": 0, "markerSizes": [{"marker": 1, "size": 0.1}]})", "\"arucoDictionary\" must be one of"));
-    for(const char* socket : {R"("B")", "1", R"("AUTO")"}) {
-        REQUIRE(rejected(std::string(R"({"socketDistances": [{"marker": 1, "socket": )") + socket + R"(, "distance": 1}]})", "\"CAM_A\" to \"CAM_J\""));
+    REQUIRE(rejected(R"({"markerType": "cctag", "markerSizes": [{"marker": 1, "size": 0.1}]})", "unknown markerType"));
+    for(const char* socket : {R"("Z")", "99", R"("AUTO")"}) {
+        REQUIRE(rejected(std::string(R"({"socketDistances": [{"marker": 1, "socket": )") + socket + R"(, "distance": 1}]})", "concrete socket"));
     }
     // A dictionary has no meaning for Luxonis Markers.
-    REQUIRE(rejected(R"({"markerType": "LUXONIS", "arucoDictionary": "DICT_4X4_50", "markerSizes": [{"marker": 1, "size": 0.1}]})", "\"aruco\" only"));
+    REQUIRE(rejected(R"({"markerType": "LUXONIS", "arucoDictionary": "DICT_4X4_50", "markerSizes": [{"marker": 1, "size": 0.1}]})", "aruco only"));
     // Wrong shapes and missing members name what is wrong.
     REQUIRE(rejected(R"({"markerDistances": {"markers": [1, 2], "distance": 1}})", "\"markerDistances\" must be an array"));
     REQUIRE(rejected(R"({"markerSizes": [[1, 0.1]]})", "must be a JSON object"));
     REQUIRE(rejected(R"({"markerSizes": [{"marker": 1}]})", "needs \"size\""));
-    REQUIRE(rejected(R"({"markerDistances": [{"distance": 1}]})", "needs \"markers\""));
+    REQUIRE(rejected(R"({"markerDistances": [{"distance": 1}]})", "needs \"markerA\""));
     REQUIRE(rejected(R"({"markerDistances": [{"markers": 3, "distance": 1}]})", "array of two marker ids"));
     REQUIRE(rejected(R"({"markerDistances": [{"markers": [1, 2], "distance": "0.5"}]})", "must be a number of meters"));
     REQUIRE(rejected(R"({"markerDistances": [{"markers": [1, 2], "distance": 1e40}]})", "out of range"));

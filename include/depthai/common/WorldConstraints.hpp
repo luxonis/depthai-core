@@ -43,7 +43,8 @@ enum class ArucoDictionary : int32_t {
 
 /// Name of the enumerator, such as "DICT_4X4_50"; "UNKNOWN" for a value outside the enumeration.
 std::string toString(ArucoDictionary dictionary);
-/// The dictionary named like the enumerator, matched regardless of case. Throws std::invalid_argument for any other name.
+/// The dictionary named like the enumerator, matched regardless of case and with or without the "DICT_" prefix.
+/// Throws std::invalid_argument for a name that is not a dictionary.
 ArucoDictionary arucoDictionaryFromString(const std::string& name);
 
 /**
@@ -86,10 +87,11 @@ MarkerType markerTypeFromString(const std::string& name);
  * at least one entry is required for the constraints to have an effect. Only the markers named by an entry are
  * looked for; any other marker in the scene is ignored.
  *
- * The JSON form is strict: fromJson() throws for anything that is not the form above. That covers a key that is
- * not listed (a misspelled list would otherwise be ignored silently, "lengthUnit" included), a name that is not an
- * enumerator name ("ARUCO", "DICT_4X4_50", "CAM_A"; matched regardless of case), a value of the wrong type, and
- * everything validate() rejects.
+ * Names are matched regardless of case. For compatibility, "dictionary" aliases "arucoDictionary", the dictionary
+ * may omit "DICT_", sockets accept letters or numbers, and marker distances accept "markerA" / "markerB" in place
+ * of "markers". Marker type and dictionary enumerator numbers are also accepted.
+ * fromJson() rejects unknown keys (including "lengthUnit"), malformed values, conflicting aliases, and everything
+ * validate() rejects. Use the form above for new configuration files.
  */
 struct WorldConstraints {
     /// Distance between the reference points of two markers, in meters.

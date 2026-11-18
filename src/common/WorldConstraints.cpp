@@ -4,6 +4,7 @@
 #include <cmath>
 #include <fstream>
 #include <limits>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -152,17 +153,19 @@ std::vector<nlohmann::json> listFromJson(const nlohmann::json& json, const char*
     return {it->begin(), it->end()};
 }
 
-/// A socket given by its name, "CAM_A" to "CAM_J", in any case. Throws std::invalid_argument otherwise.
+/// A socket given by its name, letter or enumerator number. Throws std::invalid_argument otherwise.
 CameraBoardSocket socketFromJson(const nlohmann::json& value) {
-    if(value.is_string()) {
-        const auto name = upper(value.get<std::string>());
+    if(value.is_number_integer()) {
+        const auto socket = static_cast<CameraBoardSocket>(int32FromJson(value, "socket"));
+        if(isKnownSocket(socket)) return socket;
+    } else if(value.is_string()) {
+        auto name = upper(value.get<std::string>());
+        if(name.size() == 1) name = "CAM_" + name;
         for(int socket = static_cast<int>(CameraBoardSocket::CAM_A); socket <= static_cast<int>(CameraBoardSocket::CAM_J); ++socket) {
-            if(toString(static_cast<CameraBoardSocket>(socket)) == name) {
-                return static_cast<CameraBoardSocket>(socket);
-            }
+            if(toString(static_cast<CameraBoardSocket>(socket)) == name) return static_cast<CameraBoardSocket>(socket);
         }
     }
-    throw std::invalid_argument("WorldConstraints: a socket must be one of \"CAM_A\" to \"CAM_J\", got " + value.dump());
+    throw std::invalid_argument("WorldConstraints: a socket must name a concrete socket (CAM_A..CAM_J), got " + value.dump());
 }
 
 /// A marker id, which must be a non-negative integer. Throws std::invalid_argument otherwise.
@@ -186,19 +189,6 @@ float lengthFromJson(const nlohmann::json& value, const std::string& what) {
     return static_cast<float>(length);
 }
 
-/// The value of an enumeration named like one of its enumerators, in any case. Throws std::invalid_argument otherwise.
-template <typename Enum>
-Enum enumFromJson(const nlohmann::json& value, const char* key, const std::vector<std::pair<Enum, const char*>>& names) {
-    std::string accepted;
-    for(const auto& [enumerator, name] : names) {
-        if(value.is_string() && upper(value.get<std::string>()) == upper(name)) {
-            return enumerator;
-        }
-        accepted += (accepted.empty() ? "\"" : ", \"") + std::string(name) + "\"";
-    }
-    throw std::invalid_argument(std::string("WorldConstraints: \"") + key + "\" must be one of " + accepted + ", got " + value.dump());
-}
-
 }  // namespace
 
 std::string toString(ArucoDictionary dictionary) {
@@ -211,9 +201,11 @@ std::string toString(ArucoDictionary dictionary) {
 }
 
 ArucoDictionary arucoDictionaryFromString(const std::string& name) {
+    const auto wanted = upper(name);
     for(const auto& [value, candidate] : dictionaryNames()) {
         // Compare without case: the AprilTag names keep a lowercase "h" (DICT_APRILTAG_36h11).
-        if(upper(name) == upper(candidate)) {
+        const auto candidateUpper = upper(candidate);
+        if(wanted == candidateUpper || wanted == candidateUpper.substr(5)) {
             return value;
         }
     }
@@ -231,7 +223,6 @@ std::string toString(MarkerType type) {
 
 MarkerType markerTypeFromString(const std::string& name) {
     for(const auto& [value, candidate] : markerTypeNames()) {
-        // Compare without case: the AprilTag names keep a lowercase "h" (DICT_APRILTAG_36h11).
         if(upper(name) == upper(candidate)) {
             return value;
         }
@@ -248,33 +239,50 @@ WorldConstraints WorldConstraints::fromJson(const nlohmann::json& json) {
 }
 
 WorldConstraints WorldConstraints::parseJson(const nlohmann::json& json) {
-    // Strict on purpose: a document that is not exactly the documented form is an error, never a guess.
+    // Reject typos while preserving the input forms accepted by earlier SDK versions.
     if(json.is_object() && json.contains("lengthUnit")) {
         throw std::invalid_argument("WorldConstraints: \"lengthUnit\" is not supported, every distance and size is in meters");
     }
-    requireObjectWithKeys(json, "the constraints", {"markerType", "arucoDictionary", "markerDistances", "socketDistances", "markerSizes"});
+    requireObjectWithKeys(json, "the constraints", {"markerType", "arucoDictionary", "dictionary", "markerDistances", "socketDistances", "markerSizes"});
     WorldConstraints constraints;
     if(json.contains("markerType")) {
-        constraints.markerType = enumFromJson(json.at("markerType"), "markerType", markerTypeNames());
+        const auto& type = json.at("markerType");
+        constraints.markerType = type.is_string() ? markerTypeFromString(type.get<std::string>()) : static_cast<MarkerType>(int32FromJson(type, "markerType"));
     }
-    if(json.contains("arucoDictionary")) {
+    std::optional<ArucoDictionary> dictionary;
+    for(const char* key : {"arucoDictionary", "dictionary"}) {
+        if(!json.contains(key)) continue;
         if(constraints.markerType != MarkerType::ARUCO) {
-            throw std::invalid_argument("WorldConstraints: \"arucoDictionary\" applies to markerType \"aruco\" only, remove it for \""
-                                        + toString(constraints.markerType) + "\"");
+            throw std::invalid_argument("WorldConstraints: arucoDictionary applies to markerType aruco only");
         }
-        constraints.arucoDictionary = enumFromJson(json.at("arucoDictionary"), "arucoDictionary", dictionaryNames());
+        const auto& value = json.at(key);
+        const auto parsed = value.is_string() ? arucoDictionaryFromString(value.get<std::string>()) : static_cast<ArucoDictionary>(int32FromJson(value, key));
+        if(dictionary && *dictionary != parsed) {
+            throw std::invalid_argument("WorldConstraints: dictionary and arucoDictionary disagree");
+        }
+        dictionary = parsed;
     }
+    if(dictionary) constraints.arucoDictionary = *dictionary;
     for(const auto& entry : listFromJson(json, "markerDistances")) {
         const std::string what = "a \"markerDistances\" entry";
-        requireObjectWithKeys(entry, what, {"markers", "distance"});
-        const auto& markers = requiredMember(entry, "markers", what);
-        if(!markers.is_array() || markers.size() != 2) {
-            throw std::invalid_argument("WorldConstraints: \"markers\" of a marker distance must be an array of two marker ids, got " + markers.dump());
-        }
+        requireObjectWithKeys(entry, what, {"markers", "markerA", "markerB", "distance"});
         MarkerDistance distance;
-        distance.markerA = markerIdFromJson(markers[0]);
-        distance.markerB = markerIdFromJson(markers[1]);
-        distance.distance = lengthFromJson(requiredMember(entry, "distance", what), "\"distance\" of " + what);
+        if(entry.contains("markers")) {
+            const auto& markers = entry.at("markers");
+            if(!markers.is_array() || markers.size() != 2) {
+                throw std::invalid_argument("WorldConstraints: markers must be an array of two marker ids, got " + markers.dump());
+            }
+            distance.markerA = markerIdFromJson(markers[0]);
+            distance.markerB = markerIdFromJson(markers[1]);
+            if((entry.contains("markerA") && markerIdFromJson(entry.at("markerA")) != distance.markerA)
+               || (entry.contains("markerB") && markerIdFromJson(entry.at("markerB")) != distance.markerB)) {
+                throw std::invalid_argument("WorldConstraints: markers and markerA / markerB disagree");
+            }
+        } else {
+            distance.markerA = markerIdFromJson(requiredMember(entry, "markerA", what));
+            distance.markerB = markerIdFromJson(requiredMember(entry, "markerB", what));
+        }
+        distance.distance = lengthFromJson(requiredMember(entry, "distance", what), "distance of " + what);
         constraints.markerDistances.push_back(distance);
     }
     for(const auto& entry : listFromJson(json, "socketDistances")) {
