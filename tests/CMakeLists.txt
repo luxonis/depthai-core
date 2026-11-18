@@ -1151,6 +1151,10 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     endif()
 endif()
 
+# Camera-only health checks must also work with cropped sensor modes.
+dai_add_test(health_check_test src/ondevice_tests/health_check_test.cpp)
+dai_set_test_labels(health_check_test ondevice rvc2_all rvc4 rvc4ffc ci noreplayci)
+
 # Camera tests
 dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
 dai_set_test_labels(camera_test ondevice rvc2_all rvc4 rvc4ffc ci noreplayci)

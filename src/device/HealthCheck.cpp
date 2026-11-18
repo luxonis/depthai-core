@@ -35,6 +35,8 @@
 
 namespace dai {
 
+constexpr std::uint32_t CAMERA_TEST_WIDTH = 640;
+constexpr std::uint32_t CAMERA_TEST_HEIGHT = 480;
 constexpr std::uint32_t BANDWIDTH_TEST_WIDTH = 1024;
 constexpr std::uint32_t BANDWIDTH_TEST_HEIGHT = 1024;
 constexpr std::uint32_t BANDWIDTH_TEST_BYTES = BANDWIDTH_TEST_WIDTH * BANDWIDTH_TEST_HEIGHT;
@@ -472,7 +474,13 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
             if(std::find(tofSockets.begin(), tofSockets.end(), socket) != tofSockets.end()) {
                 output = &pipeline.create<node::ToF>()->build(socket)->tofBase->depth;
             } else {
-                output = pipeline.create<node::Camera>()->build(socket)->requestFullResolutionOutput();
+                auto camera = pipeline.create<node::Camera>()->build(socket);
+                if(config.verifyPowerSupply) {
+                    output = camera->requestFullResolutionOutput();
+                } else {
+                    // A functionality check only needs frames, including from cropped or uncalibrated sensors.
+                    output = camera->requestOutput({CAMERA_TEST_WIDTH, CAMERA_TEST_HEIGHT}, std::nullopt, ImgResizeMode::CROP, std::nullopt, false);
+                }
             }
             if(output == nullptr) {
                 if(config.verifyCameraFunctionality && metrics.cameraFunctionality == HealthCheckResult::NOT_RUN) {
