@@ -25,6 +25,11 @@ endif()
 set(TARGET_NAME depthai)
 project(depthai VERSION "0") # revision of bindings [depthai-core].[rev]
 
+# cmake_minimum_required above resets the policy inherited from depthai-core.
+if(APPLE AND POLICY CMP0156)
+    cmake_policy(SET CMP0156 NEW)
+endif()
+
 # Add module paths
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/")
 
