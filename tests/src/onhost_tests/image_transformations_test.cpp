@@ -681,7 +681,11 @@ TEST_CASE("ImageManip CropRotated maps the requested rectangle to the output") {
     REQUIRE(serializedCrop.angle == crop.angle);
     REQUIRE_FALSE(serializedCrop.normalized);
 
-    auto [matrix, imageCorners, srcCorners] = dai::impl::getTransform(config.base.getOperations(), inputWidth, inputHeight, 0, 0);
+    uint32_t outputWidth = 0;
+    uint32_t outputHeight = 0;
+    auto [matrix, imageCorners, srcCorners] = dai::impl::getTransform(config.base.getOperations(), inputWidth, inputHeight, outputWidth, outputHeight);
+    REQUIRE(outputWidth == static_cast<uint32_t>(crop.size.width));
+    REQUIRE(outputHeight == static_cast<uint32_t>(crop.size.height));
     const auto cropCorners = crop.getPoints();
     const std::array<std::array<float, 2>, 4> expected = {
         {{0.0f, 0.0f}, {crop.size.width, 0.0f}, {crop.size.width, crop.size.height}, {0.0f, crop.size.height}}};
@@ -693,4 +697,111 @@ TEST_CASE("ImageManip CropRotated maps the requested rectangle to the output") {
     }
     REQUIRE(imageCorners == expected);
     REQUIRE(srcCorners.size() == 1);
+}
+
+namespace {
+// Output size and source origin of an ImageManipConfig on a GRAY8 input
+struct ManipResult {
+    uint32_t width;
+    uint32_t height;
+    std::array<float, 2> srcOrigin;
+};
+
+ManipResult getManipResult(dai::ImageManipConfig config, size_t inputWidth, size_t inputHeight) {
+    std::vector<dai::ManipOp> outputOps;
+    auto [matrix, imageCorners, srcCorners] = dai::impl::getFullTransform<std::vector<dai::ManipOp>>(
+        config.base, inputWidth, inputHeight, dai::ImgFrame::Type::GRAY8, dai::ImgFrame::Type::GRAY8, outputOps);
+    return {config.base.outputWidth, config.base.outputHeight, dai::impl::matvecmul(dai::matrix::getMatrixInverse(matrix), {0.0f, 0.0f})};
+}
+}  // namespace
+
+TEST_CASE("ImageManip crop larger than the automatic size limit keeps its size") {
+    constexpr size_t inputWidth = 8000;
+    constexpr size_t inputHeight = 6000;
+
+    SECTION("pixel crop") {
+        dai::ImageManipConfig config;
+        config.addCrop(100, 200, 5000, 4000);
+        auto result = getManipResult(config, inputWidth, inputHeight);
+        REQUIRE(result.width == 5000);
+        REQUIRE(result.height == 4000);
+        REQUIRE_THAT(result.srcOrigin[0], Catch::Matchers::WithinAbs(100.0f, 1e-2f));
+        REQUIRE_THAT(result.srcOrigin[1], Catch::Matchers::WithinAbs(200.0f, 1e-2f));
+    }
+    SECTION("normalized crop") {
+        dai::ImageManipConfig config;
+        config.addCrop(dai::Rect(0.0f, 0.0f, 1.0f, 1.0f), true);
+        auto result = getManipResult(config, inputWidth, inputHeight);
+        REQUIRE(result.width == inputWidth);
+        REQUIRE(result.height == inputHeight);
+        REQUIRE_THAT(result.srcOrigin[0], Catch::Matchers::WithinAbs(0.0f, 1e-2f));
+        REQUIRE_THAT(result.srcOrigin[1], Catch::Matchers::WithinAbs(0.0f, 1e-2f));
+    }
+    SECTION("rotated crop") {
+        dai::ImageManipConfig config;
+        config.addCropRotatedRect(dai::RotatedRect({4000.0f, 3000.0f}, {6000.0f, 4500.0f}, 0.0f));
+        auto result = getManipResult(config, inputWidth, inputHeight);
+        REQUIRE(result.width == 6000);
+        REQUIRE(result.height == 4500);
+    }
+    SECTION("crop then 90 degree rotation") {
+        dai::ImageManipConfig config;
+        config.addCrop(0, 0, 5000, 4000);
+        config.addRotateDeg(90);
+        auto result = getManipResult(config, inputWidth, inputHeight);
+        REQUIRE(result.width == 4000);
+        REQUIRE(result.height == 5000);
+    }
+    SECTION("crop then 45 degree rotation") {
+        dai::ImageManipConfig config;
+        config.addCrop(0, 0, 5000, 4000);
+        config.addRotateDeg(45);
+        auto result = getManipResult(config, inputWidth, inputHeight);
+        // Bounding box of the rotated crop: (5000 + 4000) * cos(45 deg) = 6364
+        REQUIRE(result.width >= 6363);
+        REQUIRE(result.width <= 6365);
+        REQUIRE(result.height >= 6363);
+        REQUIRE(result.height <= 6365);
+    }
+    SECTION("crop without output centering") {
+        dai::ImageManipConfig config;
+        config.addCrop(100, 200, 5000, 4000);
+        config.setOutputCenter(false);
+        auto result = getManipResult(config, inputWidth, inputHeight);
+        REQUIRE(result.width == 5000);
+        REQUIRE(result.height == 4000);
+        REQUIRE_THAT(result.srcOrigin[0], Catch::Matchers::WithinAbs(100.0f, 1e-2f));
+        REQUIRE_THAT(result.srcOrigin[1], Catch::Matchers::WithinAbs(200.0f, 1e-2f));
+    }
+    SECTION("crop then downscale") {
+        dai::ImageManipConfig config;
+        config.addCrop(0, 0, 5000, 4000);
+        config.addScale(0.5f, 0.5f);
+        auto result = getManipResult(config, inputWidth, inputHeight);
+        REQUIRE(result.width == 2500);
+        REQUIRE(result.height == 2000);
+    }
+    SECTION("explicit output size wins") {
+        dai::ImageManipConfig config;
+        config.addCrop(0, 0, 5000, 4000);
+        config.setOutputSize(1000, 800);
+        auto result = getManipResult(config, inputWidth, inputHeight);
+        REQUIRE(result.width == 1000);
+        REQUIRE(result.height == 800);
+    }
+    SECTION("without a crop the automatic size limit stays") {
+        dai::ImageManipConfig config;
+        config.addFlipHorizontal();
+        auto result = getManipResult(config, inputWidth, inputHeight);
+        REQUIRE(result.width == 4000);
+        REQUIRE(result.height == 3000);
+    }
+    SECTION("an output width without a crop does not change the height limit") {
+        dai::ImageManipConfig config;
+        config.addFlipHorizontal();
+        config.setOutputSize(8000, 0);
+        auto result = getManipResult(config, inputWidth, inputHeight);
+        REQUIRE(result.width == 8000);
+        REQUIRE(result.height == 3000);
+    }
 }
