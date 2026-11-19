@@ -103,7 +103,8 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
      * Select the execution backend before starting the pipeline.
      * CPU uses the host or RVC4 CPU; GPU prefers the RVC4 GPU for supported RAW16
      * frames and falls back to CPU otherwise. Host execution always uses CPU.
-     * AUTO is the default and preserves the platform's automatic selection.
+     * AUTO is the default: on RVC4 it uses the fused CPU path for depth frames,
+     * which is faster than GPU except at high resolution and high frame rate.
      * RVC2 device execution supports only AUTO (hardware remapping and SHAVEs).
      * This does not change host/device placement; use setRunOnHost() for that.
      * @param backend CPU, GPU or AUTO

@@ -565,11 +565,11 @@ std::vector<SyntheticAlignmentFrame> runSyntheticBackendSequence(bool runOnHost,
             if(frame == 0) contiguous = output;
             if(frame == 1 || frame == 3 || frame == 4 || frame == 6) {
                 requireSyntheticPixels(
-                    *contiguous, *output, !runOnHost && !hardwareRemaps && backend != dai::Backend::CPU && (frame == 1 || frame == 3) ? source.get() : nullptr);
+                    *contiguous, *output, !runOnHost && !hardwareRemaps && backend == dai::Backend::GPU && (frame == 1 || frame == 3) ? source.get() : nullptr);
             }
             result.push_back({source, output});
-            const bool gpu = backend != dai::Backend::CPU && !gray && plane == 0 && padding == 0;
-            expectedPaths.push_back(gpu ? "gpu" : (backend == dai::Backend::AUTO ? "cpu/dsp" : "cpu"));
+            const bool gpu = backend == dai::Backend::GPU && !gray && plane == 0 && padding == 0;
+            expectedPaths.push_back(gpu ? "gpu" : "cpu");
         }
         if(!runOnHost && !hardwareRemaps) {
             std::unique_lock<std::mutex> lock(log->mutex);
