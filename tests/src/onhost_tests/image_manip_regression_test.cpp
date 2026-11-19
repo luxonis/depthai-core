@@ -139,3 +139,34 @@ TEST_CASE("ImageManip rebuilds when only the input stride changes", "[ImageManip
         CHECK(countMismatches(*out, 32, 24, channels, [&](uint32_t x, uint32_t y, uint32_t c) { return source(x + 8, y + 4, c); }) == 0);
     }
 }
+
+TEST_CASE("ImageManip converts single channel images to YUV", "[ImageManip][ColorConversion]") {
+    const auto target = GENERATE(ImgFrame::Type::NV12, ImgFrame::Type::YUV420p);
+    const auto gray = makePacked(ImgFrame::Type::GRAY8, 64, 48);
+    // The same image as RGB, R = G = B
+    const auto rgb = makePacked(ImgFrame::Type::RGB888i, 64, 48, [](uint32_t x, uint32_t y, uint32_t) { return pattern(x, y, 0); });
+
+    ImageManipConfig convert;
+    convert.setFrameType(target);
+    auto fromGray = run(convert, gray);
+    auto fromRgb = run(convert, rgb);
+    REQUIRE(fromGray);
+    REQUIRE(fromRgb);
+    REQUIRE(fromGray->type == target);
+    REQUIRE(fromGray->data->getOffsetSize() == fromRgb->data->getOffsetSize());
+    const auto a = fromGray->data->getOffsetData();
+    const auto b = fromRgb->data->getOffsetData();
+    CHECK(std::equal(a.begin(), a.end(), b.begin()));
+}
+
+TEST_CASE("ImageManip reports unsupported conversions instead of producing a frame", "[ImageManip][ColorConversion]") {
+    const auto input = makePacked(ImgFrame::Type::RGB888i, 64, 48);
+    ImageManipConfig convert;
+    convert.setFrameType(ImgFrame::Type::RAW16);
+    CHECK_FALSE(run(convert, input));
+
+    ImageManipConfig cropAndConvert;
+    cropAndConvert.addCrop(8, 4, 32, 24);
+    cropAndConvert.setFrameType(ImgFrame::Type::RAW16);
+    CHECK_FALSE(run(cropAndConvert, input));
+}
