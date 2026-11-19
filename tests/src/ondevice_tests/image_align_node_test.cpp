@@ -473,8 +473,10 @@ std::vector<SyntheticAlignmentFrame> runSyntheticBackendSequence(bool runOnHost,
     for(const auto& geometry : geometries) {
         auto log = std::make_shared<BackendLog>();
         dai::Pipeline pipeline(!runOnHost);
+        bool deviceHasGpu = false;
         if(!runOnHost && !hardwareRemaps) {
             const auto device = pipeline.getDefaultDevice();
+            deviceHasGpu = device->hasGPU();
             device->setLogLevel(dai::LogLevel::DEBUG);
             device->setLogOutputLevel(dai::LogLevel::WARN);
             device->addLogCallback([log](const dai::LogMessage& message) {
@@ -565,10 +567,11 @@ std::vector<SyntheticAlignmentFrame> runSyntheticBackendSequence(bool runOnHost,
             if(frame == 0) contiguous = output;
             if(frame == 1 || frame == 3 || frame == 4 || frame == 6) {
                 requireSyntheticPixels(
-                    *contiguous, *output, !runOnHost && !hardwareRemaps && backend == dai::Backend::GPU && (frame == 1 || frame == 3) ? source.get() : nullptr);
+                    *contiguous, *output, !runOnHost && !hardwareRemaps && backend == dai::Backend::GPU && deviceHasGpu && (frame == 1 || frame == 3) ? source.get() : nullptr);
             }
             result.push_back({source, output});
-            const bool gpu = backend == dai::Backend::GPU && !gray && plane == 0 && padding == 0;
+            // GPU falls back to CPU on devices without one (e.g. OAK-4-PRO-W).
+            const bool gpu = backend == dai::Backend::GPU && deviceHasGpu && !gray && plane == 0 && padding == 0;
             expectedPaths.push_back(gpu ? "gpu" : "cpu");
         }
         if(!runOnHost && !hardwareRemaps) {
