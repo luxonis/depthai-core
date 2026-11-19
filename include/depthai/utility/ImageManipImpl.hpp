@@ -756,9 +756,15 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
         throw std::runtime_error("Input image is one dimensional");
     }
 
-    if(newBase.hasWarp(srcFrameSpecs.width, srcFrameSpecs.height)) mode = mode | MODE_WARP;
-    if(newBase.colormap != Colormap::NONE && isSingleChannelu8(inFrameType)) mode = mode | MODE_COLORMAP;
-    if(outType != inFrameType) mode = mode | MODE_CONVERT;
+    // Reset all state derived from a previous configuration
+    mode = 0;
+    convertInput = false;
+    srcCorners.clear();
+    matrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    matrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    if(newBase.hasWarp(srcFrameSpecs.width, srcFrameSpecs.height)) mode |= MODE_WARP;
+    if(newBase.colormap != Colormap::NONE && isSingleChannelu8(inFrameType)) mode |= MODE_COLORMAP;
+    if(outType != inFrameType) mode |= MODE_CONVERT;
 
     assert(inFrameType != ImgFrame::Type::NONE);
     base = newBase;
@@ -773,6 +779,9 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
     }
 
     if(mode == 0) {
+        // Passthrough
+        base.outputWidth = srcFrameSpecs.width;
+        base.outputHeight = srcFrameSpecs.height;
         return *this;
     } else if(mode == MODE_CONVERT) {
         auto ccDstSpecs = getCcDstFrameSpecs(srcSpecs, inType, outputFrameType);
