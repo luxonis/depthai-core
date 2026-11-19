@@ -1,0 +1,117 @@
+// The ImageAlign part of the C interface of the DSP offload (vendor/dai_device_dsp.h): the CPU side of ImageAlignDsp,
+// for the nodes ImageAlign and Align, which call it directly (vendor/dai_device_dsp.h).
+//
+// dai_device_dsp_open_align, or else the first call of dai_device_dsp_shift_depth, opens the DSP session. The log
+// and the status mapping (utilities/DspCommon.cpp) come from the StereoDepthDsp library.
+
+#include <cstdint>
+#include <stdexcept>
+#include <string>
+
+#include "AEEStdErr.h"
+#include "ImageAlignDsp.h"
+#include "dsp_capabilities_utils.h"
+#include "hexagon/utilities/DspCommon.hpp"
+#include "os_defines.h"
+#include "pd_status_notification.h"
+#include "remote.h"
+#include "vendor/dai_device_dsp.h"
+
+#ifndef DOMAIN_ID
+    #define DOMAIN_ID 3  // CDSP
+#endif
+
+namespace {
+
+using hexagon::logMessage;
+
+// The FastRPC session of ImageAlignDsp
+class Session {
+   public:
+    Session() {
+        int nErr = ImageAlignDsp_open(getURI().c_str(), &handle);
+
+        if(nErr != AEE_SUCCESS) {
+            logMessage(DAI_LOG_LEVEL_ERROR, "ImageAlignDsp open has failed----- %d", nErr);
+
+            if(nErr == AEE_EUNABLETOLOAD) {
+                logMessage(DAI_LOG_LEVEL_ERROR, "DSP open failed AEE_EUNABLETOLOAD");
+            }
+
+            throw hexagon::DspCallError(nErr, "DSP open failed");
+        } else {
+            logMessage(DAI_LOG_LEVEL_INFO, "DSP open SUCCESS");
+        }
+
+        if(handle == static_cast<uint64_t>(-1)) {
+            logMessage(DAI_LOG_LEVEL_ERROR, "DSP open failed!");
+        }
+    }
+
+    ~Session() {
+        if(handle) {
+            logMessage(DAI_LOG_LEVEL_INFO, "DSP Close #################");
+
+            ImageAlignDsp_close(handle);
+        }
+    }
+
+    Session(const Session&) = delete;
+    Session& operator=(const Session&) = delete;
+    Session(Session&&) = delete;
+    Session& operator=(Session&&) = delete;
+
+    uint64_t handle = static_cast<uint64_t>(-1);  // remote_handle64 of the FastRPC session
+
+   private:
+    std::string getURI() {
+        std::string url = ImageAlignDsp_URI;
+        struct remote_rpc_control_unsigned_module data = {.domain = id, .enable = 1};
+        domain* dspDomain = get_domain(id);
+
+        if(dspDomain == nullptr) {
+            throw std::runtime_error("Unable to get domain");
+        }
+
+        logMessage(DAI_LOG_LEVEL_INFO, "Compute on domain: %d", id);
+        if(AEE_SUCCESS != remote_session_control(DSPRPC_CONTROL_UNSIGNED_MODULE, (void*)&data, sizeof(data))) {
+            throw std::runtime_error("Remote_session_control failed");
+        }
+
+        url += dspDomain->uri;
+
+        logMessage(DAI_LOG_LEVEL_INFO, "URL: %s", url.c_str());
+
+        return url;
+    }
+
+    int id = DOMAIN_ID;
+};
+
+// Opens the session on the first call. Thread-safe. When the open throws, the next call tries again.
+Session& session() {
+    static Session instance;
+    return instance;
+}
+
+}  // namespace
+
+extern "C" dai_status dai_device_dsp_open_align(void) {
+    return hexagon::guard("dai_device_dsp_open_align", []() -> dai_status {
+        (void)session();
+        return DAI_STATUS_OK;
+    });
+}
+
+extern "C" dai_status dai_device_dsp_shift_depth(const dai_device_buf* image, const dai_device_buf* config, const dai_device_buf* out) {
+    return hexagon::guard("dai_device_dsp_shift_depth", [&]() -> dai_status {
+        if(image == nullptr || config == nullptr || out == nullptr) {
+            return DAI_STATUS_INVALID_ARGUMENT;
+        }
+        const uint64_t handle = session().handle;
+        return hexagon::toStatus(
+            ImageAlignDsp_process(
+                handle, image->data, static_cast<int>(image->size), config->data, static_cast<int>(config->size), out->data, static_cast<int>(out->size)),
+            "ImageAlignDsp_process");
+    });
+}

@@ -1,0 +1,51 @@
+{
+    "version": "2.0.0",
+     /* Configure integrated VS Code Terminal */
+     "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": true,
+    },
+    "tasks": [
+        /* Configure launch.json (debug) preLaunchTask Task */
+        {
+            "label": "var-deploy-gdb-rvc4",
+            "isBackground": true,
+            "problemMatcher":{
+                "base": "$gcc",
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern":  "Deploying to target",
+                    "endsPattern":  "Starting GDB Server on Target"
+                }
+            },
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "remote_build_and_run_rvc4.sh",
+                "${workspaceFolder}/docker/boardIP",
+                "--config",
+                "${command:cmake.buildType}"
+            ],
+        },
+        {
+            "label": "Get IP",
+            "type": "shell",
+            "command": "echo BOARD_IP=${input:boardIP} > ${workspaceFolder}/docker/boardIP",
+            "group": "none",
+            "runOptions": {
+                "runOn": "folderOpen",
+            }
+        },
+    ],
+    "inputs": [
+        {
+            "id": "boardIP",
+            "type": "promptString",
+            "description": "Set the board IP (only needed for debugging on board)",
+            "default": ""
+        }
+    ]
+}

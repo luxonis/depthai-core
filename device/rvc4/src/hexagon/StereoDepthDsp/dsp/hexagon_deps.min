@@ -1,0 +1,15 @@
+# Library dependencies of this DSP module for the Hexagon SDK make system. The SDK resolves
+# every name in DEPENDENCIES through its default_deps.min, which points at the prebuilt
+# libraries shipped with the SDK. A <NAME>_DIR or <NAME>_PREBUILT_DIR variable would override
+# the location of one dependency; this module needs no override.
+
+include $(HEXAGON_SDK_ROOT)/build/default_deps.min
+
+# Build variants this module supports: the SDK defaults
+SUPPORTED_VS = $(default_VS)
+
+# Prebuilt SDK libraries the skeleton and its test executable link
+DEPENDENCIES += \
+  ATOMIC \
+  RPCMEM \
+  QPRINTF \

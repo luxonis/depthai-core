@@ -1,0 +1,34 @@
+# Check of the public build images of the RVC4 firmware that depthai-core pins (DEPTHAI_DEVICE_RVC4_SDK_IMAGE in
+# cmake/Depthai/DepthaiDeviceRVC4Config.cmake): ghcr.io/luxonis/depthai-device-sdk:os-<Luxonis OS version>-<sysroot>
+# and the same tag with -dev. This workflow does not build them. The private CI of the vendor module makes the public
+# sysroot of Luxonis OS and builds and pushes the images with device/rvc4/docker/sdk-images.sh when the sysroot changes.
+name: RVC4 device SDK image
+
+on:
+  workflow_dispatch:
+  # The public build of the RVC4 firmware is not available yet: no automatic runs (commented out)
+  # pull_request:
+  #   paths:
+  #     - 'device/rvc4/docker/**'
+  #     - 'cmake/Depthai/DepthaiDeviceRVC4Config.cmake'
+  #     - '.github/workflows/containers_device_rvc4_sdk.yml'
+  # push:
+  #   branches:
+  #     - main
+  #     - develop
+  #   paths:
+  #     - 'device/rvc4/docker/**'
+  #     - 'cmake/Depthai/DepthaiDeviceRVC4Config.cmake'
+  #     - '.github/workflows/containers_device_rvc4_sdk.yml'
+
+jobs:
+  sdk-image:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Check the pinned images
+        run: device/rvc4/docker/sdk-images.sh check

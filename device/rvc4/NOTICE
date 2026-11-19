@@ -1,0 +1,26 @@
+DepthAI Device firmware for RVC4
+Copyright (c) Luxonis LLC
+
+The source code in this directory is licensed under the MIT License of the depthai-core
+repository (see LICENSE in the repository root).
+
+This product includes software developed by third parties:
+
+* src/camera/CameraPool.hpp contains definitions (gralloc usage flags and the
+  private_handle_t buffer handle layout) derived from the Qualcomm qmmf-sdk
+  (common/memory/qmmf_memory_interface.h) and from the Qualcomm CamX / CHI-CDK
+  camera HAL headers. They are reproduced to stay binary compatible with the
+  Qualcomm camera HAL on the QCS8550.
+
+* The firmware links third-party libraries that are built with vcpkg (for
+  example fmt, spdlog, nlohmann-json, libarchive, yaml-cpp, xtensor, XLink).
+  Their licenses and notices are listed in the firmware package license bundle
+  (depthai-device-rvc4-fwp-LICENSE), which the build generates next to the
+  firmware package.
+
+The binary firmware package (depthai-device-rvc4-fwp.tar.xz) bundles
+proprietary components that are not in this repository: the STMicroelectronics
+VD55H1 IPP library (ST license SLA0106) and Qualcomm-derived code from the
+private depthai-device-rvc4-vendor module. The firmware package is therefore
+distributed under the Luxonis Firmware Package License (LICENSE.fwp), while
+the MIT License applies to the source code in this directory.

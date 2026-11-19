@@ -278,6 +278,26 @@ In your non-CMake project (new Visual Studio project, ...)
 > ℹ️ Check `build/depthai-core-integration.txt` or `build/depthai-opencv-integration.txt` for up to date define options.
 The generated integration file also specifies include paths without requiring installation. -->
 
+## RVC4 device firmware
+
+The device-side firmware of RVC4 devices is part of this repository: see [device/rvc4](device/rvc4/README.md). It
+compiles the node definitions and message types of the same commit as the host library. The firmware package that a
+host build embeds is one of:
+
+* by default, the package of `DEPTHAI_DEVICE_RVC4_VERSION` in `cmake/Depthai/DepthaiDeviceRVC4Config.cmake`,
+  downloaded from the artifact server. Luxonis builds it from `device/rvc4`. A public build of `device/rvc4` is not
+  available yet;
+* with `-D DEPTHAI_DEVICE_RVC4_FWP_PATH=<path>/depthai-device-rvc4-fwp.tar.xz`, a package that you have.
+
+<!-- The public build of device/rvc4 is not available yet (commented out):
+
+* by default, a build of `device/rvc4` of this checkout: each build of the library builds the firmware in its build
+  container, so the build needs bash and Docker ([device/rvc4](device/rvc4/README.md), Building);
+* with `-D DEPTHAI_DEVICE_RVC4_VERSION=<version>`, the package of that version, downloaded from the artifact server
+  (`cmake/Depthai/DepthaiDeviceRVC4Config.cmake` sets no version);
+* with `-D DEPTHAI_DEVICE_RVC4_FWP_PATH=<path>/depthai-device-rvc4-fwp.tar.xz`, a package that you have.
+-->
+
 ## CMake options
 Many features of the library can be disabled or enabled using CMake options.
 One common option when building the library tests and examples is `DEPTHAI_VCPKG_INTERNAL_ONLY=OFF` which installs a predictable version of OpenCV, PCL and other optional dependencies we also use on the libraries interface.
@@ -310,7 +330,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_DEVICE_ID_LIST               | Alias to MXID list. Lists filter results in an "AND" manner and not "OR"                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | DEPTHAI_DEVICE_NAME_LIST             | Restricts default search to the specified NAMEs. Accepts comma separated list of NAMEs. Lists filter results in an "AND" manner and not "OR". It also looks for NAMEs outside of the host's subnet in case of tcpip.                                                                                                                                                                                                                                                                              |
 | DEPTHAI_DEVICE_BINARY                | Overrides device Firmware binary. Mostly for internal debugging purposes.                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| DEPTHAI_DEVICE_RVC4_FWP              | Overrides device RVC4 Firmware binary. Mostly for internal debugging purposes.                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| DEPTHAI_DEVICE_RVC4_FWP              | Overrides device RVC4 Firmware binary at run time with the firmware package at this path. See also the CMake option `DEPTHAI_DEVICE_RVC4_FWP_PATH`.                                                                                                                                                                                                                                                                                                                                               |
 | DEPTHAI_BOOTLOADER_BINARY_USB        | Overrides device USB Bootloader binary. Mostly for internal debugging purposes.                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | DEPTHAI_BOOTLOADER_BINARY_ETH        | Overrides device Network Bootloader binary. Mostly for internal debugging purposes.                                                                                                                                                                                                                                                                                                                                                                                                               |
 | DEPTHAI_ALLOW_FACTORY_FLASHING       | Internal use only                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |

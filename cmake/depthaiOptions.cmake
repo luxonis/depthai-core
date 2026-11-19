@@ -121,6 +121,7 @@ option(DEPTHAI_ENABLE_DEVICE_FW "Enable MyriadX Device FW" ON)
 option(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW "Enable MyriadX Device Bootloader FW" ON)
 option(DEPTHAI_ENABLE_DEVICE_RVC3_FW "Enable RVC3 Device FW" OFF)
 option(DEPTHAI_ENABLE_DEVICE_RVC4_FW "Enable RVC4 Device FW" ON)
+set(DEPTHAI_DEVICE_RVC4_FWP_PATH "" CACHE FILEPATH "Local RVC4 firmware package (depthai-device-rvc4-fwp.tar.xz) to embed in place of the pinned package")
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
 
 # ---------- Development Aids -------------------

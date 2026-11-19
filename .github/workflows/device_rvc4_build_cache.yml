@@ -1,0 +1,57 @@
+# Published build cache of the RVC4 firmware build (device/rvc4): for each commit of the main branches and for each
+# release, object files (a compiler cache) and the vcpkg dependencies (binary archives) go to Artifact Keeper. The
+# object files are those of depthai-core, of its Python bindings and of the firmware sources that include no header
+# of a Qualcomm SDK. device/rvc4/create_deployment_artifacts.sh rvc4 downloads them for the commit of the checkout,
+# so that a first build of a user compiles only the few other firmware sources.
+# The job builds the firmware as a user does: in the public release image, with the prebuilt private module.
+name: RVC4 firmware build cache
+
+on:
+  workflow_dispatch:
+  # The public build of the RVC4 firmware is not available yet: no automatic runs (commented out)
+  # push:
+  #   branches:
+  #     - main
+  #     - develop
+  #   tags:
+  #     - 'v*'
+
+# A newer commit of a branch replaces the run of an older one: a build of a user takes the cache of the nearest
+# parent commit that has one.
+concurrency:
+  group: device-rvc4-build-cache-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  build-cache:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: 'recursive'
+
+      - name: Log in to the GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build the firmware and make the build cache
+        env:
+          # Luxonis has a license of the Qualcomm AI Runtime SDK. No object file that is compiled with its headers
+          # goes into the build cache: device/rvc4/docker/published-cache-objects.py stops the job if one does.
+          DEPTHAI_ACCEPT_QUALCOMM_LICENSE: 'yes'
+        run: ci/device-rvc4-build-cache.sh "$RUNNER_TEMP/device-rvc4-build-cache"
+
+      - name: Upload the build cache to Artifact Keeper
+        run: bash ./ci/upload-ak-device-build-cache.sh "$RUNNER_TEMP/device-rvc4-build-cache"
+        env:
+          AK_URL: ${{ secrets.AK_URL }}
+          AK_TOKEN: ${{ secrets.AK_TOKEN }}
