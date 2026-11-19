@@ -1,9 +1,9 @@
 #pragma once
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <cstddef>
+#include <iterator>
 #include <opencv2/core.hpp>
 #include <vector>
 
@@ -33,15 +33,21 @@ struct ImageAlignCpuParallelFor {
     }
 };
 
-template <typename ParallelFor = ImageAlignCpuParallelFor>
+// Number of entries in a depth-shift table: one per RAW16 depth value.
+inline constexpr size_t kDepthShiftLutSize = 65536;
+
+// DepthLut is any contiguous float table with kDepthShiftLutSize entries. Callers should keep
+// it off the stack: at 256 KB it overflows small thread stacks (e.g. 512 KB on macOS).
+template <typename DepthLut, typename ParallelFor = ImageAlignCpuParallelFor>
 inline void remapAndShiftDepth(const cv::Mat& input,
                                cv::Mat& output,
                                cv::Size rectifiedSize,
                                const std::vector<std::ptrdiff_t>& offsets,
-                               const std::array<float, 65536>& depthLut,
+                               const DepthLut& depthLut,
                                bool shiftPositive,
                                const std::vector<float>& rectifiedRayZ,
                                ParallelFor&& parallelFor = ParallelFor{}) {
+    CV_Assert(std::size(depthLut) == kDepthShiftLutSize);
     CV_Assert(input.type() == CV_16UC1 && offsets.size() == static_cast<size_t>(rectifiedSize.area()) && rectifiedRayZ.size() == offsets.size());
     output.create(rectifiedSize, CV_16UC1);
     const int width = output.cols;

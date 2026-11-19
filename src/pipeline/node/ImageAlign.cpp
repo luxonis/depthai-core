@@ -158,7 +158,7 @@ void ImageAlign::run() {
     cv::Mat map_x_2, map_y_2;
 
     cv::Mat depthImgRectifiedFrame, shiftedOutput;
-    std::array<float, 65536> depthShiftLut{};
+    std::vector<float> depthShiftLut(detail::kDepthShiftLutSize);  // Heap: 256 KB would overflow small thread stacks
     std::vector<float> rectifiedRayZ, alignedDepthScales;
     float alignedDepthOffset = 0.0f;
     std::vector<std::ptrdiff_t> rectifiedOffsets, alignedOffsets;

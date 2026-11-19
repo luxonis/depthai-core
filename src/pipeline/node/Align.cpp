@@ -145,7 +145,7 @@ ImgTransformation extractTransformationFromBuffer(const std::shared_ptr<Buffer>&
 
 struct ImgFrameRunState {
     bool inputIsDepth = false;
-    std::array<float, 65536> depthShiftLut{};
+    std::vector<float> depthShiftLut = std::vector<float>(65536);  // One entry per RAW16 depth; heap, since 256 KB on the stack overflows small thread stacks
     std::vector<float> rectifiedRayZ, alignedDepthScales;
     float alignedDepthOffset = 0.0f;
     bool degenerateStereoTransform = false;
