@@ -116,19 +116,20 @@ struct MoveCheck {
 MoveCheck checkExactMove(const Manip& manip, const Image& out, const Image& in, uint32_t channels) {
     const auto inv = dai::matrix::getMatrixInverse(manip.getMatrix());
     MoveCheck result;
+    size_t offGrid = 0;
     for(uint32_t y = 0; y < out.specs.height; ++y) {
         for(uint32_t x = 0; x < out.specs.width; ++x) {
             const float cx = x + 0.5f, cy = y + 0.5f;
             const float sx = inv[0][0] * cx + inv[0][1] * cy + inv[0][2] - 0.5f;
             const float sy = inv[1][0] * cx + inv[1][1] * cy + inv[1][2] - 0.5f;
             const long ix = std::lround(sx), iy = std::lround(sy);
-            REQUIRE(std::abs(sx - ix) < 1e-3f);
-            REQUIRE(std::abs(sy - iy) < 1e-3f);
+            offGrid += std::abs(sx - ix) >= 1e-3f || std::abs(sy - iy) >= 1e-3f;
             if(ix < 0 || iy < 0 || ix >= (long)in.specs.width || iy >= (long)in.specs.height) continue;
             ++result.covered;
             for(uint32_t c = 0; c < channels; ++c) result.mismatches += out.at(x, y, c) != in.at(ix, iy, c);
         }
     }
+    REQUIRE(offGrid == 0);  // The transform must move whole pixels
     return result;
 }
 
@@ -431,5 +432,24 @@ TEST_CASE("ImageManip stores source crops in source coordinates", "[ImageManip][
     // The whole output is cropped content
     for(size_t y : {1, 10, 18}) {
         for(size_t x : {1, 10, 18}) CHECK(outputTransformation.getDstMaskPt(x, y));
+    }
+}
+
+TEST_CASE("ImageManip does not cut auto-sized outputs larger than 4000x3000", "[ImageManip][Size]") {
+    const auto wide = makePacked(ImgFrame::Type::GRAY8, 5000, 64);
+    const auto tall = makePacked(ImgFrame::Type::GRAY8, 64, 3500);
+    ImageManipConfig flip, rotate;
+    flip.addFlipHorizontal();
+    rotate.addRotateDeg(90);
+    for(const auto& [cfg, input] : {std::pair{&flip, &wide}, std::pair{&rotate, &wide}, std::pair{&flip, &tall}}) {
+        Manip manip({});
+        auto out = run(manip, *cfg, *input);
+        REQUIRE(out);
+        const bool swapped = cfg == &rotate;
+        CHECK(out->specs.width == (swapped ? input->specs.height : input->specs.width));
+        CHECK(out->specs.height == (swapped ? input->specs.width : input->specs.height));
+        const auto check = checkExactMove(manip, *out, *input, 1);
+        CHECK(check.covered == (size_t)input->specs.width * input->specs.height);
+        CHECK(check.mismatches == 0);
     }
 }

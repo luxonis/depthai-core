@@ -17,9 +17,12 @@
     #define _RESTRICT __restrict__
 #endif
 
-constexpr size_t MAX_AUTO_WIDTH = 4000;
+// Upper bound for output sizes ImageManip derives by itself (no explicit output size), guarding against degenerate
+// transforms (e.g. perspective) that would ask for enormous frames. Must stay well above real sensor resolutions, otherwise
+// e.g. a rotation or flip of a 4K frame gets silently cut.
+constexpr size_t MAX_AUTO_WIDTH = 16384;
 
-constexpr size_t MAX_AUTO_HEIGHT = 3000;
+constexpr size_t MAX_AUTO_HEIGHT = 16384;
 
 // helper type for the visitor #4
 template <class... Ts>
