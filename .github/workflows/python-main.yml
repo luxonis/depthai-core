@@ -18,6 +18,11 @@ on:
         type: boolean
         default: false
   workflow_dispatch:
+    inputs:
+      single_python:
+        description: Build only the Python version used in PRs
+        type: boolean
+        default: false
   push:
     branches:
       - main
@@ -56,6 +61,7 @@ jobs:
         CHECK_EVENT_NAME: ${{ github.event_name }}
         CHECK_TEST_REQUESTED: ${{ github.event.action == 'labeled' && github.event.label.name == 'testable' }}
         CHECK_GITHUB_REF: ${{ github.ref }}
+        CHECK_SINGLE_PYTHON: ${{ inputs.single_python }}
       run: |
         EVENT_NAME="$CHECK_EVENT_NAME"
         GITHUB_REF="$CHECK_GITHUB_REF"
@@ -71,11 +77,11 @@ jobs:
           WHEEL_MACOS_RUNNERS='["macos-15-intel", "macos-15"]'
         fi
 
-        if [[ "$EVENT_NAME" == "pull_request" ]]; then
+        if [[ "$EVENT_NAME" == "pull_request" || "$CHECK_SINGLE_PYTHON" == "true" ]]; then
           WHEEL_PYTHON_VERSIONS='["3.14"]'
           WHEEL_PYTHON_SETS='["cp314-cp314"]'
           # PR tests require adding testable or explicitly rerunning the workflow.
-          if [[ "$GITHUB_RUN_ATTEMPT" -eq 1 && "$CHECK_TEST_REQUESTED" != "true" ]]; then
+          if [[ "$EVENT_NAME" == "pull_request" && "$GITHUB_RUN_ATTEMPT" -eq 1 && "$CHECK_TEST_REQUESTED" != "true" ]]; then
             SHOULD_RUN="false"
           fi
         fi
