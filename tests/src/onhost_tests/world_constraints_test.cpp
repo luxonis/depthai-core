@@ -284,6 +284,9 @@ TEST_CASE("WorldConstraints JSON is strict", "[WorldConstraints]") {
     REQUIRE(rejected(withNul, "NUL"));
     writeFile(withNul);
     REQUIRE_THROWS_AS(WorldConstraints::fromFile(path), std::invalid_argument);
+    // A 0x1A byte ends a text-mode stream on Windows; the file is read in binary, so the content after it is seen.
+    writeFile(std::string(R"({"markerSizes": [{"marker": 1, "size": 0.1}]})") + "\x1a" + std::string(1, '\0') + R"({"markerSises": []})");
+    REQUIRE_THROWS_AS(WorldConstraints::fromFile(path), std::invalid_argument);
 }
 
 #ifdef DEPTHAI_TEST_WORLD_CONSTRAINTS_RECONSTRUCTION

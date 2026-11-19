@@ -362,7 +362,8 @@ WorldConstraints WorldConstraints::fromFile(const std::filesystem::path& path) {
     if(!std::filesystem::is_regular_file(path, error)) {
         throw std::invalid_argument("WorldConstraints: " + path.string() + " is not a file");
     }
-    std::ifstream stream(path);
+    // Binary: in text mode Windows ends the stream at a 0x1A byte, which would hide whatever follows it.
+    std::ifstream stream(path, std::ios::binary);
     if(!stream) {
         throw std::invalid_argument("WorldConstraints: cannot open " + path.string());
     }
