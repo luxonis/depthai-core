@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <opencv2/imgproc.hpp>
 #include <optional>
 #include <vector>
 
@@ -169,4 +170,40 @@ TEST_CASE("ImageManip reports unsupported conversions instead of producing a fra
     cropAndConvert.addCrop(8, 4, 32, 24);
     cropAndConvert.setFrameType(ImgFrame::Type::RAW16);
     CHECK_FALSE(run(cropAndConvert, input));
+}
+
+TEST_CASE("ImageManip colormaps single channel images to RGB888i", "[ImageManip][Colormap]") {
+    const auto gray = makePacked(ImgFrame::Type::GRAY8, 64, 48);
+    // Reference: OpenCV's JET colormap (BGR) of the full image, as RGB
+    cv::Mat grayMat(48, 64, CV_8UC1, gray.bytes(), gray.specs.p1Stride);
+    cv::Mat reference;
+    cv::applyColorMap(grayMat, reference, cv::COLORMAP_JET);
+    cv::cvtColor(reference, reference, cv::COLOR_BGR2RGB);
+
+    ImageManipConfig plain;
+    plain.addCrop(8, 4, 32, 24);
+    ImageManipConfig colormap;
+    colormap.setColormap(dai::Colormap::JET);
+    ImageManipConfig cropColormap;
+    cropColormap.addCrop(8, 4, 32, 24);
+    cropColormap.setColormap(dai::Colormap::JET);
+
+    // The output type must come from the configuration being built, not from the one before it
+    Manip manip({});
+    for(const auto* cfg : {&plain, &colormap, &cropColormap, &plain, &colormap}) {
+        auto out = run(manip, *cfg, gray);
+        REQUIRE(out);
+        if(cfg == &plain) {
+            CHECK(out->type == ImgFrame::Type::GRAY8);
+            continue;
+        }
+        REQUIRE(out->type == ImgFrame::Type::RGB888i);
+        const uint32_t x0 = cfg == &cropColormap ? 8 : 0;
+        const uint32_t y0 = cfg == &cropColormap ? 4 : 0;
+        const uint32_t width = cfg == &cropColormap ? 32 : 64;
+        const uint32_t height = cfg == &cropColormap ? 24 : 48;
+        REQUIRE(out->specs.width == width);
+        REQUIRE(out->specs.height == height);
+        CHECK(countMismatches(*out, width, height, 3, [&](uint32_t x, uint32_t y, uint32_t c) { return reference.at<cv::Vec3b>(y + y0, x + x0)[c]; }) == 0);
+    }
 }
