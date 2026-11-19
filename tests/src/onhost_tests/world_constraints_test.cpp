@@ -8,6 +8,8 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <random>
+#include <string>
 
 #include "../../../src/pipeline/node/DynamicCalibrationTransforms.hpp"
 #include "../../../src/pipeline/node/DynamicCalibrationUtils.hpp"
@@ -114,6 +116,10 @@ TEST_CASE("WorldConstraints preserves documented aliases and rejects conflicts",
     REQUIRE(numeric.socketDistances[0].socket == Socket::CAM_C);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"dictionary":"4X4_100","arucoDictionary":"DICT_4X4_50"})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances":[{"markers":[1,2],"markerA":3,"distance":1}]})"), std::invalid_argument);
+    // Both forms may name the same pair in either order; a different pair is still a conflict.
+    REQUIRE(WorldConstraints::fromJsonString(R"({"markerDistances":[{"markers":[1,2],"markerA":2,"markerB":1,"distance":1}]})").markerDistances.size() == 1);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances":[{"markers":[1,2],"markerA":2,"markerB":3,"distance":1}]})"),
+                      std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"dictionary":999})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType":0.5})"), std::invalid_argument);
 }
@@ -256,16 +262,31 @@ TEST_CASE("WorldConstraints JSON is strict", "[WorldConstraints]") {
     REQUIRE(rejected(R"({"markerSizes": [], "markerSizes": [{"marker": 1, "size": 0.1}]})", "\"markerSizes\" is given twice"));
     REQUIRE(WorldConstraints::fromJsonString(R"({"markerSizes": [{"marker": 1, "size": 0.1}, {"marker": 2, "size": 0.1}]})").markerSizes.size() == 2);
     // A file holds one document: whatever follows it is an error, trailing whitespace excepted.
-    const auto path = std::filesystem::temp_directory_path() / "depthai_world_constraints_trailing_test.json";
-    const auto writeFile = [&path](const std::string& text) { std::ofstream(path) << text; };
+    // A directory of its own, so that test runs in parallel do not share the file; removed even when an assertion fails.
+    struct TemporaryDirectory {
+        std::filesystem::path path = std::filesystem::temp_directory_path() / ("depthai_world_constraints_test_" + std::to_string(std::random_device{}()));
+        TemporaryDirectory() {
+            std::filesystem::create_directories(path);
+        }
+        ~TemporaryDirectory() {
+            std::error_code ignored;
+            std::filesystem::remove_all(path, ignored);
+        }
+    } directory;
+    const auto path = directory.path / "constraints.json";
+    const auto writeFile = [&path](const std::string& text) { std::ofstream(path, std::ios::binary) << text; };
     writeFile(std::string(R"({"markerSizes": [{"marker": 1, "size": 0.1}]})") + "\n\n");
     REQUIRE(WorldConstraints::fromFile(path).markerSizes.size() == 1);
     writeFile(R"({"markerSizes": [{"marker": 1, "size": 0.1}]} {"markerSises": []})");
     REQUIRE_THROWS_AS(WorldConstraints::fromFile(path), std::invalid_argument);
-    std::filesystem::remove(path);
+    // nlohmann stops at a NUL byte, which would hide whatever follows it.
+    const auto withNul = std::string(R"({"markerSizes": [{"marker": 1, "size": 0.1}]})") + std::string(1, '\0') + R"({"markerSises": []})";
+    REQUIRE(rejected(withNul, "NUL"));
+    writeFile(withNul);
+    REQUIRE_THROWS_AS(WorldConstraints::fromFile(path), std::invalid_argument);
 }
 
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+#ifdef DEPTHAI_TEST_WORLD_CONSTRAINTS_RECONSTRUCTION
 TEST_CASE("DynamicCalibration compares world constraints with the reconstructed scene", "[WorldConstraints]") {
     namespace validation = dai::node::detail;
     const std::vector<std::vector<float>> intrinsics = {{500.f, 0.f, 640.f}, {0.f, 500.f, 400.f}, {0.f, 0.f, 1.f}};
@@ -399,6 +420,32 @@ TEST_CASE("DynamicCalibration compares world constraints with the reconstructed 
     }
     REQUIRE_FALSE(validation::ConstraintResidual{"", 1.0, std::numeric_limits<double>::quiet_NaN()}.fits());
     REQUIRE_FALSE(validation::ConstraintResidual{"", 1.0, std::numeric_limits<double>::infinity()}.fits());
+
+    // A Luxonis Marker: the size is the outer diameter of its ring, here 10 cm around marker 1, facing the cameras.
+    {
+        auto ringSets = sets;
+        for(auto& set : ringSets) {
+            for(const auto socket : {Socket::CAM_B, Socket::CAM_C}) {
+                auto& outline = set.outlines[1][socket];
+                outline.corners.clear();
+                for(int step = 0; step < 32; ++step) {
+                    const double angle = 2.0 * std::acos(-1.0) * step / 32.0;
+                    outline.outerEdge.push_back(project(socket, {marker1[0] + 0.05 * std::cos(angle), marker1[1] + 0.05 * std::sin(angle), marker1[2]}));
+                }
+            }
+        }
+        dai::WorldConstraints ring;
+        ring.markerType = dai::MarkerType::LUXONIS;
+        ring.markerSizes = {{1, 0.10f}};
+        auto ringResiduals = validation::worldConstraintResiduals(ring, ringSets, calibration, Socket::CAM_B, cameras);
+        REQUIRE(ringResiduals.size() == 1);
+        REQUIRE(ringResiduals[0].measured.has_value());
+        REQUIRE(*ringResiduals[0].measured == Catch::Approx(0.10).epsilon(0.02));
+        REQUIRE(ringResiduals[0].fits());
+        ring.markerSizes = {{1, 0.15f}};
+        ringResiduals = validation::worldConstraintResiduals(ring, ringSets, calibration, Socket::CAM_B, cameras);
+        REQUIRE_FALSE(ringResiduals[0].fits());
+    }
 
     // The epipolar error may not grow past both limits when constraints are applied.
     REQUIRE_FALSE(validation::epipolarErrorContradictsConstraints(0.22, 0.23));

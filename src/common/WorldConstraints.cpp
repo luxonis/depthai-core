@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <iterator>
 #include <limits>
 #include <optional>
 #include <set>
@@ -190,10 +191,69 @@ float lengthFromJson(const nlohmann::json& value, const std::string& what) {
     return static_cast<float>(length);
 }
 
+/// A "markerDistances" entry, {"markers": [a, b], "distance": d} or {"markerA": a, "markerB": b, "distance": d}.
+/// Both forms may be given together when they name the same pair, in either order.
+WorldConstraints::MarkerDistance markerDistanceFromJson(const nlohmann::json& entry) {
+    const std::string what = "a \"markerDistances\" entry";
+    requireObjectWithKeys(entry, what, {"markers", "markerA", "markerB", "distance"});
+    WorldConstraints::MarkerDistance distance;
+    if(entry.contains("markers")) {
+        const auto& markers = entry.at("markers");
+        if(!markers.is_array() || markers.size() != 2) {
+            throw std::invalid_argument("WorldConstraints: markers must be an array of two marker ids, got " + markers.dump());
+        }
+        distance.markerA = markerIdFromJson(markers[0]);
+        distance.markerB = markerIdFromJson(markers[1]);
+        const bool hasA = entry.contains("markerA");
+        const bool hasB = entry.contains("markerB");
+        bool agree = true;
+        if(hasA && hasB) {
+            agree =
+                std::minmax(markerIdFromJson(entry.at("markerA")), markerIdFromJson(entry.at("markerB"))) == std::minmax(distance.markerA, distance.markerB);
+        } else if(hasA) {
+            agree = markerIdFromJson(entry.at("markerA")) == distance.markerA;
+        } else if(hasB) {
+            agree = markerIdFromJson(entry.at("markerB")) == distance.markerB;
+        }
+        if(!agree) {
+            throw std::invalid_argument("WorldConstraints: markers and markerA / markerB disagree");
+        }
+    } else {
+        distance.markerA = markerIdFromJson(requiredMember(entry, "markerA", what));
+        distance.markerB = markerIdFromJson(requiredMember(entry, "markerB", what));
+    }
+    distance.distance = lengthFromJson(requiredMember(entry, "distance", what), "distance of " + what);
+    return distance;
+}
+
+/// A "socketDistances" entry, {"marker": m, "socket": s, "distance": d}.
+WorldConstraints::MarkerSocketDistance socketDistanceFromJson(const nlohmann::json& entry) {
+    const std::string what = "a \"socketDistances\" entry";
+    requireObjectWithKeys(entry, what, {"marker", "socket", "distance"});
+    WorldConstraints::MarkerSocketDistance distance;
+    distance.marker = markerIdFromJson(requiredMember(entry, "marker", what));
+    distance.socket = socketFromJson(requiredMember(entry, "socket", what));
+    distance.distance = lengthFromJson(requiredMember(entry, "distance", what), "\"distance\" of " + what);
+    return distance;
+}
+
+/// A "markerSizes" entry, {"marker": m, "size": s}.
+WorldConstraints::MarkerSize markerSizeFromJson(const nlohmann::json& entry) {
+    const std::string what = "a \"markerSizes\" entry";
+    requireObjectWithKeys(entry, what, {"marker", "size"});
+    WorldConstraints::MarkerSize size;
+    size.marker = markerIdFromJson(requiredMember(entry, "marker", what));
+    size.size = lengthFromJson(requiredMember(entry, "size", what), "\"size\" of " + what);
+    return size;
+}
+
 /// Parses text holding exactly one JSON document. A key given twice in the same object is an error: nlohmann would keep
-/// the last value and drop the other one silently.
-template <typename Input>
-nlohmann::json parseDocument(Input&& input) {
+/// the last value and drop the other one silently. So is a NUL byte: nlohmann takes it as the end of the input and
+/// would ignore whatever follows it.
+nlohmann::json parseDocument(const std::string& text) {
+    if(text.find('\0') != std::string::npos) {
+        throw std::invalid_argument("WorldConstraints: the JSON contains a NUL byte");
+    }
     std::vector<std::set<std::string>> keysOfOpenObjects;
     const nlohmann::json::parser_callback_t rejectRepeatedKeys = [&keysOfOpenObjects](int, nlohmann::json::parse_event_t event, nlohmann::json& parsed) {
         if(event == nlohmann::json::parse_event_t::object_start) {
@@ -205,7 +265,7 @@ nlohmann::json parseDocument(Input&& input) {
         }
         return true;
     };
-    return nlohmann::json::parse(std::forward<Input>(input), rejectRepeatedKeys);
+    return nlohmann::json::parse(text, rejectRepeatedKeys);
 }
 
 }  // namespace
@@ -282,45 +342,9 @@ WorldConstraints WorldConstraints::parseJson(const nlohmann::json& json) {
         dictionary = parsed;
     }
     if(dictionary) constraints.arucoDictionary = *dictionary;
-    for(const auto& entry : listFromJson(json, "markerDistances")) {
-        const std::string what = "a \"markerDistances\" entry";
-        requireObjectWithKeys(entry, what, {"markers", "markerA", "markerB", "distance"});
-        MarkerDistance distance;
-        if(entry.contains("markers")) {
-            const auto& markers = entry.at("markers");
-            if(!markers.is_array() || markers.size() != 2) {
-                throw std::invalid_argument("WorldConstraints: markers must be an array of two marker ids, got " + markers.dump());
-            }
-            distance.markerA = markerIdFromJson(markers[0]);
-            distance.markerB = markerIdFromJson(markers[1]);
-            if((entry.contains("markerA") && markerIdFromJson(entry.at("markerA")) != distance.markerA)
-               || (entry.contains("markerB") && markerIdFromJson(entry.at("markerB")) != distance.markerB)) {
-                throw std::invalid_argument("WorldConstraints: markers and markerA / markerB disagree");
-            }
-        } else {
-            distance.markerA = markerIdFromJson(requiredMember(entry, "markerA", what));
-            distance.markerB = markerIdFromJson(requiredMember(entry, "markerB", what));
-        }
-        distance.distance = lengthFromJson(requiredMember(entry, "distance", what), "distance of " + what);
-        constraints.markerDistances.push_back(distance);
-    }
-    for(const auto& entry : listFromJson(json, "socketDistances")) {
-        const std::string what = "a \"socketDistances\" entry";
-        requireObjectWithKeys(entry, what, {"marker", "socket", "distance"});
-        MarkerSocketDistance distance;
-        distance.marker = markerIdFromJson(requiredMember(entry, "marker", what));
-        distance.socket = socketFromJson(requiredMember(entry, "socket", what));
-        distance.distance = lengthFromJson(requiredMember(entry, "distance", what), "\"distance\" of " + what);
-        constraints.socketDistances.push_back(distance);
-    }
-    for(const auto& entry : listFromJson(json, "markerSizes")) {
-        const std::string what = "a \"markerSizes\" entry";
-        requireObjectWithKeys(entry, what, {"marker", "size"});
-        MarkerSize size;
-        size.marker = markerIdFromJson(requiredMember(entry, "marker", what));
-        size.size = lengthFromJson(requiredMember(entry, "size", what), "\"size\" of " + what);
-        constraints.markerSizes.push_back(size);
-    }
+    for(const auto& entry : listFromJson(json, "markerDistances")) constraints.markerDistances.push_back(markerDistanceFromJson(entry));
+    for(const auto& entry : listFromJson(json, "socketDistances")) constraints.socketDistances.push_back(socketDistanceFromJson(entry));
+    for(const auto& entry : listFromJson(json, "markerSizes")) constraints.markerSizes.push_back(markerSizeFromJson(entry));
     constraints.validate();
     return constraints;
 }
@@ -342,9 +366,10 @@ WorldConstraints WorldConstraints::fromFile(const std::filesystem::path& path) {
     if(!stream) {
         throw std::invalid_argument("WorldConstraints: cannot open " + path.string());
     }
+    const std::string text((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
     nlohmann::json json;
     try {
-        json = parseDocument(stream);
+        json = parseDocument(text);
     } catch(const nlohmann::json::exception& ex) {
         throw std::invalid_argument("WorldConstraints: malformed JSON in " + path.string() + ": " + ex.what());
     }

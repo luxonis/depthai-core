@@ -800,6 +800,10 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
 
     dai_add_test(world_constraints_test src/onhost_tests/world_constraints_test.cpp)
     target_link_libraries(world_constraints_test PRIVATE dynamic_calibration_imported)
+    # The reconstruction is compiled into depthai::core only when OpenCV is part of it, the same condition as in the main CMakeLists.
+    if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
+        target_compile_definitions(world_constraints_test PRIVATE DEPTHAI_TEST_WORLD_CONSTRAINTS_RECONSTRUCTION)
+    endif()
     dai_set_test_labels(world_constraints_test onhost ci)
 endif()
 

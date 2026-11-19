@@ -1070,9 +1070,16 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         // The measurements cannot be reconstructed without OpenCV; the epipolar error below is the only check left.
         logger->debug("Marker constraints: built without OpenCV support, the measurements are not compared with the calibrated result");
 #endif
-        if(mismatch.empty() && detail::epipolarErrorContradictsConstraints(qualityData.sampsonErrorCurrent, qualityData.sampsonErrorNew)) {
-            mismatch = fmt::format(
-                "the epipolar error of the image features changes from {:.2f} px to {:.2f} px", qualityData.sampsonErrorCurrent, qualityData.sampsonErrorNew);
+        if(mismatch.empty() && !connectedSensors.empty()) {
+            // DCL measures the error in the observed images, so the pixel limits apply at their scale, which can differ
+            // from the calibration resolution after a crop or resize.
+            const auto& observed = connectedSensors.front().intrinsics;
+            const auto observedScalePx = 0.5f * (observed.at(0).at(0) + observed.at(1).at(1));
+            const auto currentPx = sampsonErrorToPixels(static_cast<float>(dclResult.value.sampsonErrorCurrent), observedScalePx);
+            const auto newPx = sampsonErrorToPixels(static_cast<float>(dclResult.value.sampsonErrorNew), observedScalePx);
+            if(detail::epipolarErrorContradictsConstraints(currentPx, newPx)) {
+                mismatch = fmt::format("the epipolar error of the image features changes from {:.2f} px to {:.2f} px", currentPx, newPx);
+            }
         }
         if(!mismatch.empty()) {
             const auto message = "World constraints could not be validated: " + mismatch + ". Check the measured values (meters), marker ids and sockets";
