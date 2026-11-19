@@ -2916,6 +2916,77 @@ bool colorConvertToGRAY8(const ColorChangeArgs& args) {
     return done;
 }
 
+void copyFrame(const uint8_t* src, const FrameSpecs& srcSpecs, uint8_t* dst, const FrameSpecs& dstSpecs, dai::ImgFrame::Type type) {
+    auto copyPlane = [&](uint32_t srcOffset, uint32_t srcStride, uint32_t dstOffset, uint32_t dstStride, size_t rowBytes, size_t rows) {
+        for(size_t i = 0; i < rows; ++i) {
+            const uint8_t* srcRow = src + srcOffset + i * srcStride;
+            std::copy(srcRow, srcRow + rowBytes, dst + dstOffset + i * dstStride);
+        }
+    };
+    const size_t w = srcSpecs.width;
+    const size_t h = srcSpecs.height;
+    using Type = ImgFrame::Type;
+    if(type == Type::RGB888i || type == Type::BGR888i) {
+        copyPlane(srcSpecs.p1Offset, srcSpecs.p1Stride, dstSpecs.p1Offset, dstSpecs.p1Stride, 3 * w, h);
+    } else if(type == Type::RGB888p || type == Type::BGR888p) {
+        copyPlane(srcSpecs.p1Offset, srcSpecs.p1Stride, dstSpecs.p1Offset, dstSpecs.p1Stride, w, h);
+        copyPlane(srcSpecs.p2Offset, srcSpecs.p2Stride, dstSpecs.p2Offset, dstSpecs.p2Stride, w, h);
+        copyPlane(srcSpecs.p3Offset, srcSpecs.p3Stride, dstSpecs.p3Offset, dstSpecs.p3Stride, w, h);
+    } else if(type == Type::GRAY8 || type == Type::RAW8) {
+        copyPlane(srcSpecs.p1Offset, srcSpecs.p1Stride, dstSpecs.p1Offset, dstSpecs.p1Stride, w, h);
+    } else if(type == Type::RAW16) {
+        copyPlane(srcSpecs.p1Offset, srcSpecs.p1Stride, dstSpecs.p1Offset, dstSpecs.p1Stride, 2 * w, h);
+    } else if(type == Type::NV12) {
+        copyPlane(srcSpecs.p1Offset, srcSpecs.p1Stride, dstSpecs.p1Offset, dstSpecs.p1Stride, w, h);
+        copyPlane(srcSpecs.p2Offset, srcSpecs.p2Stride, dstSpecs.p2Offset, dstSpecs.p2Stride, w, h / 2);
+    } else if(type == Type::YUV420p) {
+        copyPlane(srcSpecs.p1Offset, srcSpecs.p1Stride, dstSpecs.p1Offset, dstSpecs.p1Stride, w, h);
+        copyPlane(srcSpecs.p2Offset, srcSpecs.p2Stride, dstSpecs.p2Offset, dstSpecs.p2Stride, w / 2, h / 2);
+        copyPlane(srcSpecs.p3Offset, srcSpecs.p3Stride, dstSpecs.p3Offset, dstSpecs.p3Stride, w / 2, h / 2);
+    } else {
+        throw std::runtime_error("copyFrame: unsupported frame type " + std::to_string((int)type));
+    }
+}
+
+bool colorConvert(const ColorChangeArgs& args, dai::ImgFrame::Type to, const std::shared_ptr<OffsetMemory>& grayAux) {
+    using Type = dai::ImgFrame::Type;
+    const Type from = args.from;
+    const uint8_t* src = args.inputFrame->getOffsetData().data();
+    uint8_t* dst = args.outputFrame->getOffsetData().data();
+    auto isPlanarRgb = [](Type t) { return t == Type::RGB888p || t == Type::BGR888p; };
+
+    // Same layout: stride aware copy (plane offsets and strides of input and output generally differ)
+    if(from == to || (isSingleChannelu8(from) && isSingleChannelu8(to))) {
+        copyFrame(src, args.srcSpecs, dst, args.dstSpecs, to);
+        return true;
+    }
+    // RGB888p <-> BGR888p: copy the planes in reverse order
+    if(isPlanarRgb(from) && isPlanarRgb(to)) {
+        FrameSpecs swapped = args.srcSpecs;
+        std::swap(swapped.p1Offset, swapped.p3Offset);
+        std::swap(swapped.p1Stride, swapped.p3Stride);
+        copyFrame(src, swapped, dst, args.dstSpecs, to);
+        return true;
+    }
+    // Single channel -> YUV: expand to RGB888i first (R = G = B), then convert that like any other RGB image.
+    // Single channel -> RGB/BGR is handled by the colorConvertTo* functions directly.
+    if(isSingleChannelu8(from) && (to == Type::NV12 || to == Type::YUV420p)) {
+        if(!grayAux) return false;
+        const auto rgbSpecs = getDstFrameSpecs(args.srcSpecs.width, args.srcSpecs.height, Type::RGB888i);
+        if(grayAux->getOffsetSize() < getFrameSize(Type::RGB888i, rgbSpecs)) return false;
+        if(!colorConvertToRGB888i({args.inputFrame, grayAux, args.srcSpecs, rgbSpecs, from, args.auxFrame})) return false;
+        return colorConvert({grayAux, args.outputFrame, rgbSpecs, args.dstSpecs, Type::RGB888i, args.auxFrame}, to, nullptr);
+    }
+    if(to == Type::RGB888p) return colorConvertToRGB888p(args);
+    if(to == Type::BGR888p) return colorConvertToBGR888p(args);
+    if(to == Type::RGB888i) return colorConvertToRGB888i(args);
+    if(to == Type::BGR888i) return colorConvertToBGR888i(args);
+    if(to == Type::NV12) return colorConvertToNV12(args);
+    if(to == Type::YUV420p) return colorConvertToYUV420p(args);
+    if(to == Type::GRAY8 || to == Type::RAW8) return colorConvertToGRAY8(args);
+    return false;
+}
+
 void ColorChangeH::build(const FrameSpecs srcFrameSpecs, const FrameSpecs dstFrameSpecs, const ImgFrame::Type typeFrom, const ImgFrame::Type typeTo) {
     from = typeFrom;
     to = typeTo;
@@ -2923,75 +2994,20 @@ void ColorChangeH::build(const FrameSpecs srcFrameSpecs, const FrameSpecs dstFra
     dstSpecs = dstFrameSpecs;
     size_t newAuxFrameSize = ALIGN_UP(srcSpecs.height, DEPTHAI_HEIGHT_ALIGNMENT) * ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
     if(!ccAuxFrame || ccAuxFrame->getOffsetSize() < newAuxFrameSize) ccAuxFrame = std::make_shared<_ImageManipMemory>(newAuxFrameSize);
+    if(isSingleChannelu8(from) && (to == ImgFrame::Type::NV12 || to == ImgFrame::Type::YUV420p)) {
+        size_t grayAuxSize = getAlignedOutputFrameSize(ImgFrame::Type::RGB888i, srcSpecs.width, srcSpecs.height);
+        if(!grayAuxFrame || grayAuxFrame->getOffsetSize() < grayAuxSize) grayAuxFrame = std::make_shared<_ImageManipMemory>(grayAuxSize);
+    }
 }
 
-void ColorChangeH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) {
-    float bpp;
-    int numPlanes;
-    getFrameTypeInfo(to, numPlanes, bpp);
-
-    bool done = false;
+bool ColorChangeH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) {
     auto start = std::chrono::steady_clock::now();
-    switch(to) {
-        case dai::ImgFrame::Type::RGB888p:
-            done = colorConvertToRGB888p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::BGR888p:
-            done = colorConvertToBGR888p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::RGB888i:
-            done = colorConvertToRGB888i({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::BGR888i:
-            done = colorConvertToBGR888i({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::NV12:
-            done = colorConvertToNV12({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::YUV420p:
-            done = colorConvertToYUV420p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::GRAY8:
-        case dai::ImgFrame::Type::RAW8:
-            done = colorConvertToGRAY8({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case ImgFrame::Type::YUV422i:
-        case ImgFrame::Type::YUV444p:
-        case ImgFrame::Type::YUV422p:
-        case ImgFrame::Type::YUV400p:
-        case ImgFrame::Type::RGBA8888:
-        case ImgFrame::Type::RGB161616:
-        case ImgFrame::Type::LUT2:
-        case ImgFrame::Type::LUT4:
-        case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW16:
-        case ImgFrame::Type::RAW14:
-        case ImgFrame::Type::RAW12:
-        case ImgFrame::Type::RAW10:
-        case ImgFrame::Type::PACK10:
-        case ImgFrame::Type::PACK12:
-        case ImgFrame::Type::YUV444i:
-        case ImgFrame::Type::NV21:
-        case ImgFrame::Type::BITSTREAM:
-        case ImgFrame::Type::HDR:
-        case ImgFrame::Type::RGBF16F16F16p:
-        case ImgFrame::Type::BGRF16F16F16p:
-        case ImgFrame::Type::RGBF16F16F16i:
-        case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAYF16:
-        case ImgFrame::Type::RAW32:
-        case ImgFrame::Type::NONE:
-            break;
-    }
+    bool done = colorConvert({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame}, to, grayAuxFrame);
     auto diff = std::chrono::steady_clock::now() - start;
     if(logger) logger->trace("ImageManip | colorConvert took {}ns", std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count());
 
-    if(!done) {
-        if(logger) logger->error("Convert color from {} to {} not supported or failed.", (int)from, (int)to);
-        std::copy(src->getOffsetData().data(),
-                  src->getOffsetData().data() + (src->getOffsetSize() <= dst->getOffsetSize() ? src->getOffsetSize() : dst->getOffsetSize()),
-                  dst->getOffsetData().data());
-    }
+    if(!done && logger) logger->error("Convert color from {} to {} not supported or failed.", (int)from, (int)to);
+    return done;
 }
 
 //--------------------------------------------------
