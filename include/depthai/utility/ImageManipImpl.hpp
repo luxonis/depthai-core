@@ -1012,13 +1012,18 @@ size_t ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::ge
                 size = ALIGN_UP(getOutputStride(1) * ALIGN_UP(getOutputHeight() / 2, DEPTHAI_HEIGHT_ALIGNMENT / 2), DEPTHAI_PLANE_ALIGNMENT);
             }
             break;
-        case ImgFrame::Type::YUV420p:
+        case ImgFrame::Type::YUV420p: {
+            // The V plane directly follows the U plane, so that readers can derive the chroma stride from the plane offsets
+            const auto specs = getOutputFrameSpecs(outputFrameType);
             if(plane == 0) {
-                size = getOutputStride(0) * ALIGN_UP(getOutputHeight(), DEPTHAI_HEIGHT_ALIGNMENT);
-            } else if(plane == 1 || plane == 2) {
-                size = ALIGN_UP(getOutputStride(plane) * ALIGN_UP(getOutputHeight() / 2, DEPTHAI_HEIGHT_ALIGNMENT / 2), DEPTHAI_PLANE_ALIGNMENT);
+                size = specs.p2Offset - specs.p1Offset;
+            } else if(plane == 1) {
+                size = specs.p3Offset - specs.p2Offset;
+            } else if(plane == 2) {
+                size = ALIGN_UP(specs.p3Stride * (getOutputHeight() / 2), DEPTHAI_PLANE_ALIGNMENT);
             }
             break;
+        }
         case ImgFrame::Type::RAW16:
             size = getOutputStride() * getOutputHeight();  // Do not do stride for RGB/BGRi/p
             break;
