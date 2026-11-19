@@ -541,7 +541,18 @@ void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 
                                          const uint32_t srcHeight,
                                          uint32_t& outputWidth,
                                          uint32_t& outputHeight) {
-    auto [dstMinx, dstMaxx, dstMiny, dstMaxy] = dai::impl::getOuterRect(std::vector(corners.begin(), corners.end()));
+    auto [rawMinx, rawMaxx, rawMiny, rawMaxy] = dai::impl::getOuterRect(std::vector(corners.begin(), corners.end()));
+    // Rotations leave float noise on corners that should be integral (e.g. 240.00002 after a 90 degree rotation). Without
+    // snapping, ceil/floor below turn it into a whole pixel lost on one side of the output.
+    constexpr float eps = 1e-3f;
+    auto snap = [](float v) {
+        const float r = std::round(v);
+        return std::fabs(v - r) < eps ? r : v;
+    };
+    const float dstMinx = snap(rawMinx);
+    const float dstMaxx = snap(rawMaxx);
+    const float dstMiny = snap(rawMiny);
+    const float dstMaxy = snap(rawMaxy);
 
     float innerMinx = ceilf(dstMinx);
     float innerMiny = ceilf(dstMiny);
@@ -567,10 +578,10 @@ void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 
     auto [srcOuterMinx, srcOuterMaxx, srcOuterMiny, srcOuterMaxy] = dai::impl::getOuterRect(std::vector(srcOuterCorners.begin(), srcOuterCorners.end()));
 
     // If outer bb is outside of the image, but inner is inside, use inner bb, otherwise use outer bb
-    float rminx = srcOuterMinx < 0 && srcInnerMinx >= 0 ? innerMinx : outerMinx;
-    float rmaxx = srcOuterMaxx >= srcWidth && srcInnerMaxx < srcWidth ? innerMaxx : outerMaxx;
-    float rminy = srcOuterMiny < 0 && srcInnerMiny >= 0 ? innerMiny : outerMiny;
-    float rmaxy = srcOuterMaxy >= srcHeight && srcInnerMaxy < srcHeight ? innerMaxy : outerMaxy;
+    float rminx = srcOuterMinx < -eps && srcInnerMinx >= -eps ? innerMinx : outerMinx;
+    float rmaxx = srcOuterMaxx > srcWidth + eps && srcInnerMaxx <= srcWidth + eps ? innerMaxx : outerMaxx;
+    float rminy = srcOuterMiny < -eps && srcInnerMiny >= -eps ? innerMiny : outerMiny;
+    float rmaxy = srcOuterMaxy > srcHeight + eps && srcInnerMaxy <= srcHeight + eps ? innerMaxy : outerMaxy;
 
     if(outputWidth > 0 && outputHeight > 0) return;
 
