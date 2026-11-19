@@ -1,6 +1,8 @@
 #include <atomic>
 #include <csignal>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 
 #include "depthai/depthai.hpp"
 
@@ -36,6 +38,17 @@ void printSystemInformation(const dai::SystemInformationRVC4& info) {
     const auto& t = info.chipTemperature;
     std::cout << "Chip temperature - average: " << t.average << ", cpuss: " << t.cpuss << ", gpuss: " << t.gpuss << ", mdmss: " << t.mdmss
               << ", video: " << t.video << ", ddr: " << t.ddr << ", camera: " << t.camera << std::endl;
+    const auto formatMetric = [](double value, const char* unit) -> std::string {
+        if(value < 0) return "unavailable";
+        std::ostringstream text;
+        text << std::fixed << std::setprecision(2) << value << unit;
+        return text.str();
+    };
+    std::cout << "GPU utilization: " << formatMetric(info.gpuUtilizationPercent, "%") << '\n';
+    std::cout << "DSP - HVX: " << formatMetric(info.dspHvxActivityPercent, "%") << ", HMX: " << formatMetric(info.dspHmxActivityPercent, "%")
+              << ", Q6: " << formatMetric(info.dspQ6LoadKcps, " KCPS") << '\n';
+    std::cout << "Power rails - System: " << formatMetric(info.powerSystemWatts, " W") << ", Processor: " << formatMetric(info.powerProcessorWatts, " W")
+              << ", PoE: " << formatMetric(info.powerPoeWatts, " W") << ", ToF: " << formatMetric(info.powerTofWatts, " W") << '\n';
     std::cout << "----------------------------------------" << std::endl;
 }
 
