@@ -604,8 +604,12 @@ TEST_CASE("Depth: ToF ignores a requested stereo pair", "[stereo-pair]") {
     if(!deviceReportsTofSensor(device)) {
         SKIP("Requires a connected ToF sensor.");
     }
+    // Request a pair the device does not report, so the test fails if the ToF path validates the request.
+    const auto pairs = device->getStereoPairs();
+    const auto unreported =
+        pairs.empty() ? StereoPair{CameraBoardSocket::CAM_G, CameraBoardSocket::CAM_H} : StereoPair{pairs.front().right, pairs.front().left};
     const auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::TOF);
-    depth->setStereoPair(StereoPair{CameraBoardSocket::CAM_G, CameraBoardSocket::CAM_H});
+    depth->setStereoPair(unreported);
     REQUIRE_NOTHROW((void)depth->depth());
     REQUIRE(depth->getRequestedStereoPair().has_value());
     REQUIRE_FALSE(depth->getResolvedStereoPair().has_value());
