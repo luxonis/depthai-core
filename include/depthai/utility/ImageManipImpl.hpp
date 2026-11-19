@@ -489,6 +489,7 @@ class ImageManipOperations {
 
     bool convertInput = false;
     bool convertOnly = false;
+    FrameSpecs inSpecs{};  // specs of the input frame as received (srcSpecs may describe the converted input)
 
     std::shared_ptr<ImageManipData> colormapFrame;
     std::shared_ptr<ImageManipData> convertedFrame;
@@ -746,9 +747,12 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
         else
             outType = inFrameType;
     }
-    if(newCfgStr == prevConfig && outType == outputFrameType && srcFrameSpecs.width == srcSpecs.width && srcFrameSpecs.height == srcSpecs.height
-       && inFrameType == inType)
-        return *this;
+    auto sameSpecs = [](const FrameSpecs& a, const FrameSpecs& b) {
+        return a.width == b.width && a.height == b.height && a.p1Offset == b.p1Offset && a.p2Offset == b.p2Offset && a.p3Offset == b.p3Offset
+               && a.p1Stride == b.p1Stride && a.p2Stride == b.p2Stride && a.p3Stride == b.p3Stride;
+    };
+    // Everything below depends on the full input layout (strides, plane offsets), not only on its size
+    if(newCfgStr == prevConfig && outType == outputFrameType && inFrameType == inType && sameSpecs(srcFrameSpecs, inSpecs)) return *this;
     prevConfig = newCfgStr;
     outputOps.clear();
 
@@ -771,6 +775,7 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
     outputFrameType = outType;
     inType = inFrameType;
     type = inType;
+    inSpecs = srcFrameSpecs;
     srcSpecs = srcFrameSpecs;
 
     if(!isSingleChannelu8(inType) && base.colormap != Colormap::NONE) {
@@ -869,7 +874,7 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
 
 template <typename ImageManipData, typename ColorChangeBackend, typename WarpBackend>
 bool ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) {
-    size_t requiredSize = getFrameSize(inType, srcSpecs);
+    size_t requiredSize = getFrameSize(inType, inSpecs);
     if(src->getOffsetSize() < requiredSize)
         throw std::runtime_error("ImageManip not built for the source image specs. Consider rebuilding with the new configuration.");
     if(mode == 0) {
