@@ -123,8 +123,16 @@ void transformOpenCV(const uint8_t* src,
         }
     } else {
         // Perspective transform
-        float projection[9] = {
-            matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF, matrix[2][0], matrix[2][1], matrix[2][2]};
+        // Plane coordinates are frame coordinates divided by ssF: the plane matrix is S^-1 * M * S, S = diag(ssF, ssF, 1)
+        float projection[9] = {matrix[0][0],
+                               matrix[0][1],
+                               matrix[0][2] / ssF,
+                               matrix[1][0],
+                               matrix[1][1],
+                               matrix[1][2] / ssF,
+                               matrix[2][0] * ssF,
+                               matrix[2][1] * ssF,
+                               matrix[2][2]};
         cv::Rect roi(sourceMinX / ssF, sourceMinY / ssF, (sourceMaxX - sourceMinX) / ssF, (sourceMaxY - sourceMinY) / ssF);
         if(sourceMinX != 0 || sourceMinY != 0) {
             projection[2] = projection[0] * ((float)sourceMinX / ssF) + projection[1] * ((float)sourceMinY / ssF) + projection[2];
@@ -208,8 +216,16 @@ bool transformFastCV(const uint8_t* src,
         }
     } else {
         // Perspective transform
-        float projection[9] = {
-            matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF, matrix[2][0], matrix[2][1], matrix[2][2]};
+        // Plane coordinates are frame coordinates divided by ssF: the plane matrix is S^-1 * M * S, S = diag(ssF, ssF, 1)
+        float projection[9] = {matrix[0][0],
+                               matrix[0][1],
+                               matrix[0][2] / ssF,
+                               matrix[1][0],
+                               matrix[1][1],
+                               matrix[1][2] / ssF,
+                               matrix[2][0] * ssF,
+                               matrix[2][1] * ssF,
+                               matrix[2][2]};
         fcvStatus status = fcvStatus::FASTCV_SUCCESS;
         if(isSingleChannelu8(src))
             status = fcvWarpPerspectiveu8_v4(src,
