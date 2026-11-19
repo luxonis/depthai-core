@@ -1092,8 +1092,11 @@ dai_add_test(image_manip_mono_color_test src/onhost_tests/image_manip_mono_color
 dai_set_test_labels(image_manip_mono_color_test onhost ci)
 
 # Valid image region reported by frames that went through a host ImageManip
-dai_add_test(image_manip_src_crops_test src/onhost_tests/pipeline/node/image_manip_src_crops_test.cpp)
-dai_set_test_labels(image_manip_src_crops_test onhost ci)
+# The host ImageManip resizes only when the core target is built with OpenCV
+if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
+    dai_add_test(image_manip_src_crops_test src/onhost_tests/pipeline/node/image_manip_src_crops_test.cpp)
+    dai_set_test_labels(image_manip_src_crops_test onhost ci)
+endif()
 
 # ImageManip test
 if(DEPTHAI_FETCH_ARTIFACTS)
