@@ -98,55 +98,22 @@ void transformOpenCV(const uint8_t* src,
                                : (numChannels == 2 ? cv::Scalar(background[0], background[1]) : cv::Scalar(background[0], background[1], background[2]));
     const cv::Mat cvSrc(srcHeight, srcWidth, type, const_cast<uint8_t*>(src), srcStride);
     cv::Mat cvDst(dstHeight, dstWidth, type, dst, dstStride);
-    int ssF = srcImgSpecs.width / srcWidth;
+    const int ssF = srcImgSpecs.width / srcWidth;
     assert(ssF == (int)(srcImgSpecs.height / srcHeight) && (ssF == 1 || ssF == 2));  // Sanity check
-    if(floatEq(matrix[2][0], 0) && floatEq(matrix[2][1], 0) && floatEq(matrix[2][2], 1)) {
-        // Affine transform
-        float affine[6] = {matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF};
-        cv::Rect roi(sourceMinX / ssF, sourceMinY / ssF, (sourceMaxX - sourceMinX) / ssF, (sourceMaxY - sourceMinY) / ssF);
-        if(sourceMinX != 0 || sourceMinY != 0) {
-            affine[2] = affine[0] * ((float)sourceMinX / ssF) + affine[1] * ((float)sourceMinY / ssF) + affine[2];
-            affine[5] = affine[3] * ((float)sourceMinX / ssF) + affine[4] * ((float)sourceMinY / ssF) + affine[5];
-        }
-        if(floatEq(affine[0], 1.f) && floatEq(affine[1], 0.f) && floatEq(affine[3], 0.f) && floatEq(affine[4], 1.f) && floatEq(affine[5], 0.f)) {
-            // Crop only
-            cvSrc(roi).copyTo(cvDst);
-        } else {
-            cv::Mat cvAffine(2, 3, CV_32F, affine);
-            cv::warpAffine(cvSrc(roi),
-                           cvDst,
-                           cvAffine,
-                           cv::Size(dstWidth, dstHeight),
-                           cv::INTER_LINEAR,
-                           cv::BORDER_CONSTANT,
-                           bg);  // TODO(asahtik): Add support for different border types
-        }
+    // Source ROI in plane pixels. The same (integer) ROI origin must be used for the matrix and for the ROI itself.
+    const size_t roiX = std::min(sourceMinX / ssF, srcWidth - 1);
+    const size_t roiY = std::min(sourceMinY / ssF, srcHeight - 1);
+    const size_t roiMaxX = std::min((sourceMaxX + ssF - 1) / ssF, srcWidth);
+    const size_t roiMaxY = std::min((sourceMaxY + ssF - 1) / ssF, srcHeight);
+    cv::Rect roi((int)roiX, (int)roiY, (int)std::max(roiMaxX, roiX + 1) - (int)roiX, (int)std::max(roiMaxY, roiY + 1) - (int)roiY);
+    const auto m = dai::impl::getPlaneWarpMatrix(matrix, ssF, roiX, roiY, true);
+    const bool pureTranslation = floatEq(m[0][0], 1.f) && floatEq(m[0][1], 0.f) && floatEq(m[1][0], 0.f) && floatEq(m[1][1], 1.f) && floatEq(m[2][0], 0.f)
+                                 && floatEq(m[2][1], 0.f) && floatEq(m[2][2], 1.f);
+    if(pureTranslation && floatEq(m[0][2], 0.f) && floatEq(m[1][2], 0.f) && roi.width == (int)dstWidth && roi.height == (int)dstHeight) {
+        // Crop only
+        cvSrc(roi).copyTo(cvDst);
     } else {
-        // Perspective transform
-        // Plane coordinates are frame coordinates divided by ssF: the plane matrix is S^-1 * M * S, S = diag(ssF, ssF, 1)
-        float projection[9] = {matrix[0][0],
-                               matrix[0][1],
-                               matrix[0][2] / ssF,
-                               matrix[1][0],
-                               matrix[1][1],
-                               matrix[1][2] / ssF,
-                               matrix[2][0] * ssF,
-                               matrix[2][1] * ssF,
-                               matrix[2][2]};
-        cv::Rect roi(sourceMinX / ssF, sourceMinY / ssF, (sourceMaxX - sourceMinX) / ssF, (sourceMaxY - sourceMinY) / ssF);
-        if(sourceMinX != 0 || sourceMinY != 0) {
-            projection[2] = projection[0] * ((float)sourceMinX / ssF) + projection[1] * ((float)sourceMinY / ssF) + projection[2];
-            projection[5] = projection[3] * ((float)sourceMinX / ssF) + projection[4] * ((float)sourceMinY / ssF) + projection[5];
-            projection[8] = projection[6] * ((float)sourceMinX / ssF) + projection[7] * ((float)sourceMinY / ssF) + projection[8];
-        }
-        cv::Mat cvProjection(3, 3, CV_32F, projection);
-        cv::warpPerspective(cvSrc(roi),
-                            cvDst,
-                            cvProjection,
-                            cv::Size(dstWidth, dstHeight),
-                            cv::INTER_LINEAR,
-                            cv::BORDER_CONSTANT,
-                            bg);  // TODO(asahtik): Add support for different border types
+        dai::impl::warpWithBackground(cvSrc(roi), cvDst, m, cv::INTER_LINEAR, bg);
     }
 #else
     (void)(src);
@@ -610,6 +577,60 @@ void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 
         if(outputHeight == 0) outputHeight = std::min((size_t)std::max(rmaxy - rminy, 0.f), MAX_AUTO_HEIGHT);
     }
 }
+
+std::array<std::array<float, 3>, 3> dai::impl::getPlaneWarpMatrix(
+    const std::array<std::array<float, 3>, 3>& matrix, int subsampling, size_t roiX, size_t roiY, bool pixelCenters) {
+    const float s = (float)subsampling;
+    using Mat3 = std::array<std::array<float, 3>, 3>;
+    if(!pixelCenters) {
+        // Corner convention plane coordinates are frame coordinates scaled by 1/s: Mp = S^-1 * M * S * T(roi), S = diag(s, s, 1)
+        Mat3 m = {{{matrix[0][0], matrix[0][1], matrix[0][2] / s},
+                   {matrix[1][0], matrix[1][1], matrix[1][2] / s},
+                   {matrix[2][0] * s, matrix[2][1] * s, matrix[2][2]}}};
+        return matmul(m, {{{1, 0, (float)roiX}, {0, 1, (float)roiY}, {0, 0, 1}}});
+    }
+    // Plane pixel index -> frame (luma) corner coordinates. Pixel i of a plane subsampled by s covers [s * i, s * (i + 1)]
+    // and is sampled at its centre s * (i + 0.5): luma pixel centres, chroma centred in its s x s block. With this siting
+    // flips and 90 degree rotations map chroma blocks exactly onto chroma blocks.
+    const float o = 0.5f * s;
+    const Mat3 srcToFrame = {{{s, 0, s * (float)roiX + o}, {0, s, s * (float)roiY + o}, {0, 0, 1}}};
+    const Mat3 frameToDst = {{{1 / s, 0, -o / s}, {0, 1 / s, -o / s}, {0, 0, 1}}};
+    Mat3 m = matmul(frameToDst, matmul(matrix, srcToFrame));
+    if(subsampling > 1) {
+        const bool pureTranslation = std::fabs(m[0][0] - 1.f) <= 1e-6f && std::fabs(m[0][1]) <= 1e-6f && std::fabs(m[1][0]) <= 1e-6f
+                                     && std::fabs(m[1][1] - 1.f) <= 1e-6f && std::fabs(m[2][0]) <= 1e-9f && std::fabs(m[2][1]) <= 1e-9f
+                                     && std::fabs(m[2][2] - 1.f) <= 1e-6f;
+        if(pureTranslation) {
+            // An odd luma shift moves chroma by half a sample: take the sample of the block the shifted pixel falls into
+            // (as a crop does) instead of blending two neighbouring chroma samples
+            m[0][2] = std::ceil(m[0][2] - 1e-3f);
+            m[1][2] = std::ceil(m[1][2] - 1e-3f);
+        }
+    }
+    return m;
+}
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+void dai::impl::warpWithBackground(
+    const cv::Mat& src, cv::Mat& dst, const std::array<std::array<float, 3>, 3>& matrix, int interpolation, const cv::Scalar& background) {
+    const bool affine = floatEq(matrix[2][0], 0.f) && floatEq(matrix[2][1], 0.f) && floatEq(matrix[2][2], 1.f);
+    float values[9] = {matrix[0][0], matrix[0][1], matrix[0][2], matrix[1][0], matrix[1][1], matrix[1][2], matrix[2][0], matrix[2][1], matrix[2][2]};
+    const cv::Mat cvMatrix(affine ? 2 : 3, 3, CV_32F, values);
+    auto warp = [&](const cv::Mat& in, cv::Mat& out, int flags, int borderMode, const cv::Scalar& border) {
+        if(affine) {
+            cv::warpAffine(in, out, cvMatrix, dst.size(), flags, borderMode, border);
+        } else {
+            cv::warpPerspective(in, out, cvMatrix, dst.size(), flags, borderMode, border);
+        }
+    };
+    warp(src, dst, interpolation, cv::BORDER_REPLICATE, cv::Scalar());
+    // Nearest-neighbour coverage: a pixel is covered iff its centre rounds to a source pixel
+    const cv::Mat ones(src.size(), CV_8UC1, cv::Scalar(255));
+    cv::Mat covered;
+    warp(ones, covered, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0));
+    dst.setTo(background, covered == 0);
+}
+#endif
 
 void dai::impl::getTransformImpl(const ManipOp& op,
                                  std::array<std::array<float, 3>, 3>& transform,
