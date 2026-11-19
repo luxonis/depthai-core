@@ -487,8 +487,9 @@ class ImageManipOperations {
     ImgFrame::Type type;
     ImgFrame::Type inType;
 
-    bool convertInput = false;
-    bool convertOnly = false;
+    bool convertInput = false;   // input converted to `type` (preprocCc) before warping / colormapping
+    bool convertOutput = false;  // clrChange converts the last intermediate (of type `clrChangeFrom`) into the output
+    ImgFrame::Type clrChangeFrom = ImgFrame::Type::NONE;
     FrameSpecs inSpecs{};  // specs of the input frame as received (srcSpecs may describe the converted input)
 
     std::shared_ptr<ImageManipData> colormapFrame;
@@ -749,11 +750,9 @@ template <typename ImageManipData, typename ColorChangeBackend, typename WarpBac
 ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::build(
     const ImageManipOpsBase<Container>& newBase, ImgFrame::Type outType, FrameSpecs srcFrameSpecs, ImgFrame::Type inFrameType) {
     const auto newCfgStr = newBase.str();
+    const bool colormapRequested = newBase.colormap != Colormap::NONE && isSingleChannelu8(inFrameType);
     if(outType == ImgFrame::Type::NONE) {
-        if(base.colormap != Colormap::NONE)
-            outType = VALID_TYPE_COLOR;
-        else
-            outType = inFrameType;
+        outType = colormapRequested ? VALID_TYPE_COLOR : inFrameType;
     }
     auto sameSpecs = [](const FrameSpecs& a, const FrameSpecs& b) {
         return a.width == b.width && a.height == b.height && a.p1Offset == b.p1Offset && a.p2Offset == b.p2Offset && a.p3Offset == b.p3Offset
@@ -761,63 +760,58 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
     };
     // Everything below depends on the full input layout (strides, plane offsets), not only on its size
     if(newCfgStr == prevConfig && outType == outputFrameType && inFrameType == inType && sameSpecs(srcFrameSpecs, inSpecs)) return *this;
-    prevConfig = newCfgStr;
-    outputOps.clear();
+    prevConfig.clear();  // Only set once the build succeeded
 
     if(srcFrameSpecs.width <= 1 || srcFrameSpecs.height <= 1) {
         throw std::runtime_error("Input image is one dimensional");
     }
+    assert(inFrameType != ImgFrame::Type::NONE);
+
+    if(newBase.colormap != Colormap::NONE && !colormapRequested && logger) {
+        logger->warn("ImageManip | Colormap can only be applied to single channel images, ignoring colormap");
+    }
 
     // Reset all state derived from a previous configuration
-    mode = 0;
-    convertInput = false;
-    srcCorners.clear();
-    matrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
-    matrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
-    if(newBase.hasWarp(srcFrameSpecs.width, srcFrameSpecs.height)) mode |= MODE_WARP;
-    if(newBase.colormap != Colormap::NONE && isSingleChannelu8(inFrameType)) mode |= MODE_COLORMAP;
-    if(outType != inFrameType) mode |= MODE_CONVERT;
-
-    assert(inFrameType != ImgFrame::Type::NONE);
     base = newBase;
+    if(!colormapRequested) base.colormap = Colormap::NONE;
     outputFrameType = outType;
     inType = inFrameType;
     type = inType;
     inSpecs = srcFrameSpecs;
     srcSpecs = srcFrameSpecs;
-
-    if(!isSingleChannelu8(inType) && base.colormap != Colormap::NONE) {
-        if(logger) logger->warn("ImageManip | Colormap can only be applied to single channel images, ignoring colormap");
-        base.colormap = Colormap::NONE;
-    }
+    outputOps.clear();
+    srcCorners.clear();
+    matrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    matrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    convertInput = false;
+    convertOutput = false;
+    clrChangeFrom = ImgFrame::Type::NONE;
+    mode = 0;
+    if(base.hasWarp(srcFrameSpecs.width, srcFrameSpecs.height)) mode |= MODE_WARP;
+    if(colormapRequested) mode |= MODE_COLORMAP;
+    if(outType != inFrameType) mode |= MODE_CONVERT;
 
     if(mode == 0) {
         // Passthrough
         base.outputWidth = srcFrameSpecs.width;
         base.outputHeight = srcFrameSpecs.height;
+        prevConfig = newCfgStr;
         return *this;
-    } else if(mode == MODE_CONVERT) {
-        auto ccDstSpecs = getCcDstFrameSpecs(srcSpecs, inType, outputFrameType);
-        preprocCc.build(srcSpecs, ccDstSpecs, inType, outputFrameType);
-    } else {
-        if(!isTypeSupported(inType)) {
-            auto color = getValidType(inType);
-            auto ccDstSpecs = getCcDstFrameSpecs(srcSpecs, inType, color);
-            preprocCc.build(srcSpecs, ccDstSpecs, inType, color);
-            srcSpecs = ccDstSpecs;
-            type = color;
-            convertInput = true;
-            if(outputFrameType != color)
-                mode = mode & ~MODE_CONVERT;
-            else
-                mode = mode | MODE_CONVERT;
-        }
+    }
+
+    if((mode & (MODE_WARP | MODE_COLORMAP)) && !isTypeSupported(inType)) {
+        // The warp backend cannot process this type directly - convert the input first
+        auto color = getValidType(inType);
+        auto ccDstSpecs = getCcDstFrameSpecs(srcSpecs, inType, color);
+        preprocCc.build(srcSpecs, ccDstSpecs, inType, color);
+        srcSpecs = ccDstSpecs;
+        type = color;
+        convertInput = true;
     }
 
     const uint32_t inputWidth = srcSpecs.width;
     const uint32_t inputHeight = srcSpecs.height;
     assert(inputWidth > 0 && inputHeight > 0);
-    matrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
 
     if(mode & MODE_WARP) {
         auto [matrix, imageCorners, _srcCorners] = getFullTransform<Container>(base, inputWidth, inputHeight, type, outputFrameType, outputOps);
@@ -845,24 +839,39 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
             logger->trace("|{} {} {}|", matrixInv[2][0], matrixInv[2][1], matrixInv[2][2]);
         }
 
-        warpEngine.build(srcSpecs, getOutputFrameSpecs(type), type, matrix, srcCorners);
+        warpEngine.build(srcSpecs, getDstFrameSpecs(base.outputWidth, base.outputHeight, type), type, matrix, srcCorners);
         warpEngine.setBackgroundColor(base.backgroundR, base.backgroundG, base.backgroundB);
-        clrChange.build(getOutputFrameSpecs(type), getOutputFrameSpecs(outputFrameType), type, outputFrameType);
     } else {
         base.outputWidth = inputWidth;
         base.outputHeight = inputHeight;
     }
-    size_t newConvertedSize = getAlignedOutputFrameSize(type, inputWidth, inputHeight);
-    size_t newColormapSize = getAlignedOutputFrameSize(type, base.outputWidth, base.outputHeight);
-    size_t newWarpedSize =
-        getAlignedOutputFrameSize(isSingleChannelu8(type) && base.colormap != Colormap::NONE ? VALID_TYPE_COLOR : type, base.outputWidth, base.outputHeight);
 
-    if(!convertedFrame || convertedFrame->getOffsetSize() < newConvertedSize) convertedFrame = std::make_shared<ImageManipData>(newConvertedSize);
-    if(!colormapFrame || colormapFrame->getOffsetSize() < newColormapSize) colormapFrame = std::make_shared<ImageManipData>(newColormapSize);
-    if(!warpedFrame || warpedFrame->getOffsetSize() < newWarpedSize) warpedFrame = std::make_shared<ImageManipData>(newWarpedSize);
+    // Type of the last intermediate image, before the final color conversion
+    const ImgFrame::Type lastType = (mode & MODE_COLORMAP) ? VALID_TYPE_COLOR : type;
+    if(lastType != outputFrameType) {
+        convertOutput = true;
+        clrChangeFrom = lastType;
+        // Without a warp or colormap the conversion reads the input frame directly
+        const FrameSpecs lastSpecs = (mode & (MODE_WARP | MODE_COLORMAP)) ? getDstFrameSpecs(base.outputWidth, base.outputHeight, lastType) : srcSpecs;
+        clrChange.build(lastSpecs, getOutputFrameSpecs(outputFrameType), lastType, outputFrameType);
+    }
 
+    if(convertInput) {
+        size_t newConvertedSize = getAlignedOutputFrameSize(type, inputWidth, inputHeight);
+        if(!convertedFrame || convertedFrame->getOffsetSize() < newConvertedSize) convertedFrame = std::make_shared<ImageManipData>(newConvertedSize);
+    }
+    if((mode & MODE_WARP) && (mode & MODE_COLORMAP)) {
+        size_t newColormapSize = getAlignedOutputFrameSize(type, base.outputWidth, base.outputHeight);
+        if(!colormapFrame || colormapFrame->getOffsetSize() < newColormapSize) colormapFrame = std::make_shared<ImageManipData>(newColormapSize);
+    }
+    if(convertOutput && (mode & (MODE_WARP | MODE_COLORMAP))) {
+        size_t newWarpedSize = getAlignedOutputFrameSize(lastType, base.outputWidth, base.outputHeight);
+        if(!warpedFrame || warpedFrame->getOffsetSize() < newWarpedSize) warpedFrame = std::make_shared<ImageManipData>(newWarpedSize);
+    }
+
+    prevConfig = newCfgStr;
     return *this;
-}  // namespace impl
+}
 
 template <typename ImageManipData, typename ColorChangeBackend, typename WarpBackend>
 ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::buildUndistort(
@@ -891,41 +900,45 @@ bool ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::appl
     }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    if(convertInput || mode == MODE_CONVERT) {
-        if(!preprocCc.apply(src, mode == MODE_CONVERT ? dst : convertedFrame)) return false;
+    // Each stage reads `cur` (laid out as `curSpecs`) and writes either the next intermediate buffer or dst
+    std::shared_ptr<OffsetMemory> cur = src;
+    FrameSpecs curSpecs = inSpecs;
+    if(convertInput) {
+        if(!preprocCc.apply(src, convertedFrame)) return false;
+        cur = convertedFrame;
+        curSpecs = srcSpecs;
     }
-    if(mode != MODE_CONVERT) {
-        if(mode & MODE_WARP) {
-            warpEngine.apply(convertInput ? convertedFrame : src,
-                             base.colormap != Colormap::NONE ? colormapFrame : (type == outputFrameType ? dst : warpedFrame));
+    if(mode & MODE_WARP) {
+        std::shared_ptr<OffsetMemory> target = (mode & MODE_COLORMAP) ? colormapFrame : (convertOutput ? warpedFrame : dst);
+        warpEngine.apply(cur, target);
+        cur = target;
+        curSpecs = getDstFrameSpecs(base.outputWidth, base.outputHeight, type);
+    }
+    if(mode & MODE_COLORMAP) {
+        std::shared_ptr<OffsetMemory> target = convertOutput ? warpedFrame : dst;
+        const auto colorSpecs = getDstFrameSpecs(base.outputWidth, base.outputHeight, VALID_TYPE_COLOR);
+        cv::Mat gray((int)base.outputHeight, (int)base.outputWidth, CV_8UC1, cur->getOffsetData().data() + curSpecs.p1Offset, curSpecs.p1Stride);
+        cv::Mat color((int)base.outputHeight, (int)base.outputWidth, CV_8UC3, target->getOffsetData().data() + colorSpecs.p1Offset, colorSpecs.p1Stride);
+        cv::ColormapTypes cvColormap = cv::COLORMAP_JET;
+        switch(base.colormap) {  // TODO(asahtik): set correct stereo colormaps
+            case Colormap::TURBO:
+            case Colormap::STEREO_TURBO:
+                cvColormap = cv::COLORMAP_TURBO;
+                break;
+            case Colormap::STEREO_JET:
+            case Colormap::JET:
+            case Colormap::NONE:
+                break;
         }
-        if(mode & MODE_COLORMAP) {
-            uint8_t* colormapDst = outputFrameType == VALID_TYPE_COLOR ? dst->getOffsetData().data() : warpedFrame->getOffsetData().data();
-            size_t colormapDstStride = outputFrameType == VALID_TYPE_COLOR ? getOutputStride() : ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT);
-            uint8_t* colormapSrc = mode & MODE_WARP ? colormapFrame->getOffsetData().data()
-                                                    : (convertInput ? convertedFrame->getOffsetData().data() : src->getOffsetData().data());
-            size_t colormapSrcStride = !(mode & MODE_WARP) && !convertInput ? srcSpecs.p1Stride : ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT);
-            cv::Mat gray(base.outputWidth, base.outputHeight, CV_8UC1, colormapSrc, colormapSrcStride);
-            cv::Mat color(base.outputWidth, base.outputHeight, CV_8UC3, colormapDst, colormapDstStride);
-            cv::ColormapTypes cvColormap = cv::COLORMAP_JET;
-            switch(base.colormap) {  // TODO(asahtik): set correct stereo colormaps
-                case Colormap::TURBO:
-                case Colormap::STEREO_TURBO:
-                    cvColormap = cv::COLORMAP_TURBO;
-                    break;
-                case Colormap::STEREO_JET:
-                case Colormap::JET:
-                case Colormap::NONE:
-                    break;
-            }
-            cv::applyColorMap(gray, color, cvColormap);
-        }
-        // Change color(format) if outputFrameType is not None / the same as the current frame type and not (frame type is single channel + colormap is
-        // applied
-        // + output frame type is RGBi)
-        if(type != outputFrameType && !(isSingleChannelu8(type) && base.colormap != Colormap::NONE && outputFrameType == VALID_TYPE_COLOR)) {
-            return clrChange.apply(warpedFrame, dst);
-        }
+        cv::applyColorMap(gray, color, cvColormap);
+        // applyColorMap produces BGR, the colormapped intermediate is RGB888i
+        static_assert(VALID_TYPE_COLOR == ImgFrame::Type::RGB888i, "Colormap output is converted to RGB888i");
+        cv::cvtColor(color, color, cv::COLOR_BGR2RGB);
+        cur = target;
+        curSpecs = colorSpecs;
+    }
+    if(convertOutput) {
+        return clrChange.apply(cur, dst);
     }
     return true;
 #else
