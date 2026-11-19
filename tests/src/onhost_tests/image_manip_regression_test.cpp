@@ -106,6 +106,32 @@ size_t countMismatches(const Image& out, uint32_t width, uint32_t height, uint32
     return mismatches;
 }
 
+struct MoveCheck {
+    size_t covered = 0;     // output pixels whose centre maps onto a source pixel centre
+    size_t mismatches = 0;  // ... and that differ from that source pixel
+};
+
+/// For transforms that move whole pixels (flips, 90 degree rotations, integer crops): every output pixel whose centre maps onto
+/// the centre of a source pixel must equal that pixel exactly. ImageManip matrices use the corner convention (pixel i spans [i, i + 1]).
+MoveCheck checkExactMove(const Manip& manip, const Image& out, const Image& in, uint32_t channels) {
+    const auto inv = dai::matrix::getMatrixInverse(manip.getMatrix());
+    MoveCheck result;
+    for(uint32_t y = 0; y < out.specs.height; ++y) {
+        for(uint32_t x = 0; x < out.specs.width; ++x) {
+            const float cx = x + 0.5f, cy = y + 0.5f;
+            const float sx = inv[0][0] * cx + inv[0][1] * cy + inv[0][2] - 0.5f;
+            const float sy = inv[1][0] * cx + inv[1][1] * cy + inv[1][2] - 0.5f;
+            const long ix = std::lround(sx), iy = std::lround(sy);
+            REQUIRE(std::abs(sx - ix) < 1e-3f);
+            REQUIRE(std::abs(sy - iy) < 1e-3f);
+            if(ix < 0 || iy < 0 || ix >= (long)in.specs.width || iy >= (long)in.specs.height) continue;
+            ++result.covered;
+            for(uint32_t c = 0; c < channels; ++c) result.mismatches += out.at(x, y, c) != in.at(ix, iy, c);
+        }
+    }
+    return result;
+}
+
 }  // namespace
 
 TEST_CASE("ImageManip resets the operations of the previous configuration", "[ImageManip]") {
@@ -266,5 +292,78 @@ TEST_CASE("ImageManip warps NV12 chroma with the plane's own matrix", "[ImageMan
         }
     }
     REQUIRE(checked > 1000);
+    CHECK(wrong == 0);
+}
+
+TEST_CASE("ImageManip flips and rotates by whole pixels", "[ImageManip][Warp]") {
+    const auto type = GENERATE(ImgFrame::Type::RGB888i, ImgFrame::Type::GRAY8);
+    const uint32_t channels = type == ImgFrame::Type::RGB888i ? 3 : 1;
+    const auto input = makePacked(type, 64, 48);
+
+    ImageManipConfig flipH, flipV, rot90, rot180, rot270;
+    flipH.addFlipHorizontal();
+    flipV.addFlipVertical();
+    rot90.addRotateDeg(90);
+    rot180.addRotateDeg(180);
+    rot270.addRotateDeg(270);
+    for(const auto* cfg : {&flipH, &flipV, &rot90, &rot180, &rot270}) {
+        Manip manip({});
+        auto out = run(manip, *cfg, input);
+        REQUIRE(out);
+        const auto check = checkExactMove(manip, *out, input, channels);
+        CHECK(check.covered == 64 * 48);
+        CHECK(check.mismatches == 0);
+    }
+}
+
+TEST_CASE("ImageManip crops before flipping and rotating", "[ImageManip][Warp]") {
+    const auto input = makePacked(ImgFrame::Type::RGB888i, 64, 48);
+    ImageManipConfig cropFlip, cropRotate, cropLetterbox;
+    cropFlip.addCrop(10, 6, 20, 16).addFlipHorizontal();
+    cropRotate.addCrop(10, 6, 20, 16).addRotateDeg(90);
+    cropLetterbox.addCrop(10, 6, 20, 16).setOutputSize(30, 30, ImageManipConfig::ResizeMode::NONE);
+    for(const auto* cfg : {&cropFlip, &cropRotate, &cropLetterbox}) {
+        Manip manip({});
+        auto out = run(manip, *cfg, input);
+        REQUIRE(out);
+        // Only the crop's content is moved: pixels mapping outside the crop window are background
+        const auto inv = dai::matrix::getMatrixInverse(manip.getMatrix());
+        size_t covered = 0, mismatches = 0;
+        for(uint32_t y = 0; y < out->specs.height; ++y) {
+            for(uint32_t x = 0; x < out->specs.width; ++x) {
+                const float cx = x + 0.5f, cy = y + 0.5f;
+                const long sx = std::lround(inv[0][0] * cx + inv[0][1] * cy + inv[0][2] - 0.5f);
+                const long sy = std::lround(inv[1][0] * cx + inv[1][1] * cy + inv[1][2] - 0.5f);
+                if(sx < 10 || sy < 6 || sx >= 30 || sy >= 22) continue;
+                ++covered;
+                for(uint32_t c = 0; c < 3; ++c) mismatches += out->at(x, y, c) != input.at(sx, sy, c);
+            }
+        }
+        CHECK(covered == 20 * 16);
+        CHECK(mismatches == 0);
+    }
+}
+
+TEST_CASE("ImageManip upscales to the content edge without background bleeding in", "[ImageManip][Warp]") {
+    // A linear ramp: bilinear interpolation reproduces it exactly, so any background blended into the edges shows
+    const auto ramp = [](uint32_t x, uint32_t y, uint32_t c) { return static_cast<uint8_t>(40 + 3 * x + 2 * y + 20 * c); };
+    const auto input = makePacked(ImgFrame::Type::RGB888i, 64, 48, ramp);
+    ImageManipConfig cfg;
+    cfg.addCrop(8, 8, 16, 12).addScale(2.0f);
+    cfg.setBackgroundColor(255, 0, 255);
+    Manip manip({});
+    auto out = run(manip, cfg, input);
+    REQUIRE(out);
+    REQUIRE(out->specs.width == 32);
+    REQUIRE(out->specs.height == 24);
+    size_t wrong = 0;
+    for(uint32_t y = 0; y < 24; ++y) {
+        for(uint32_t x = 0; x < 32; ++x) {
+            // Output pixel centre -> source pixel coordinates, clamped to the crop (edge pixels replicate the content edge)
+            const float sx = std::clamp((x + 0.5f) / 2.0f - 0.5f, 0.0f, 15.0f) + 8.0f;
+            const float sy = std::clamp((y + 0.5f) / 2.0f - 0.5f, 0.0f, 11.0f) + 8.0f;
+            for(uint32_t c = 0; c < 3; ++c) wrong += std::abs(out->at(x, y, c) - (40.0f + 3.0f * sx + 2.0f * sy + 20.0f * c)) > 1.0f;
+        }
+    }
     CHECK(wrong == 0);
 }

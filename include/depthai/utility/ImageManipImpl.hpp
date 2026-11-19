@@ -581,6 +581,26 @@ bool colorConvert(const ColorChangeArgs& args, dai::ImgFrame::Type to, const std
 /// Stride aware copy of a frame with identical type and size, but possibly different plane strides / offsets
 void copyFrame(const uint8_t* src, const FrameSpecs& srcSpecs, uint8_t* dst, const FrameSpecs& dstSpecs, dai::ImgFrame::Type type);
 
+/**
+ * Matrix to warp one plane with, from the frame matrix (ImageManip's corner convention: the image spans [0, W] x [0, H]).
+ * @param subsampling Plane subsampling factor (2 for NV12/YUV420p chroma)
+ * @param roiX, roiY Top left corner of the source ROI the warp reads from, in plane pixels
+ * @param pixelCenters Return the matrix in OpenCV's pixel-index convention (pixel centres at integer coordinates), as
+ *        cv::warpAffine/warpPerspective and the GPU warp expect, instead of the corner convention
+ */
+std::array<std::array<float, 3>, 3> getPlaneWarpMatrix(
+    const std::array<std::array<float, 3>, 3>& matrix, int subsampling, size_t roiX, size_t roiY, bool pixelCenters);
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+/**
+ * Warps src into dst with a pixel-index convention matrix (see getPlaneWarpMatrix). A destination pixel whose centre maps
+ * inside the source pixel area ([-0.5, W - 0.5) x [-0.5, H - 0.5)) is interpolated from the source, clamping at its edges,
+ * all other pixels are set to `background`. Plain BORDER_CONSTANT would instead blend the background into the outermost
+ * content pixels (e.g. a background edge around an upscaled crop).
+ */
+void warpWithBackground(const cv::Mat& src, cv::Mat& dst, const std::array<std::array<float, 3>, 3>& matrix, int interpolation, const cv::Scalar& background);
+#endif
+
 std::tuple<float, float, float, float> getOuterRect(const std::vector<std::array<float, 2>>& points);
 dai::RotatedRect getOuterRotatedRect(const std::vector<std::array<float, 2>>& points);
 std::array<std::array<float, 3>, 3> getResizeMat(Resize o, float width, float height, uint32_t outputWidth, uint32_t outputHeight);
