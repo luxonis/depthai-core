@@ -118,3 +118,24 @@ TEST_CASE("ImageManip resets the operations of the previous configuration", "[Im
         CHECK(countMismatches(*same, 64, 48, 3, pattern) == 0);
     }
 }
+
+TEST_CASE("ImageManip rebuilds when only the input stride changes", "[ImageManip]") {
+    const auto type = GENERATE(ImgFrame::Type::RGB888i, ImgFrame::Type::GRAY8);
+    const uint32_t channels = type == ImgFrame::Type::RGB888i ? 3 : 1;
+    const auto inverted = [](uint32_t x, uint32_t y, uint32_t c) { return static_cast<uint8_t>(255 - pattern(x, y, c)); };
+    const auto tight = makePacked(type, 64, 48);
+    // Same size and type, but rows padded to 100 pixels
+    const auto padded = makePacked(type, 64, 48, inverted, 100 * channels);
+
+    Manip manip({});
+    ImageManipConfig crop;
+    crop.addCrop(8, 4, 32, 24);
+    for(const auto* input : {&tight, &padded, &tight}) {
+        const PixelFn source = input == &padded ? PixelFn(inverted) : PixelFn(pattern);
+        auto out = run(manip, crop, *input);
+        REQUIRE(out);
+        REQUIRE(out->specs.width == 32);
+        REQUIRE(out->specs.height == 24);
+        CHECK(countMismatches(*out, 32, 24, channels, [&](uint32_t x, uint32_t y, uint32_t c) { return source(x + 8, y + 4, c); }) == 0);
+    }
+}
