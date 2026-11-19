@@ -453,3 +453,20 @@ TEST_CASE("ImageManip does not cut auto-sized outputs larger than 4000x3000", "[
         CHECK(check.mismatches == 0);
     }
 }
+
+TEST_CASE("ImageManip keeps the full frame when rotating by 90 degrees", "[ImageManip][Size]") {
+    // Sizes where the rotated corners come out of the float math just off integral
+    const auto [width, height] = GENERATE(std::pair{1280u, 800u}, std::pair{640u, 480u}, std::pair{1920u, 1080u}, std::pair{416u, 416u});
+    const auto input = makePacked(ImgFrame::Type::GRAY8, width, height);
+    const auto angle = GENERATE(90.0f, 270.0f);
+    ImageManipConfig rotate;
+    rotate.addRotateDeg(angle);
+    Manip manip({});
+    auto out = run(manip, rotate, input);
+    REQUIRE(out);
+    CHECK(out->specs.width == height);
+    CHECK(out->specs.height == width);
+    const auto check = checkExactMove(manip, *out, input, 1);
+    CHECK(check.covered == (size_t)width * height);
+    CHECK(check.mismatches == 0);
+}
