@@ -4,7 +4,7 @@ set(DEPTHAI_DEVICE_RVC4_MATURITY "snapshot")
 
 # Firmware package that the host library embeds, downloaded from the artifact server. The private CI builds it from
 # device/rvc4. The public build of device/rvc4 is not available yet: its settings are commented out below.
-set(DEPTHAI_DEVICE_RVC4_VERSION "0.0.1+3b99c4d76f1b973782945b781e00d0fac6d2974e")
+set(DEPTHAI_DEVICE_RVC4_VERSION "0.0.1+7c93bc4517ea442299fc2182c9a6a42cebd0bfd5")
 
 # # Firmware package that the host library embeds. Empty (the default): the build builds the firmware from device/rvc4
 # # of this checkout (cmake/DepthaiDeviceRvc4FirmwareBuild.cmake, needs bash and Docker). A version, for example

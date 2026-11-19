@@ -39,6 +39,12 @@ CONNECTION WITH THE FIRMWARE OR THE USE OR OTHER DEALINGS IN THE FIRMWARE.
 
 ---
 
+The public part of the source code of this firmware (directory device/rvc4 of the depthai-core repository)
+is available under the MIT License (see LICENSE in that repository). The license above and the
+third-party terms below apply to this binary firmware package.
+
+---
+
 Third-Party Licenses
 ====================
 
@@ -217,6 +223,32 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+eigen3
+~~~~~~
+
+License: MPL-2.0
+Version: 3.4.0#5
+Source: http://eigen.tuxfamily.org
+
+Eigen is primarily MPL2 licensed. See COPYING.MPL2 and these links:
+  http://www.mozilla.org/MPL/2.0/
+  http://www.mozilla.org/MPL/2.0/FAQ.html
+
+Some files contain third-party code under BSD or LGPL licenses, whence the other
+COPYING.* files here.
+
+All the LGPL code is either LGPL 2.1-only, or LGPL 2.1-or-later.
+For this reason, the COPYING.LGPL file contains the LGPL 2.1 text.
+
+If you want to guarantee that the Eigen code that you are #including is licensed
+under the MPL2 and possibly more permissive licenses (like BSD), #define this
+preprocessor symbol:
+  EIGEN_MPL2_ONLY
+For example, with most compilers, you could add this to your project CXXFLAGS:
+  -DEIGEN_MPL2_ONLY
+This will cause a compilation error to be generated if you #include any code that is
+LGPL licensed.
 
 fmt
 ~~~
@@ -2259,37 +2291,11 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-eigen
-~~~~~
-
-License: MPL-2.0
-Version: 3147391d946bb4b6c68edd901f2add6ac1f31f8c
-Source: https://eigen.googlesource.com/mirror
-
-Eigen is primarily MPL2 licensed. See COPYING.MPL2 and these links:
-  http://www.mozilla.org/MPL/2.0/
-  http://www.mozilla.org/MPL/2.0/FAQ.html
-
-Some files contain third-party code under BSD or LGPL licenses, whence the other
-COPYING.* files here.
-
-All the LGPL code is either LGPL 2.1-only, or LGPL 2.1-or-later.
-For this reason, the COPYING.LGPL file contains the LGPL 2.1 text.
-
-If you want to guarantee that the Eigen code that you are #including is licensed
-under the MPL2 and possibly more permissive licenses (like BSD), #define this
-preprocessor symbol:
-  EIGEN_MPL2_ONLY
-For example, with most compilers, you could add this to your project CXXFLAGS:
-  -DEIGEN_MPL2_ONLY
-This will cause a compilation error to be generated if you #include any code that is
-LGPL licensed.
-
 glog
 ~~~~
 
 License: BSD-3-Clause
-Version: 53d58e4531c7c90f71ddab503d915e027432447a
+Version: 0.8.0
 Source: https://github.com/google/glog.git
 
 Copyright © 2024, Google Inc.
