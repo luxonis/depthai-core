@@ -75,12 +75,15 @@ MarkerType markerTypeFromString(const std::string& name);
  * optional LengthUnit to convert from. The JSON form accepted by fromJson() is:
  *
  *     {
- *       "markerType": "aruco",                  // optional, default "aruco"; "luxonis" for Luxonis Markers
- *       "arucoDictionary": "DICT_4X4_50",       // optional, default "DICT_4X4_50"; allowed with "aruco" only
+ *       "markerType": "aruco",
+ *       "arucoDictionary": "DICT_4X4_50",
  *       "markerDistances": [ {"markers": [37, 43], "distance": 0.84} ],
  *       "socketDistances": [ {"marker": 37, "socket": "CAM_A", "distance": 1.68} ],
  *       "markerSizes": [ {"marker": 37, "size": 0.10} ]
  *     }
+ *
+ * "markerType" is optional and defaults to "aruco"; "luxonis" selects Luxonis Markers. "arucoDictionary" is optional,
+ * defaults to "DICT_4X4_50" and is allowed with "aruco" only. JSON comments are not accepted.
  *
  * The size of an ArUco marker is the length of a side of its black square, the distance between two neighbouring
  * corners; the size of a Luxonis Marker is the outer diameter of its lens ring. Any of the three lists may be empty;
@@ -91,7 +94,8 @@ MarkerType markerTypeFromString(const std::string& name);
  * may omit "DICT_", sockets accept letters or numbers, and marker distances accept "markerA" / "markerB" in place
  * of "markers". Marker type and dictionary enumerator numbers are also accepted.
  * fromJson() rejects unknown keys (including "lengthUnit"), malformed values, conflicting aliases, and everything
- * validate() rejects. Use the form above for new configuration files.
+ * validate() rejects. fromJsonString() and fromFile() also reject a key given twice in one object and anything that
+ * follows the document. Use the form above for new configuration files.
  */
 struct WorldConstraints {
     /// Distance between the reference points of two markers, in meters.

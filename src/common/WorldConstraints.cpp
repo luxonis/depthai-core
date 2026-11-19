@@ -8,6 +8,7 @@
 #include <set>
 #include <sstream>
 #include <stdexcept>
+#include <utility>
 
 #include "depthai/common/DepthUnit.hpp"
 #include "utility/WorldConstraintsUtils.hpp"
@@ -189,6 +190,24 @@ float lengthFromJson(const nlohmann::json& value, const std::string& what) {
     return static_cast<float>(length);
 }
 
+/// Parses text holding exactly one JSON document. A key given twice in the same object is an error: nlohmann would keep
+/// the last value and drop the other one silently.
+template <typename Input>
+nlohmann::json parseDocument(Input&& input) {
+    std::vector<std::set<std::string>> keysOfOpenObjects;
+    const nlohmann::json::parser_callback_t rejectRepeatedKeys = [&keysOfOpenObjects](int, nlohmann::json::parse_event_t event, nlohmann::json& parsed) {
+        if(event == nlohmann::json::parse_event_t::object_start) {
+            keysOfOpenObjects.emplace_back();
+        } else if(event == nlohmann::json::parse_event_t::object_end) {
+            keysOfOpenObjects.pop_back();
+        } else if(event == nlohmann::json::parse_event_t::key && !keysOfOpenObjects.back().insert(parsed.get<std::string>()).second) {
+            throw std::invalid_argument("WorldConstraints: the key " + parsed.dump() + " is given twice in the same object");
+        }
+        return true;
+    };
+    return nlohmann::json::parse(std::forward<Input>(input), rejectRepeatedKeys);
+}
+
 }  // namespace
 
 std::string toString(ArucoDictionary dictionary) {
@@ -308,7 +327,7 @@ WorldConstraints WorldConstraints::parseJson(const nlohmann::json& json) {
 
 WorldConstraints WorldConstraints::fromJsonString(const std::string& json) {
     try {
-        return fromJson(nlohmann::json::parse(json));
+        return fromJson(parseDocument(json));
     } catch(const nlohmann::json::exception& ex) {
         throw std::invalid_argument(std::string("WorldConstraints: malformed JSON: ") + ex.what());
     }
@@ -325,7 +344,7 @@ WorldConstraints WorldConstraints::fromFile(const std::filesystem::path& path) {
     }
     nlohmann::json json;
     try {
-        stream >> json;
+        json = parseDocument(stream);
     } catch(const nlohmann::json::exception& ex) {
         throw std::invalid_argument("WorldConstraints: malformed JSON in " + path.string() + ": " + ex.what());
     }

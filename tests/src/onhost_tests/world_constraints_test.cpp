@@ -4,6 +4,7 @@
 #include <depthai/depthai.hpp>
 #include <deque>
 #include <filesystem>
+#include <fstream>
 #include <limits>
 #include <map>
 #include <memory>
@@ -250,6 +251,18 @@ TEST_CASE("WorldConstraints JSON is strict", "[WorldConstraints]") {
     // A directory is not a constraints file.
     REQUIRE_THROWS_AS(WorldConstraints::fromFile(std::filesystem::temp_directory_path()), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromFile("/nonexistent/world_constraints.json"), std::invalid_argument);
+    // A key given twice in one object would silently lose one of its values; separate entries may repeat keys.
+    REQUIRE(rejected(R"({"markerSizes": [{"marker": 1, "size": "large", "size": 0.1}]})", "\"size\" is given twice"));
+    REQUIRE(rejected(R"({"markerSizes": [], "markerSizes": [{"marker": 1, "size": 0.1}]})", "\"markerSizes\" is given twice"));
+    REQUIRE(WorldConstraints::fromJsonString(R"({"markerSizes": [{"marker": 1, "size": 0.1}, {"marker": 2, "size": 0.1}]})").markerSizes.size() == 2);
+    // A file holds one document: whatever follows it is an error, trailing whitespace excepted.
+    const auto path = std::filesystem::temp_directory_path() / "depthai_world_constraints_trailing_test.json";
+    const auto writeFile = [&path](const std::string& text) { std::ofstream(path) << text; };
+    writeFile(std::string(R"({"markerSizes": [{"marker": 1, "size": 0.1}]})") + "\n\n");
+    REQUIRE(WorldConstraints::fromFile(path).markerSizes.size() == 1);
+    writeFile(R"({"markerSizes": [{"marker": 1, "size": 0.1}]} {"markerSises": []})");
+    REQUIRE_THROWS_AS(WorldConstraints::fromFile(path), std::invalid_argument);
+    std::filesystem::remove(path);
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -296,6 +309,23 @@ TEST_CASE("DynamicCalibration compares world constraints with the reconstructed 
         INFO(residual.what << ": configured " << residual.configured << ", measured " << *residual.measured);
         REQUIRE(residual.fits());
         REQUIRE(*residual.measured == Catch::Approx(residual.configured).epsilon(0.01));
+    }
+    {
+        // An even number of frame sets: the median is the mean of the two middle values, 0.4 m and 0.6 m here.
+        std::deque<dai::MarkerObservationSet> twoSets(2);
+        const std::array<double, 2> marker2X = {0.15, 0.35};
+        for(size_t idx = 0; idx < twoSets.size(); ++idx) {
+            for(const auto socket : {Socket::CAM_B, Socket::CAM_C}) {
+                twoSets[idx].centers[1][socket] = project(socket, marker1);
+                twoSets[idx].centers[2][socket] = project(socket, {marker2X[idx], 0.0, 2.0});
+            }
+        }
+        dai::WorldConstraints distanceOnly;
+        distanceOnly.markerDistances = {{1, 2, 0.5f}};
+        const auto evenResiduals = validation::worldConstraintResiduals(distanceOnly, twoSets, calibration, Socket::CAM_B, cameras);
+        REQUIRE(evenResiduals.size() == 1);
+        REQUIRE(evenResiduals.front().measured.has_value());
+        REQUIRE(*evenResiduals.front().measured == Catch::Approx(0.5).epsilon(0.01));
     }
     auto factory = calibration;
     factory.updateCameraExtrinsics(Socket::CAM_C, Socket::CAM_A, identity, {200.f, 0.f, 0.f});

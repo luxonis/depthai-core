@@ -125,6 +125,10 @@ std::optional<double> median(std::vector<double> values) {
     }
     const auto middle = values.begin() + static_cast<std::ptrdiff_t>(values.size() / 2);
     std::nth_element(values.begin(), middle, values.end());
+    if(values.size() % 2 == 0) {
+        // nth_element leaves the lower half in front of middle; its largest value is the other middle sample.
+        return (*std::max_element(values.begin(), middle) + *middle) / 2.0;
+    }
     return *middle;
 }
 

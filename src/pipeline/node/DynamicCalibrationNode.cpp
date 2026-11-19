@@ -333,7 +333,7 @@ void DynamicCalibration::trackMissingMarkers(bool accepted) {
     const auto now = std::chrono::steady_clock::now();
     if(accepted) {
         if(markersMissingReportedAt) {
-            logger->info("Every configured marker is seen by two cameras again, image sets are loaded");
+            logger->info("Every configured marker is seen by two cameras again");
         }
         markersMissingSince.reset();
         markersMissingReportedAt.reset();
@@ -1046,6 +1046,10 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
             }
             for(const auto& residual : detail::worldConstraintResiduals(
                     *properties.worldConstraints, markerObservations, newCalibrationHandler, connectedSensors.front().socket, cameras)) {
+                logger->debug("Marker constraints: {} configured {:.4f} m, reconstructed {}",
+                              residual.what,
+                              residual.configured,
+                              residual.measured ? fmt::format("{:.4f} m", *residual.measured) : std::string("not available"));
                 if(residual.fits()) continue;
                 if(!mismatch.empty()) mismatch += "; ";
                 mismatch +=
@@ -1058,7 +1062,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
             mismatch = std::string("constraint validation failed: ") + ex.what();
         }
 #else
-        mismatch = "measurement validation requires OpenCV support";
+        // The measurements cannot be reconstructed without OpenCV; the epipolar error below is the only check left.
+        logger->debug("Marker constraints: built without OpenCV support, the measurements are not compared with the calibrated result");
 #endif
         if(mismatch.empty() && detail::epipolarErrorContradictsConstraints(qualityData.sampsonErrorCurrent, qualityData.sampsonErrorNew)) {
             mismatch = fmt::format(
@@ -1543,6 +1548,9 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
             pimplDCL->telemetryAggregateState->stopCalibrationCommands += 1;
         }
         startCalibrationCommand.reset();
+        // The time until the next start is not time spent waiting for markers.
+        markersMissingSince.reset();
+        markersMissingReportedAt.reset();
         return ErrorCode::OK;
     }
     // Reset/remove accumulated data
