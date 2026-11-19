@@ -403,3 +403,33 @@ TEST_CASE("ImageManip YUV420p output can be read back", "[ImageManip][YUV420p]")
     }
     CHECK(wrong == 0);
 }
+
+TEST_CASE("ImageManip stores source crops in source coordinates", "[ImageManip][Transformation]") {
+    // The input frame is a 2x downscale of a 200x200 source (e.g. an ISP scale)
+    dai::ImgTransformation inputTransformation(200, 200);
+    inputTransformation.addScale(0.5f, 0.5f);
+    inputTransformation.setSize(100, 100);
+
+    const auto input = makePacked(ImgFrame::Type::GRAY8, 100, 100);
+    ImageManipConfig cfg;
+    cfg.addCrop(10, 10, 20, 20);
+    Manip manip({});
+    REQUIRE(run(manip, cfg, input));
+
+    // As the ImageManip node does it
+    dai::ImgTransformation outputTransformation = inputTransformation;
+    outputTransformation.addSrcCrops(manip.getSrcCrops(inputTransformation.getMatrixInv()));
+    outputTransformation.addTransformation(manip.getMatrix());
+    outputTransformation.setSize(20, 20);
+
+    const auto crops = outputTransformation.getSrcCrops();
+    REQUIRE(!crops.empty());
+    CHECK(crops.back().center.x == Catch::Approx(40.0f));
+    CHECK(crops.back().center.y == Catch::Approx(40.0f));
+    CHECK(crops.back().size.width == Catch::Approx(40.0f));
+    CHECK(crops.back().size.height == Catch::Approx(40.0f));
+    // The whole output is cropped content
+    for(size_t y : {1, 10, 18}) {
+        for(size_t x : {1, 10, 18}) CHECK(outputTransformation.getDstMaskPt(x, y));
+    }
+}

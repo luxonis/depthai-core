@@ -72,7 +72,8 @@ void ImageManip::run() {
             if(manip.undistortEnabled()) {
                 dstFrame.transformation.setDistortionCoefficients({});
             }
-            auto srcCrops = manip.getSrcCrops();
+            // ImgTransformation keeps source crops in source (sensor) coordinates, ImageManip computes them in input frame coordinates
+            auto srcCrops = manip.getSrcCrops(srcFrame.transformation.getMatrixInv());
             dstFrame.transformation.addSrcCrops(srcCrops);
             dstFrame.transformation.addTransformation(manip.getMatrix());
             dstFrame.transformation.setSize(dstSpecs.width, dstSpecs.height);
