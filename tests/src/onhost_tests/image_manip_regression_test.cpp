@@ -367,3 +367,39 @@ TEST_CASE("ImageManip upscales to the content edge without background bleeding i
     }
     CHECK(wrong == 0);
 }
+
+TEST_CASE("ImageManip YUV420p output can be read back", "[ImageManip][YUV420p]") {
+    // Odd chroma height (35 rows) and a width that needs stride padding
+    constexpr uint32_t width = 100, height = 70;
+    const auto smooth = [](uint32_t x, uint32_t y, uint32_t c) { return static_cast<uint8_t>(20 + x + y + 30 * c); };  // <= 248
+    const auto input = makePacked(ImgFrame::Type::RGB888i, width, height, smooth);
+    ImageManipConfig cfg;
+    cfg.setFrameType(ImgFrame::Type::YUV420p);
+    auto out = run(cfg, input);
+    REQUIRE(out);
+    REQUIRE(out->type == ImgFrame::Type::YUV420p);
+
+    dai::ImgFrame frame;
+    frame.setData(std::vector<uint8_t>(out->bytes(), out->bytes() + out->data->getOffsetSize()));
+    frame.setType(ImgFrame::Type::YUV420p).setWidth(width).setHeight(height).setStride(out->specs.p1Stride);
+    frame.fb.p1Offset = out->specs.p1Offset;
+    frame.fb.p2Offset = out->specs.p2Offset;
+    frame.fb.p3Offset = out->specs.p3Offset;
+
+    // ImgFrame carries a single stride: the chroma stride is derived from the plane offsets
+    const auto readSpecs = getSrcFrameSpecs(frame.fb);
+    CHECK(readSpecs.p2Stride == out->specs.p2Stride);
+    CHECK(readSpecs.p3Stride == out->specs.p3Stride);
+    CHECK(readSpecs.p3Offset - readSpecs.p2Offset == out->specs.p2Stride * (height / 2));
+
+    const cv::Mat bgr = frame.getCvFrame();
+    REQUIRE(bgr.rows == (int)height);
+    REQUIRE(bgr.cols == (int)width);
+    size_t wrong = 0;
+    for(uint32_t y = 0; y < height; ++y) {
+        for(uint32_t x = 0; x < width; ++x) {
+            for(uint32_t c = 0; c < 3; ++c) wrong += std::abs(bgr.at<cv::Vec3b>(y, x)[2 - c] - smooth(x, y, c)) > 6;
+        }
+    }
+    CHECK(wrong == 0);
+}

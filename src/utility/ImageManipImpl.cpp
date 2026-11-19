@@ -340,11 +340,13 @@ dai::impl::FrameSpecs dai::impl::getDstFrameSpecs(size_t width, size_t height, d
             specs.p3Stride = 0;
             break;
         case dai::ImgFrame::Type::YUV420p:
+            // ImgFrame carries a single stride: readers (getSrcFrameSpecs, ImgFrame::getCvFrame) derive the chroma stride as
+            // (p3Offset - p2Offset) / (height / 2), so the V plane must directly follow the U plane.
             specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
-            specs.p2Stride = ALIGN_UP(specs.width / 2, DEPTHAI_STRIDE_ALIGNMENT);
-            specs.p3Stride = ALIGN_UP(specs.width / 2, DEPTHAI_STRIDE_ALIGNMENT);
+            specs.p2Stride = specs.p1Stride / 2;
+            specs.p3Stride = specs.p2Stride;
             specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * ALIGN_UP(specs.height, DEPTHAI_HEIGHT_ALIGNMENT), DEPTHAI_PLANE_ALIGNMENT);
-            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p2Stride * ALIGN_UP(specs.height / 2, DEPTHAI_HEIGHT_ALIGNMENT / 2), DEPTHAI_PLANE_ALIGNMENT);
+            specs.p3Offset = specs.p2Offset + specs.p2Stride * (specs.height / 2);
             break;
         case dai::ImgFrame::Type::RAW8:
         case dai::ImgFrame::Type::GRAY8:

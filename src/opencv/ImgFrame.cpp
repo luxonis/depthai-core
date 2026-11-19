@@ -149,7 +149,8 @@ cv::Mat ImgFrame::getCvFrame(cv::MatAllocator* allocator) {
         channels.push_back(cv::Mat(s, cvType, (uint8_t*)getData().data() + offset2, getStride()));
         cv::merge(channels, output);
     };
-    cv::Mat frame = getFrame();
+    // YUV420p is gathered plane by plane below (its planes need not be laid out as one dense I420 image)
+    cv::Mat frame = getType() == Type::YUV420p ? cv::Mat() : getFrame();
     cv::Mat output;
     if(allocator != nullptr) {
         output.allocator = allocator;
@@ -226,9 +227,33 @@ cv::Mat ImgFrame::getCvFrame(cv::MatAllocator* allocator) {
             mergePlanarChannels(CV_16FC1, output, offset0, offset1, offset2);  // BGR
         } break;
 
-        case Type::YUV420p:
-            cv::cvtColor(frame, output, cv::ColorConversionCodes::COLOR_YUV2BGR_IYUV);
-            break;
+        case Type::YUV420p: {
+            // Planes may be padded (luma stride > width, aligned plane offsets): gather them into a dense I420 image first.
+            // Plane layout follows impl::getSrcFrameSpecs: unset offsets mean tightly packed planes, the chroma stride is
+            // (p3Offset - p2Offset) / (height / 2).
+            const int w = static_cast<int>(getWidth());
+            const int h = static_cast<int>(getHeight());
+            const size_t yStride = getStride() >= getWidth() ? getStride() : getWidth();
+            const size_t p1 = fb.p1Offset;
+            const size_t p2 = fb.p2Offset > 0 ? fb.p2Offset : p1 + yStride * h;
+            const size_t p3 = fb.p3Offset > p2 ? fb.p3Offset : p2 + (size_t)(w / 2) * (h / 2);
+            const size_t cStride = h >= 2 ? (p3 - p2) / (h / 2) : (size_t)w / 2;
+            if(cStride < (size_t)w / 2 || p3 + cStride * (h / 2 - 1) + w / 2 > getData().size()) {
+                throw std::runtime_error("ImgFrame: YUV420p plane layout does not fit the frame data");
+            }
+            uint8_t* data = getData().data();
+            cv::Mat i420(h * 3 / 2, w, CV_8UC1);
+            cv::Mat(h, w, CV_8UC1, data + p1, yStride).copyTo(i420.rowRange(0, h));
+            uint8_t* chroma = i420.ptr<uint8_t>(h);
+            for(int plane = 0; plane < 2; ++plane) {
+                const uint8_t* src = data + (plane == 0 ? p2 : p3);
+                for(int row = 0; row < h / 2; ++row) {
+                    std::copy(src + row * cStride, src + row * cStride + w / 2, chroma);
+                    chroma += w / 2;
+                }
+            }
+            cv::cvtColor(i420, output, cv::ColorConversionCodes::COLOR_YUV2BGR_IYUV);
+        } break;
 
         case Type::YUV422i:
             cv::cvtColor(frame, output, cv::ColorConversionCodes::COLOR_YUV2BGR_YUYV);
