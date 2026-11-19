@@ -1838,7 +1838,7 @@ void PipelineImpl::start() {
                 role = d->getExternalFrameSyncRole();
             }
 
-            if(role == dai::ExternalFrameSyncRole::MASTER) {
+            if(role == dai::ExternalFrameSyncRole::MASTER || role == dai::ExternalFrameSyncRole::STANDALONE) {
                 masterDevices.push_back(d);
             } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
                 slaveDevices.push_back(d);

@@ -440,3 +440,8 @@ def test_camera_control_parameters():
     control.setAutoExposureRegion(dai.Rect(0.5, 0.5, 0.25, 0.25), binned)
     assert (control.aeRegion.x, control.aeRegion.y, control.aeRegion.width, control.aeRegion.height) == (4000, 3000, 2000, 1500)
     control.setStrobeExternal(3, 1)
+
+
+def test_external_frame_sync_role_standalone():
+    assert dai.ExternalFrameSyncRole.STANDALONE.value == 2
+    assert dai.ExternalFrameSyncRole(2).name == "STANDALONE"
