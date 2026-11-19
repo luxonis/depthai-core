@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/DynamicCalibrationNode.hpp"
 
 #include "utility/ErrorMacros.hpp"
+#include "utility/ImgFrameView.hpp"
 #include "utility/Logging.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -790,7 +791,11 @@ dcl::ImageData DclUtils::cvMatToImageData(const cv::Mat& mat) {
         default:
             throw std::runtime_error("Unsupported cv::Mat type: " + std::to_string(type));
     }
-    img.data.assign(mat.data, mat.data + mat.total() * mat.elemSize());
+    const size_t rowBytes = static_cast<size_t>(mat.cols) * mat.elemSize();
+    img.data.resize(static_cast<size_t>(mat.rows) * rowBytes);
+    for(int row = 0; row < mat.rows; ++row) {
+        std::memcpy(img.data.data() + static_cast<size_t>(row) * rowBytes, mat.ptr(row), rowBytes);
+    }
 
     return img;
 }
@@ -1151,7 +1156,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
             timestampInitialized = true;
         }
 
-        cv::Mat cvFrame = frame->getCvFrame();
+        const cv::Mat cvFrame = utility::getCvFrameView(*frame);
         images.emplace_back(sensor.sensorDcl, DclUtils::cvMatToImageData(cvFrame));
     }
 

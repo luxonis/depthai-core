@@ -584,6 +584,8 @@ dai_set_test_labels(message_queue_test onhost ci)
 
 # StreamMessageParser tests
 dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_test.cpp)
+# The allocator test uses XLink's private headers, including platform compatibility headers.
+target_include_directories(stream_message_parser_test PRIVATE "$<TARGET_PROPERTY:XLink,INCLUDE_DIRECTORIES>")
 dai_set_test_labels(stream_message_parser_test onhost ci)
 
 # Datatype hierarchy completeness
@@ -669,6 +671,11 @@ dai_add_test(camera_control_test src/onhost_tests/pipeline/datatype/camera_contr
 dai_set_test_labels(camera_control_test onhost ci)
 dai_add_test(camera_control_device_test src/ondevice_tests/camera_control_device_test.cpp)
 dai_set_test_labels(camera_control_device_test ondevice rvc2_all rvc4 ci)
+
+if(DEPTHAI_HAS_APRIL_TAG)
+    dai_add_test(apriltag_node_test src/onhost_tests/pipeline/node/apriltag_node_test.cpp)
+    dai_set_test_labels(apriltag_node_test onhost ci)
+endif()
 
 # PointCloudData / PointCloudConfig / PointCloudProperties datatype tests
 dai_add_test(pointclouddata_test src/onhost_tests/pipeline/datatype/pointclouddata_test.cpp)
