@@ -536,6 +536,11 @@ class ImageManipOperations {
         return outputFrameType;
     }
     std::vector<RotatedRect> getSrcCrops() const;
+    /**
+     * Source crops mapped into another coordinate system, e.g. the sensor-source coordinates that ImgTransformation::srcCrops uses.
+     * @param localToTarget Matrix mapping this node's input-frame coordinates into the target coordinates
+     */
+    std::vector<RotatedRect> getSrcCrops(const std::array<std::array<float, 3>, 3>& localToTarget) const;
     std::array<std::array<float, 3>, 3> getMatrix() const;
     bool undistortEnabled() const {
         return warpEngine.enableUndistort;
@@ -1125,6 +1130,19 @@ std::vector<RotatedRect> ImageManipOperations<ImageManipData, ColorChangeBackend
     for(const auto& corners : srcCorners) {
         auto rect = getOuterRotatedRect({corners[0], corners[1], corners[2], corners[3]});
         crops.push_back(rect);
+    }
+    return crops;
+}
+
+template <typename ImageManipData, typename ColorChangeBackend, typename WarpBackend>
+std::vector<RotatedRect> ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::getSrcCrops(
+    const std::array<std::array<float, 3>, 3>& localToTarget) const {
+    std::vector<RotatedRect> crops;
+    for(const auto& corners : srcCorners) {
+        crops.push_back(getOuterRotatedRect({matvecmul(localToTarget, corners[0]),
+                                             matvecmul(localToTarget, corners[1]),
+                                             matvecmul(localToTarget, corners[2]),
+                                             matvecmul(localToTarget, corners[3])}));
     }
     return crops;
 }
