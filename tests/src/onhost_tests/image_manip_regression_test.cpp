@@ -470,3 +470,30 @@ TEST_CASE("ImageManip keeps the full frame when rotating by 90 degrees", "[Image
     CHECK(check.covered == (size_t)width * height);
     CHECK(check.mismatches == 0);
 }
+
+TEST_CASE("ImageManip centres perspective and sheared content on its bounding box", "[ImageManip][Size]") {
+    const auto [width, height] = GENERATE(std::pair{640u, 480u}, std::pair{1280u, 800u}, std::pair{1920u, 1080u});
+    const float w = static_cast<float>(width), h = static_cast<float>(height);
+    const auto input = makePacked(ImgFrame::Type::GRAY8, width, height);
+    ImageManipConfig perspective, shear;
+    perspective.addTransformPerspective({0.95f, 0.04f, 0.02f * w, -0.03f, 0.97f, 0.01f * h, 0.08f / w, 0.05f / h, 1.0f});
+    perspective.setOutputSize(width, height, ImageManipConfig::ResizeMode::NONE);
+    shear.addTransformAffine({1.0f, 0.3f, 0.0f, 1.0f});
+    shear.setOutputSize(width, height, ImageManipConfig::ResizeMode::NONE);
+    for(const auto* cfg : {&perspective, &shear}) {
+        Manip manip({});
+        REQUIRE(manip.build(cfg->base, cfg->outputFrameType, input.specs, input.type).getOutputWidth() == width);
+        // The transformed image corners must be centred in the output
+        const auto m = manip.getMatrix();
+        float minX = 1e9f, maxX = -1e9f, minY = 1e9f, maxY = -1e9f;
+        for(const auto& corner : std::array<std::array<float, 2>, 4>{{{0, 0}, {w, 0}, {w, h}, {0, h}}}) {
+            const auto p = matvecmul(m, corner);
+            minX = std::min(minX, p[0]);
+            maxX = std::max(maxX, p[0]);
+            minY = std::min(minY, p[1]);
+            maxY = std::max(maxY, p[1]);
+        }
+        CHECK(minX + maxX == Catch::Approx(w).margin(0.01));
+        CHECK(minY + maxY == Catch::Approx(h).margin(0.01));
+    }
+}

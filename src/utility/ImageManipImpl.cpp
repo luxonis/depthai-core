@@ -831,12 +831,11 @@ void dai::impl::getTransformImpl(const ManipOp& op,
                    }},
         op.op);
     if(!imageCornersSet) {
-        auto outerRectPoints =
-            getOuterRotatedRect(
-                {matvecmul(mat, imageCorners[0]), matvecmul(mat, imageCorners[1]), matvecmul(mat, imageCorners[2]), matvecmul(mat, imageCorners[3])})
-                .getPoints();
+        // Track the content's actual corners. Replacing them by the minimum-area rectangle around them (as before) changes
+        // nothing for rectangles, but for perspective or shear results that rectangle is tilted and ambiguous: centring and
+        // auto-sizing then used its larger bounding box instead of the content's.
         for(auto i = 0; i < 4; ++i) {
-            imageCorners[i] = {outerRectPoints[i].x, outerRectPoints[i].y};
+            imageCorners[i] = matvecmul(mat, imageCorners[i]);
         }
     }
     transform = matmul(mat, transform);
