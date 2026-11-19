@@ -49,6 +49,13 @@ utility_scripts/        Developer helpers: build, deploy, debug, core dumps, lic
 
 ## Building
 
+> [!NOTE]
+> A public build of the firmware is not available yet. Luxonis builds the firmware packages from this directory in
+> its private CI, and depthai-core downloads the package of `DEPTHAI_DEVICE_RVC4_VERSION`
+> (`cmake/Depthai/DepthaiDeviceRVC4Config.cmake`). The build steps below need the sources of the vendor module
+> (`DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR`, Luxonis licensees). The prebuilt vendor archive and the public build images
+> come later.
+
 The firmware is cross-compiled in a Docker image on an x86-64 host. These images can build it:
 
 * the public build images `ghcr.io/luxonis/depthai-device-sdk:os-<OS version>-<sysroot>` (for the release firmware)
@@ -196,11 +203,17 @@ code completion and one-click debugging, see [vscode_development](vscode_develop
 
 ## Running a custom build with depthai-core
 
+A host build of `depthai-core` downloads and embeds the package of `DEPTHAI_DEVICE_RVC4_VERSION`
+(`cmake/Depthai/DepthaiDeviceRVC4Config.cmake`).
+
+<!-- The public build of device/rvc4 is not available yet (commented out):
+
 A host build of `depthai-core` builds the firmware from this directory and embeds it, when
 `cmake/Depthai/DepthaiDeviceRVC4Config.cmake` sets no `DEPTHAI_DEVICE_RVC4_VERSION` (the default). Each build of the
 library runs `create_deployment_artifacts.sh` for the target that fits the host build (`rvc4`, or `rvc4-tsan` /
 `rvc4-asan-ubsan` for a sanitizer build), and embeds the package as version `<version>+local.<commit>`. With
 `-D DEPTHAI_DEVICE_RVC4_VERSION=<version>` the host build downloads the package of that version instead.
+-->
 
 To run another package without a new host build, point `depthai-core` at it at run time:
 

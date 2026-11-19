@@ -878,7 +878,7 @@ include(DepthaiDownloader)                  # Depthai device binary downloader
 include(DepthaiBootloaderDownloader)        # Depthai bootloader binary downloader
 include(DepthaiDeviceKbDownloader)          # depthai-device-kb fwp downloader
 include(DepthaiDeviceRvc4LocalFwp)          # local depthai-device-rvc4 fwp in place of the pinned one
-include(DepthaiDeviceRvc4FirmwareBuild)     # depthai-device-rvc4 fwp built from device/rvc4 when no version is set
+# include(DepthaiDeviceRvc4FirmwareBuild)     # depthai-device-rvc4 fwp built from device/rvc4 when no version is set
 include(DepthaiVisualizerDownloader)        # depthai-visualizer downloader
 include(DepthaiVisualizerLicense)           # depthai-visualizer license extraction and verification
 
@@ -954,7 +954,7 @@ if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
     list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_KB_RESOURCE_LIST})
 endif()
 
-set(DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET "")
+# set(DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET "")
 if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
     if(DEPTHAI_DEVICE_RVC4_FWP_PATH)
         # A local firmware package (for example a build of device/rvc4) in place of the pinned package
@@ -964,15 +964,16 @@ if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
             DEPTHAI_DEVICE_RVC4_VERSION                       # In: pinned version, out: version of the local package
             DEPTHAI_DEVICE_RVC4_RESOURCE_LIST                 # List of output resources
         )
-    elseif("${DEPTHAI_DEVICE_RVC4_VERSION}" STREQUAL "")
-        # No version: build the firmware from device/rvc4 of this checkout at each build
-        DepthaiDeviceRvc4FirmwareBuild(
-            "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
-            DEPTHAI_DEVICE_RVC4_VERSION                       # Out: version of the built package
-            DEPTHAI_DEVICE_RVC4_RESOURCE_LIST                 # List of output resources
-            DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET              # Target that builds the package
-        )
-        add_dependencies(${TARGET_CORE_NAME} "${DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET}")
+    # The public build of the RVC4 firmware from device/rvc4 is not available yet (commented out)
+    # elseif("${DEPTHAI_DEVICE_RVC4_VERSION}" STREQUAL "")
+    #     # No version: build the firmware from device/rvc4 of this checkout at each build
+    #     DepthaiDeviceRvc4FirmwareBuild(
+    #         "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
+    #         DEPTHAI_DEVICE_RVC4_VERSION                       # Out: version of the built package
+    #         DEPTHAI_DEVICE_RVC4_RESOURCE_LIST                 # List of output resources
+    #         DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET              # Target that builds the package
+    #     )
+    #     add_dependencies(${TARGET_CORE_NAME} "${DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET}")
     else()
         if(DEPTHAI_SANITIZE AND SANITIZE_THREAD)
             string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-tsan")
@@ -1026,9 +1027,9 @@ if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
 
     # Link to resource library
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE "${DEPTHAI_RESOURCE_LIBRARY_NAME}")
-    if(DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET)
-        add_dependencies("${DEPTHAI_RESOURCE_LIBRARY_NAME}" "${DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET}")
-    endif()
+    # if(DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET)
+    #     add_dependencies("${DEPTHAI_RESOURCE_LIBRARY_NAME}" "${DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET}")
+    # endif()
 
     # Bootloader-only resource library for depthai::device-manager, so it does not embed device firmware it cannot use
     if(DEPTHAI_BUILD_DEVICE_MANAGER)

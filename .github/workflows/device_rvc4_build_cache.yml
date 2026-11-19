@@ -8,12 +8,13 @@ name: RVC4 firmware build cache
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - develop
-    tags:
-      - 'v*'
+  # The public build of the RVC4 firmware is not available yet: no automatic runs (commented out)
+  # push:
+  #   branches:
+  #     - main
+  #     - develop
+  #   tags:
+  #     - 'v*'
 
 # A newer commit of a branch replaces the run of an older one: a build of a user takes the cache of the nearest
 # parent commit that has one.

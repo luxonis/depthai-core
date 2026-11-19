@@ -6,19 +6,20 @@ name: RVC4 device SDK image
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'device/rvc4/docker/**'
-      - 'cmake/Depthai/DepthaiDeviceRVC4Config.cmake'
-      - '.github/workflows/containers_device_rvc4_sdk.yml'
-  push:
-    branches:
-      - main
-      - develop
-    paths:
-      - 'device/rvc4/docker/**'
-      - 'cmake/Depthai/DepthaiDeviceRVC4Config.cmake'
-      - '.github/workflows/containers_device_rvc4_sdk.yml'
+  # The public build of the RVC4 firmware is not available yet: no automatic runs (commented out)
+  # pull_request:
+  #   paths:
+  #     - 'device/rvc4/docker/**'
+  #     - 'cmake/Depthai/DepthaiDeviceRVC4Config.cmake'
+  #     - '.github/workflows/containers_device_rvc4_sdk.yml'
+  # push:
+  #   branches:
+  #     - main
+  #     - develop
+  #   paths:
+  #     - 'device/rvc4/docker/**'
+  #     - 'cmake/Depthai/DepthaiDeviceRVC4Config.cmake'
+  #     - '.github/workflows/containers_device_rvc4_sdk.yml'
 
 jobs:
   sdk-image:
