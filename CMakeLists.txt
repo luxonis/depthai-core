@@ -74,14 +74,13 @@ else()
     message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
-# Create depthai project
-project(depthai VERSION "3.12.1" LANGUAGES CXX C)
-
-# Apple's linker rescans archives, so repeated transitive libraries are unnecessary.
-if(APPLE AND POLICY CMP0156)
+# Set before project(): vcpkg's add_library wrapper captures the active policies.
+if(CMAKE_HOST_APPLE AND POLICY CMP0156)
     cmake_policy(SET CMP0156 NEW)
 endif()
 
+# Create depthai project
+project(depthai VERSION "3.12.1" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 

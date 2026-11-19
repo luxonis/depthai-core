@@ -397,6 +397,8 @@ jobs:
           python -m pip install delocate
       - name: Building wheels
         shell: bash
+        env:
+          CMAKE_BUILD_ARGS: --verbose
         run: |
           cd bindings/python
           python -m pip wheel . -w ./wheelhouse/ --no-deps --verbose 2>&1 | tee "$RUNNER_TEMP/macos-wheel-build.log"
