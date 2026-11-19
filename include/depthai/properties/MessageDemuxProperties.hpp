@@ -17,6 +17,8 @@ struct MessageDemuxProperties : PropertiesSerializable<Properties, MessageDemuxP
     ~MessageDemuxProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(MessageDemuxProperties, processor);
+DEPTHAI_SERIALIZE_EXT_DECL(MessageDemuxProperties, processor);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::MessageDemuxProperties>;

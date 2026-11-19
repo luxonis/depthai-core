@@ -23,6 +23,8 @@ struct VppProperties : PropertiesSerializable<Properties, VppProperties> {
     virtual ~VppProperties();
 };
 
-DEPTHAI_SERIALIZE_EXT(VppProperties, initialConfig, numFramesPool);
+DEPTHAI_SERIALIZE_EXT_DECL(VppProperties, initialConfig, numFramesPool);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::VppProperties>;

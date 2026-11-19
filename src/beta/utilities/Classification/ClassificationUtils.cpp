@@ -315,7 +315,7 @@ std::vector<float> getFlattenedTensorData(const dai::NNData& nnData, const std::
     return getShapedTensorData(nnData, tensorName).values;
 }
 
-ShapedTensorData getShapedTensorData(const dai::NNData& nnData, const std::string& tensorName) {
+ShapedTensorData getShapedTensorData(const dai::NNData& nnData, const std::string& tensorName, std::optional<TensorInfo::StorageOrder> order) {
     const auto it = std::find_if(nnData.tensors.begin(), nnData.tensors.end(), [&tensorName](const TensorInfo& info) { return info.name == tensorName; });
     DAI_CHECK_V(it != nnData.tensors.end(), "Tensor '{}' does not exist in NNData.", tensorName);
 
@@ -332,42 +332,83 @@ ShapedTensorData getShapedTensorData(const dai::NNData& nnData, const std::strin
                 requiredBytes,
                 data.size());
 
+    std::vector<std::size_t> dims(it->dims.begin(), it->dims.end());
+    std::vector<std::size_t> sourceStrides;
+    if(order.has_value() && *order != it->order) {
+        const auto axes = [](TensorInfo::StorageOrder storageOrder) {
+            std::vector<size_t> result;
+            for(size_t encoded = static_cast<size_t>(storageOrder); encoded != 0; encoded /= 16) result.push_back(encoded % 16);
+            std::reverse(result.begin(), result.end());
+            return result;
+        };
+        const auto from = axes(it->order);
+        const auto to = axes(*order);
+        DAI_CHECK(from.size() == dims.size(), "Tensor storage order does not match its rank.");
+        std::vector<size_t> strides(dims.size(), 1);
+        for(size_t i = dims.size(); i > 1; --i) strides[i - 2] = strides[i - 1] * dims[i - 1];
+        for(size_t i = 0; i < from.size(); ++i) {
+            if(std::find(to.begin(), to.end(), from[i]) == to.end()) {
+                DAI_CHECK(from.size() > to.size() && dims[i] == 1, "Cannot remove this tensor axis while changing storage order.");
+            }
+        }
+        if(from.size() > to.size()) {
+            for(const auto axis : to) {
+                DAI_CHECK(std::find(from.begin(), from.end(), axis) != from.end(), "Cannot introduce tensor axes while squeezing.");
+            }
+        }
+        dims.clear();
+        for(const auto axis : to) {
+            const auto found = std::find(from.begin(), from.end(), axis);
+            const auto index = static_cast<size_t>(std::distance(from.begin(), found));
+            dims.push_back(found == from.end() ? 1 : it->dims[index]);
+            sourceStrides.push_back(found == from.end() ? 0 : strides[index]);
+        }
+    }
+    const auto sourceIndex = [&](size_t outputIndex) {
+        if(sourceStrides.empty()) return outputIndex;
+        size_t index = 0;
+        for(size_t axis = dims.size(); axis > 0; --axis) {
+            index += (outputIndex % dims[axis - 1]) * sourceStrides[axis - 1];
+            outputIndex /= dims[axis - 1];
+        }
+        return index;
+    };
     std::vector<float> values(elementCount);
     const std::uint8_t* base = data.data();
     switch(it->dataType) {
         case TensorInfo::DataType::U8F:
             for(std::size_t i = 0; i < elementCount; ++i) {
-                values[i] = static_cast<float>(base[it->offset + i]);
+                values[i] = static_cast<float>(base[it->offset + sourceIndex(i)]);
             }
             break;
         case TensorInfo::DataType::I8:
             for(std::size_t i = 0; i < elementCount; ++i) {
-                values[i] = static_cast<float>(reinterpret_cast<const std::int8_t*>(base)[it->offset + i]);
+                values[i] = static_cast<float>(reinterpret_cast<const std::int8_t*>(base)[it->offset + sourceIndex(i)]);
             }
             break;
         case TensorInfo::DataType::U16F:
             for(std::size_t i = 0; i < elementCount; ++i) {
-                values[i] = static_cast<float>(reinterpret_cast<const std::uint16_t*>(base)[it->offset / sizeof(std::uint16_t) + i]);
+                values[i] = static_cast<float>(reinterpret_cast<const std::uint16_t*>(base)[it->offset / sizeof(std::uint16_t) + sourceIndex(i)]);
             }
             break;
         case TensorInfo::DataType::INT:
             for(std::size_t i = 0; i < elementCount; ++i) {
-                values[i] = static_cast<float>(reinterpret_cast<const std::int32_t*>(base)[it->offset / sizeof(std::int32_t) + i]);
+                values[i] = static_cast<float>(reinterpret_cast<const std::int32_t*>(base)[it->offset / sizeof(std::int32_t) + sourceIndex(i)]);
             }
             break;
         case TensorInfo::DataType::FP16:
             for(std::size_t i = 0; i < elementCount; ++i) {
-                values[i] = fp16_ieee_to_fp32_value(reinterpret_cast<const std::uint16_t*>(base)[it->offset / sizeof(std::uint16_t) + i]);
+                values[i] = fp16_ieee_to_fp32_value(reinterpret_cast<const std::uint16_t*>(base)[it->offset / sizeof(std::uint16_t) + sourceIndex(i)]);
             }
             break;
         case TensorInfo::DataType::FP32:
             for(std::size_t i = 0; i < elementCount; ++i) {
-                values[i] = reinterpret_cast<const float*>(base)[it->offset / sizeof(float) + i];
+                values[i] = reinterpret_cast<const float*>(base)[it->offset / sizeof(float) + sourceIndex(i)];
             }
             break;
         case TensorInfo::DataType::FP64:
             for(std::size_t i = 0; i < elementCount; ++i) {
-                values[i] = static_cast<float>(reinterpret_cast<const double*>(base)[it->offset / sizeof(double) + i]);
+                values[i] = static_cast<float>(reinterpret_cast<const double*>(base)[it->offset / sizeof(double) + sourceIndex(i)]);
             }
             break;
     }
@@ -380,7 +421,7 @@ ShapedTensorData getShapedTensorData(const dai::NNData& nnData, const std::strin
 
     ShapedTensorData result;
     result.values = std::move(values);
-    result.dims.assign(it->dims.begin(), it->dims.end());
+    result.dims = std::move(dims);
     return result;
 }
 

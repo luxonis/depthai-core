@@ -27,7 +27,7 @@ with dai.Pipeline() as p:
         fps=FPS
     )
 
-    align = p.create(dai.node.ImageAlign)
+    align = p.create(dai.node.Align)
     align.setRunOnHost(True)
     tof.depth.link(align.input)
     colorOut.link(align.inputAlignTo)
@@ -36,7 +36,7 @@ with dai.Pipeline() as p:
     pc.initialConfig.setLengthUnit(dai.LengthUnit.MILLIMETER)
     pc.setTargetCoordinateSystem(RGB_SOCKET)
     align.outputAligned.link(pc.inputDepth)
-    colorOut.link(pc.inputColor)
+    colorOut.link(pc.getColorInput())
 
     remote = dai.RemoteConnection()
     remote.addTopic("pcl", pc.outputPointCloud, "3d")

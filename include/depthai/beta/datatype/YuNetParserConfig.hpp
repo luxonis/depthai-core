@@ -77,7 +77,7 @@ class YuNetParserConfig : public Buffer {
         return DatatypeEnum::YuNetParserConfig;
     }
 
-    DEPTHAI_SERIALIZE(YuNetParserConfig, confidenceThreshold, iouThreshold, maxDetections);
+    DEPTHAI_SERIALIZE_DECL(YuNetParserConfig, confidenceThreshold, iouThreshold, maxDetections);
 };
 
 }  // namespace beta

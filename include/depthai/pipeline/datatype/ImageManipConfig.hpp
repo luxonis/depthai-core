@@ -42,7 +42,7 @@ struct Translate : OpBase {
         return ss.str();
     }
 
-    DEPTHAI_SERIALIZE(Translate, offsetX, offsetY, normalized);
+    DEPTHAI_SERIALIZE_DECL(Translate, offsetX, offsetY, normalized);
 };
 
 struct Rotate : OpBase {
@@ -65,7 +65,7 @@ struct Rotate : OpBase {
         return ss.str();
     }
 
-    DEPTHAI_SERIALIZE(Rotate, angle, center, offsetX, offsetY, normalized);
+    DEPTHAI_SERIALIZE_DECL(Rotate, angle, center, offsetX, offsetY, normalized);
 };
 
 struct Resize : OpBase {
@@ -99,7 +99,7 @@ struct Resize : OpBase {
         return ss.str();
     }
 
-    DEPTHAI_SERIALIZE(Resize, width, height, normalized, mode);
+    DEPTHAI_SERIALIZE_DECL(Resize, width, height, normalized, mode);
 };
 
 struct Flip : OpBase {
@@ -119,7 +119,7 @@ struct Flip : OpBase {
         return ss.str();
     }
 
-    DEPTHAI_SERIALIZE(Flip, direction, center);
+    DEPTHAI_SERIALIZE_DECL(Flip, direction, center);
 };
 
 struct Affine : OpBase {
@@ -137,7 +137,7 @@ struct Affine : OpBase {
         return ss.str();
     }
 
-    DEPTHAI_SERIALIZE(Affine, matrix);
+    DEPTHAI_SERIALIZE_DECL(Affine, matrix);
 };
 
 struct Perspective : OpBase {
@@ -156,7 +156,7 @@ struct Perspective : OpBase {
         return ss.str();
     }
 
-    DEPTHAI_SERIALIZE(Perspective, matrix);
+    DEPTHAI_SERIALIZE_DECL(Perspective, matrix);
 };
 
 struct FourPoints : OpBase {
@@ -178,7 +178,7 @@ struct FourPoints : OpBase {
         return ss.str();
     }
 
-    DEPTHAI_SERIALIZE(FourPoints, src, dst, normalized);
+    DEPTHAI_SERIALIZE_DECL(FourPoints, src, dst, normalized);
 };
 
 struct Crop : OpBase {
@@ -203,7 +203,7 @@ struct Crop : OpBase {
         return ss.str();
     }
 
-    DEPTHAI_SERIALIZE(Crop, width, height, normalized, center);
+    DEPTHAI_SERIALIZE_DECL(Crop, width, height, normalized, center);
 };
 
 struct CropRotated : OpBase {
@@ -224,7 +224,7 @@ struct CropRotated : OpBase {
         return ss.str();
     }
 
-    DEPTHAI_SERIALIZE(CropRotated, width, height, angle, normalized);
+    DEPTHAI_SERIALIZE_DECL(CropRotated, width, height, angle, normalized);
 };
 
 struct ManipOp {
@@ -241,7 +241,7 @@ struct ManipOp {
     ManipOp(Crop op) : op(op) {}         // NOLINT
     ManipOp(CropRotated op) : op(op) {}  // NOLINT
 
-    DEPTHAI_SERIALIZE(ManipOp, op);
+    DEPTHAI_SERIALIZE_DECL(ManipOp, op);
 };
 
 class ImageManipOpsEnums {
@@ -604,7 +604,7 @@ class ImageManipConfig : public Buffer {
      */
     bool getSkipCurrentImage() const;
 
-    DEPTHAI_SERIALIZE(ImageManipConfig, base, outputFrameType, reusePreviousImage, skipCurrentImage);
+    DEPTHAI_SERIALIZE_DECL(ImageManipConfig, base, outputFrameType, reusePreviousImage, skipCurrentImage);
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 

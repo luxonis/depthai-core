@@ -12,6 +12,11 @@ on:
         required: false
         type: string
         default: ""
+      dispatch_bom:
+        description: Start the BOM tests when all wheels are uploaded, also if the Python tests fail (the nightly develop build)
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
   push:
     branches:
@@ -904,11 +909,12 @@ jobs:
           AK_URL: ${{ secrets.AK_URL }}
           AK_TOKEN: ${{ secrets.AK_TOKEN }}
 
-  # BOM tests for pushes to main, release branches and tags; they install the wheels that this run uploaded.
-  # The job only dispatches the BOM run and links it. develop is not built on push: hil_testing_nightly.yml
-  # starts the BOM tests of the nightly build at the same time as its HIL tests.
+  # BOM tests; they install the wheels that this run uploaded. The job only dispatches the BOM run and links it.
+  #   - Pushes to main, release branches and tags.
+  #   - The nightly develop build (hil_testing_nightly.yml calls this workflow with dispatch_bom; develop is not
+  #     built on push). The only condition is that all wheels are uploaded: the Python tests can fail.
   dispatch-bom-tests:
-    if: github.event_name == 'push' && !failure() && !cancelled()
+    if: ${{ (github.event_name == 'push' && !failure() && !cancelled()) || (inputs.dispatch_bom && !cancelled() && needs.upload-wheels-to-ak.result == 'success') }}
     needs: [required_python_ci_report, upload-wheels-to-ak, deploy]
     uses: ./.github/workflows/bom_dispatch.yml
     secrets: inherit
