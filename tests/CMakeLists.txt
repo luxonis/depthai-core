@@ -196,6 +196,20 @@ hunter_private_data(
 )
 
 
+# Keep model paths valid when the Windows tests are moved to a HIL host.
+option(DEPTHAI_TESTS_PORTABLE "Use relative model paths in test bundles" OFF)
+if(DEPTHAI_TESTS_PORTABLE)
+    foreach(resource IN ITEMS
+        mobilenet_blob openvino_2020_3_blob openvino_2020_4_blob
+        openvino_2021_1_blob openvino_2021_2_blob openvino_2021_3_blob
+        openvino_2021_4_2_blob openvino_2022_1_blob tiny_yolo_v4_2021-4_4shave_blob
+    )
+        get_filename_component(resource_filename "${${resource}}" NAME)
+        configure_file("${${resource}}" "${CMAKE_BINARY_DIR}/resources/${resource_filename}" COPYONLY)
+        set(${resource} "../resources/${resource_filename}")
+    endforeach()
+endif()
+
 # Add tests
 dai_add_test(color_camera_node_test src/color_camera_node_test.cpp)
 dai_add_test(image_manip_node_test src/image_manip_node_test.cpp)

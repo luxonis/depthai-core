@@ -4,16 +4,24 @@ on:
   workflow_dispatch:
     inputs:
       test_mode:
-        description: Test suite to run
+        description: suite runs RVC2 USB functional tests and streaming; libusb-ab repeats boot/discovery
         type: choice
-        default: libusb-ab
+        default: suite
         options:
           - libusb-ab
           - suite
       repetitions:
-        description: Five-boot test repetitions per libusb variant (1-100)
+        description: Boot/discovery repetitions per variant in libusb-ab mode (1-100)
         type: number
         default: 100
+      stress_minutes:
+        description: Continuous streaming duration per variant in suite mode (1-1440 minutes)
+        type: number
+        default: 1440
+      max_fps_drop_percent:
+        description: Maximum allowed decrease in mean stream FPS (0-50 percent)
+        type: number
+        default: 5
       camera_model:
         description: RVC2 USB camera model to reserve on Windows HIL
         type: string
@@ -45,7 +53,7 @@ jobs:
   # Testing
   test:
     if: >-
-      (github.event_name != 'workflow_dispatch' || inputs.test_mode == 'suite') &&
+      github.event_name != 'workflow_dispatch' &&
       !(github.event_name == 'push' && github.ref == 'refs/heads/fix/v2.33-libusb')
     strategy:
       matrix:
@@ -97,7 +105,7 @@ jobs:
   build-libusb-ab:
     name: Build Windows libusb comparison
     if: >-
-      (github.event_name == 'workflow_dispatch' && inputs.test_mode == 'libusb-ab') ||
+      github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'push' && github.ref == 'refs/heads/fix/v2.33-libusb')
     runs-on: windows-2022
     timeout-minutes: 180
@@ -106,7 +114,10 @@ jobs:
     outputs:
       artifact_id: ${{ steps.bundle.outputs.artifact-id }}
     env:
+      LIBUSB_TEST_MODE: ${{ inputs.test_mode || vars.LIBUSB_AB_TEST_MODE || 'suite' }}
       LIBUSB_REPETITIONS: ${{ github.event_name == 'workflow_dispatch' && format('{0}', inputs.repetitions) || vars.LIBUSB_AB_REPETITIONS || '100' }}
+      STRESS_MINUTES: ${{ github.event_name == 'workflow_dispatch' && format('{0}', inputs.stress_minutes) || vars.LIBUSB_AB_STRESS_MINUTES || '1440' }}
+      MAX_FPS_DROP_PERCENT: ${{ github.event_name == 'workflow_dispatch' && format('{0}', inputs.max_fps_drop_percent) || vars.LIBUSB_AB_MAX_FPS_DROP_PERCENT || '5' }}
       DEPTHAI_DEVICE_MXID_LIST: ${{ inputs.device_mxid || vars.LIBUSB_AB_DEVICE_MXID }}
     steps:
     - uses: actions/checkout@v4
@@ -124,9 +135,19 @@ jobs:
       run: |
         $ErrorActionPreference = 'Stop'
         $PSNativeCommandUseErrorActionPreference = $false
+        $mode = $env:LIBUSB_TEST_MODE
+        if ($mode -notin @('suite', 'libusb-ab')) { throw 'Unknown test mode' }
         $repetitions = 0
         if (-not [int]::TryParse($env:LIBUSB_REPETITIONS, [ref]$repetitions) -or $repetitions -lt 1 -or $repetitions -gt 100) {
           throw 'repetitions must be an integer between 1 and 100'
+        }
+        $stressMinutes = 0
+        if (-not [int]::TryParse($env:STRESS_MINUTES, [ref]$stressMinutes) -or $stressMinutes -lt 1 -or $stressMinutes -gt 1440) {
+          throw 'stress_minutes must be an integer between 1 and 1440'
+        }
+        $maxDrop = 0
+        if (-not [int]::TryParse($env:MAX_FPS_DROP_PERCENT, [ref]$maxDrop) -or $maxDrop -lt 0 -or $maxDrop -gt 50) {
+          throw 'max_fps_drop_percent must be an integer between 0 and 50'
         }
 
         $workRoot = Join-Path $env:RUNNER_TEMP "libusb-ab-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
@@ -136,14 +157,16 @@ jobs:
         git rev-parse HEAD | Set-Content "$bundle/commit.txt"
         cmake --version | Set-Content "$logRoot/cmake-version.txt"
         Copy-Item ci/windows_libusb_ab.ps1 "$bundle/run.ps1"
+        Copy-Item ci/compare_rvc2_performance.py $bundle
         Copy-Item (Get-Command ctest).Source $bundle
-        @{ repetitions = $repetitions; device_mxid = $env:DEPTHAI_DEVICE_MXID_LIST } | ConvertTo-Json | Set-Content "$bundle/options.json"
+        @{ mode = $mode; repetitions = $repetitions; stress_seconds = $stressMinutes * 60; max_fps_drop_percent = $maxDrop; device_mxid = $env:DEPTHAI_DEVICE_MXID_LIST } | ConvertTo-Json | Set-Content "$bundle/options.json"
         # Ship the VC runtime with the tests so the HIL host needs no compiler.
         $runtimeDlls = Get-ChildItem "$env:WINDIR/System32/*" -Include 'msvcp140*.dll', 'vcruntime140*.dll', 'concrt140.dll'
         $runtimeDlls | Copy-Item -Destination $bundle
 
         foreach ($variant in @('unpatched', 'patched')) {
           $fix = if ($variant -eq 'patched') { 'ON' } else { 'OFF' }
+          $portable = if ($mode -eq 'suite') { 'ON' } else { 'OFF' }
           $variantLogs = Join-Path $logRoot $variant
           $buildDir = Join-Path $workRoot "$variant/build"
           $hunterRoot = Join-Path $workRoot "$variant/hunter"
@@ -152,27 +175,47 @@ jobs:
             '-S', $env:GITHUB_WORKSPACE, '-B', $buildDir, '-A', 'x64',
             '-DCMAKE_BUILD_TYPE=Release', '-DHUNTER_CONFIGURATION_TYPES=Release',
             "-DHUNTER_ROOT=$hunterRoot", "-DDEPTHAI_LIBUSB_WINDOWS_CLAIM_FIX=$fix",
-            '-DDEPTHAI_BUILD_TESTS=ON', '-DDEPTHAI_BUILD_EXAMPLES=OFF'
+            '-DDEPTHAI_BUILD_TESTS=ON', '-DDEPTHAI_BUILD_EXAMPLES=OFF', "-DDEPTHAI_TESTS_PORTABLE=$portable"
           )
           $configureArgs | Set-Content "$variantLogs/configure-arguments.txt"
           & cmake @configureArgs 2>&1 | Tee-Object "$variantLogs/configure.log"
           if ($LASTEXITCODE -ne 0) { throw "$variant configure failed: $LASTEXITCODE" }
           Copy-Item "$buildDir/CMakeCache.txt" $variantLogs
 
-          & cmake --build $buildDir --target regression_boot_test --parallel 4 --config Release 2>&1 | Tee-Object "$variantLogs/build.log"
+          $buildArgs = @('--build', $buildDir, '--parallel', '4', '--config', 'Release')
+          if ($mode -eq 'libusb-ab') { $buildArgs += @('--target', 'regression_boot_test') }
+          & cmake @buildArgs 2>&1 | Tee-Object "$variantLogs/build.log"
           if ($LASTEXITCODE -ne 0) { throw "$variant build failed: $LASTEXITCODE" }
           $variantDir = Join-Path $bundle $variant
           New-Item -ItemType Directory -Force -Path $variantDir | Out-Null
-          Copy-Item "$buildDir/tests/Release/regression_boot_test.exe" $variantDir
+          Get-ChildItem "$buildDir/tests/Release/*.exe" | Copy-Item -Destination $variantDir
           Get-ChildItem "$buildDir/tests/Release/*.dll" | Copy-Item -Destination $variantDir
           $runtimeDlls | Copy-Item -Destination $variantDir
           $usbDlls = @(Get-ChildItem $variantDir -Filter '*usb*.dll')
           if ($usbDlls.Count -eq 0) { throw "No libusb DLL found next to the $variant test executable" }
-          # Recreate only this test with relative paths; the build tree is not portable.
-          @'
-        add_test(regression_boot_test "${CMAKE_CURRENT_LIST_DIR}/regression_boot_test.exe")
-        set_tests_properties(regression_boot_test PROPERTIES TIMEOUT 180 ENVIRONMENT "DEPTHAI_PROTOCOL=usb")
-        '@ | Set-Content "$variantDir/CTestTestfile.cmake"
+          # Export registered USB tests with executable paths relative to the bundle.
+          $testArgs = @('--test-dir', $buildDir, '-C', 'Release', '--show-only=json-v1', '-L', '^usb$')
+          if ($mode -eq 'libusb-ab') { $testArgs += @('-R', '^regression_boot_test$') }
+          $testJson = & ctest @testArgs | Out-String
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot list registered tests' }
+          $registered = $testJson | ConvertFrom-Json
+          if ($registered.tests.Count -eq 0) { throw 'No USB tests registered' }
+          $testLines = @()
+          foreach ($test in $registered.tests) {
+            $executable = Split-Path $test.command[0] -Leaf
+            if ($test.command.Count -ne 1 -or -not (Test-Path "$variantDir/$executable")) { throw "Cannot package $($test.name)" }
+            $timeoutProperty = $test.properties | Where-Object { $_.name -eq 'TIMEOUT' }
+            $timeout = if ($timeoutProperty) { [int]$timeoutProperty.value } else { 300 }
+            $testLines += 'add_test({0} "./{1}")' -f $test.name, $executable
+            $testLines += 'set_tests_properties({0} PROPERTIES LABELS usb TIMEOUT {1})' -f $test.name, $timeout
+          }
+          if ($mode -eq 'suite') {
+            New-Item -ItemType Directory -Force -Path "$bundle/resources" | Out-Null
+            Copy-Item "$buildDir/resources/*" "$bundle/resources" -Force
+            $testLines += 'add_test(stability_stress_test "./stability_stress_test.exe" {0})' -f ($stressMinutes * 60)
+            $testLines += 'set_tests_properties(stability_stress_test PROPERTIES LABELS stress TIMEOUT {0})' -f ($stressMinutes * 60 + 120)
+          }
+          $testLines | Set-Content "$variantDir/CTestTestfile.cmake"
         }
 
     - name: Upload test bundle
@@ -196,7 +239,7 @@ jobs:
     name: Compare libusb on Windows RVC2 HIL
     needs: build-libusb-ab
     runs-on: [self-hosted, testbed-runner]
-    timeout-minutes: 360
+    timeout-minutes: 3240 # Two 24-hour streams, functional tests, setup and cleanup.
     permissions:
       actions: read
       contents: read
@@ -231,7 +274,7 @@ jobs:
         mkdir -p "$COMPARISON_LOG_DIR"
         # Artifact downloads reset file modes; rsync preserves them on the host.
         find "$bundle" -type f \( -name '*.exe' -o -name '*.dll' \) -exec chmod +x {} +
-        hil --models "$CAMERA_MODEL" -os windows --no-shell --wait \
+        hil_runner --models "$CAMERA_MODEL" -os windows --no-shell --wait \
           --reservation-name "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#libusb-ab" \
           --sync-workspace --local-path "$GITHUB_WORKSPACE/$bundle" --remote-path AppData/Local/Temp \
           --pull "$remote/logs/" --save-to "$GITHUB_WORKSPACE/$COMPARISON_LOG_DIR" \
@@ -243,7 +286,10 @@ jobs:
       shell: bash
       run: |
         if [ -f "$COMPARISON_LOG_DIR/summary.md" ] && [ -f "$COMPARISON_LOG_DIR/exit-codes.json" ]; then
-          cat "$COMPARISON_LOG_DIR/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          set -o pipefail
+          bundle="libusb-ab-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          python3 "$bundle/compare_rvc2_performance.py" "$COMPARISON_LOG_DIR" \
+            | tee "$COMPARISON_LOG_DIR/comparison.md" >> "$GITHUB_STEP_SUMMARY"
         else
           echo 'No comparison results were retrieved; inspect the HIL log.' >> "$GITHUB_STEP_SUMMARY"
           exit 1
