@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
@@ -280,6 +281,16 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     bool metricReferenceWarningIssued = false;
     /// Reports a calibration that runs without its configured metric reference: once as a warning, then at debug level.
     void warnMetricReferenceMissing(const std::string& reason);
+    // A calibration rejected because the marker constraints do not fit the scene has been reported
+    bool constraintMismatchWarningIssued = false;
+    /// Reports a calibration rejected for its marker constraints: once as a warning, then at debug level.
+    void warnConstraintMismatch(const std::string& reason);
+    /// Start of the current run of image sets rejected for missing markers, and when it was last reported.
+    std::optional<std::chrono::steady_clock::time_point> markersMissingSince;
+    std::optional<std::chrono::steady_clock::time_point> markersMissingReportedAt;
+    /// Keeps a run of image sets rejected for missing markers from going unnoticed: warns once the run lasts
+    /// kMarkersMissingWarnAfter and then every kMarkersMissingWarnPeriod; accepted tells that the run ended.
+    void trackMissingMarkers(bool accepted);
 };
 
 }  // namespace node
