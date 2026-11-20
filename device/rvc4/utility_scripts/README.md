@@ -28,7 +28,7 @@ license bundle and SBOMs.
 
 | Script | What it does |
 | --- | --- |
-| `generate_license.py` | Writes the firmware package license bundle (`depthai-device-rvc4-fwp-LICENSE`) and the SPDX 2.3 / CycloneDX 1.6 SBOMs. CMake runs it after the firmware package is built. The bundle opens with `LICENSE.fwp` (the firmware package license), not with the Apache-2.0 source license in `LICENSE`. |
+| `generate_license.py` | Writes the firmware package license bundle (`depthai-device-rvc4-fwp-LICENSE`) and the SPDX 2.3 / CycloneDX 1.6 SBOMs. CMake runs it after the firmware package is built. The bundle opens with `LICENSE.fwp` (the firmware package license), not with the MIT source license (`LICENSE` of depthai-core). It ends with the legal files of the vendor module (`--vendor-legal-dir`: `legal-package/` of a build with the module sources, or the prebuilt archive): `NOTICE.txt`, `legal/DEPTHAI-EULA.txt` (the Luxonis DepthAI Vendor Module EULA, which covers the module in the package; `LICENSE.fwp` refers to it), `legal/NOTICE.md` and `legal/licenses/`, each under its path. `NOTICE.md` lists the third-party parts of the module, so the bundle does not list them again; the SBOMs still list them. |
 | `generate_third_party_licenses.py` | The collector: lists the vcpkg packages of the build, the vendored submodules of this repository and the third-party parts of the private `depthai-device-rvc4-vendor` module (found through `--private-module-root`, `DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR` or the sibling directory). |
 | `fwp_sbom.py` | SBOM generation used by `generate_license.py` (vcpkg dependency graph, files of the fwp archive and their runtime libraries). |
 

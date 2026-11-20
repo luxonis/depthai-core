@@ -4,8 +4,12 @@
 The bundle opens with the firmware package license (LICENSE.fwp): the binary package bundles proprietary
 ST/Qualcomm-derived components, so it is not under the MIT license that covers the source code
 (LICENSE of the depthai-core repository). After the preamble it lists every third-party component that the collector
-(generate_third_party_licenses.py) found in the vcpkg install tree, in this repository and in the private
-depthai-device-rvc4-vendor module.
+(generate_third_party_licenses.py) found in the vcpkg install tree and in this repository. The bundle ends with the
+legal files of the private depthai-device-rvc4-vendor module (--vendor-legal-dir), in the layout of the Luxonis OS
+BSP packages: NOTICE.txt, legal/DEPTHAI-EULA.txt (the Luxonis DepthAI Vendor Module EULA, which covers the vendor
+module in the package; LICENSE.fwp refers to it), legal/NOTICE.md and the
+texts in legal/licenses/, each under its path. The module writes these files (from its sources, or at the top of its
+prebuilt archive), so the components that the collector found in the module sources are not listed a second time.
 """
 
 from __future__ import annotations
@@ -20,7 +24,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from fwp_sbom import build_inventory, to_cyclonedx, to_spdx
+from fwp_sbom import PRIVATE_MODULE_NAME, build_inventory, to_cyclonedx, to_spdx
 
 
 NOASSERTION = "NOASSERTION"
@@ -57,6 +61,13 @@ def parse_args() -> argparse.Namespace:
         default=repo_root / FWP_LICENSE_FILE_NAME,
         help=f"Firmware package license text that opens the bundle. A path named LICENSE is redirected to a sibling "
         f"{FWP_LICENSE_FILE_NAME} when that file exists, because LICENSE is a source license.",
+    )
+    parser.add_argument(
+        "--vendor-legal-dir",
+        type=Path,
+        default=None,
+        help=f"Folder with the legal files of the {PRIVATE_MODULE_NAME} module (NOTICE.txt and legal/): legal-package "
+        "of its build, or its prebuilt archive. They are appended to the bundle.",
     )
     parser.add_argument("--license-output", type=Path, required=True)
     parser.add_argument("--spdx-output", type=Path, default=None)
@@ -169,12 +180,32 @@ def sorted_packages(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return sorted(packages, key=lambda package: (package.get("source_type") or "", package.get("package") or ""))
 
 
+def vendor_legal_text(legal_dir: Path) -> str:
+    """The legal files of the vendor module, each under its path: NOTICE.txt, legal/DEPTHAI-EULA.txt, legal/NOTICE.md,
+    then the texts in legal/licenses/ in name order."""
+    files = [legal_dir / "NOTICE.txt", legal_dir / "legal" / "DEPTHAI-EULA.txt", legal_dir / "legal" / "NOTICE.md"]
+    for path in files:
+        if not path.is_file():
+            raise SystemExit(f"error: {path} not found: the folder {legal_dir} has no legal files of the {PRIVATE_MODULE_NAME} module")
+    files += sorted((legal_dir / "legal" / "licenses").glob("*"))
+    title = f"Proprietary components: {PRIVATE_MODULE_NAME}"
+    lines = [title, "=" * len(title), ""]
+    for path in files:
+        name = path.relative_to(legal_dir).as_posix()
+        lines.extend([name, "-" * len(name), "", path.read_text(encoding="utf-8", errors="replace").rstrip(), ""])
+    return "\n".join(lines)
+
+
 def generate_license_bundle(
     *,
     payload: dict[str, Any],
     license_text: str,
+    vendor_license_text: str | None = None,
 ) -> str:
     packages = sorted_packages(payload)
+    if vendor_license_text:
+        # The license text of the vendor module lists its third-party components itself
+        packages = [package for package in packages if package.get("source_root") != PRIVATE_MODULE_NAME]
     lines = [
         license_text.rstrip(),
         "",
@@ -214,6 +245,8 @@ def generate_license_bundle(
                 lines.append("No license text was found by the collector.")
                 lines.append("")
 
+    if vendor_license_text:
+        lines.extend(["---", "", vendor_license_text.rstrip()])
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -229,9 +262,16 @@ def main() -> int:
     license_input = resolve_license_input(args.license_input)
     print(f"Firmware package license preamble: {license_input}")
     license_text = license_input.read_text(encoding="utf-8")
+    vendor_license_text = None
+    if args.vendor_legal_dir:
+        print(f"Legal files of the {PRIVATE_MODULE_NAME} module: {args.vendor_legal_dir}")
+        vendor_license_text = vendor_legal_text(args.vendor_legal_dir)
+    else:
+        print(f"warning: no --vendor-legal-dir: the bundle has no legal files of the {PRIVATE_MODULE_NAME} module", file=sys.stderr)
     license_bundle = generate_license_bundle(
         payload=payload,
         license_text=license_text,
+        vendor_license_text=vendor_license_text,
     )
 
     args.license_output.parent.mkdir(parents=True, exist_ok=True)

@@ -4,7 +4,11 @@
 #   lib/libdepthai-device-rvc4-vendor.a   the base archive: one prelinked object, in which only the C interface (and
 #                                  the few symbols that the ToF part uses) are global
 #   tof/lib/, tof/PREBUILT.libraries  the ToF part (one prelinked object too) and its file name, when the build had it
-#   PREBUILT.json                  version, commits, sanitizer, vcpkg triplet, compiler, sysroot, interface defines,
+#   NOTICE.txt, legal/             the legal files of the vendor module, in the layout of the Luxonis OS BSP packages:
+#                                  legal/DEPTHAI-EULA.txt (the Luxonis DepthAI Vendor Module EULA, which covers
+#                                  the module), legal/NOTICE.md and legal/licenses/; the license bundle of the
+#                                  firmware package ends with them
+#   PREBUILT.json                 version, commits, sanitizer, vcpkg triplet, compiler, sysroot, interface defines,
 #                                  link interface
 #   PREBUILT.headers               "<sha256>  <root>/<path>" for every header that the base archive compiled against;
 #                                  root is source (this tree), core (depthai-core) or build (the build directory)
@@ -51,7 +55,8 @@ function(depthai_device_rvc4_vendor_identity)
 endfunction()
 
 # Build with the sources of the private module (and so with the Hexagon SDK): writes the input of the export script of
-# the private repository to <dir>: build.json (identity, link interface of the base archive, the roots),
+# the private repository to <dir>: build.json (identity, link interface of the base archive, the roots, the folder
+# DEPTHAI_DEVICE_RVC4_VENDOR_LEGAL_DIR with the legal files of the module),
 # archive-<config>.txt (the base archive) and dsp-<config>.txt (the four files of the DSP offload).
 function(depthai_device_rvc4_vendor_prebuilt_describe dir)
     depthai_device_rvc4_vendor_identity()
@@ -60,7 +65,8 @@ function(depthai_device_rvc4_vendor_prebuilt_describe dir)
                    "compiler;${DEPTHAI_DEVICE_RVC4_VENDOR_COMPILER}" "compiler_version;${CMAKE_CXX_COMPILER_VERSION}"
                    "sysroot;${DEPTHAI_DEVICE_RVC4_VENDOR_SYSROOT}" "source_dir;${DEPTHAI_DEVICE_SOURCE_DIR}"
                    "core_dir;${DEPTHAI_DEVICE_KB_CORE_PATH}" "binary_dir;${DEPTHAI_DEVICE_BINARY_DIR}"
-                   "vendor_source_dir;${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}")
+                   "vendor_source_dir;${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}"
+                   "legal_dir;${DEPTHAI_DEVICE_RVC4_VENDOR_LEGAL_DIR}")
         list(GET _field 0 _key)
         list(GET _field 1 _value)
         string(REPLACE "\\" "\\\\" _value "${_value}")
@@ -193,12 +199,15 @@ endfunction()
 # triplet, compiler or sysroot, or against other headers of the C interface. The target
 # depthai-device-rvc4-vendor-prebuilt-check checks the headers again before the code that uses the archive compiles, and
 # after each change of a listed header. A tof/ folder in the archive gives the target depthai-device-rvc4-vendor-tof. With <use_dsp> the DSP offload of the archive is checked too.
+# Sets DEPTHAI_DEVICE_RVC4_VENDOR_LEGAL_DIR in the caller's scope to the archive folder, which has the legal files.
 function(depthai_device_rvc4_vendor_prebuilt_import prebuilt_dir work_dir use_dsp)
-    foreach(_file lib/libdepthai-device-rvc4-vendor.a PREBUILT.json PREBUILT.headers)
+    foreach(_file lib/libdepthai-device-rvc4-vendor.a PREBUILT.json PREBUILT.headers NOTICE.txt legal/DEPTHAI-EULA.txt
+                  legal/NOTICE.md)
         if(NOT EXISTS "${prebuilt_dir}/${_file}")
             message(FATAL_ERROR "Prebuilt private module: ${prebuilt_dir}/${_file} not found")
         endif()
     endforeach()
+    set(DEPTHAI_DEVICE_RVC4_VENDOR_LEGAL_DIR "${prebuilt_dir}" PARENT_SCOPE)
     file(READ "${prebuilt_dir}/PREBUILT.json" _json)
     _depthai_device_rvc4_vendor_prebuilt_field("${_json}" format _format)
     if(NOT _format EQUAL 2)

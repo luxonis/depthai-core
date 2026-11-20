@@ -47,6 +47,9 @@ jobs:
           # Luxonis has a license of the Qualcomm AI Runtime SDK. No object file that is compiled with its headers
           # goes into the build cache: device/rvc4/docker/published-cache-objects.py stops the job if one does.
           DEPTHAI_ACCEPT_QUALCOMM_LICENSE: 'yes'
+          # The build links the prebuilt vendor archive, which the Luxonis DepthAI Vendor Module EULA covers (Luxonis is
+          # the licensor)
+          DEPTHAI_ACCEPT_VENDOR_EULA: 'yes'
         run: ci/device-rvc4-build-cache.sh "$RUNNER_TEMP/device-rvc4-build-cache"
 
       - name: Upload the build cache to Artifact Keeper

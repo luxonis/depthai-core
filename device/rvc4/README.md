@@ -83,8 +83,18 @@ defines, before the code that uses the archive compiles. With a prebuilt archive
 ```bash
 git clone --recursive https://github.com/luxonis/depthai-core.git
 cd depthai-core/device/rvc4
-DEPTHAI_ACCEPT_QUALCOMM_LICENSE=yes ./create_deployment_artifacts.sh rvc4          # or rvc4-asan-ubsan, rvc4-tsan
+DEPTHAI_ACCEPT_QUALCOMM_LICENSE=yes DEPTHAI_ACCEPT_VENDOR_EULA=yes \
+    ./create_deployment_artifacts.sh rvc4          # or rvc4-asan-ubsan, rvc4-tsan
 ```
+
+`DEPTHAI_ACCEPT_VENDOR_EULA=yes` is necessary for each build with the prebuilt vendor archive. The archive is
+proprietary software of Luxonis and its licensors, for Luxonis devices only. The Luxonis DepthAI Vendor Module End
+User License Agreement covers it. Read the agreement before you accept it: its text is published next to each archive
+(`depthai-device-rvc4-vendor-<version>-EULA.txt`), and a build without `DEPTHAI_ACCEPT_VENDOR_EULA=yes` downloads it
+to `build_docker_arm64_<target>/vendor/download/`, shows its path and stops. It is also `legal/DEPTHAI-EULA.txt` in
+the archive, in each firmware package and in its license bundle. With this value you accept that agreement. The
+firmware that you build is under the Luxonis Firmware Package License ([LICENSE.fwp](LICENSE.fwp)), and the agreement
+covers the vendor module in it.
 
 `create_deployment_artifacts.sh` mounts the `depthai-core` checkout at `/work` and runs `docker/build.sh` in
 `/work/device/rvc4`. Without `DEPTHAI_DEVICE_SDK_IMAGE` it pulls the public build image that the target needs: the
@@ -129,7 +139,9 @@ The output is the firmware package
 device/rvc4/build_docker_arm64_rvc4/RelWithDebInfo/depthai-device-rvc4-fwp.tar.xz
 ```
 
-together with its license bundle (`depthai-device-rvc4-fwp-LICENSE`) and SBOMs (`.spdx.json`, `.cdx.json`).
+together with its license bundle (`depthai-device-rvc4-fwp-LICENSE`) and SBOMs (`.spdx.json`, `.cdx.json`). The
+package contains its license (`LICENSE.fwp`) and the vendor module EULA (`legal/DEPTHAI-EULA.txt`) next to the
+executable.
 
 The DSP offload (`src/hexagon/`) is built from source when `HEXAGON_SDK_ROOT` points at the Qualcomm Hexagon SDK
 5.5.0.1; the Luxonis OS SDK image contains it. With another image, set `HEXAGON_SDK_DIR` to a Hexagon SDK on the
@@ -243,11 +255,17 @@ to attach to a stuck production firmware and how to parse core dumps.
 
 * The source code in this directory is licensed under the MIT License of the `depthai-core` repository, see the
   `LICENSE` file in the repository root. [NOTICE](NOTICE) lists the third-party attributions.
-* The binary firmware package (`depthai-device-rvc4-fwp.tar.xz`) bundles proprietary components (the ST VD55H1
-  IPP library under ST SLA0106 and Qualcomm-derived code from the private module) and is distributed under the
-  Luxonis Firmware Package License, see [LICENSE.fwp](LICENSE.fwp). The build writes the full license bundle of
-  the package, with every third-party notice, to `depthai-device-rvc4-fwp-LICENSE` next to the package, and the
-  SBOMs in SPDX 2.3 and CycloneDX 1.6 format.
+* The binary firmware package (`depthai-device-rvc4-fwp.tar.xz`) bundles proprietary components (the vendor
+  module, with Qualcomm-derived code and the ST VD55H1 IPP library under ST SLA0106) and is distributed under the
+  Luxonis Firmware Package License, see [LICENSE.fwp](LICENSE.fwp). The Luxonis DepthAI Vendor Module End User
+  License Agreement (`legal/DEPTHAI-EULA.txt`) covers the vendor module in the package; where the two conflict for
+  the vendor module, the agreement prevails. The package contains both texts (`LICENSE.fwp` and
+  `legal/DEPTHAI-EULA.txt`). The build writes the full license bundle of the package, with every
+  third-party notice, to `depthai-device-rvc4-fwp-LICENSE` next to the package, and the SBOMs in SPDX 2.3 and
+  CycloneDX 1.6 format. The bundle ends with the legal files of the vendor module, in the layout of the Luxonis OS
+  BSP packages: `NOTICE.txt`, the vendor module EULA (`legal/DEPTHAI-EULA.txt`),
+  `legal/NOTICE.md` and the texts in `legal/licenses/`. The
+  vendor module supplies them: its build writes them, and the prebuilt archive has them at its top.
 
 ## What is not in this repository
 

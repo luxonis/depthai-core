@@ -242,13 +242,18 @@ include_directories(BEFORE
 #   the archive of DEPTHAI_DEVICE_RVC4_VENDOR_VERSION in cmake/Depthai/DepthaiDeviceRVC4Config.cmake of depthai-core,
 #   downloaded (cmake/DepthaiDeviceRvc4VendorDownloader.cmake of depthai-core)
 # The private CI of the vendor module builds it from its sources instead: DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR (Luxonis
-# licensees only). An environment variable of the same name, when it is set (also when it is empty), replaces the
-# cached value at each configure step: the build scripts set both, so a build folder follows the last call.
+# licensees only). A build with the prebuilt archive needs DEPTHAI_ACCEPT_VENDOR_EULA=yes: the archive is proprietary
+# software of Luxonis and its licensors under the Luxonis DepthAI Vendor Module End User License Agreement
+# (legal/DEPTHAI-EULA.txt in the archive, in each firmware package and in its license bundle; the CI of the module also
+# publishes it next to the archive, and without the acceptance the build downloads it and stops). An environment
+# variable of the same name as one of these settings, when it is set (also when it is empty), replaces the cached value
+# at each configure step: the build scripts set both, so a build folder follows the last call.
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/DepthaiDeviceRvc4VendorPrebuilt.cmake")
 include("${DEPTHAI_DEVICE_KB_CORE_PATH}/cmake/DepthaiDeviceRvc4VendorDownloader.cmake")
 set(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR "" CACHE PATH "Sources of the vendor module (its private CI and Luxonis licensees)")
 set(DEPTHAI_DEVICE_RVC4_VENDOR "" CACHE FILEPATH "Local prebuilt vendor archive (depthai-device-rvc4-vendor-<version>.tar.xz) in place of the download")
-foreach(_vendor_setting DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR DEPTHAI_DEVICE_RVC4_VENDOR)
+set(DEPTHAI_ACCEPT_VENDOR_EULA "" CACHE STRING "yes: accept the Luxonis DepthAI Vendor Module End User License Agreement, which covers the prebuilt vendor archive")
+foreach(_vendor_setting DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR DEPTHAI_DEVICE_RVC4_VENDOR DEPTHAI_ACCEPT_VENDOR_EULA)
     if(DEFINED ENV{${_vendor_setting}})
         get_property(_vendor_help CACHE ${_vendor_setting} PROPERTY HELPSTRING)
         get_property(_vendor_type CACHE ${_vendor_setting} PROPERTY TYPE)
@@ -270,6 +275,33 @@ else()
     set(_vendor_suffix "")
     if(NOT DEPTHAI_DEVICE_RVC4_VENDOR_SANITIZER STREQUAL "none")
         set(_vendor_suffix "-${DEPTHAI_DEVICE_RVC4_VENDOR_SANITIZER}")
+    endif()
+    # The prebuilt archive is proprietary software of Luxonis and its licensors: the build uses it only after the user
+    # accepts its EULA. The EULA of the archive is published next to it, so the build downloads it first and shows it.
+    if(NOT DEPTHAI_ACCEPT_VENDOR_EULA STREQUAL "yes")
+        if(DEPTHAI_DEVICE_RVC4_VENDOR)
+            set(_vendor_eula "legal/DEPTHAI-EULA.txt in the archive ${DEPTHAI_DEVICE_RVC4_VENDOR}")
+        else()
+            DepthaiDeviceRvc4VendorEula("${_vendor_suffix}" "${DEPTHAI_DEVICE_BINARY_DIR}/vendor/download" _vendor_eula_file _vendor_eula_url)
+            if(_vendor_eula_file)
+                set(_vendor_eula "${_vendor_eula_file} (downloaded from ${_vendor_eula_url})")
+            elseif(_vendor_eula_url)
+                set(_vendor_eula "${_vendor_eula_url} (the download failed), and legal/DEPTHAI-EULA.txt in the archive")
+            else()
+                set(_vendor_eula "legal/DEPTHAI-EULA.txt in the archive")
+            endif()
+        endif()
+        message(FATAL_ERROR "The firmware build uses the prebuilt vendor module (depthai-device-rvc4-vendor): proprietary "
+                            "software of Luxonis and its licensors, for Luxonis devices only. The Luxonis DepthAI Vendor "
+                            "Module End User License Agreement covers it. Read the agreement before you accept it: "
+                            "${_vendor_eula}. The firmware that you build is under the Luxonis Firmware Package License "
+                            "(LICENSE.fwp), and the agreement covers the vendor module in it. The firmware package "
+                            "contains both texts (LICENSE.fwp and legal/DEPTHAI-EULA.txt).\n"
+                            "To accept the agreement and use the archive, set DEPTHAI_ACCEPT_VENDOR_EULA=yes (environment "
+                            "variable or CMake cache entry). Without the archive:\n"
+                            "  * download a released firmware package for depthai-core (DEPTHAI_DEVICE_RVC4_VERSION), or\n"
+                            "  * build with the sources of the vendor module (DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR, Luxonis "
+                            "licensees only).")
     endif()
     if(DEPTHAI_DEVICE_RVC4_VENDOR)
         get_filename_component(_vendor_archive "${DEPTHAI_DEVICE_RVC4_VENDOR}" ABSOLUTE)
@@ -990,23 +1022,41 @@ foreach(_skel IN LISTS DEPTHAI_DEVICE_DSP_SKELS)
     list(APPEND DEPTHAI_DEVICE_DSP_SKEL_COPY_COMMANDS COMMAND ${CMAKE_COMMAND} -E copy "${_skel}" "${DEPTHAI_DEVICE_BINARY_DIR}/${_skel_name}")
     list(APPEND DEPTHAI_DEVICE_DSP_SKELS_IN_FWP "${DEPTHAI_DEVICE_BINARY_DIR}/${_skel_name}")
 endforeach()
-# The license bundle lists the third-party parts of the private module sources (the ToF wrapper). A build with the
-# prebuilt archive has none of them.
-set(DEPTHAI_DEVICE_LICENSE_PRIVATE_MODULE_ARGS "")
-if(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR)
-    set(DEPTHAI_DEVICE_LICENSE_PRIVATE_MODULE_ARGS --private-module-root "${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}")
+# The license bundle starts with LICENSE.fwp and ends with the legal files of the vendor module (NOTICE.txt, and legal/
+# with the Luxonis DepthAI Vendor Module EULA that covers the module, NOTICE.md and the licence texts):
+# DEPTHAI_DEVICE_RVC4_VENDOR_LEGAL_DIR, which the module sources (target depthai-device-rvc4-vendor-license) or the
+# prebuilt archive supply. The SBOMs list the third-party parts of the private module sources (the ToF wrapper); a
+# build with the prebuilt archive has none of them.
+if(NOT DEPTHAI_DEVICE_RVC4_VENDOR_LEGAL_DIR)
+    message(FATAL_ERROR "The vendor module gives no legal files (DEPTHAI_DEVICE_RVC4_VENDOR_LEGAL_DIR): the firmware "
+                        "package license must include them.")
 endif()
+if(TARGET depthai-device-rvc4-vendor-license)
+    add_dependencies(${TARGET_DEVICE_EXECUTABLE} depthai-device-rvc4-vendor-license)
+endif()
+set(DEPTHAI_DEVICE_LICENSE_PRIVATE_MODULE_ARGS --vendor-legal-dir "${DEPTHAI_DEVICE_RVC4_VENDOR_LEGAL_DIR}")
+if(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR)
+    list(APPEND DEPTHAI_DEVICE_LICENSE_PRIVATE_MODULE_ARGS --private-module-root "${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}")
+endif()
+# The firmware package itself contains its license (LICENSE.fwp) and the Luxonis DepthAI Vendor Module EULA of the
+# vendor module that it links (legal/DEPTHAI-EULA.txt of the legal files of the module). The full license bundle, with
+# the third-party notices, stays next to the package.
+set(DEPTHAI_DEVICE_FWP_LEGAL_FILES "${DEPTHAI_DEVICE_BINARY_DIR}/LICENSE.fwp" "${DEPTHAI_DEVICE_BINARY_DIR}/legal/DEPTHAI-EULA.txt")
 add_custom_command(TARGET ${TARGET_DEVICE_EXECUTABLE} POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} --only-keep-debug "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>" "$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/$<TARGET_FILE_BASE_NAME:${TARGET_DEVICE_EXECUTABLE}>.debug"
     COMMAND ${CMAKE_STRIP} --strip-unneeded "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>"
     COMMAND ${CMAKE_OBJCOPY} --add-gnu-debuglink="$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/$<TARGET_FILE_BASE_NAME:${TARGET_DEVICE_EXECUTABLE}>.debug" "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>"
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>" "${DEPTHAI_DEVICE_BINARY_DIR}/$<TARGET_FILE_NAME:${TARGET_DEVICE_EXECUTABLE}>"
     ${DEPTHAI_DEVICE_DSP_SKEL_COPY_COMMANDS}
+    COMMAND ${CMAKE_COMMAND} -E copy "${DEPTHAI_DEVICE_SOURCE_DIR}/LICENSE.fwp" "${DEPTHAI_DEVICE_BINARY_DIR}/LICENSE.fwp"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${DEPTHAI_DEVICE_BINARY_DIR}/legal"
+    COMMAND ${CMAKE_COMMAND} -E copy "${DEPTHAI_DEVICE_RVC4_VENDOR_LEGAL_DIR}/legal/DEPTHAI-EULA.txt" "${DEPTHAI_DEVICE_BINARY_DIR}/legal/DEPTHAI-EULA.txt"
     COMMAND ${CMAKE_COMMAND} -E tar cfJ "$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/depthai-device-rvc4-fwp.tar.xz"
         "${DEPTHAI_DEVICE_BINARY_DIR}/$<TARGET_FILE_NAME:${TARGET_DEVICE_EXECUTABLE}>"
         ${DEPTHAI_DEVICE_DSP_SKELS_IN_FWP}
         ${DEPTHAI_MODELS_KB_RESOURCE_LIST}
         ${DEPTHAI_CUSTOM_SCRIPTS_OUTPUT_DIR}
+        ${DEPTHAI_DEVICE_FWP_LEGAL_FILES}
     COMMAND /usr/bin/python3 "${DEPTHAI_DEVICE_SOURCE_DIR}/utility_scripts/generate_license.py"
         --repo-root "${DEPTHAI_DEVICE_SOURCE_DIR}"
         --product "depthai-device-rvc4-fwp"

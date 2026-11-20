@@ -6,7 +6,11 @@
 # target rvc4, or rvc4-tsan / rvc4-asan-ubsan for a sanitizer build of the library. The firmware build is incremental,
 # and the package and its license bundle are copied to the resources only when they changed, so an unchanged firmware
 # does not compile the library again. The environment variables of create_deployment_artifacts.sh apply (for example
-# DEPTHAI_ACCEPT_QUALCOMM_LICENSE, DEPTHAI_BUILD_JOBS, DEPTHAI_DEVICE_RVC4_VENDOR).
+# DEPTHAI_ACCEPT_QUALCOMM_LICENSE, DEPTHAI_ACCEPT_VENDOR_EULA, DEPTHAI_BUILD_JOBS, DEPTHAI_DEVICE_RVC4_VENDOR).
+#
+# The build stops when the license bundle of the package is not the committed notices/depthai-device-RVC4-LICENSE, as a
+# download stops (cmake/VerifyLicense.cmake): the wheel and the install ship that notice file. After an intended change
+# of the bundle (third-party components, the legal files of the vendor module), copy the bundle over the notice file.
 #
 # The version string of the embedded package is "<firmware version>+local.<first 12 hex digits of the commit>".
 # At run time, the environment variable DEPTHAI_DEVICE_RVC4_FWP still selects another package.
@@ -53,8 +57,12 @@ function(DepthaiDeviceRvc4FirmwareBuild output_dir version_var resource_list_var
     set(_package_dir "${_source_dir}/build_docker_arm64_${_target}/RelWithDebInfo")
     set(_embedded_fwp "${output_dir}/depthai-device-rvc4-fwp-${_version}.tar.xz")
     set(_embedded_license "${output_dir}/depthai-device-rvc4-fwp-${_version}-LICENSE")
+    set(_committed_notice "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../notices/depthai-device-RVC4-LICENSE")
     add_custom_target(depthai-device-rvc4-fwp ALL
         COMMAND "${DEPTHAI_DEVICE_RVC4_BASH}" "${_source_dir}/create_deployment_artifacts.sh" "${_target}"
+        # The license bundle must be the committed notice file, which the wheel and the install ship
+        COMMAND "${CMAKE_COMMAND}" -D "LICENSE_FILE=${_package_dir}/depthai-device-rvc4-fwp-LICENSE"
+                -D "EXPECTED=${_committed_notice}" -D ORIGIN=Built -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/VerifyLicense.cmake"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_package_dir}/depthai-device-rvc4-fwp.tar.xz" "${_embedded_fwp}"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_package_dir}/depthai-device-rvc4-fwp-LICENSE" "${_embedded_license}"
         BYPRODUCTS "${_embedded_fwp}" "${_embedded_license}"

@@ -21,6 +21,13 @@
 #                             binary cache of the vcpkg dependencies and the QAIRT parts in use.
 #                             Default: ~/.cache/depthai-device-sdk
 #   CCACHE_MAXSIZE            Size limit of the compiler cache. Default: 10G
+#   DEPTHAI_ACCEPT_VENDOR_EULA
+#                             yes: you accept the Luxonis DepthAI Vendor Module End User License Agreement, which covers
+#                             the prebuilt vendor archive and the vendor module in the firmware that you build
+#                             (published next to the archive as depthai-device-rvc4-vendor-<version>-EULA.txt, and
+#                             legal/DEPTHAI-EULA.txt in the archive, in each firmware package and in its license bundle).
+#                             A build with the prebuilt archive (downloaded or DEPTHAI_DEVICE_RVC4_VENDOR) stops without it,
+#                             and shows where the agreement is (it downloads the published text first).
 #   DEPTHAI_DEVICE_RVC4_VENDOR
 #                             A local prebuilt vendor archive (depthai-device-rvc4-vendor-<version>[-asan-ubsan|-tsan].tar.xz,
 #                             the licensee-only code of the firmware), in place of the download. Default: the build

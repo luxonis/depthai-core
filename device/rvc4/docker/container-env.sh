@@ -118,10 +118,10 @@ elif [ -n "${DEPTHAI_DEVICE_RVC4_VENDOR:-}" ]; then
     echo "Vendor module: local archive $VENDOR_ARCHIVE (mounted at /depthai-device-rvc4-vendor-archive/$(basename "$VENDOR_ARCHIVE"))"
     CONTAINER_ARGS+=(-v "$VENDOR_ARCHIVE":"/depthai-device-rvc4-vendor-archive/$(basename "$VENDOR_ARCHIVE")":ro
                      -e DEPTHAI_DEVICE_RVC4_VENDOR="/depthai-device-rvc4-vendor-archive/$(basename "$VENDOR_ARCHIVE")"
-                     -e DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR=)
+                     -e DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR= -e DEPTHAI_ACCEPT_VENDOR_EULA)
 else
     echo "Vendor module: the prebuilt archive of DEPTHAI_DEVICE_RVC4_VENDOR_VERSION (the build downloads it)"
-    CONTAINER_ARGS+=(-e DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR= -e DEPTHAI_DEVICE_RVC4_VENDOR=)
+    CONTAINER_ARGS+=(-e DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR= -e DEPTHAI_DEVICE_RVC4_VENDOR= -e DEPTHAI_ACCEPT_VENDOR_EULA)
 fi
 
 if [ -n "${HEXAGON_SDK_DIR:-}" ]; then

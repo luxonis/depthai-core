@@ -733,7 +733,8 @@ def main() -> int:
     else:
         print(
             f"warning: private module {PRIVATE_MODULE_NAME} not found (set {PRIVATE_MODULE_ENV} or "
-            "--private-module-root); its third-party components are not listed",
+            "--private-module-root); the SBOMs do not list its third-party components (the license text of the "
+            "module lists them)",
             file=sys.stderr,
         )
 
