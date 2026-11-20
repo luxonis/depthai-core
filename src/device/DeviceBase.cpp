@@ -2064,7 +2064,7 @@ int DeviceBase::getEthernetLinkSpeed() {
 }
 
 int DeviceBase::getEthernetLinkDuplex() {
-    return pimpl->rpcCallChecked<int>("getEthernetLinkDuplex");
+    return pimpl->rpcCall("getEthernetLinkDuplex").as<int>();
 }
 
 int64_t DeviceBase::getEmmcMemorySize() {
