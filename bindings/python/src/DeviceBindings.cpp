@@ -567,6 +567,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             DOC(dai, DeviceBase, performHealthCheck))
 
         // methods
+        .def("getDeviceOSVersion", &DeviceBase::getDeviceOSVersion, DOC(dai, DeviceBase, getDeviceOSVersion))
         .def("getBootloaderVersion", &DeviceBase::getBootloaderVersion, DOC(dai, DeviceBase, getBootloaderVersion))
         .def(
             "getOSVersion",
