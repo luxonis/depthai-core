@@ -372,9 +372,7 @@ const DynamicCalibration::ConnectedSensor* DynamicCalibration::findConnectedSens
 
 void DynamicCalibration::setRunOnHost(bool runOnHost) {
     // The dynamic calibration library is shipped only in the RVC4 firmware.
-    if(device && device->getPlatform() != Platform::RVC4 && !runOnHost) {
-        DAI_CHECK_V(false, "DynamicCalibration: running on device is supported only on RVC4");
-    }
+    DAI_CHECK_V(runOnHost || !device || device->getPlatform() == Platform::RVC4, "DynamicCalibration: running on device is supported only on RVC4");
     runOnHostVar = runOnHost;
     // The Sync subnode follows the node, otherwise every frame would still cross the link.
     sync->setRunOnHost(runOnHost);
@@ -396,6 +394,15 @@ std::vector<StereoPair> DynamicCalibration::getStereoPairs() {
 
 std::pair<std::string, std::string> DynamicCalibration::getProductAndBoardName() {
     return {device->getProductName(), device->readCalibrationOrDefault().getEepromData().boardName};
+}
+
+Platform DynamicCalibration::getPlatform() const {
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    // Inside the firmware there is no host device handle, the node runs on the RVC4 device.
+    return Platform::RVC4;
+#else
+    return device->getPlatform();
+#endif
 }
 
 void DynamicCalibration::applyCalibration(const CalibrationHandler& handler, bool flash) {
@@ -440,6 +447,8 @@ void DynamicCalibration::buildInternal() {
 
 void DynamicCalibration::postBuildStage() {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    // setRunOnHost() cannot check the platform of a node that had no device yet; repeat it now that the pipeline is built.
+    DAI_CHECK_V(runOnHostVar || (device && device->getPlatform() == Platform::RVC4), "DynamicCalibration: running on device requires an RVC4 device");
     auto eraseIfUnused = [&](const std::string& name) {
         auto it = inputs.find({inputs.name, name});
         if(it != inputs.end() && !it->second.isConnected() && inputs.size() > 1) {
@@ -1060,7 +1069,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
                                                                    calibratedPoses,
                                                                    std::holds_alternative<HousingCoordinateSystem>(daiSocketBase),
                                                                    stereoPairs,
-                                                                   device ? device->getPlatform() : Platform::RVC4);
+                                                                   getPlatform());
     } catch(const std::exception& ex) {
         return reportCalibrationFailure(std::string("Failed to assemble calibration: ") + ex.what());
     }
@@ -1428,8 +1437,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline() {
 
     logger->trace("Converting dai calibration to dcl");
 
-    // Inside the firmware there is no host device handle, the node runs on the RVC4 device.
-    auto platform = device ? device->getPlatform() : Platform::RVC4;
+    auto platform = getPlatform();
     if(platform == dai::Platform::RVC2 && !eepromData.stereoEnableDistortionCorrection && !oldCalibrationWarningIssued) {
         logger->trace("The calibration on the device is old (distortion correction is disabled), for optimal performance full re-calibration is recommended!");
         oldCalibrationWarningIssued = true;

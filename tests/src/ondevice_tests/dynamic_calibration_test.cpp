@@ -863,7 +863,10 @@ TEST_CASE("DynamicCalibration: calibrates on the RVC4 device") {
     for(int i = 0; i < 7; i++) {
         syncInput->send(stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper), calibration));
         commandInput->send(dai::DynamicCalibrationControl::loadImage());
-        auto coverage = coverageOutput->get<dai::CoverageData>();
+        // Timed, so a frame group lost to a slow node start fails the test instead of blocking it.
+        bool coverageTimedOut = true;
+        auto coverage = coverageOutput->get<dai::CoverageData>(10s, coverageTimedOut);
+        REQUIRE_FALSE(coverageTimedOut);
         REQUIRE(coverage != nullptr);
         REQUIRE(coverage->coverageAcquired > 0.0f);
     }
@@ -891,6 +894,47 @@ TEST_CASE("DynamicCalibration: calibrates on the RVC4 device") {
         REQUIRE(result->info == TRANSLATION_DIRECTION_REJECTION_MESSAGE);
     }
 
+    p.stop();
+    p.wait();
+}
+
+TEST_CASE("DynamicCalibration: on the RVC4 device, loads camera frames and applies a calibration") {
+    auto device = std::make_shared<dai::Device>();
+    if(device->getPlatform() != dai::Platform::RVC4) {
+        SKIP("Running DynamicCalibration on the device requires an RVC4 device");
+    }
+    // The cameras feed the Sync subnode on the device: no frame crosses the link, only commands and results.
+    std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
+    auto p = makePipeline(device, dynCalib, true);
+    dynCalib->setRunOnHost(false);
+
+    auto commandInput = dynCalib->inputControl.createInputQueue();
+    auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
+
+    const auto original = device->getCalibration();
+    p.start();
+
+    commandInput->send(dai::DynamicCalibrationControl::loadImage());
+    bool timedOut = true;
+    auto coverage = coverageOutput->get<dai::CoverageData>(30s, timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(coverage != nullptr);
+
+    // Runtime only (flash = false): the EEPROM of the device stays untouched.
+    auto eeprom = original.getEepromData();
+    REQUIRE(eeprom.cameraData.count(dai::CameraBoardSocket::CAM_B) == 1);
+    const float expectedFx = eeprom.cameraData[dai::CameraBoardSocket::CAM_B].intrinsicMatrix[0][0] + 1.0f;
+    eeprom.cameraData[dai::CameraBoardSocket::CAM_B].intrinsicMatrix[0][0] = expectedFx;
+    commandInput->send(dai::DynamicCalibrationControl::applyCalibration(dai::CalibrationHandler(eeprom), false));
+
+    const auto currentFx = [&device]() { return device->getCalibration().getEepromData().cameraData.at(dai::CameraBoardSocket::CAM_B).intrinsicMatrix[0][0]; };
+    const auto deadline = std::chrono::steady_clock::now() + 10s;
+    while(currentFx() != Catch::Approx(expectedFx) && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(100ms);
+    }
+    REQUIRE(currentFx() == Catch::Approx(expectedFx));
+
+    device->setCalibration(original);
     p.stop();
     p.wait();
 }

@@ -1846,28 +1846,14 @@ std::vector<CameraFeatures> DeviceBase::getConnectedCameraFeatures() {
 }
 
 std::vector<StereoPair> DeviceBase::getStereoPairs() {
-    std::vector<StereoPair> stereoPairs;
-    dai::CalibrationHandler calibrationHandler;
-
-    try {
-        calibrationHandler = getCalibration();
-        if(calibrationHandler.getEepromData().cameraData.empty()) {
-            throw std::runtime_error("No camera data found.");
-        }
-    } catch(const std::exception&) {
-        try {
-            calibrationHandler = readFactoryCalibration();
-        } catch(const std::exception&) {
-            pimpl->logger.info("No calibration found.");
-            return stereoPairs;
-        }
-    }
-    try {  // if there are no intrinsics / extrinsics stored this can failed
-        stereoPairs = detail::StereoPairCalculator::find(calibrationHandler, getConnectedCameraFeatures());
-    } catch(const std::exception&) {
+    auto outcome = detail::StereoPairSearch::DONE;
+    auto stereoPairs = detail::findStereoPairs(
+        [this]() { return getCalibration(); }, [this]() { return readFactoryCalibration(); }, [this]() { return getConnectedCameraFeatures(); }, &outcome);
+    if(outcome == detail::StereoPairSearch::NO_CALIBRATION) {
+        pimpl->logger.info("No calibration found.");
+    } else if(outcome == detail::StereoPairSearch::FAILED) {  // no intrinsics / extrinsics stored
         pimpl->logger.warn("No stereo pairs found: check calibration.");
     }
-
     return stereoPairs;
 }
 

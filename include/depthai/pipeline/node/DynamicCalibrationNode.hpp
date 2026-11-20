@@ -18,6 +18,7 @@
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/common/WorldConstraints.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/device/Platform.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #include "depthai/utility/spimpl.h"
@@ -272,6 +273,9 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      */
     void setCalibration(CalibrationHandler& handler, bool flash);
 
+    /// Platform the node runs for: the device's on the host, RVC4 inside the RVC4 firmware (no device handle there).
+    Platform getPlatform() const;
+
     /**
      * DAI held properties
      */
@@ -289,14 +293,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     bool slept = false;
     std::optional<DynamicCalibrationControl::Commands::StartCalibration> startCalibrationCommand;
 
-    /**
-     * Calibration state machine, which holds the state of Node and provides a stable environment;
-     * - Initialization of pipeline,
-     * - Loading images in DCL,
-     * - Starting Calibration Check,
-     * - Starting of Calibration
-     * - Resetting of data
-     */
+    /// Placement set with setRunOnHost(): host by default, the device only on RVC4.
     bool runOnHostVar = true;
 
     // When old calibration is encountered, issue a warning once

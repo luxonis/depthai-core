@@ -385,6 +385,10 @@ void requireControlRoundTrips() {
     REQUIRE(std::get<Commands::Calibrate>(calibrate.command).force);
     REQUIRE_FALSE(std::get<Commands::Calibrate>(calibrate.command).keepCameraCenters);
 
+    const auto quality = roundTrip<Type>(*DCC::calibrationQuality(true));
+    REQUIRE(std::holds_alternative<Commands::CalibrationQuality>(quality.command));
+    REQUIRE(std::get<Commands::CalibrationQuality>(quality.command).force);
+
     const auto mode = roundTrip<Type>(*DCC::setPerformanceMode(DCC::PerformanceMode::OPTIMIZE_SPEED));
     REQUIRE(std::holds_alternative<Commands::SetPerformanceMode>(mode.command));
     REQUIRE(std::get<Commands::SetPerformanceMode>(mode.command).performanceMode == DCC::PerformanceMode::OPTIMIZE_SPEED);
@@ -413,6 +417,8 @@ void requireControlRoundTrips() {
 
     const auto metrics = roundTrip<Type>(*DCC::computeCalibrationMetrics(calibration));
     REQUIRE(std::holds_alternative<Commands::ComputeCalibrationMetrics>(metrics.command));
+    REQUIRE(std::get<Commands::ComputeCalibrationMetrics>(metrics.command).calibration.getCameraIntrinsics(Socket::CAM_B, 1280, 800)[0][0]
+            == Catch::Approx(800.f));
 }
 
 }  // namespace
