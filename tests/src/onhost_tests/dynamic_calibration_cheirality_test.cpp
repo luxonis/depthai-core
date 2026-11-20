@@ -12,6 +12,8 @@
 // After the depthai headers: the DCL headers define macros that collide with depthai enumerators.
 #include <DynamicCalibration.hpp>
 
+#include "../../../src/pipeline/node/DynamicCalibrationUtils.hpp"
+
 // The calibration library has to refuse a stereo pose that reconstructs the scene behind the cameras (the
 // cheirality check). The tests render synthetic image pairs of a known scene for a known stereo pair, run them
 // through the same DCL entry point the DynamicCalibration node uses and compare the answer with the truth.
@@ -31,7 +33,6 @@ constexpr double kWallDistance = 0.5;
 constexpr double kPi = 3.14159265358979323846;
 
 using Vec3 = std::array<double, 3>;
-using Mat3 = std::array<std::array<double, 3>, 3>;
 
 struct Pose {
     Vec3 rvec{0.0, 0.0, 0.0};
@@ -43,32 +44,6 @@ const Pose kTruePoseB{{0.0, 0.0, 0.0}, {-kBaseline, 0.0, 0.0}};
 double toDegrees(double radians) {
     return radians * 180.0 / kPi;
 }
-
-double toRadians(double degrees) {
-    return degrees * kPi / 180.0;
-}
-
-Mat3 rotationMatrix(const Vec3& rvec) {
-    const double angle = std::sqrt(rvec[0] * rvec[0] + rvec[1] * rvec[1] + rvec[2] * rvec[2]);
-    Mat3 rotation{{{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}};
-    if(angle < 1e-12) {
-        return rotation;
-    }
-    const Vec3 axis{rvec[0] / angle, rvec[1] / angle, rvec[2] / angle};
-    const double c = std::cos(angle);
-    const double s = std::sin(angle);
-    const Mat3 cross{{{0.0, -axis[2], axis[1]}, {axis[2], 0.0, -axis[0]}, {-axis[1], axis[0], 0.0}}};
-    for(int row = 0; row < 3; ++row) {
-        for(int col = 0; col < 3; ++col) {
-            rotation[row][col] = (row == col ? c : 0.0) + (1.0 - c) * axis[row] * axis[col] + s * cross[row][col];
-        }
-    }
-    return rotation;
-}
-
-// ---------------------------------------------------------------------------------------------------------------
-// Scene rendering
-// ---------------------------------------------------------------------------------------------------------------
 
 double latticeValue(int64_t x, int64_t y, uint32_t seed) {
     uint32_t h = static_cast<uint32_t>(x) * 374761393U + static_cast<uint32_t>(y) * 668265263U + seed * 2246822519U;
@@ -127,15 +102,17 @@ double shade(Scene scene, const Vec3& origin, const Vec3& direction) {
     struct Layer {
         double z;
         uint32_t seed;
+        /// Panels on every other tile; otherwise on every third column of every other row.
+        bool checker;
     };
-    for(const Layer layer : {Layer{0.6, 13}, Layer{1.2, 7}}) {
+    for(const Layer layer : {Layer{0.6, 13, false}, Layer{1.2, 7, true}}) {
         const auto point = hit(layer.z);
         const double tile = 0.25 * layer.z;
         const double tileX = std::floor(point[0] / tile);
         const double tileY = std::floor(point[1] / tile);
         const auto column = static_cast<int64_t>(tileX);
         const auto row = static_cast<int64_t>(tileY);
-        const bool occupied = layer.seed == 7 ? ((column + row) % 2 == 0) : (column % 3 == 0 && row % 2 == 0);
+        const bool occupied = layer.checker ? ((column + row) % 2 == 0) : (column % 3 == 0 && row % 2 == 0);
         const double inTileX = point[0] / tile - tileX;
         const double inTileY = point[1] / tile - tileY;
         if(occupied && inTileX > 0.15 && inTileX < 0.85 && inTileY > 0.15 && inTileY < 0.85) {
@@ -170,24 +147,12 @@ dcl::ImageData render(Scene scene, const Vec3& center) {
     return image;
 }
 
-// ---------------------------------------------------------------------------------------------------------------
-// Calibration
-// ---------------------------------------------------------------------------------------------------------------
-
 std::shared_ptr<dcl::CameraCalibrationHandle> calibrationHandle(const Pose& pose) {
     const dcl::scalar_t rotation[3] = {pose.rvec[0], pose.rvec[1], pose.rvec[2]};
     const dcl::scalar_t translation[3] = {pose.tvec[0], pose.tvec[1], pose.tvec[2]};
     const dcl::scalar_t cameraMatrix[9] = {kFocal, 0.0, kCx, 0.0, kFocal, kCy, 0.0, 0.0, 1.0};
     dcl::scalar_t distortion[14] = {0.0};
     return std::make_shared<dcl::CameraCalibrationHandle>(rotation, translation, cameraMatrix, dcl::PerspectiveDistortion::fromArray(distortion));
-}
-
-Pose poseOf(const std::shared_ptr<const dcl::CameraCalibrationHandle>& handle) {
-    dcl::scalar_t rvec[3];
-    dcl::scalar_t tvec[3];
-    handle->getRvec(rvec);
-    handle->getTvec(tvec);
-    return {{rvec[0], rvec[1], rvec[2]}, {tvec[0], tvec[1], tvec[2]}};
 }
 
 /// The second pose that explains a wall at kWallDistance as well as the true one: its planar twin.
@@ -233,31 +198,16 @@ Outcome recalibrate(Scene scene, const Pose& registeredPoseB, bool keepCameraCen
     }
     REQUIRE(result.value.calibrations.size() == 2);
 
-    // Pose of camera B relative to camera A: R = Rb * Ra^T, t = tb - R * ta.
-    const Pose poseA = poseOf(result.value.calibrations[0]);
-    const Pose poseB = poseOf(result.value.calibrations[1]);
-    const Mat3 rotationA = rotationMatrix(poseA.rvec);
-    const Mat3 rotationB = rotationMatrix(poseB.rvec);
-    Mat3 relativeRotation{};
-    for(int row = 0; row < 3; ++row) {
-        for(int col = 0; col < 3; ++col) {
-            for(int k = 0; k < 3; ++k) {
-                relativeRotation[row][col] += rotationB[row][k] * rotationA[col][k];
-            }
-        }
-    }
-    Vec3 baseline{};
-    for(int row = 0; row < 3; ++row) {
-        baseline[row] = poseB.tvec[row];
-        for(int k = 0; k < 3; ++k) {
-            baseline[row] -= relativeRotation[row][k] * poseA.tvec[k];
-        }
-    }
-    // The true relative rotation is the identity and the true baseline direction is -x.
-    const double trace = relativeRotation[0][0] + relativeRotation[1][1] + relativeRotation[2][2];
-    outcome.rotationErrorDegrees = toDegrees(std::acos(std::clamp((trace - 1.0) / 2.0, -1.0, 1.0)));
-    outcome.baselineLength = std::sqrt(baseline[0] * baseline[0] + baseline[1] * baseline[1] + baseline[2] * baseline[2]);
-    outcome.baselineTurnDegrees = toDegrees(std::acos(std::clamp(-baseline[0] / outcome.baselineLength, -1.0, 1.0)));
+    // T_B * T_A^-1: the pose of camera B relative to camera A. The true one has no rotation and its baseline along -x.
+    using dai::node::DclUtils;
+    auto inverseA = DclUtils::calibrationHandleToTransform(result.value.calibrations[0]);
+    dai::matrix::invertSe3Matrix4x4InPlace(inverseA);
+    const auto relative = dai::matrix::matMul(DclUtils::calibrationHandleToTransform(result.value.calibrations[1]), inverseA);
+    const auto rvec = dai::matrix::rotationMatrixToVector(dai::matrix::extractRotationMatrix(relative));
+    const auto t = dai::matrix::extractTranslationVector(relative);
+    outcome.rotationErrorDegrees = toDegrees(std::hypot(rvec[0], rvec[1], rvec[2]));
+    outcome.baselineLength = std::hypot(t[0], t[1], t[2]);
+    outcome.baselineTurnDegrees = toDegrees(std::acos(std::clamp(-t[0] / outcome.baselineLength, -1.0, 1.0)));
     return outcome;
 }
 
@@ -270,7 +220,7 @@ void requireTruePose(const Outcome& outcome) {
 }
 
 /// A calibration a device could carry after a knock: camera B turned by 0.3 and 0.4 degrees about x and y.
-const Pose kKnockedPoseB{{toRadians(0.3), toRadians(0.4), 0.0}, kTruePoseB.tvec};
+const Pose kKnockedPoseB{{0.3 * kPi / 180.0, 0.4 * kPi / 180.0, 0.0}, kTruePoseB.tvec};
 
 }  // namespace
 
