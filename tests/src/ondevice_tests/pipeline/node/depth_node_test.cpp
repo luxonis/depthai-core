@@ -106,6 +106,18 @@ std::optional<CameraBoardSocket> socketOutsideStereoPair(const std::shared_ptr<D
 /** Depth wires exactly one direct child for the active algorithm (not nested internals). */
 void requireDepthSingleBackendChild(const node::Depth& depth, const char* expectedNodeName) {
     const auto& children = depth.getNodeMap();
+    // GPU_STEREO: a Rectification node feeds GPUStereo (its in-node rectification is off).
+    if(std::strcmp(expectedNodeName, "GPUStereo") == 0) {
+        REQUIRE(children.size() == 2);
+        int gpu = 0, rect = 0;
+        for(const auto& c : children) {
+            gpu += std::dynamic_pointer_cast<node::GPUStereo>(c) != nullptr;
+            rect += std::dynamic_pointer_cast<node::Rectification>(c) != nullptr;
+        }
+        REQUIRE(gpu == 1);
+        REQUIRE(rect == 1);
+        return;
+    }
     REQUIRE(children.size() == 1);
     const auto& child = children[0];
     // DeviceNodeGroup composites (NAS, ToF) report getName() as "DeviceNodeGroup".
@@ -1002,9 +1014,18 @@ TEST_CASE("Depth: GPU_STEREO wires GPUStereo on RVC4 when build and device allow
     }
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "GPUStereo");
-    // GPUStereo rectifies inside the node (EVA), so it exposes no rectified image outputs.
-    REQUIRE_FALSE(depth->hasRectifiedOutputs());
-    REQUIRE_THROWS_WITH(depth->rectifiedLeft(), Catch::Matchers::ContainsSubstring("unavailable for the GPU_STEREO backend"));
+    REQUIRE(depth->hasRectifiedOutputs());
+    std::shared_ptr<node::GPUStereo> backend;
+    std::shared_ptr<node::Rectification> rectification;
+    for(const auto& c : depth->getNodeMap()) {
+        if(auto g = std::dynamic_pointer_cast<node::GPUStereo>(c)) backend = g;
+        if(auto r = std::dynamic_pointer_cast<node::Rectification>(c)) rectification = r;
+    }
+    REQUIRE(backend != nullptr);
+    REQUIRE(rectification != nullptr);
+    REQUIRE(backend->properties.rectification == false);
+    REQUIRE(&depth->rectifiedLeft() == &rectification->output1);
+    REQUIRE(&depth->rectifiedRight() == &rectification->output2);
 }
 
 TEST_CASE("Depth: stereo cameras created after Depth still reuse pipeline cameras") {
