@@ -666,6 +666,10 @@ dai_set_test_labels(imgframe_test onhost ci)
 dai_add_test(tofconfig_device_test src/ondevice_tests/tofconfig_device_test.cpp)
 dai_set_test_labels(tofconfig_device_test ondevice rvc2_all rvc4 ci)
 
+# ToF node: outputs and FPS. Runs only on ToF devices (ToF 33D, ToF 63D).
+dai_add_test(tof_node_test src/ondevice_tests/pipeline/node/tof_node_test.cpp)
+dai_set_test_labels(tof_node_test ondevice tof ci)
+
 #CameraControl tests
 dai_add_test(camera_control_test src/onhost_tests/pipeline/datatype/camera_control_test.cpp)
 dai_set_test_labels(camera_control_test onhost ci)
