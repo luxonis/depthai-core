@@ -165,6 +165,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--tof",
+        action="store_true",
+        required=False,
+        help="Run the tests labeled 'tof' on a ToF device (ToF 33D or ToF 63D)",
+    )
+
+    parser.add_argument(
         "--rvc4usb",
         action="store_true",
         required=False,
@@ -255,6 +262,14 @@ if __name__ == "__main__":
             "labels": ["rvc4ffc"],
         },
         {
+            # ToF 33D and ToF 63D. No platform or protocol is set: the HIL
+            # reservation holds only the ToF device, so the tests use whichever
+            # device they find.
+            "name": "ToF",
+            "env": {},
+            "labels": ["tof"],
+        },
+        {
             "name": "RVC2 - USB",
             "env": {"DEPTHAI_PLATFORM": "rvc2", "DEPTHAI_PROTOCOL": "usb"},
             "labels": ["rvc2", "usb"],
@@ -290,6 +305,8 @@ if __name__ == "__main__":
         test_configs = [config for config in all_configs if "rvc4rgb" in config.get("labels", [])]
     elif args.rvc4ffc:
         test_configs = [config for config in all_configs if "rvc4ffc" in config.get("labels", [])]
+    elif args.tof:
+        test_configs = [config for config in all_configs if "tof" in config.get("labels", [])]
     elif args.fsync:
         enableUARTonAllDevices(False)
         atexit.register(enableUARTonAllDevices, True)
