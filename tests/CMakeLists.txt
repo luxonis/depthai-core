@@ -21,11 +21,11 @@ set(test_poe_env
 )
 
 # Function for adding new tests
-# Creates separate tests for USB and PoE devices
+# Creates separate tests for USB and PoE devices, unless USB_ONLY is specified
 include(CMakeParseArguments)
 function(dai_add_test test_name test_src)
     # parse arguments
-    cmake_parse_arguments(DAT "CONFORMING" "CXX_STANDARD" "" ${ARGN})
+    cmake_parse_arguments(DAT "CONFORMING;USB_ONLY" "CXX_STANDARD" "" ${ARGN})
 
     # check compiler for C++ standard
     if(NOT DAT_CXX_STANDARD)
@@ -86,15 +86,17 @@ function(dai_add_test test_name test_src)
         set_tests_properties(${test_name}_conforming PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS usb)
     endif()
 
-    # Add PoE test variants
-    add_test(${test_name}_poe ${test_name})
-    # Add ubsan halt on error
-    set_tests_properties(${test_name}_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS poe)
-    if(MSVC AND DAT_CONFORMING)
-        # Add to list of tests
-        add_test(${test_name}_conforming_poe ${test_name}_conforming)
+    if(NOT DAT_USB_ONLY)
+        # Add PoE test variants
+        add_test(${test_name}_poe ${test_name})
         # Add ubsan halt on error
-        set_tests_properties(${test_name}_conforming_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS poe)
+        set_tests_properties(${test_name}_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS poe)
+        if(MSVC AND DAT_CONFORMING)
+            # Add to list of tests
+            add_test(${test_name}_conforming_poe ${test_name}_conforming)
+            # Add ubsan halt on error
+            set_tests_properties(${test_name}_conforming_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS poe)
+        endif()
     endif()
 
     # Copy over required DLLs (Windows)
@@ -239,6 +241,12 @@ dai_add_test(serialization_test src/serialization_test.cpp)
 
 # Multiple devices test
 dai_add_test(multiple_devices_test src/multiple_devices_test.cpp)
+
+# Device boot while discovery accesses the same USB device
+dai_add_test(regression_boot_test src/regression_boot_test.cpp CXX_STANDARD 17 USB_ONLY)
+if(TARGET regression_boot_test)
+    set_tests_properties(regression_boot_test PROPERTIES TIMEOUT 180)
+endif()
 
 # Filesystem test
 dai_add_test(filesystem_test src/filesystem_test.cpp)
