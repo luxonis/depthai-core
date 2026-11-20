@@ -957,9 +957,7 @@ void Depth::buildInternal() {
             (*gpuStereoBackend_)->setRectification(true).build(*stereo.left, *stereo.right);
             depthOut_ = &(**gpuStereoBackend_).depth;
             confidenceOut_ = &(**gpuStereoBackend_).confidenceMap;
-            auto& rectification = *(*gpuStereoBackend_)->rectification;
-            rectifiedLeftOut_ = &rectification->output1;
-            rectifiedRightOut_ = &rectification->output2;
+            // GPUStereo rectifies inside the node (EVA warp engine): no rectified image outputs.
             wiredResolution = stereo.resolution;
             if((!wiredFps || *wiredFps <= 0.f) && stereo.maxCameraFps > 0.f) {
                 wiredFps = stereo.maxCameraFps;

@@ -1002,13 +1002,9 @@ TEST_CASE("Depth: GPU_STEREO wires GPUStereo on RVC4 when build and device allow
     }
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "GPUStereo");
-    REQUIRE(depth->hasRectifiedOutputs());
-    const auto backend = std::dynamic_pointer_cast<node::GPUStereo>(depth->getNodeMap().front());
-    REQUIRE(backend != nullptr);
-    REQUIRE(backend->rectification != nullptr);
-    auto& rectification = *backend->rectification;
-    REQUIRE(&depth->rectifiedLeft() == &rectification->output1);
-    REQUIRE(&depth->rectifiedRight() == &rectification->output2);
+    // GPUStereo rectifies inside the node (EVA), so it exposes no rectified image outputs.
+    REQUIRE_FALSE(depth->hasRectifiedOutputs());
+    REQUIRE_THROWS_WITH(depth->rectifiedLeft(), Catch::Matchers::ContainsSubstring("unavailable for the GPU_STEREO backend"));
 }
 
 TEST_CASE("Depth: stereo cameras created after Depth still reuse pipeline cameras") {

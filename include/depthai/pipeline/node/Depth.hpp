@@ -134,7 +134,8 @@ class Depth : public DeviceNodeGroup {
 
     /**
      * Resolve AUTO and report whether the selected backend exposes a rectified stereo pair.
-     * Returns false for TOF, without changing backend selection or creating stereo cameras.
+     * Returns false for TOF and GPU_STEREO (which rectifies inside the node), without changing backend
+     * selection or creating stereo cameras.
      * Like depth(), this wires the graph and locks build()/setAlgorithm()/setConfig()/setAlignTo().
      * Requires the node to be attached to a pipeline with a device.
      */
@@ -142,7 +143,7 @@ class Depth : public DeviceNodeGroup {
 
     /**
      * Left rectified image used by the selected stereo-based backend.
-     * Resolves AUTO and wires the graph on first access. Throws for TOF; use
+     * Resolves AUTO and wires the graph on first access. Throws for TOF and GPU_STEREO; use
      * hasRectifiedOutputs() when stereo images are optional. To require them,
      * select a stereo-based algorithm explicitly before accessing any output.
      *
