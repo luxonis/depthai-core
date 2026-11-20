@@ -2,10 +2,32 @@ name: DepthAI Core HIL Testing
 
 on:
   workflow_dispatch:
+    inputs:
+      test_mode:
+        description: Test suite to run
+        type: choice
+        default: libusb-ab
+        options:
+          - libusb-ab
+          - suite
+      repetitions:
+        description: Five-boot test repetitions per libusb variant (1-100)
+        type: number
+        default: 100
+      runner_labels:
+        description: JSON labels for a Windows runner with an RVC2 USB camera
+        type: string
+        default: '["self-hosted","hil-test","windows","x64"]'
+      device_mxid:
+        description: Optional RVC2 MXID to select one camera when several are attached
+        type: string
   push:
     branches:
       - main
       - develop
+      # This v2 workflow is absent from the default branch, so start its
+      # comparison on push without requiring workflow_dispatch registration.
+      - fix/v2.33-libusb
     tags:
       - 'v*'
   pull_request:
@@ -22,6 +44,9 @@ jobs:
 
   # Testing
   test:
+    if: >-
+      (github.event_name != 'workflow_dispatch' || inputs.test_mode == 'suite') &&
+      !(github.event_name == 'push' && github.ref == 'refs/heads/fix/v2.33-libusb')
     strategy:
       matrix:
         os: ['windows', 'macos', 'linux']
@@ -68,3 +93,97 @@ jobs:
         cmake --build build --parallel 4 --config Release
         cd build
         ctest -C Release --output-on-failure -L usb --no-tests=error --repeat until-pass:3
+
+  libusb-ab:
+    name: Windows RVC2 libusb comparison
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.test_mode == 'libusb-ab') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/fix/v2.33-libusb')
+    # Push runs use repository variables, falling back to these defaults.
+    runs-on: ${{ fromJSON(inputs.runner_labels || vars.LIBUSB_AB_RUNNER_LABELS || '["self-hosted","hil-test","windows","x64"]') }}
+    timeout-minutes: 360
+    permissions:
+      contents: read
+    env:
+      LIBUSB_REPETITIONS: ${{ github.event_name == 'workflow_dispatch' && format('{0}', inputs.repetitions) || vars.LIBUSB_AB_REPETITIONS || '100' }}
+      DEPTHAI_DEVICE_MXID_LIST: ${{ inputs.device_mxid || vars.LIBUSB_AB_DEVICE_MXID }}
+      DEPTHAI_LEVEL: debug
+      LIBUSB_DEBUG: '4'
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Set up CMake
+      uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
+      with:
+        cmakeVersion: '3.31.x'
+        useCloudCache: false
+
+    - name: Compare unpatched and patched libusb
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $PSNativeCommandUseErrorActionPreference = $false
+        $repetitions = 0
+        if (-not [int]::TryParse($env:LIBUSB_REPETITIONS, [ref]$repetitions) -or $repetitions -lt 1 -or $repetitions -gt 100) {
+          throw 'repetitions must be an integer between 1 and 100'
+        }
+
+        $workRoot = Join-Path $env:RUNNER_TEMP "libusb-ab-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+        $logRoot = Join-Path $env:GITHUB_WORKSPACE 'libusb-ab-logs'
+        New-Item -ItemType Directory -Force -Path $logRoot | Out-Null
+        git rev-parse HEAD | Set-Content "$logRoot/commit.txt"
+        cmake --version | Set-Content "$logRoot/cmake-version.txt"
+        "| Variant | CTest exit code |" >> $env:GITHUB_STEP_SUMMARY
+        "| --- | --- |" >> $env:GITHUB_STEP_SUMMARY
+
+        $results = @{}
+        foreach ($variant in @('unpatched', 'patched')) {
+          $fix = if ($variant -eq 'patched') { 'ON' } else { 'OFF' }
+          $variantLogs = Join-Path $logRoot $variant
+          $buildDir = Join-Path $workRoot "$variant/build"
+          $hunterRoot = Join-Path $workRoot "$variant/hunter"
+          New-Item -ItemType Directory -Force -Path $variantLogs | Out-Null
+          $configureArgs = @(
+            '-S', $env:GITHUB_WORKSPACE, '-B', $buildDir, '-A', 'x64',
+            '-DCMAKE_BUILD_TYPE=Release', '-DHUNTER_CONFIGURATION_TYPES=Release',
+            "-DHUNTER_ROOT=$hunterRoot", "-DDEPTHAI_LIBUSB_WINDOWS_CLAIM_FIX=$fix",
+            '-DDEPTHAI_BUILD_TESTS=ON', '-DDEPTHAI_BUILD_EXAMPLES=OFF'
+          )
+          $configureArgs | Set-Content "$variantLogs/configure-arguments.txt"
+          & cmake @configureArgs 2>&1 | Tee-Object "$variantLogs/configure.log"
+          if ($LASTEXITCODE -ne 0) { throw "$variant configure failed: $LASTEXITCODE" }
+          Copy-Item "$buildDir/CMakeCache.txt" $variantLogs
+
+          & cmake --build $buildDir --target regression_boot_test --parallel 4 --config Release 2>&1 | Tee-Object "$variantLogs/build.log"
+          if ($LASTEXITCODE -ne 0) { throw "$variant build failed: $LASTEXITCODE" }
+          $usbDlls = @(Get-ChildItem "$buildDir/tests/Release" -Filter '*usb*.dll')
+          if ($usbDlls.Count -eq 0) { throw "No libusb DLL found next to the $variant test executable" }
+          $usbDlls | Get-FileHash -Algorithm SHA256 | Format-List | Out-File "$variantLogs/libusb-dll-hashes.txt"
+
+          # Keep testing the patched build even if the unpatched test fails.
+          & ctest --test-dir $buildDir -C Release -R '^regression_boot_test$' --repeat "until-fail:$repetitions" --output-on-failure --no-tests=error --output-log "$variantLogs/ctest.log" --output-junit "$variantLogs/results.xml"
+          $results[$variant] = $LASTEXITCODE
+          Copy-Item "$buildDir/Testing/Temporary/LastTest*.log" $variantLogs -ErrorAction SilentlyContinue
+          "| $variant | $($results[$variant]) |" >> $env:GITHUB_STEP_SUMMARY
+          # Allow watchdog recovery if the baseline left the device disconnected.
+          if ($variant -eq 'unpatched') { Start-Sleep -Seconds 15 }
+        }
+
+        if ($results['patched'] -ne 0) { throw 'The patched regression test failed; inspect the uploaded logs' }
+        if ($results['unpatched'] -eq 0) {
+          'Both variants passed. The baseline did not reproduce the issue; the comparison is inconclusive.' >> $env:GITHUB_STEP_SUMMARY
+          Write-Output '::warning::Both libusb variants passed; the original issue was not reproduced.'
+        } else {
+          'Unpatched failed and patched passed. Check the baseline log for the expected endpoint/interface failure.' >> $env:GITHUB_STEP_SUMMARY
+        }
+
+    - name: Upload comparison logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-rvc2-libusb-comparison-${{ github.run_attempt }}
+        path: libusb-ab-logs/
+        if-no-files-found: warn
+        retention-days: 14

@@ -114,8 +114,9 @@ hunter_config(
 
 # TMP, could be read from XLink
 # libusb without udev
+option(DEPTHAI_LIBUSB_WINDOWS_CLAIM_FIX "Apply the Windows libusb interface claim fix" ON)
 set(libusb_windows_args "")
-if(WIN32)
+if(WIN32 AND DEPTHAI_LIBUSB_WINDOWS_CLAIM_FIX)
     set(libusb_windows_patch "${CMAKE_CURRENT_LIST_DIR}/libusb-windows-claim-interface.cmake")
     # Recalculate Hunter's cache key when the patch changes.
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${libusb_windows_patch}")
