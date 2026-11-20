@@ -349,11 +349,11 @@ void Timesync::startSync(std::chrono::milliseconds period, int numSamples, bool 
 
                         // Calculate RTT by tDevice1+tDevice2 / 2 and assume its the same in both ways
                         add_timesync_observation(offset, now_ns - ts1, tc1);
-                        printf("Added timesync observation, RTT: %llds %lldns, converged: %d, diff: %dms\n",
-                               rtt.tv_sec,
-                               rtt.tv_nsec,
+                        printf("Added timesync observation, RTT: %llds %lldns, converged: %d, diff: %lldms\n",
+                               static_cast<long long>(rtt.tv_sec),
+                               static_cast<long long>(rtt.tv_nsec),
                                sync_converged(),
-                               duration_cast<milliseconds>(t2 - t1).count());
+                               static_cast<long long>(duration_cast<milliseconds>(t2 - t1).count()));
 
                         if(sync_converged() && isFirst) {
                             isFirst = false;

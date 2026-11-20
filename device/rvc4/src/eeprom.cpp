@@ -715,24 +715,24 @@ eeprom_status eeprom_store_config(
         switch(version) {
             case EEPROM_VERSION_V4:
                 matrix_to_1D(board_data_config.stereoRectificationData.rectifiedRotationRight, board_data.calib_R2_right);
-                matrix_to_1D(board_data_config.cameraData[dai::CameraBoardSocket::LEFT].intrinsicMatrix, board_data.calib_M1_left);
-                matrix_to_1D(board_data_config.cameraData[dai::CameraBoardSocket::RIGHT].intrinsicMatrix, board_data.calib_M2_right);
+                matrix_to_1D(board_data_config.cameraData[dai::CameraBoardSocket::CAM_B].intrinsicMatrix, board_data.calib_M1_left);
+                matrix_to_1D(board_data_config.cameraData[dai::CameraBoardSocket::CAM_C].intrinsicMatrix, board_data.calib_M2_right);
 
-                matrix_to_1D(board_data_config.cameraData[dai::CameraBoardSocket::LEFT].extrinsics.rotationMatrix, board_data.calib_R);
-                board_data.calib_T[0] = board_data_config.cameraData[dai::CameraBoardSocket::LEFT].extrinsics.translation.x;
-                board_data.calib_T[1] = board_data_config.cameraData[dai::CameraBoardSocket::LEFT].extrinsics.translation.y;
-                board_data.calib_T[2] = board_data_config.cameraData[dai::CameraBoardSocket::LEFT].extrinsics.translation.z;
+                matrix_to_1D(board_data_config.cameraData[dai::CameraBoardSocket::CAM_B].extrinsics.rotationMatrix, board_data.calib_R);
+                board_data.calib_T[0] = board_data_config.cameraData[dai::CameraBoardSocket::CAM_B].extrinsics.translation.x;
+                board_data.calib_T[1] = board_data_config.cameraData[dai::CameraBoardSocket::CAM_B].extrinsics.translation.y;
+                board_data.calib_T[2] = board_data_config.cameraData[dai::CameraBoardSocket::CAM_B].extrinsics.translation.z;
                 __attribute__((fallthrough));
             case EEPROM_VERSION_V2:
                 std::strcpy(board_data.board_name, board_data_config.boardName.c_str());
                 std::strcpy(board_data.board_rev, board_data_config.boardRev.c_str());
-                board_data.rgb_fov_deg = board_data_config.cameraData[dai::CameraBoardSocket::RGB].specHfovDeg;
+                board_data.rgb_fov_deg = board_data_config.cameraData[dai::CameraBoardSocket::CAM_A].specHfovDeg;
                 __attribute__((fallthrough));
             case EEPROM_VERSION_V1:
-                board_data.left_fov_deg = board_data_config.cameraData[dai::CameraBoardSocket::LEFT].specHfovDeg;
+                board_data.left_fov_deg = board_data_config.cameraData[dai::CameraBoardSocket::CAM_B].specHfovDeg;
                 matrix_to_1D(board_data_config.stereoRectificationData.rectifiedRotationLeft, board_data.calib_R1_left);
-                board_data.left_to_right_distance_m = board_data_config.cameraData[dai::CameraBoardSocket::LEFT].extrinsics.specTranslation.x / 100;
-                board_data.left_to_rgb_distance_m = board_data_config.cameraData[dai::CameraBoardSocket::RIGHT].extrinsics.specTranslation.x / 100;
+                board_data.left_to_right_distance_m = board_data_config.cameraData[dai::CameraBoardSocket::CAM_B].extrinsics.specTranslation.x / 100;
+                board_data.left_to_rgb_distance_m = board_data_config.cameraData[dai::CameraBoardSocket::CAM_C].extrinsics.specTranslation.x / 100;
                 // board_data.swap_left_and_right_cameras = board_data_config.swapLeftRightCam;
         }
         // Filling empty arrays with zeros
@@ -883,14 +883,14 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
         // Patch for spec translation incorrectly set for some boards with RGB not centered (CM3/CM4).
         // Reduce a bit verbosity with a shorter var name...
         auto& ec = board_data_config.cameraData;
-        if(ec.find(dai::CameraBoardSocket::LEFT) != ec.end() && ec.find(dai::CameraBoardSocket::RIGHT) != ec.end()) {
+        if(ec.find(dai::CameraBoardSocket::CAM_B) != ec.end() && ec.find(dai::CameraBoardSocket::CAM_C) != ec.end()) {
             // Patch if the diff (vs calibrated) is higher than 0.5cm
-            float& actual_spec = ec[dai::CameraBoardSocket::RIGHT].extrinsics.specTranslation.x;
-            float calib_val = ec[dai::CameraBoardSocket::RIGHT].extrinsics.translation.x;
+            float& actual_spec = ec[dai::CameraBoardSocket::CAM_C].extrinsics.specTranslation.x;
+            float calib_val = ec[dai::CameraBoardSocket::CAM_C].extrinsics.translation.x;
             float diff_spec_to_calib = abs(actual_spec - calib_val);
-            if((ec[dai::CameraBoardSocket::LEFT].extrinsics.toCameraSocket == dai::CameraBoardSocket::RIGHT) && (diff_spec_to_calib > 0.5)) {
+            if((ec[dai::CameraBoardSocket::CAM_B].extrinsics.toCameraSocket == dai::CameraBoardSocket::CAM_C) && (diff_spec_to_calib > 0.5)) {
                 // TODO check correctness here...
-                float correct_spec = abs(ec[dai::CameraBoardSocket::LEFT].extrinsics.specTranslation.x) - abs(actual_spec);
+                float correct_spec = abs(ec[dai::CameraBoardSocket::CAM_B].extrinsics.specTranslation.x) - abs(actual_spec);
                 float diff_correct_to_calib = abs(correct_spec - calib_val);
                 if(diff_correct_to_calib < 0.5) {
                     // Acceptable result, override with the corrected value
@@ -1048,14 +1048,14 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
 
         rgb_camera.height = 1080;
         rgb_camera.width = 1920;
-        dai::CameraBoardSocket left = dai::CameraBoardSocket::LEFT;
-        dai::CameraBoardSocket right = dai::CameraBoardSocket::RIGHT;
+        dai::CameraBoardSocket left = dai::CameraBoardSocket::CAM_B;
+        dai::CameraBoardSocket right = dai::CameraBoardSocket::CAM_C;
 
         bool swapLeftRightCam = board_data.swap_left_and_right_cameras;
 
         if(!swapLeftRightCam) {
-            right = dai::CameraBoardSocket::LEFT;
-            left = dai::CameraBoardSocket::RIGHT;
+            right = dai::CameraBoardSocket::CAM_B;
+            left = dai::CameraBoardSocket::CAM_C;
         }
 
         switch(board_data.version) {
@@ -1077,7 +1077,7 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
                     right_camera.extrinsics.rotationMatrix[1][2] = right_camera.extrinsics.rotationMatrix[2][1];
                     right_camera.extrinsics.rotationMatrix[2][1] = temp;
                 }
-                right_camera.extrinsics.toCameraSocket = dai::CameraBoardSocket::RGB;
+                right_camera.extrinsics.toCameraSocket = dai::CameraBoardSocket::CAM_A;
                 // copying distortion_coeff of the camera
                 rgb_camera.cameraType = dai::CameraModel::Perspective;
 
@@ -1089,7 +1089,7 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
                 right_camera.distortionCoeff = copyPackedFloats(board_data.calib_d2_right, TOTAL_DISTORTION_PARAMETERS);
                 __attribute__((fallthrough));
             case EEPROM_VERSION_V4:
-                // board_data_config.cameraData[dai::CameraBoardSocket::RIGHT].extrinsics.ro
+                // board_data_config.cameraData[dai::CameraBoardSocket::CAM_C].extrinsics.ro
                 matrix_3x3_conv(board_data.calib_M2_right, right_camera.intrinsicMatrix);
                 matrix_3x3_conv(board_data.calib_M1_left, left_camera.intrinsicMatrix);
                 matrix_3x3_conv(board_data.calib_R, left_camera.extrinsics.rotationMatrix);
@@ -1119,8 +1119,8 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
 
         board_data_config.cameraData[left] = left_camera;
         board_data_config.cameraData[right] = right_camera;
-        board_data_config.cameraData[dai::CameraBoardSocket::RGB] = rgb_camera;
-        board_data_config.cameraData[dai::CameraBoardSocket::RGB].lensPosition = 135;
+        board_data_config.cameraData[dai::CameraBoardSocket::CAM_A] = rgb_camera;
+        board_data_config.cameraData[dai::CameraBoardSocket::CAM_A].lensPosition = 135;
     }
 
     return EEPROM_OK;

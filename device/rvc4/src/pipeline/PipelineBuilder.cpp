@@ -355,7 +355,7 @@ void PipelineBuilder::build(const PipelineSchema& schema, Pipeline& pipeline) {
 }
 
 void PipelineBuilder::start(Pipeline& pipeline) {
-    dai::CameraBoardSocket lastColorCamSocket = dai::CameraBoardSocket::RGB;
+    dai::CameraBoardSocket lastColorCamSocket = dai::CameraBoardSocket::CAM_A;
     int lastColorCamId = 0;
     // PipelineRequirements req;
 

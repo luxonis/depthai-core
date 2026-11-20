@@ -287,6 +287,9 @@ set_property(SOURCE src/py_bindings.cpp APPEND PROPERTY COMPILE_DEFINITIONS
     "DEPTHAI_PYTHON_GIL_FREE=$<BOOL:${DEPTHAI_PYTHON_GIL_FREE}>")
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
     add_library(${TARGET_NAME} ${SOURCE_LIST})
+    # pybind11_add_module sets this for the normal module. pybind11 declares its namespace with hidden visibility,
+    # and without this preset GCC warns for each class that derives from a pybind11 class (-Wattributes).
+    set_target_properties(${TARGET_NAME} PROPERTIES CXX_VISIBILITY_PRESET hidden)
 else()
     # pybind11 adds -flto to Release builds, and GCC then runs all LTO code generation of the module
     # in one process ("using serial compilation of 128 LTRANS jobs"). -flto=auto runs it in parallel.

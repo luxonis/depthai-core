@@ -20,10 +20,11 @@
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 #include "depthai/utility/LockingQueue.hpp"
 #include "pipeline/NodeTiming.hpp"
-#include "utilities/MatrixUtils.hpp"
 #include "utilities/ClockOffset.hpp"
+#include "utilities/MatrixUtils.hpp"
 
 // libraries
 #include <hardware/sensors.h>
@@ -455,8 +456,11 @@ bool IMU::daiToSensorConfig(const dai::IMUSensorConfig& src, ImuSensorConfig& ds
             dst.streamConfig.calibrated = false;
             dst.streamConfig.resampled = true;
             break;
+            DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
         case dai::IMUSensor::LINEAR_ACCELERATION:
         case dai::IMUSensor::GRAVITY:
+            DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+            // The device does not supply these deprecated sensors. The labels stay, so that -Wswitch finds new sensors.
             return false;
         case dai::IMUSensor::GYROSCOPE_RAW:
             dst.sensorType = SENSOR_TYPE_GYROSCOPE_UNCALIBRATED;

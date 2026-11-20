@@ -203,6 +203,13 @@ if(NOT DEPTHAI_DEVICE_DEBUG_INFO)
     add_compile_options(-g0)
 endif()
 
+# GCC on AArch64 tells about each function that passes a type such as std::pair<float, float> by value: GCC 10.1
+# changed the parameter passing of these types for C++17. The change is only a problem when the program links code
+# from a GCC older than 10.1. All objects in the firmware come from GCC 11.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options($<$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:CXX>>:-Wno-psabi>)
+endif()
+
 find_program(CCACHE_PROGRAM ccache)
 
 if(CCACHE_PROGRAM)
