@@ -125,11 +125,13 @@ class CameraControl : public Buffer {
         AE_MAX_ISO = 57,
         AF_METHOD = 58,                /* [1] af_method: AutoFocusMethod
                                         */
-        AF_RESPONSIVE_REFOCUS = 59,    /* [1] enable: bool
+        AF_RESPONSIVE_REFOCUS = 59,    /* [1] responsiveness: float 0..1
                                         */
         AF_IMU = 60,                   /* [1] enable: bool
                                         */
         AF_PDAF_OFFSET_LEARNING = 61,  /* [1] enable: bool
+                                        */
+        AF_CONTRAST_REFOCUS = 62,      /* [1] responsiveness: float 0..1
                                         */
     };
 
@@ -529,13 +531,21 @@ class CameraControl : public Buffer {
     CameraControl& setAutoFocusMethod(AutoFocusMethod method);
 
     /**
-     * Set a command to set how readily continuous autofocus refocuses, `0..1` (clamped). 0 refocuses almost never, only when
-     * phase detection reads the scene far out of focus; 1 refocuses on the smallest defocus or scene change, i.e. very often.
-     * Default 0.5: refocus on every scene change, also when phase detection reads the new scene as in focus (e.g. after the
-     * camera turns to a new target at a similar distance); about twice the searches of 0.25 while the camera moves.
-     * No effect with the `CONTRAST` method, which refocuses on scene changes by its own tuning. RVC4 only.
+     * Set a command to set how readily continuous autofocus refocuses on phase detection, `0..1` (clamped). 0 refocuses almost
+     * never, only when phase detection reads the scene far out of focus; 1 on the smallest defocus or scene change, i.e. very
+     * often. Default 0.5: refocus on every scene change, also when phase detection reads the new scene as in focus (e.g. after
+     * the camera turns to a new target at a similar distance). Scene changes come from the contrast monitor, see
+     * setAutoFocusContrastRefocus. No effect with the `CONTRAST` method. RVC4 only.
      */
     CameraControl& setAutoFocusResponsiveRefocus(float responsiveness);
+
+    /**
+     * Set a command to set how readily continuous autofocus refocuses on a scene change seen by the contrast monitor (image
+     * change, gyroscope), `0..1` (clamped). 0 refocuses almost never, 1 on the smallest change, i.e. very often. Default 0.5:
+     * the camera tuning. It decides with the `CONTRAST` method, and with `HYBRID` / `PDAF` while phase detection is unsure or
+     * not confident (dark scenes, bright lights in the focus region), see setAutoFocusResponsiveRefocus. RVC4 only.
+     */
+    CameraControl& setAutoFocusContrastRefocus(float responsiveness);
 
     /**
      * Set a command to use the device IMU (gyroscope) in autofocus: searches started during a camera rotation wait for it to end.
@@ -822,6 +832,7 @@ class CameraControl : public Buffer {
 
     AutoFocusMethod autoFocusMethod = AutoFocusMethod::HYBRID;
     float autoFocusResponsiveRefocus = 0.5f;
+    float autoFocusContrastRefocus = 0.5f;
     bool autoFocusImu = true;
     bool autoFocusPdafOffsetLearning = false;
 
@@ -913,7 +924,8 @@ class CameraControl : public Buffer {
                       autoFocusMethod,
                       autoFocusResponsiveRefocus,
                       autoFocusImu,
-                      autoFocusPdafOffsetLearning);
+                      autoFocusPdafOffsetLearning,
+                      autoFocusContrastRefocus);
     /**
      * Retrieves lens position, range 0.0f..1.0f.
      */

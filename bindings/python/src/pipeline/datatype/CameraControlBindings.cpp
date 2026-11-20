@@ -62,6 +62,7 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .def_readwrite("aeMaxISO", &CameraControl::aeMaxISO, DOC(dai, CameraControl, aeMaxISO))
         .def_readwrite("autoFocusMethod", &CameraControl::autoFocusMethod, DOC(dai, CameraControl, autoFocusMethod))
         .def_readwrite("autoFocusResponsiveRefocus", &CameraControl::autoFocusResponsiveRefocus, DOC(dai, CameraControl, autoFocusResponsiveRefocus))
+        .def_readwrite("autoFocusContrastRefocus", &CameraControl::autoFocusContrastRefocus, DOC(dai, CameraControl, autoFocusContrastRefocus))
         .def_readwrite("autoFocusImu", &CameraControl::autoFocusImu, DOC(dai, CameraControl, autoFocusImu))
         .def_readwrite("autoFocusPdafOffsetLearning", &CameraControl::autoFocusPdafOffsetLearning, DOC(dai, CameraControl, autoFocusPdafOffsetLearning))
         .def_readwrite("enableHdr", &CameraControl::enableHdr, DOC(dai, CameraControl, enableHdr))
@@ -123,7 +124,8 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .value("AF_METHOD", CameraControl::Command::AF_METHOD)
         .value("AF_RESPONSIVE_REFOCUS", CameraControl::Command::AF_RESPONSIVE_REFOCUS)
         .value("AF_IMU", CameraControl::Command::AF_IMU)
-        .value("AF_PDAF_OFFSET_LEARNING", CameraControl::Command::AF_PDAF_OFFSET_LEARNING);
+        .value("AF_PDAF_OFFSET_LEARNING", CameraControl::Command::AF_PDAF_OFFSET_LEARNING)
+        .value("AF_CONTRAST_REFOCUS", CameraControl::Command::AF_CONTRAST_REFOCUS);
 
     camCtrlAttr.push_back("AutoFocusMode");
     cameraControlAutoFocusMode.value("OFF", CameraControl::AutoFocusMode::OFF)
@@ -258,6 +260,10 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
              &CameraControl::setAutoFocusResponsiveRefocus,
              py::arg("responsiveness"),
              DOC(dai, CameraControl, setAutoFocusResponsiveRefocus))
+        .def("setAutoFocusContrastRefocus",
+             &CameraControl::setAutoFocusContrastRefocus,
+             py::arg("responsiveness"),
+             DOC(dai, CameraControl, setAutoFocusContrastRefocus))
         .def("setAutoFocusImu", &CameraControl::setAutoFocusImu, py::arg("enable"), DOC(dai, CameraControl, setAutoFocusImu))
         .def("setAutoFocusPdafOffsetLearning",
              &CameraControl::setAutoFocusPdafOffsetLearning,

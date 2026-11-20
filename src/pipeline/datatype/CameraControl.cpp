@@ -78,6 +78,11 @@ CameraControl& CameraControl::setAutoFocusResponsiveRefocus(float responsiveness
     autoFocusResponsiveRefocus = responsiveness;
     return *this;
 }
+CameraControl& CameraControl::setAutoFocusContrastRefocus(float responsiveness) {
+    setCommand(Command::AF_CONTRAST_REFOCUS);
+    autoFocusContrastRefocus = responsiveness;
+    return *this;
+}
 CameraControl& CameraControl::setAutoFocusImu(bool enable) {
     setCommand(Command::AF_IMU);
     autoFocusImu = enable;
