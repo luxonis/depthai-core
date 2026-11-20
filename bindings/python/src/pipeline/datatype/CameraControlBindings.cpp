@@ -22,6 +22,7 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
     py::class_<CameraControl::RegionParams> region(cameraControl, "RegionParams", DOC(dai, CameraControl, RegionParams));
     py::enum_<CameraControl::Command> cameraControlCommand(cameraControl, "Command", DOC(dai, CameraControl, Command));
     py::enum_<CameraControl::AutoFocusMode> cameraControlAutoFocusMode(cameraControl, "AutoFocusMode", DOC(dai, CameraControl, AutoFocusMode));
+    py::enum_<CameraControl::AutoFocusMethod> cameraControlAutoFocusMethod(cameraControl, "AutoFocusMethod", DOC(dai, CameraControl, AutoFocusMethod));
     py::enum_<CameraControl::AutoWhiteBalanceMode> cameraControlAutoWhiteBalanceMode(
         cameraControl, "AutoWhiteBalanceMode", DOC(dai, CameraControl, AutoWhiteBalanceMode));
     py::enum_<CameraControl::SceneMode> cameraControlSceneMode(cameraControl, "SceneMode", DOC(dai, CameraControl, SceneMode));
@@ -59,6 +60,10 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .def(py::init<>(), DOC(dai, CameraControl, CameraControl))
         .def_readwrite("aeRegion", &CameraControl::aeRegion, DOC(dai, CameraControl, aeRegion))
         .def_readwrite("aeMaxISO", &CameraControl::aeMaxISO, DOC(dai, CameraControl, aeMaxISO))
+        .def_readwrite("autoFocusMethod", &CameraControl::autoFocusMethod, DOC(dai, CameraControl, autoFocusMethod))
+        .def_readwrite("autoFocusResponsiveRefocus", &CameraControl::autoFocusResponsiveRefocus, DOC(dai, CameraControl, autoFocusResponsiveRefocus))
+        .def_readwrite("autoFocusImu", &CameraControl::autoFocusImu, DOC(dai, CameraControl, autoFocusImu))
+        .def_readwrite("autoFocusPdafOffsetLearning", &CameraControl::autoFocusPdafOffsetLearning, DOC(dai, CameraControl, autoFocusPdafOffsetLearning))
         .def_readwrite("enableHdr", &CameraControl::enableHdr, DOC(dai, CameraControl, enableHdr))
         .def_readwrite("frameSyncMode", &CameraControl::frameSyncMode, DOC(dai, CameraControl, frameSyncMode))
         .def_readwrite("lensPosAutoInfinity", &CameraControl::lensPosAutoInfinity, DOC(dai, CameraControl, lensPosAutoInfinity))
@@ -114,7 +119,11 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .value("LUMA_DENOISE", CameraControl::Command::LUMA_DENOISE)
         .value("CHROMA_DENOISE", CameraControl::Command::CHROMA_DENOISE)
         .value("WB_COLOR_TEMP", CameraControl::Command::WB_COLOR_TEMP)
-        .value("AE_MAX_ISO", CameraControl::Command::AE_MAX_ISO);
+        .value("AE_MAX_ISO", CameraControl::Command::AE_MAX_ISO)
+        .value("AF_METHOD", CameraControl::Command::AF_METHOD)
+        .value("AF_RESPONSIVE_REFOCUS", CameraControl::Command::AF_RESPONSIVE_REFOCUS)
+        .value("AF_IMU", CameraControl::Command::AF_IMU)
+        .value("AF_PDAF_OFFSET_LEARNING", CameraControl::Command::AF_PDAF_OFFSET_LEARNING);
 
     camCtrlAttr.push_back("AutoFocusMode");
     cameraControlAutoFocusMode.value("OFF", CameraControl::AutoFocusMode::OFF)
@@ -123,6 +132,11 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .value("CONTINUOUS_VIDEO", CameraControl::AutoFocusMode::CONTINUOUS_VIDEO)
         .value("CONTINUOUS_PICTURE", CameraControl::AutoFocusMode::CONTINUOUS_PICTURE)
         .value("EDOF", CameraControl::AutoFocusMode::EDOF);
+
+    camCtrlAttr.push_back("AutoFocusMethod");
+    cameraControlAutoFocusMethod.value("HYBRID", CameraControl::AutoFocusMethod::HYBRID)
+        .value("CONTRAST", CameraControl::AutoFocusMethod::CONTRAST)
+        .value("PDAF", CameraControl::AutoFocusMethod::PDAF);
 
     camCtrlAttr.push_back("AutoWhiteBalanceMode");
     cameraControlAutoWhiteBalanceMode.value("OFF", CameraControl::AutoWhiteBalanceMode::OFF)
@@ -239,6 +253,16 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .def("setStrobeDisable", &CameraControl::setStrobeDisable, DOC(dai, CameraControl, setStrobeDisable))
         .def("setAutoFocusMode", &CameraControl::setAutoFocusMode, py::arg("mode"), DOC(dai, CameraControl, setAutoFocusMode))
         .def("setAutoFocusTrigger", &CameraControl::setAutoFocusTrigger, DOC(dai, CameraControl, setAutoFocusTrigger))
+        .def("setAutoFocusMethod", &CameraControl::setAutoFocusMethod, py::arg("method"), DOC(dai, CameraControl, setAutoFocusMethod))
+        .def("setAutoFocusResponsiveRefocus",
+             &CameraControl::setAutoFocusResponsiveRefocus,
+             py::arg("enable"),
+             DOC(dai, CameraControl, setAutoFocusResponsiveRefocus))
+        .def("setAutoFocusImu", &CameraControl::setAutoFocusImu, py::arg("enable"), DOC(dai, CameraControl, setAutoFocusImu))
+        .def("setAutoFocusPdafOffsetLearning",
+             &CameraControl::setAutoFocusPdafOffsetLearning,
+             py::arg("enable"),
+             DOC(dai, CameraControl, setAutoFocusPdafOffsetLearning))
         .def("setAutoFocusLensRange",
              &CameraControl::setAutoFocusLensRange,
              py::arg("infinityPosition"),

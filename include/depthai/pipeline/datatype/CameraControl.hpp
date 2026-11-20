@@ -123,6 +123,14 @@ class CameraControl : public Buffer {
         MOVE_LENS_RAW = 55, /* lens position: 0.0 - 1.0 */
         HDR = 56,
         AE_MAX_ISO = 57,
+        AF_METHOD = 58,                /* [1] af_method: AutoFocusMethod
+                                        */
+        AF_RESPONSIVE_REFOCUS = 59,    /* [1] enable: bool
+                                        */
+        AF_IMU = 60,                   /* [1] enable: bool
+                                        */
+        AF_PDAF_OFFSET_LEARNING = 61,  /* [1] enable: bool
+                                        */
     };
 
     enum class AutoFocusMode : uint8_t {
@@ -153,6 +161,27 @@ class CameraControl : public Buffer {
          * AF triggers are ignored.
          */
         EDOF,
+    };
+
+    /**
+     * How autofocus finds the focus position. Phase detection (PDAF) needs a sensor module with PDAF enabled and calibrated;
+     * without phase detection data every method focuses by contrast.
+     */
+    enum class AutoFocusMethod : uint8_t {
+        /**
+         * Phase detection moves the lens close to focus, then a short contrast search picks the final position.
+         * The sharpest focus, with a small lens movement at the end of every search.
+         */
+        HYBRID = 0,
+        /**
+         * Contrast search only, no phase detection: every search sweeps the lens.
+         */
+        CONTRAST,
+        /**
+         * Phase detection decides the lens position, contrast only where phase detection is not confident (e.g. low light).
+         * The least lens movement, for video on moving platforms; slightly less sharp than HYBRID.
+         */
+        PDAF,
     };
 
     enum class AutoWhiteBalanceMode : uint8_t {
@@ -494,6 +523,33 @@ class CameraControl : public Buffer {
     CameraControl& setAutoFocusLensRange(int infinityPosition, int macroPosition);
 
     /**
+     * Set a command to specify the autofocus method. Default `HYBRID`.
+     * RVC4 only; RVC2 always focuses by contrast.
+     */
+    CameraControl& setAutoFocusMethod(AutoFocusMethod method);
+
+    /**
+     * Set a command to refocus on every scene change, also when phase detection reads the new scene as in focus (e.g. after the
+     * camera turns to a new target at a similar distance). Default on; about twice the searches while the camera moves.
+     * No effect with the `CONTRAST` method, which always refocuses on scene changes. RVC4 only.
+     */
+    CameraControl& setAutoFocusResponsiveRefocus(bool enable);
+
+    /**
+     * Set a command to use the device IMU (gyroscope) in autofocus: searches started during a camera rotation wait for it to end.
+     * Default on. Turn it off when the camera is not rigidly mounted with the device, e.g. a module on a cable.
+     * RVC4 only, needs an OS that feeds the IMU to the camera stack.
+     */
+    CameraControl& setAutoFocusImu(bool enable);
+
+    /**
+     * Set a command to learn the phase detection offset from contrast searches during the session. Default off.
+     * For static cameras only: on a moving camera it learns wrong offsets. Needs the `HYBRID` or `PDAF` method.
+     * Pipeline start only (Camera::initialControl), runtime changes are ignored. RVC4 only.
+     */
+    CameraControl& setAutoFocusPdafOffsetLearning(bool enable);
+
+    /**
      * Set a command to specify focus region in pixels.
      * Note: the region should be mapped to the configured sensor resolution, before ISP scaling
      * @param startX X coordinate of top left corner of region
@@ -762,6 +818,11 @@ class CameraControl : public Buffer {
 
     uint8_t lensPosAutoInfinity, lensPosAutoMacro;
 
+    AutoFocusMethod autoFocusMethod = AutoFocusMethod::HYBRID;
+    bool autoFocusResponsiveRefocus = true;
+    bool autoFocusImu = true;
+    bool autoFocusPdafOffsetLearning = false;
+
     ManualExposureParams expManual;
     RegionParams aeRegion, afRegion;
     AutoWhiteBalanceMode awbMode;
@@ -846,7 +907,11 @@ class CameraControl : public Buffer {
                       lowPowerNumFramesBurst,
                       lowPowerNumFramesDiscard,
                       enableHdr,
-                      miscControls);
+                      miscControls,
+                      autoFocusMethod,
+                      autoFocusResponsiveRefocus,
+                      autoFocusImu,
+                      autoFocusPdafOffsetLearning);
     /**
      * Retrieves lens position, range 0.0f..1.0f.
      */

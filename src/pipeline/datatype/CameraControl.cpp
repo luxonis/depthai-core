@@ -68,6 +68,26 @@ CameraControl& CameraControl::setAutoFocusLensRange(int infinityPosition, int ma
     lensPosAutoMacro = macroPosition;
     return *this;
 }
+CameraControl& CameraControl::setAutoFocusMethod(AutoFocusMethod method) {
+    setCommand(Command::AF_METHOD);
+    autoFocusMethod = method;
+    return *this;
+}
+CameraControl& CameraControl::setAutoFocusResponsiveRefocus(bool enable) {
+    setCommand(Command::AF_RESPONSIVE_REFOCUS);
+    autoFocusResponsiveRefocus = enable;
+    return *this;
+}
+CameraControl& CameraControl::setAutoFocusImu(bool enable) {
+    setCommand(Command::AF_IMU);
+    autoFocusImu = enable;
+    return *this;
+}
+CameraControl& CameraControl::setAutoFocusPdafOffsetLearning(bool enable) {
+    setCommand(Command::AF_PDAF_OFFSET_LEARNING);
+    autoFocusPdafOffsetLearning = enable;
+    return *this;
+}
 CameraControl& CameraControl::setAutoFocusRegion(uint16_t startX, uint16_t startY, uint16_t width, uint16_t height) {
     setCommand(Command::AF_REGION);
     afRegion.x = startX;
