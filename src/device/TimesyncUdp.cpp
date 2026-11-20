@@ -30,6 +30,8 @@
 #endif
 #if defined(DAI_TIMESYNC_UDP_POSIX) && defined(DEPTHAI_ENABLE_LIBUSB)
     #include <libusb-1.0/libusb.h>
+
+    #include "XLink/XLink.h"
 #endif
 
 namespace dai {
@@ -382,11 +384,17 @@ TimesyncUdpResponder::TimesyncUdpResponder(const std::string& deviceIp, uint64_t
     }
 }
 
-TimesyncUdpResponder::TimesyncUdpResponder(void* usbHandle, int usbInterface, uint64_t token, const void* owner) : token(token), owner(owner) {
+TimesyncUdpResponder::TimesyncUdpResponder(int usbLinkId, uint64_t token, const void* owner) : token(token), owner(owner) {
     #ifdef DEPTHAI_ENABLE_LIBUSB
-    auto* handle = static_cast<libusb_device_handle*>(usbHandle);
+    void* lent = nullptr;
+    int usbInterface = -1;
+    if(XLinkGetUsbDeviceHandle(static_cast<linkId_t>(usbLinkId), &lent, &usbInterface) != X_LINK_SUCCESS) return;
+    auto* handle = static_cast<libusb_device_handle*>(lent);
     struct libusb_config_descriptor* config = nullptr;
-    if(handle == nullptr || libusb_get_active_config_descriptor(libusb_get_device(handle), &config) != 0) return;
+    if(libusb_get_active_config_descriptor(libusb_get_device(handle), &config) != 0) {
+        XLinkReleaseUsbDeviceHandle(lent);
+        return;
+    }
     // XLink uses the interface's first bulk IN / OUT pair, the side channel is the second
     int ins = 0, outs = 0;
     for(int i = 0; i < config->bNumInterfaces; i++) {
@@ -406,6 +414,7 @@ TimesyncUdpResponder::TimesyncUdpResponder(void* usbHandle, int usbInterface, ui
     libusb_free_config_descriptor(config);
     if(usbIn == 0 || usbOut == 0) {
         logger::debug("USB timesync: interface {} has no second bulk pair", usbInterface);
+        XLinkReleaseUsbDeviceHandle(lent);
         return;
     }
     usb = handle;
@@ -415,8 +424,7 @@ TimesyncUdpResponder::TimesyncUdpResponder(void* usbHandle, int usbInterface, ui
         responders[owner] = this;
     }
     #else
-    (void)usbHandle;
-    (void)usbInterface;
+    (void)usbLinkId;
     #endif
 }
 
@@ -429,6 +437,9 @@ TimesyncUdpResponder::~TimesyncUdpResponder() {
     stopRequested = true;
     if(thread.joinable()) thread.join();
     if(fd >= 0) close(fd);
+    #ifdef DEPTHAI_ENABLE_LIBUSB
+    if(usb != nullptr) XLinkReleaseUsbDeviceHandle(usb);
+    #endif
     std::vector<Call> pending;
     {
         std::lock_guard<std::mutex> lock(rpcMtx);
@@ -677,9 +688,9 @@ void TimesyncUdpResponder::runUsb() {
         const int64_t t2 = steadyNs();
         // a read that timed out can still have taken a packet in
         if(r != 0 && !(r == LIBUSB_ERROR_TIMEOUT && n > 0)) {
-            if(r == LIBUSB_ERROR_NO_DEVICE) break;
-            if(r != LIBUSB_ERROR_TIMEOUT) std::this_thread::sleep_for(milliseconds(10));
-            continue;
+            if(r == LIBUSB_ERROR_TIMEOUT) continue;
+            logger::debug("USB timesync side channel stops: {}", libusb_error_name(r));
+            break;  // the device or its link is gone (XLink keeps the handle open until the destructor gives it back)
         }
         UdpMsg m;
         if(n != static_cast<int>(sizeof(m))) continue;
@@ -923,7 +934,7 @@ bool TimesyncUdpResponder::supported() {
     return false;
 }
 TimesyncUdpResponder::TimesyncUdpResponder(const std::string&, uint64_t token, const void* owner) : token(token), owner(owner) {}
-TimesyncUdpResponder::TimesyncUdpResponder(void*, int, uint64_t token, const void* owner) : token(token), owner(owner) {}
+TimesyncUdpResponder::TimesyncUdpResponder(int, uint64_t token, const void* owner) : token(token), owner(owner) {}
 TimesyncUdpResponder::~TimesyncUdpResponder() = default;
 bool TimesyncUdpResponder::ok() const {
     return false;

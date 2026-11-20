@@ -45,9 +45,10 @@ class TimesyncUdpResponder {
     // Starts the responder thread for the device at deviceIp (IPv4 literal or host name, optional ":port" suffix);
     // a sync-start group finds it by its owner (the DeviceBase)
     TimesyncUdpResponder(const std::string& deviceIp, uint64_t token, const void* owner = nullptr);
-    // The same on the USB side channel of an XLink USB link: its libusb device handle (XLinkGetUsbDeviceHandle) and the
-    // interface XLink claimed, whose second bulk IN / OUT pair is the channel. Needs depthai built with libusb.
-    TimesyncUdpResponder(void* usbHandle, int usbInterface, uint64_t token, const void* owner = nullptr);
+    // The same on the USB side channel of the XLink USB link usbLinkId: the second bulk IN / OUT pair of the interface
+    // XLink claimed, on the link's libusb handle, borrowed from XLink until the responder is destroyed (if the link goes
+    // down meanwhile, the transfers fail and the thread stops). Needs depthai built with libusb.
+    TimesyncUdpResponder(int usbLinkId, uint64_t token, const void* owner = nullptr);
     ~TimesyncUdpResponder();
     TimesyncUdpResponder(const TimesyncUdpResponder&) = delete;
     TimesyncUdpResponder& operator=(const TimesyncUdpResponder&) = delete;
@@ -79,7 +80,7 @@ class TimesyncUdpResponder {
     std::chrono::steady_clock::time_point resendCalls();
 
     int fd = -1;
-    void* usb = nullptr;  // libusb_device_handle of the side channel (instead of the socket)
+    void* usb = nullptr;  // libusb_device_handle of the side channel (instead of the socket), borrowed from XLink
     uint8_t usbIn = 0, usbOut = 0;
     uint64_t token;
     const void* owner;

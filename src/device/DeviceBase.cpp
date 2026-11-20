@@ -1556,16 +1556,12 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             if((tsInfo.platform == X_LINK_RVC4 || tsInfo.platform == X_LINK_MYRIAD_X) && (tsInfo.protocol == X_LINK_USB_VSC || tsInfo.protocol == X_LINK_USB_EP)
                && TimesyncUdpResponder::supported() && utility::getEnvAs<bool>("DEPTHAI_TIMESYNC_USB", true)) {
                 try {
-                    void* usbHandle = nullptr;
-                    int usbInterface = -1;
-                    if(XLinkGetUsbDeviceHandle(static_cast<linkId_t>(connection->getLinkId()), &usbHandle, &usbInterface) == X_LINK_SUCCESS) {
-                        std::random_device rd;
-                        const int64_t token = static_cast<int64_t>(((static_cast<uint64_t>(rd()) << 32) | rd()) >> 1) | 1;
-                        if(pimpl->rpcCallChecked<bool>("setTimesyncUsb", token)) {
-                            auto responder = std::make_unique<TimesyncUdpResponder>(
-                                usbHandle, usbInterface, static_cast<uint64_t>(token), static_cast<const DeviceBase*>(this));
-                            if(responder->ok()) pimpl->timesyncUdp = std::move(responder);
-                        }
+                    std::random_device rd;
+                    const int64_t token = static_cast<int64_t>(((static_cast<uint64_t>(rd()) << 32) | rd()) >> 1) | 1;
+                    if(pimpl->rpcCallChecked<bool>("setTimesyncUsb", token)) {
+                        auto responder =
+                            std::make_unique<TimesyncUdpResponder>(connection->getLinkId(), static_cast<uint64_t>(token), static_cast<const DeviceBase*>(this));
+                        if(responder->ok()) pimpl->timesyncUdp = std::move(responder);
                     }
                 } catch(const std::exception& ex) {
                     pimpl->logger.debug("USB timesync side channel not available, using XLink: {}", ex.what());
