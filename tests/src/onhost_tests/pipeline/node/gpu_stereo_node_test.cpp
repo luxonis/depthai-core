@@ -13,12 +13,12 @@ TEST_CASE("GPUStereo rectification toggle updates the node properties", "[GPUSte
     REQUIRE(node->properties.rectification == true);
 }
 
-TEST_CASE("GPUStereo compute mode defaults to GPU_CPU and is settable", "[GPUStereo]") {
+TEST_CASE("GPUStereo compute mode defaults to GPU_ONLY and is settable", "[GPUStereo]") {
     auto node = dai::node::GPUStereo::create();
-    REQUIRE(node->initialConfig->getComputeMode() == dai::GPUStereoConfig::ComputeMode::GPU_CPU);
-
-    node->initialConfig->setComputeMode(dai::GPUStereoConfig::ComputeMode::GPU_ONLY);
     REQUIRE(node->initialConfig->getComputeMode() == dai::GPUStereoConfig::ComputeMode::GPU_ONLY);
+
+    node->initialConfig->setComputeMode(dai::GPUStereoConfig::ComputeMode::GPU_CPU);
+    REQUIRE(node->initialConfig->getComputeMode() == dai::GPUStereoConfig::ComputeMode::GPU_CPU);
 }
 
 TEST_CASE("GPUStereo temporal filter defaults to on and is settable", "[GPUStereo]") {

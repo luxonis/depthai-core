@@ -16,8 +16,9 @@ namespace node {
  *
  * Computes disparity, depth and a confidence map from a synchronized stereo camera pair with a classical
  * stereo method on the Adreno GPU (OpenCL) and the CPU, see GPUStereoConfig::ComputeMode. Rectification is
- * part of the node (EVA warp engine, controlled via @ref setRectification). Supported input sizes: 1280x800
- * and 640x400, GRAY8 / RAW8.
+ * part of the node (EVA warp engine, controlled via @ref setRectification). Input sizes: any up to 2592x1944
+ * in GPU_ONLY mode (default), 1280x800 and 640x400 in GPU_CPU mode; GRAY8 / RAW8. In-node rectification
+ * supports 1280x800 and 640x400; other sizes must be fed rectified with setRectification(false).
  */
 class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperties> {
    protected:

@@ -17,13 +17,15 @@ with dai.Pipeline(device) as pipeline:
     camRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
 
     gpu = pipeline.create(dai.node.GPUStereo)
-    # Supported input sizes: 1280x800 and 640x400 (rectified inside the node).
+    # 1280x800 / 640x400 are rectified inside the node. Other sizes (GPU_ONLY, up to 2592x1944) must arrive rectified,
+    # with gpu.setRectification(False).
     gpu.build(camLeft.requestOutput((1280, 800), dai.ImgFrame.Type.GRAY8, fps=30),
               camRight.requestOutput((1280, 800), dai.ImgFrame.Type.GRAY8, fps=30))
     # Confidence 0..255, higher = more confident; pixels below the threshold are invalidated (0 = off).
     gpu.initialConfig.setConfidenceThreshold(10)
-    # GPU_CPU (default) balances GPU and CPU; GPU_ONLY keeps the CPU almost free (GPU fully busy).
-    gpu.initialConfig.setComputeMode(dai.GPUStereoConfig.ComputeMode.GPU_CPU)
+    # GPU_ONLY (default) keeps the CPU almost free and has the lowest latency; GPU_CPU moves part of the work to
+    # one CPU core for more throughput (1280x800 / 640x400 only).
+    gpu.initialConfig.setComputeMode(dai.GPUStereoConfig.ComputeMode.GPU_ONLY)
 
     depthQ = gpu.depth.createOutputQueue()
 

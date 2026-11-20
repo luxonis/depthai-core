@@ -13,9 +13,11 @@ class GPUStereoConfig : public Buffer {
    public:
     /**
      * Where the stereo matching runs.
-     *  - GPU_CPU (default): vertical SGM paths on the GPU, horizontal paths on one CPU core (lowest GPU load).
-     *  - GPU_ONLY: everything on the GPU (lowest CPU load).
-     * Both produce the same output.
+     *  - GPU_ONLY (default): everything on the GPU (lowest CPU load and latency). Any input size, validated up
+     *    to 2592x1944 (5 MP); above 1920x1080 the matching grid is 4x4 input pixels instead of 2x2.
+     *  - GPU_CPU: vertical SGM paths on the GPU, horizontal paths on one CPU core (lowest GPU load, highest
+     *    throughput). 1280x800 and 640x400 inputs only.
+     * At 1280x800 and 640x400 both produce the same output.
      */
     enum class ComputeMode : std::int32_t { GPU_CPU = 0, GPU_ONLY = 1 };
 
@@ -33,7 +35,7 @@ class GPUStereoConfig : public Buffer {
     /**
      * Compute placement, see ComputeMode. Applied at startup (initialConfig).
      */
-    ComputeMode computeMode = ComputeMode::GPU_CPU;
+    ComputeMode computeMode = ComputeMode::GPU_ONLY;
 
     /**
      * Temporal filter (default on): each frame is blended with the node's previous output. Pixels that agree
@@ -59,7 +61,7 @@ class GPUStereoConfig : public Buffer {
     int getConfidenceThreshold() const;
 
     /**
-     * @brief Set where the stereo matching runs (GPU_CPU default, or GPU_ONLY).
+     * @brief Set where the stereo matching runs (GPU_ONLY default, or GPU_CPU).
      */
     GPUStereoConfig& setComputeMode(ComputeMode mode);
 
