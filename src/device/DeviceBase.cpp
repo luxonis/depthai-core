@@ -1529,11 +1529,12 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
         // Below can throw - make sure to gracefully exit threads
         try {
-            // RVC4 over Ethernet: timesync on its own UDP socket with kernel timestamps instead of the XLink stream, which
-            // waits behind frames under load. The firmware falls back to XLink when the hello or the replies do not arrive.
+            // RVC4 / RVC2 over Ethernet: timesync on its own UDP socket with kernel timestamps instead of the XLink stream, which
+            // waits behind frames under load. The firmware falls back to XLink when the hello or the replies do not arrive;
+            // firmware without the setTimesyncUdp RPC stays on XLink.
             pimpl->timesyncUdp.reset();
             const auto tsInfo = connection->getDeviceInfo();
-            if(tsInfo.platform == X_LINK_RVC4 && tsInfo.protocol == X_LINK_TCP_IP && TimesyncUdpResponder::supported()
+            if((tsInfo.platform == X_LINK_RVC4 || tsInfo.platform == X_LINK_MYRIAD_X) && tsInfo.protocol == X_LINK_TCP_IP && TimesyncUdpResponder::supported()
                && utility::getEnvAs<bool>("DEPTHAI_TIMESYNC_UDP", true)) {
                 try {
                     // int64 on the RPC: a uint64 argument would select nanorpc's call(name, id) overload and become the id
