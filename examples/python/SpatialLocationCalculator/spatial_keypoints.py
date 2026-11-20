@@ -58,7 +58,7 @@ with dai.Pipeline(device) as pipeline:
         raise ValueError(f"Invalid depth source: {args.depthSource}")
 
     if device.getPlatform() == dai.Platform.RVC4:
-        align = pipeline.create(dai.node.ImageAlign)
+        align = pipeline.create(dai.node.Align)
         depth.depth.link(align.input)
         detNN.passthrough.link(align.inputAlignTo)
         align.outputAligned.link(spatialCalculator.inputDepth)

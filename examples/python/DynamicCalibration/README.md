@@ -21,6 +21,7 @@ This folder contains minimal, end-to-end examples that use **`dai.node.DynamicCa
   - `dataAcquired: float` — amount of calibration-relevant data gathered [0–1].
   - `coveragePerCell: dict[CameraBoardSocket, list[list[float]]]` - per-sensor coverage matrices keyed by socket [0-1].
   - `coveragePerCellA/B: list[list[float]]` - deprecated aliases for the first two connected sensors.
+  - `markers: CoverageData.MarkerCoverage | None` — marker status of the frame set when world constraints are set: `requiredMarkers`, `seenBy` (socket list per marker), `missingMarkers`, `tooSmallPx`, `markersAcquired` [0–1], `accepted` (the set was loaded) and `observationSets` kept so far. A set is loaded only when every required marker is seen by two cameras.
 
 - **DynamicCalibrationResult** (`calibrationOutput`)
   - `calibrationData.newCalibration: dai.CalibrationHandler` — `CalibrationHandler` with updated parameters.
@@ -134,6 +135,45 @@ Mean Sampson error current    = 0.38 px
 
 ---
 
+## 1c) Dynamic calibration with world constraints: a metric reference from markers in the scene
+
+**Script:** `calibration_dynamic_world_constraints.py` (constraints file: `world_constraints.json`)
+
+**What it does:**
+- Loads a JSON description of fiducial markers in the scene (ArUco / AprilTag or Luxonis Markers, `markerType` selects the kind): measured distances between marker centers,
+  from marker centers to camera sockets, and marker sizes (`setWorldConstraintsFromFile`, also available on `AutoCalibration`)
+- Detects the markers in every loaded image set; their centers are collected together with the image features
+- Runs the calibration: image features fix the relative pose except for the **vergence**, the turn about the
+  axis perpendicular to the baseline and the optical axis, which moves image points along the epipolar lines
+  and so sets the depth scale almost unseen; the marker distances fix that turn. Camera centers and the
+  baseline length are never changed.
+- Prints the relative rotation change reported by the node
+
+```json
+{
+    "markerType": "aruco",
+    "arucoDictionary": "DICT_4X4_50",
+    "markerDistances": [{"markers": [37, 43], "distance": 0.84}],
+    "socketDistances": [{"marker": 37, "socket": "CAM_A", "distance": 1.68}],
+    "markerSizes": [{"marker": 37, "size": 0.15}]
+}
+```
+
+Unknown or misspelled keys, malformed values, marker ids outside the dictionary and duplicate measurements raise an error. Names match regardless of case. Existing aliases (`dictionary`, dictionary names without `DICT_`, socket letters or numbers, numeric enums and `markerA` / `markerB`) remain accepted; conflicting aliases raise an error. When depthai is built with OpenCV support, the calibration checks reconstructed measurements against the final assembled camera poses and rejects measurements it cannot reconstruct; without OpenCV it only checks that the epipolar error does not grow. Any of the three lists may be left out. `markerSizes` needs no tape measure in the scene: the printed size of a
+marker tells each camera how far away the marker is. The size of an ArUco marker is the length of a side of its
+black square, the size of a Luxonis Marker is the outer diameter of its ring.
+
+The same description can be handed to the implicit `AutoCalibration` node that a plain pipeline creates at
+build time, without creating any node: `pipeline.setAutoCalibrationWorldConstraintsFromFile("world_constraints.json")`
+(also `setAutoCalibrationWorldConstraints(WorldConstraints)` / `...FromJson`), together with
+`pipeline.setAutoCalibrationMode(dai.Pipeline.AutoCalibrationMode.CONTINUOUS)` or the `DEPTHAI_AUTOCALIBRATION` variable.
+
+A socket that is not an image input (`CAM_A` above with a `CAM_B`/`CAM_C` pair) is used through its current
+calibration. A marker counts when it is visible in at least two of the calibrated cameras in the same frame set and is at
+least 25 px across in each image; a marker with a known size is measured in every camera that sees it.
+
+---
+
 ## 2) Calibration **quality check** (legacy)
 
 **Script:** `calibration_quality_dynamic.py`
@@ -237,6 +277,9 @@ python calibration_dynamic.py
 
 # Live calibration with CAM_A + CAM_B + CAM_C
 python calibration_dynamic_3_sensors.py
+
+# Live calibration with a metric reference from markers in the scene
+python calibration_dynamic_world_constraints.py --constraints world_constraints.json
 
 # Legacy quality evaluation flow
 python calibration_quality_dynamic.py

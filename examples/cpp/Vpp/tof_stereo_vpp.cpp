@@ -78,7 +78,7 @@ std::map<std::string, dai::Node::Output*> buildPipeline(dai::Pipeline& pipeline,
 
     auto tof = pipeline.create<dai::node::ToF>()->build(dai::CameraBoardSocket::AUTO, dai::ToFConfig::Profile::MID_RANGE, FPS);
     tof->setOutputUndistortion(false);
-    auto align = pipeline.create<dai::node::ImageAlign>();
+    auto align = pipeline.create<dai::node::Align>();
     align->setRunOnHost(false);
     tof->tofBase->depth.link(align->input);
     rect->output1.link(align->inputAlignTo);

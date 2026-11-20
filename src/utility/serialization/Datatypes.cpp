@@ -7,6 +7,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/DetectionParserConfig.hpp"
+// Dynamic calibration messages are not built into RVC2 firmware.
 #ifndef RVC2_FW
     #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
     #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
@@ -77,6 +78,7 @@ DEPTHAI_SERIALIZE_DEFINE(DynamicCalibrationControl::Commands::CalibrationQuality
 DEPTHAI_SERIALIZE_DEFINE(DynamicCalibrationControl::Commands::StartCalibration)
 DEPTHAI_SERIALIZE_DEFINE(DynamicCalibrationControl::Commands::ApplyCalibration)
 DEPTHAI_SERIALIZE_DEFINE(DynamicCalibrationControl::Commands::SetPerformanceMode)
+DEPTHAI_SERIALIZE_DEFINE(CoverageData::MarkerCoverage)
 DEPTHAI_SERIALIZE_DEFINE(CoverageData)
 DEPTHAI_SERIALIZE_DEFINE(CalibrationQuality::Data)
 DEPTHAI_SERIALIZE_DEFINE(CalibrationQuality)

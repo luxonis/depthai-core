@@ -312,6 +312,7 @@ set(TARGET_CORE_SOURCES
     "${DEPTHAI_DEVICE_MANAGER_SOURCES}"
     # sources
     src/common/ModelType.cpp
+    src/common/WorldConstraints.cpp
     src/device/CrashDump.cpp
     src/device/CrashDumpManager.cpp
     src/device/Device.cpp
@@ -555,6 +556,7 @@ endif()
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     list(APPEND TARGET_CORE_SOURCES
         src/pipeline/node/DynamicCalibrationNode.cpp
+        src/pipeline/node/WorldConstraintsValidation.cpp
         src/pipeline/datatype/DynamicCalibrationResults.cpp
         src/pipeline/datatype/DynamicCalibrationControl.cpp
         src/pipeline/node/AutoCalibration.cpp
