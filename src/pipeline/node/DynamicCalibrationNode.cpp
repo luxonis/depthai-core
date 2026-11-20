@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cstring>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -440,8 +441,16 @@ dcl::ImageData DclUtils::cvMatToImageData(const cv::Mat& mat) {
         default:
             throw std::runtime_error("Unsupported cv::Mat type: " + std::to_string(type));
     }
-    const auto contiguous = mat.isContinuous() ? mat : mat.clone();
-    img.data.assign(contiguous.data, contiguous.data + contiguous.total() * contiguous.elemSize());
+    // DCL expects packed rows: a strided view (ROI, padded ImgFrame) must not pass its row padding as pixels
+    const auto rowBytes = static_cast<size_t>(mat.cols) * mat.elemSize();
+    if(mat.isContinuous()) {
+        img.data.assign(mat.data, mat.data + rowBytes * mat.rows);
+    } else {
+        img.data.resize(rowBytes * mat.rows);
+        for(int row = 0; row < mat.rows; ++row) {
+            std::memcpy(img.data.data() + rowBytes * row, mat.ptr(row), rowBytes);
+        }
+    }
 
     return img;
 }

@@ -31,6 +31,41 @@ TEST_CASE("DynamicCalibration packs strided image views", "[DynamicCalibrationIm
     REQUIRE(image.format == (channels == 1 ? dcl::DCL_8UC1 : dcl::DCL_8UC3));
 }
 
+TEST_CASE("DynamicCalibration packs ImgFrame views with padded stride", "[DynamicCalibrationImages]") {
+    // A frame whose stride is larger than its row, as a zero-copy getFrame() view sees it (MultiDeviceCalibration path)
+    constexpr unsigned width = 3, height = 2, stride = 8;
+    std::vector<std::uint8_t> buffer(stride * height, 0xEE);
+    for(unsigned y = 0; y < height; ++y)
+        for(unsigned x = 0; x < width; ++x) buffer[y * stride + x] = static_cast<std::uint8_t>(10 * y + x + 1);
+
+    dai::ImgFrame frame;
+    frame.setType(dai::ImgFrame::Type::GRAY8);
+    frame.setSize(width, height);
+    frame.setStride(stride);
+    frame.setData(buffer);
+    const auto view = frame.getFrame();
+    REQUIRE_FALSE(view.isContinuous());
+
+    const auto image = dai::node::DclUtils::cvMatToImageData(view);
+
+    REQUIRE(image.data == std::vector<std::uint8_t>{1, 2, 3, 11, 12, 13});
+    REQUIRE(image.width == width);
+    REQUIRE(image.height == height);
+    REQUIRE(image.format == dcl::DCL_8UC1);
+}
+
+TEST_CASE("DynamicCalibration keeps contiguous images unchanged", "[DynamicCalibrationImages]") {
+    cv::Mat mat(2, 3, CV_8UC1);
+    for(int index = 0; index < 6; ++index) mat.at<std::uint8_t>(index / 3, index % 3) = static_cast<std::uint8_t>(index + 1);
+    REQUIRE(mat.isContinuous());
+
+    const auto image = dai::node::DclUtils::cvMatToImageData(mat);
+
+    REQUIRE(image.data == std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6});
+    REQUIRE(image.width == 3);
+    REQUIRE(image.height == 2);
+}
+
 #endif
 
 namespace {
