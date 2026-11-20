@@ -54,7 +54,6 @@ set(common_incs
     ${HEXAGON_SDK_ROOT}/incs/
     ${HEXAGON_SDK_ROOT}/incs/stddef/
     ${HEXAGON_SDK_ROOT}/rtos/qurt/
-    ${HEXAGON_SDK_ROOT}/utils/examples/
     ${CMAKE_CURRENT_SOURCE_DIR}/../..
     ${GST_INCLUDE_DIRS}
 )
@@ -63,14 +62,12 @@ set(common_incs
 # HLOS Dynamic Stub Library
 # ################################################
 # The common objects of both DSP libraries are only here (ImageAlignDsp links StereoDepthDsp): utilities/DspCommon.cpp
-# (the log, dai_device_dsp_set_log), utilities/utilities.cpp (dai_device_dsp_status_name) and the SDK utils.
+# (the log, dai_device_dsp_set_log) and utilities/utilities.cpp (dai_device_dsp_status_name).
 set(StereoDepthDsp_srcs
     ${CMAKE_CURRENT_BINARY_DIR}/StereoDepthDsp_stub
     cpu/StereoDepthDspInterface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../utilities/utilities.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../utilities/DspCommon.cpp
-    ${HEXAGON_SDK_ROOT}/utils/examples/dsp_capabilities_utils
-    ${HEXAGON_SDK_ROOT}/utils/examples/pd_status_notification
 )
 
 add_library(StereoDepthDsp STATIC ${CMAKE_CURRENT_BINARY_DIR}/StereoDepthDsp_stub ${StereoDepthDsp_srcs})

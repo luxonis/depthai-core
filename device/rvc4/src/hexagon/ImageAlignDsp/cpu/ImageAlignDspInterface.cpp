@@ -10,10 +10,7 @@
 
 #include "AEEStdErr.h"
 #include "ImageAlignDsp.h"
-#include "dsp_capabilities_utils.h"
 #include "hexagon/utilities/DspCommon.hpp"
-#include "os_defines.h"
-#include "pd_status_notification.h"
 #include "remote.h"
 #include "vendor/dai_device_dsp.h"
 
@@ -67,18 +64,13 @@ class Session {
     std::string getURI() {
         std::string url = ImageAlignDsp_URI;
         struct remote_rpc_control_unsigned_module data = {.domain = id, .enable = 1};
-        domain* dspDomain = get_domain(id);
-
-        if(dspDomain == nullptr) {
-            throw std::runtime_error("Unable to get domain");
-        }
 
         logMessage(DAI_LOG_LEVEL_INFO, "Compute on domain: %d", id);
         if(AEE_SUCCESS != remote_session_control(DSPRPC_CONTROL_UNSIGNED_MODULE, (void*)&data, sizeof(data))) {
             throw std::runtime_error("Remote_session_control failed");
         }
 
-        url += dspDomain->uri;
+        url += CDSP_DOMAIN;
 
         logMessage(DAI_LOG_LEVEL_INFO, "URL: %s", url.c_str());
 
