@@ -132,25 +132,31 @@ void ImgTransformation::calcCrops() {
     const uint32_t inWidth = srcWidth;
     const uint32_t inHeight = srcHeight;
     // The following is done in ImageManip to get the source region of interest that is transformed
-    size_t sourceMinX = 0;
-    size_t sourceMaxX = inWidth;
-    size_t sourceMinY = 0;
-    size_t sourceMaxY = inHeight;
+    float sourceMinX = 0.0f;
+    float sourceMaxX = (float)inWidth;
+    float sourceMinY = 0.0f;
+    float sourceMaxY = (float)inHeight;
     for(const auto& crop : srcCrops) {
         auto corners = crop.getPoints();
         auto [minx, maxx, miny, maxy] =
             impl::getOuterRect({{corners[0].x, corners[0].y}, {corners[1].x, corners[1].y}, {corners[2].x, corners[2].y}, {corners[3].x, corners[3].y}});
-        minx = std::max(minx, 0.0f);
-        maxx = std::min(maxx, (float)inWidth);
-        miny = std::max(miny, 0.0f);
-        maxy = std::min(maxy, (float)inHeight);
-        sourceMinX = std::max(sourceMinX, (size_t)std::floor(minx));
-        sourceMinY = std::max(sourceMinY, (size_t)std::floor(miny));
-        sourceMaxX = std::min(sourceMaxX, (size_t)std::ceil(maxx));
-        sourceMaxY = std::min(sourceMaxY, (size_t)std::ceil(maxy));
+        sourceMinX = std::max(sourceMinX, std::floor(minx));
+        sourceMinY = std::max(sourceMinY, std::floor(miny));
+        sourceMaxX = std::min(sourceMaxX, std::ceil(maxx));
+        sourceMaxY = std::min(sourceMaxY, std::ceil(maxy));
     }
-    srcCrop.center = {(float)(sourceMinX + sourceMaxX) / 2.0f, (float)(sourceMinY + sourceMaxY) / 2.0f};
-    srcCrop.size = {(float)(sourceMaxX - sourceMinX), (float)(sourceMaxY - sourceMinY)};
+    if(!(sourceMinX < sourceMaxX && sourceMinY < sourceMaxY)) {
+        // The crops do not overlap inside the source (e.g. a crop that covers only padding): no pixel is valid.
+        // A zero-size rectangle outside of the image never contains a pixel.
+        srcCrop.center = {-1.0f, -1.0f};
+        srcCrop.size = {0.0f, 0.0f};
+        srcCrop.angle = 0.0f;
+        dstCrop = srcCrop;
+        cropsValid = true;
+        return;
+    }
+    srcCrop.center = {(sourceMinX + sourceMaxX) / 2.0f, (sourceMinY + sourceMaxY) / 2.0f};
+    srcCrop.size = {sourceMaxX - sourceMinX, sourceMaxY - sourceMinY};
     srcCrop.angle = 0.0f;
     // Calculate the destination crop from the source region of interest
     dstCrop = transformRect(srcCrop);
