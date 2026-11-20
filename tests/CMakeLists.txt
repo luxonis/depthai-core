@@ -681,6 +681,10 @@ endif()
 dai_add_test(pointclouddata_test src/onhost_tests/pipeline/datatype/pointclouddata_test.cpp)
 dai_set_test_labels(pointclouddata_test onhost ci)
 
+# SystemInformationRVC4 serialization compatibility
+dai_add_test(systeminformationrvc4_test src/onhost_tests/pipeline/datatype/systeminformationrvc4_test.cpp)
+dai_set_test_labels(systeminformationrvc4_test onhost ci)
+
 # PointCloud node tests
 dai_add_test(point_cloud_test src/onhost_tests/point_cloud_test.cpp)
 dai_set_test_labels(point_cloud_test onhost ci)
@@ -800,6 +804,10 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
 
     dai_add_test(world_constraints_test src/onhost_tests/world_constraints_test.cpp)
     target_link_libraries(world_constraints_test PRIVATE dynamic_calibration_imported)
+    # The reconstruction is compiled into depthai::core only when OpenCV is part of it, the same condition as in the main CMakeLists.
+    if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
+        target_compile_definitions(world_constraints_test PRIVATE DEPTHAI_TEST_WORLD_CONSTRAINTS_RECONSTRUCTION)
+    endif()
     dai_set_test_labels(world_constraints_test onhost ci)
 endif()
 
@@ -1157,6 +1165,26 @@ dai_set_test_labels(camera_test ondevice rvc2_all rvc4 rvc4ffc ci noreplayci)
 
 dai_add_test(camera_test_rvc4 src/ondevice_tests/pipeline/node/camera_test_rvc4.cpp)
 dai_set_test_labels(camera_test_rvc4 ondevice rvc4 ci noreplayci)
+
+dai_add_test(camera_sensor_geometry_test src/ondevice_tests/pipeline/node/camera_sensor_geometry_test.cpp)
+dai_set_test_labels(camera_sensor_geometry_test ondevice rvc2_all ci noreplayci)
+set_property(TEST camera_sensor_geometry_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
+
+# Extended sensor coverage is a nightly opt-in, sharing the same executable.
+add_test(NAME camera_sensor_geometry_extended_test COMMAND camera_sensor_geometry_test)
+dai_set_test_labels(camera_sensor_geometry_extended_test ondevice rvc2_all ci_nightly noreplayci)
+set_tests_properties(camera_sensor_geometry_extended_test PROPERTIES
+    ENVIRONMENT "${test_env};DEPTHAI_AUTOCALIBRATION=OFF;DEPTHAI_GEOMETRY_EXTENDED=1"
+    SKIP_RETURN_CODE 4)
+
+
+if(DEPTHAI_ENABLE_PROTOBUF AND DEPTHAI_OPENCV_SUPPORT)
+    dai_add_test(camera_replay_geometry_test src/ondevice_tests/pipeline/node/camera_replay_geometry_test.cpp)
+    dai_set_test_labels(camera_replay_geometry_test ondevice rvc2_all ci noreplayci)
+    target_include_directories(camera_replay_geometry_test PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include/depthai)
+    target_link_libraries(camera_replay_geometry_test PRIVATE messages)
+    set_property(TEST camera_replay_geometry_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
+endif()
 
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
 dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 rvc4ffc ci_nightly noreplayci)
