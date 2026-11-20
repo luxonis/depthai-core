@@ -51,6 +51,10 @@ if [[ "$1" == *"rvc4"* ]]; then
     else
         cmake -G "Ninja Multi-Config" -S . -B "$BUILD_DIR" -D DEPTHAI_ENABLE_CURL=0 -D HUNTER_ROOT="$BUILD_DIR/.hunter" -D CMAKE_BUILD_TYPE=$BUILD_TYPE -D DEPTHAI_DEVICE_DEBUG_INFO="${DEPTHAI_DEVICE_DEBUG_INFO:-ON}"
     fi || exit 1 # no build after a failed configure step: it would build an older configuration or hide the reason
+    if [ "${DEPTHAI_DEVICE_CONFIGURE_ONLY:-0}" = 1 ]; then
+        echo "Configure step only (DEPTHAI_DEVICE_CONFIGURE_ONLY=1): $BUILD_DIR"
+        exit 0
+    fi
     JOBS="${DEPTHAI_BUILD_JOBS:-$((($(nproc) + 1) / 2))}"
     # A CI job publishes object files as a compiler cache for the builds of users (ci/device-rvc4-build-cache.sh).
     # These object files are compiled first, with DEPTHAI_DEVICE_BUILD_CACHE_OUT as a second storage of ccache:

@@ -45,6 +45,10 @@
 #   DEPTHAI_DEVICE_DOCKER_RUN_ARGS
 #                             More arguments for docker run, split at spaces (for example --network host).
 #   DEPTHAI_BUILD_JOBS        Number of parallel compile jobs. Default: half of the CPU cores.
+#   DEPTHAI_DEVICE_CONFIGURE_ONLY
+#                             1: only the configure step of CMake (it also writes compile_commands.json), no compile and
+#                             no firmware package. The configure step of depthai-core uses it
+#                             (../../cmake/DepthaiDeviceRvc4FirmwareBuild.cmake).
 #   DEPTHAI_DEVICE_DEBUG_INFO 1: compile with debug data, for a debugger and for the file and line of an address in a
 #                             crash report. 0: compile without it. The firmware package is the same, the build is
 #                             faster and its build folder is 10 times smaller. Default: 0 for the target rvc4 with the
@@ -84,6 +88,7 @@ mkdir -p "$SOURCE_DIR/build_docker_arm64/home"
 docker run \
     -e CI \
     -e DEPTHAI_BUILD_JOBS \
+    -e DEPTHAI_DEVICE_CONFIGURE_ONLY \
     -e VCPKG_MAX_CONCURRENCY \
     -e HOME=/work/device/rvc4/build_docker_arm64/home \
     "${CONTAINER_ARGS[@]}" \
