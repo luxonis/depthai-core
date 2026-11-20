@@ -23,13 +23,24 @@ Configure `initialConfig`, or send a `dai.ImgDetectionsFilterConfig` message to 
 | `regionOfInterest` | Pixel rectangle that must contain all four rotated box corners. |
 | `maxDetections` | Keeps the highest confidence detections, preserving their input order. Zero keeps none. |
 | `sortByConfidence` | Stable sort, highest confidence first. |
-| `overlapMode` | `OFF`, `NMS` (default), or `AVERAGE`; only different input keys can be duplicates. |
+| `overlapMode` | `OFF`, `NMS` (default), or `AVERAGE`; only different input keys can be duplicates unless `suppressWithinInputs` is enabled. |
 | `overlapIouThreshold` | Finite and nonnegative; rotated IoU must be strictly greater than this value. Default 0.4; values above 1 disable suppression. |
 | `reference` | Optional start/reference transformation. |
+| `suppressWithinInputs` | Default `false`. Allows multiple same-label duplicates per input, including a single input containing merged tile detections. Uses `overlapMode` and `overlapIouThreshold`. |
 
 Every range must satisfy minimum < maximum. The IoU threshold must be finite and nonnegative, and the ROI must use pixel coordinates; normalized ROIs are rejected. Explicitly mark small pixel rectangles with `normalized=false` to avoid automatic normalization inference. Setters assign values without validation. The node validates at start and when it receives the last queued runtime config.
 
-Processing order is labels, confidence, remap, source visibility, duplicates, geometry, maximum count, sort, then mask construction. Duplicate groups begin with the detection having the largest visible box fraction when source masks are linked, with confidence breaking ties; otherwise they begin with the highest confidence detection. The leader collects at most one same-label detection from each other input, choosing highest IoU, then confidence, then input order. `NMS` keeps the leader unchanged. `AVERAGE` weights box coordinates by confidence multiplied by the visible box fraction (or confidence alone without source masks), retains the leader's label name/keypoints/confidence, and unions member masks. All-zero confidences use visible box fractions as weights, or equal weights without source masks. Equivalent rectangle representations are aligned before averaging angles.
+Processing order is labels, confidence, remap, source visibility, duplicates, geometry, maximum count, sort, then mask construction. Duplicate groups begin with the detection having the largest visible box fraction when source masks are linked, with confidence breaking ties; otherwise they begin with the highest confidence detection. The leader collects at most one same-label detection from each other input, choosing highest IoU, then confidence, then input order. With `suppressWithinInputs=true`, the leader instead collects every same-label detection whose IoU with the leader exceeds the threshold, including from its own input. Groups do not chain through suppressed detections. `NMS` keeps the leader unchanged. `AVERAGE` weights box coordinates by confidence multiplied by the visible box fraction (or confidence alone without source masks), retains the leader's label name/keypoints/confidence, and unions member masks. All-zero confidences use visible box fractions as weights, or equal weights without source masks. Equivalent rectangle representations are aligned before averaging angles.
+
+For NMS after merging overlapping tiles, use:
+
+```python
+filter_node.initialConfig.suppressWithinInputs = True
+filter_node.initialConfig.overlapMode = dai.ImgDetectionsFilterConfig.OverlapMode.NMS
+filter_node.initialConfig.overlapIouThreshold = 0.2
+```
+
+The corresponding C++ setting is `filterNode->initialConfig->suppressWithinInputs = true`. Both initial and runtime configs support this option. `OFF` disables duplicate handling even when this option is enabled.
 
 Output order is lexicographic key order followed by each input's detection order; `cam10` precedes `cam2`. A merged box occupies its leader's position. Equal confidences preserve this order. Output sequence number and all timestamps come from the input with the newest host timestamp; earlier key wins ties. Devices have independent sequence counters, so use host timestamps when matching output to other messages.
 
@@ -43,7 +54,7 @@ Compatibility note: `ImgTransformation::remapPointTo` now returns NaN coordinate
 
 For upright panoramas with boxes crossing the longitude join at ±180 degrees, remapping unwraps the sampled coordinates before calculating bounds. Source visibility, duplicate removal and the size limits use the whole unwrapped box, so cameras that cross the join at different points still find their duplicates. The filter then splits the box at the join. A fragment narrower than one output pixel is dropped, but the widest fragment always remains. With source masks, a fragment is visible when a camera of its duplicate group shows a pixel of it, also a camera whose box NMS removed. Each visible fragment becomes a separate detection with the original label and confidence; keypoints on the other fragment have zero confidence. The region of interest must contain every fragment. Maximum count and sorting apply to the output fragments. Segmentation indices follow the retained fragments; after averaging, the pixels of each member on one side of the join go to the fragment on that side. Footprints winding around a pole retain full longitude coverage. The join is calculated from the reference intrinsics after accounting for homogeneous scale, including crop and scale, rather than assuming the image width is exactly one revolution. Rotated or sheared panorama references retain the sampled bounds without splitting at the join.
 
-The output supports Perspective (including distortion), Equirectangular, and Cylindrical references. Version 1 accepts panorama input models only when their transformation equals the reference; other panorama-input remaps raise an exception. Input transformations must be valid in remap mode, even for empty messages. Pure filtering needs a valid transformation only for pixel geometry limits. Invalid input data stops the pipeline with an error instead of terminating the process. Apply cross-device calibration before starting the pipeline.
+The output supports Perspective (including distortion), Equirectangular, and Cylindrical references. Version 1 accepts panorama input models only when their transformation equals the reference; other panorama-input remaps raise an exception. Input transformations must be valid in remap mode, even for empty messages. Pure filtering needs a valid transformation for pixel geometry limits or enabled within-input suppression, which measures rotated IoU in pixels. Invalid input data stops the pipeline with an error instead of terminating the process. Apply cross-device calibration before starting the pipeline.
 
 For calibrated panoramas, link each `Stitching.outSourceMasks["inputN"]` to `filter.inputSourceMasks[key]` for that camera's detection input. The stitcher emits GRAY8 masks once when the composition is prepared, and again after a reset. Nonzero pixels mark the source's seam region when blending, or the pixels retained after later inputs overwrite it when copying directly. This avoids selecting a high-confidence box from a camera whose object pixels are hidden by another view. Multiband blending can still mix sources near seams.
 
@@ -53,7 +64,7 @@ A segmentation mask is present when any input has one. In pure filtering it reta
 
 ## Execution and panorama example
 
-One input runs on RVC4 by default, and `setRunOnHost(true)` moves it to the host. RVC2, device-free pipelines, and multiple-input filters run on the host. Linked source masks also select host execution. Forcing device placement with multiple inputs or source masks is rejected. Device execution requires RVC4 firmware built with this public node and config. A reference frame linked from a host node to a device filter transfers the entire frame although only its transformation is used; a config reference avoids that transfer.
+One input runs on RVC4 by default, and `setRunOnHost(true)` moves it to the host. RVC2, device-free pipelines, and multiple-input filters run on the host. Linked source masks also select host execution. Forcing device placement with multiple inputs or source masks is rejected. Device execution requires RVC4 firmware built with this public node and config, including the `suppressWithinInputs` field for within-input suppression. A reference frame linked from a host node to a device filter transfers the entire frame although only its transformation is used; a config reference avoids that transfer.
 
 First create a cross-device calibration JSON with the [MultiDeviceCalibration example](../examples/python/MultiDeviceCalibration/multi_device_calibration.py). Keep the camera rig fixed after calibration. Then run:
 

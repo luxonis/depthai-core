@@ -153,6 +153,7 @@ TEST_CASE("ImgDetectionsFilter A-10: all config options survive serialization", 
     const auto metadata = dai::utility::serialize(*original);
     dai::ImgDetectionsFilterConfig copy;
     dai::utility::deserialize(metadata, copy);
+    REQUIRE(copy.suppressWithinInputs);
     REQUIRE(dai::utility::serialize(copy) == metadata);
     auto bytes = dai::StreamMessageParser::serializeMetadata(*original);
     streamPacketDesc_t packet{};
@@ -161,6 +162,7 @@ TEST_CASE("ImgDetectionsFilter A-10: all config options survive serialization", 
     packet.fd = -1;
     const auto parsed = std::dynamic_pointer_cast<dai::ImgDetectionsFilterConfig>(dai::StreamMessageParser::parseMessage(&packet));
     REQUIRE(parsed != nullptr);
+    REQUIRE(parsed->suppressWithinInputs);
     REQUIRE(parsed->getDatatype() == original->getDatatype());
     REQUIRE(dai::utility::serialize(*parsed) == metadata);
 }
@@ -910,6 +912,55 @@ TEST_CASE("ImgDetectionsFilter O-16: groups do not chain over cameras", "[ImgDet
                {leader, c},
                s.mode == Mode::AVERAGE ? 1e-3f : 1e-4f,
                s.mode == Mode::AVERAGE ? 1e-3f : 1e-4f);
+}
+
+TEST_CASE("ImgDetectionsFilter N-1: within-input overlap modes, ordering, and masks", "[ImgDetectionsFilter][NMS]") {
+    runSharedCase("N-1");
+}
+TEST_CASE("ImgDetectionsFilter N-2: within-input NMS is greedy and stable", "[ImgDetectionsFilter][NMS]") {
+    FilterSettings s;
+    s.suppressWithinInputs = true;
+    const ExpectedDetection a{100, 100, 100, 100, .75f, 0, 0, "first"}, c{180, 100, 100, 100, .25f};
+    ExpectedDetection b{140, 100, 100, 100, .5f};
+    SECTION("suppressed boxes do not suppress their neighbors") {}
+    SECTION("equal confidences retain the earlier detection") {
+        b = a;
+        b.name = "tie";
+    }
+    checkRound(s, {message(transformation(), {a, b, c})}, {a, c});
+}
+TEST_CASE("ImgDetectionsFilter N-3: within-input NMS uses strict rotated IoU in pixels", "[ImgDetectionsFilter][NMS]") {
+    FilterSettings s;
+    s.suppressWithinInputs = true;
+    const auto t = transformation(512, 256);
+    const ExpectedDetection a{256, 128, 200, 20, .5f, 0, 30}, b{256, 128, 200, 20, .75f, 0, -30}, c{256, 128, 200, 20, .875f, 0, 30};
+    SECTION("rotated boxes with overlapping outer rectangles remain distinct") {
+        checkRound(s, {message(t, {a, b, c})}, {b, c});
+    }
+    SECTION("IoU equal to the threshold does not suppress") {
+        s.iou = GENERATE(.4f, .5f, 1.5f);
+        const std::vector<ExpectedDetection> data = {{128, 128, 100, 100, .75f}, {128, 128, 100, 50, .5f}};
+        checkRound(s, {message(t, data)}, *s.iou < .5f ? std::vector<ExpectedDetection>{data[0]} : data);
+    }
+}
+TEST_CASE("ImgDetectionsFilter N-4: within-input suppression also removes all cross-input duplicates", "[ImgDetectionsFilter][NMS]") {
+    FilterSettings s;
+    s.suppressWithinInputs = true;
+    s.reference = transformation();
+    const ExpectedDetection a{100, 100, 64, 64, .9f}, b{100, 100, 64, 64, .8f}, c{300, 100, 64, 64, .7f};
+    checkRound(s, {message(transformation(), {a, b, c}), message(transformation(), {a, b})}, {a, c});
+}
+TEST_CASE("ImgDetectionsFilter N-5: runtime config enables and resets within-input suppression", "[ImgDetectionsFilter][NMS][RT-1]") {
+    const std::vector<ExpectedDetection> data = {{100, 100, 64, 64, .5f}, {100, 100, 64, 64, .75f}};
+    FilterHarness h;
+    h.pipeline.start();
+    for(const bool enabled : {false, true, false}) {
+        FilterSettings s;
+        s.suppressWithinInputs = enabled;
+        h.configure(s);
+        h.send(message(transformation(), data));
+        requireOutput(*h.receive(), transformation(), enabled ? std::vector<ExpectedDetection>{data[1]} : data);
+    }
 }
 
 TEST_CASE("ImgDetectionsFilter S-1: weighted overlap", "[ImgDetectionsFilter][ST-1]") {

@@ -87,7 +87,7 @@ class DetectionRound {
     const std::optional<ImgTransformation>& reference;
     const std::vector<std::shared_ptr<ImgFrame>>& sourceMasks;
     std::vector<MaskRemapCache>& maskRemaps;
-    const bool geometry;
+    const bool geometry, withinInputs;
     std::shared_ptr<ImgDetections> output = std::make_shared<ImgDetections>();
     std::pair<std::size_t, std::size_t> size{0, 0};
     bool upright = false;
@@ -240,7 +240,7 @@ class DetectionRound {
     }
     void prepare() {
         if(messages.empty()) throw std::invalid_argument("ImgDetectionsFilter requires at least one linked input");
-        if(reference || geometry)
+        if(reference || geometry || withinInputs)
             for(const auto& message : messages) checkTransformation(*message);
         // The first message wins timestamp ties.
         const auto newest =
@@ -385,7 +385,7 @@ class DetectionRound {
                 Candidate candidate{message->detections[index], {}, key, {{key, index}}, 1.0, {key}};
                 const auto& detection = candidate.detection;
                 if(rejectedByLabelOrConfidence(detection)) continue;
-                if(reference || geometry) {
+                if(reference || geometry || withinInputs) {
                     auto box = detection.getBoundingBox();
                     const bool pixels = detection.boundingBox && box.center.hasNormalized && !box.center.normalized;
                     // Unmarked ImgDetections coordinates are normalized, including values outside [0,1].
@@ -464,7 +464,7 @@ class DetectionRound {
         return best;
     }
     void suppress() {
-        if(messages.size() == 1 || config.overlapMode == ImgDetectionsFilterConfig::OverlapMode::OFF) return;
+        if((messages.size() == 1 && !withinInputs) || config.overlapMode == ImgDetectionsFilterConfig::OverlapMode::OFF) return;
         auto leaders = ranked;
         // Prefer the camera contributing more of the object; ranked remains confidence-based for output sorting/count limits.
         std::stable_sort(leaders.begin(), leaders.end(), [this](auto a, auto b) { return candidates[a].visibility > candidates[b].visibility; });
@@ -474,13 +474,15 @@ class DetectionRound {
             grouped[leaderIndex] = true;
             std::vector<std::size_t> members{leaderIndex};
             for(std::size_t key = 0; key < messages.size(); ++key) {
-                if(key == candidates[leaderIndex].key) continue;
-                const auto best = bestDuplicate(candidates[leaderIndex], key, grouped);
-                if(!best) continue;
-                grouped[*best] = true;
-                removed[*best] = true;
-                members.push_back(*best);
-                candidates[leaderIndex].viewers.push_back(candidates[*best].key);
+                if(key == candidates[leaderIndex].key && !withinInputs) continue;
+                do {
+                    const auto best = bestDuplicate(candidates[leaderIndex], key, grouped);
+                    if(!best) break;
+                    grouped[*best] = true;
+                    removed[*best] = true;
+                    members.push_back(*best);
+                    candidates[leaderIndex].viewers.push_back(candidates[*best].key);
+                } while(withinInputs);
             }
             if(config.overlapMode == ImgDetectionsFilterConfig::OverlapMode::AVERAGE && members.size() > 1) average(members);
         }
@@ -614,7 +616,8 @@ class DetectionRound {
           reference(reference),
           sourceMasks(sourceMasks),
           maskRemaps(maskRemaps),
-          geometry(config.hasGeometryFilters() || std::any_of(sourceMasks.begin(), sourceMasks.end(), [](const auto& mask) { return mask != nullptr; })) {}
+          geometry(config.hasGeometryFilters() || std::any_of(sourceMasks.begin(), sourceMasks.end(), [](const auto& mask) { return mask != nullptr; })),
+          withinInputs(config.suppressWithinInputs && config.overlapMode != ImgDetectionsFilterConfig::OverlapMode::OFF) {}
     std::shared_ptr<ImgDetections> process() {
         prepare();
         collect();

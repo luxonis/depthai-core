@@ -63,6 +63,21 @@ TEST_CASE("ImgDetectionsFilter X-3b: invalid transformation with pixel limits", 
     h.send(input);
     h.requireStopped();
 }
+TEST_CASE("ImgDetectionsFilter within-input suppression requires valid transformations", "[ImgDetectionsFilter][NMS][ER-5]") {
+    FilterSettings s;
+    s.suppressWithinInputs = true;
+    FilterHarness h(s);
+    auto input = message(transformation(), {});
+    SECTION("missing transformation") {
+        input->transformation.reset();
+    }
+    SECTION("invalid transformation") {
+        input->setTransformation(dai::ImgTransformation());
+    }
+    h.pipeline.start();
+    h.send(input);
+    h.requireStopped();
+}
 TEST_CASE("ImgDetectionsFilter X-4: coordinate systems must match", "[ImgDetectionsFilter][ER-6]") {
     auto source = transformation(), target = transformation();
     auto e = source.getExtrinsics();
