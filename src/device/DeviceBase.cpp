@@ -1549,6 +1549,29 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
                     pimpl->logger.debug("UDP timesync not available, using XLink: {}", ex.what());
                 }
             }
+#ifdef DEPTHAI_ENABLE_LIBUSB
+            // Over USB the same on the side channel, the second bulk pair of the interface XLink uses. Firmware with the
+            // setTimesyncUsb RPC opens its end first (RVC4: with an OS that has the pair), so the hellos find a read
+            // waiting; otherwise it stays on XLink.
+            if((tsInfo.platform == X_LINK_RVC4 || tsInfo.platform == X_LINK_MYRIAD_X) && (tsInfo.protocol == X_LINK_USB_VSC || tsInfo.protocol == X_LINK_USB_EP)
+               && TimesyncUdpResponder::supported() && utility::getEnvAs<bool>("DEPTHAI_TIMESYNC_USB", true)) {
+                try {
+                    void* usbHandle = nullptr;
+                    int usbInterface = -1;
+                    if(XLinkGetUsbDeviceHandle(static_cast<linkId_t>(connection->getLinkId()), &usbHandle, &usbInterface) == X_LINK_SUCCESS) {
+                        std::random_device rd;
+                        const int64_t token = static_cast<int64_t>(((static_cast<uint64_t>(rd()) << 32) | rd()) >> 1) | 1;
+                        if(pimpl->rpcCallChecked<bool>("setTimesyncUsb", token)) {
+                            auto responder = std::make_unique<TimesyncUdpResponder>(
+                                usbHandle, usbInterface, static_cast<uint64_t>(token), static_cast<const DeviceBase*>(this));
+                            if(responder->ok()) pimpl->timesyncUdp = std::move(responder);
+                        }
+                    }
+                } catch(const std::exception& ex) {
+                    pimpl->logger.debug("USB timesync side channel not available, using XLink: {}", ex.what());
+                }
+            }
+#endif
 
             // Starts and waits for initial timesync
             setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);

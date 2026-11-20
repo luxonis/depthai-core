@@ -16,16 +16,17 @@
 namespace dai {
 
 /**
- * Host side of the RVC4 UDP timesync (firmware Timesync.cpp, "UDP fast path").
+ * Host side of the timesync fast path (firmware Timesync.cpp): over Ethernet on its own UDP socket, over USB on the side
+ * channel, the second bulk IN / OUT pair of the interface XLink uses. Either way the packets never wait behind frames.
  *
  * The device starts each exchange (REQ) and this responder answers in two steps, PTP-style: RESP carries the host
- * receive stamp of the REQ, FUP the host send stamp of the RESP, both on the host's steady clock. On Linux these are
+ * receive stamp of the REQ, FUP the host send stamp of the RESP, both on the host's steady clock. On Linux UDP these are
  * kernel software timestamps (SO_TIMESTAMPING), so the responder thread's scheduling does not enter the estimate;
- * elsewhere application stamps. Until the first REQ arrives, HELLO (with the session token the firmware got over
- * RPC) goes out every 2 ms: the device learns the host's address from it, and host firewalls / NAT see the
- * device's packets as replies.
+ * elsewhere and over USB application stamps. Until the first REQ arrives, HELLO (with the session token the firmware got
+ * over RPC) goes out every 2 ms (USB: 20 ms): the device learns the host's address from it, and host firewalls / NAT see
+ * the device's packets as replies; on USB the device starts its exchanges once it is in.
  *
- * The same socket carries small calls either way (RPC_CALL / RPC_REPLY, 32-byte payloads): the caller resends a call
+ * The same channel carries small calls either way (RPC_CALL / RPC_REPLY, 32-byte payloads): the caller resends a call
  * until the reply, the callee answers a repeated call from its cache.
  */
 class TimesyncUdpResponder {
@@ -44,11 +45,14 @@ class TimesyncUdpResponder {
     // Starts the responder thread for the device at deviceIp (IPv4 literal or host name, optional ":port" suffix);
     // a sync-start group finds it by its owner (the DeviceBase)
     TimesyncUdpResponder(const std::string& deviceIp, uint64_t token, const void* owner = nullptr);
+    // The same on the USB side channel of an XLink USB link: its libusb device handle (XLinkGetUsbDeviceHandle) and the
+    // interface XLink claimed, whose second bulk IN / OUT pair is the channel. Needs depthai built with libusb.
+    TimesyncUdpResponder(void* usbHandle, int usbInterface, uint64_t token, const void* owner = nullptr);
     ~TimesyncUdpResponder();
     TimesyncUdpResponder(const TimesyncUdpResponder&) = delete;
     TimesyncUdpResponder& operator=(const TimesyncUdpResponder&) = delete;
 
-    // Socket set up and thread running
+    // Socket or side channel set up and thread running
     bool ok() const;
     // Exchanges answered so far
     uint64_t answered() const;
@@ -68,11 +72,15 @@ class TimesyncUdpResponder {
     };
 
     void run();
+    void runUsb();
+    bool sendPacket(const void* packet, size_t size);
     void sendCall(const Call& c);
     void receiveRpc(const void* packet);
     std::chrono::steady_clock::time_point resendCalls();
 
     int fd = -1;
+    void* usb = nullptr;  // libusb_device_handle of the side channel (instead of the socket)
+    uint8_t usbIn = 0, usbOut = 0;
     uint64_t token;
     const void* owner;
     bool kernelStamps = false;

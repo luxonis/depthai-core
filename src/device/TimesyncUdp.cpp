@@ -28,6 +28,9 @@
     #endif
     #define DAI_TIMESYNC_UDP_POSIX 1
 #endif
+#if defined(DAI_TIMESYNC_UDP_POSIX) && defined(DEPTHAI_ENABLE_LIBUSB)
+    #include <libusb-1.0/libusb.h>
+#endif
 
 namespace dai {
 
@@ -217,7 +220,9 @@ bool waitPtpLocked(const std::vector<const void*>& slaves, std::chrono::nanoseco
 constexpr auto HELLO_FAST = std::chrono::milliseconds(2);  // until the first REQ, for the first few seconds: the firmware
                                                            // opens its socket after setTimesync and waits for a HELLO
 constexpr auto HELLO_FAST_FOR = std::chrono::seconds(3);
-constexpr auto HELLO_SLOW = std::chrono::milliseconds(500);  // no REQ yet: the firmware may still pick the UDP path up
+constexpr auto HELLO_SLOW = std::chrono::milliseconds(500);     // no REQ yet: the firmware may still pick the UDP path up
+constexpr auto USB_HELLO_FAST = std::chrono::milliseconds(20);  // USB: the firmware's read is waiting before the first one
+constexpr unsigned int USB_WRITE_TIMEOUT_MS = 100;              // the device always reads; past this a packet is lost
 
 int64_t steadyNs() {
     return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -377,6 +382,44 @@ TimesyncUdpResponder::TimesyncUdpResponder(const std::string& deviceIp, uint64_t
     }
 }
 
+TimesyncUdpResponder::TimesyncUdpResponder(void* usbHandle, int usbInterface, uint64_t token, const void* owner) : token(token), owner(owner) {
+    #ifdef DEPTHAI_ENABLE_LIBUSB
+    auto* handle = static_cast<libusb_device_handle*>(usbHandle);
+    struct libusb_config_descriptor* config = nullptr;
+    if(handle == nullptr || libusb_get_active_config_descriptor(libusb_get_device(handle), &config) != 0) return;
+    // XLink uses the interface's first bulk IN / OUT pair, the side channel is the second
+    int ins = 0, outs = 0;
+    for(int i = 0; i < config->bNumInterfaces; i++) {
+        if(config->interface[i].num_altsetting < 1) continue;
+        const auto& alt = config->interface[i].altsetting[0];
+        if(alt.bInterfaceNumber != usbInterface) continue;
+        for(int e = 0; e < alt.bNumEndpoints; e++) {
+            const auto& ep = alt.endpoint[e];
+            if((ep.bmAttributes & LIBUSB_TRANSFER_TYPE_MASK) != LIBUSB_TRANSFER_TYPE_BULK) continue;
+            if(ep.bEndpointAddress & LIBUSB_ENDPOINT_IN) {
+                if(++ins == 2) usbIn = ep.bEndpointAddress;
+            } else if(++outs == 2) {
+                usbOut = ep.bEndpointAddress;
+            }
+        }
+    }
+    libusb_free_config_descriptor(config);
+    if(usbIn == 0 || usbOut == 0) {
+        logger::debug("USB timesync: interface {} has no second bulk pair", usbInterface);
+        return;
+    }
+    usb = handle;
+    thread = std::thread([this]() { runUsb(); });
+    if(owner != nullptr) {
+        std::lock_guard<std::mutex> lock(registryMtx);
+        responders[owner] = this;
+    }
+    #else
+    (void)usbHandle;
+    (void)usbInterface;
+    #endif
+}
+
 TimesyncUdpResponder::~TimesyncUdpResponder() {
     if(owner != nullptr) {
         std::lock_guard<std::mutex> lock(registryMtx);
@@ -401,17 +444,29 @@ void TimesyncUdpResponder::setRpcHandler(RpcHandler handler) {
     rpcHandler = std::move(handler);
 }
 
+bool TimesyncUdpResponder::sendPacket(const void* packet, size_t size) {
+    #ifdef DEPTHAI_ENABLE_LIBUSB
+    if(usb != nullptr) {
+        int n = 0;
+        auto* data = static_cast<unsigned char*>(const_cast<void*>(packet));
+        return libusb_bulk_transfer(static_cast<libusb_device_handle*>(usb), usbOut, data, static_cast<int>(size), &n, USB_WRITE_TIMEOUT_MS) == 0
+               && n == static_cast<int>(size);
+    }
+    #endif
+    return send(fd, packet, size, 0) == static_cast<ssize_t>(size);
+}
+
 void TimesyncUdpResponder::sendCall(const Call& c) {
     UdpRpc m = {UDP_MAGIC, UDP_VERSION, UDP_RPC_CALL, token, c.id, c.method, 0, {}};
     memcpy(m.payload, c.payload.data(), sizeof(m.payload));
-    send(fd, &m, sizeof(m), 0);
+    sendPacket(&m, sizeof(m));
 }
 
 void TimesyncUdpResponder::call(uint16_t method, const RpcPayload& payload, std::chrono::milliseconds deadline, RpcDone done) {
     const auto now = std::chrono::steady_clock::now();
     std::lock_guard<std::mutex> lock(rpcMtx);
     Call c{nextCallId++, method, payload, now + RPC_RESEND_FIRST, now + deadline, RPC_RESEND_FIRST * 2, std::move(done)};
-    if(fd >= 0) sendCall(c);
+    if(fd >= 0 || usb != nullptr) sendCall(c);
     calls.push_back(std::move(c));
 }
 
@@ -468,7 +523,7 @@ void TimesyncUdpResponder::receiveRpc(const void* packet) {
             UdpRpc cached;
             memcpy(&cached, r.data(), sizeof(cached));
             if(cached.callId != 0 && cached.callId == m.callId) {
-                send(fd, r.data(), r.size(), 0);
+                sendPacket(r.data(), r.size());
                 return;
             }
         }
@@ -483,11 +538,11 @@ void TimesyncUdpResponder::receiveRpc(const void* packet) {
         std::lock_guard<std::mutex> lock(rpcMtx);
         memcpy(replies[nextReply++ % replies.size()].data(), &reply, sizeof(reply));
     }
-    send(fd, &reply, sizeof(reply), 0);
+    sendPacket(&reply, sizeof(reply));
 }
 
 bool TimesyncUdpResponder::ok() const {
-    return fd >= 0 && thread.joinable();
+    return (fd >= 0 || usb != nullptr) && thread.joinable();
 }
 
 uint64_t TimesyncUdpResponder::answered() const {
@@ -591,6 +646,67 @@ void TimesyncUdpResponder::run() {
         sendMsg(fd, fup, false);
         answeredCount++;
     }
+}
+
+// The same exchange on the USB side channel. A read is kept waiting on the IN endpoint, so the device's REQ goes out
+// as soon as it writes it; t2 / t3 are application stamps right after the read returns / before the RESP's write.
+void TimesyncUdpResponder::runUsb() {
+    #ifdef DEPTHAI_ENABLE_LIBUSB
+    using namespace std::chrono;
+    auto* handle = static_cast<libusb_device_handle*>(usb);
+    const auto start = steady_clock::now();
+    auto nextHello = start;
+    bool gotReq = false;
+    const UdpMsg hello = {UDP_MAGIC, UDP_VERSION, UDP_HELLO, token, 0, 0, 0, 0, 0, 0};
+    unsigned char buf[1024];  // a whole SuperSpeed packet: a read never overflows
+    while(!stopRequested) {
+        auto now = steady_clock::now();
+        if(!gotReq && now >= nextHello) {
+            sendPacket(&hello, sizeof(hello));
+            now = steady_clock::now();
+            nextHello =
+                now
+                + (now - start < HELLO_FAST_FOR ? duration_cast<steady_clock::duration>(USB_HELLO_FAST) : duration_cast<steady_clock::duration>(HELLO_SLOW));
+        }
+        int64_t timeoutMs = 100;
+        if(!gotReq) timeoutMs = duration_cast<milliseconds>(nextHello - now).count();
+        const auto callDue = resendCalls();
+        if(callDue != steady_clock::time_point::max()) timeoutMs = std::min<int64_t>(timeoutMs, duration_cast<milliseconds>(callDue - now).count() + 1);
+        int n = 0;
+        const int r = libusb_bulk_transfer(handle, usbIn, buf, sizeof(buf), &n, static_cast<unsigned int>(std::max<int64_t>(timeoutMs, 1)));
+        const int64_t t2 = steadyNs();
+        // a read that timed out can still have taken a packet in
+        if(r != 0 && !(r == LIBUSB_ERROR_TIMEOUT && n > 0)) {
+            if(r == LIBUSB_ERROR_NO_DEVICE) break;
+            if(r != LIBUSB_ERROR_TIMEOUT) std::this_thread::sleep_for(milliseconds(10));
+            continue;
+        }
+        UdpMsg m;
+        if(n != static_cast<int>(sizeof(m))) continue;
+        memcpy(&m, buf, sizeof(m));
+        if(m.magic != UDP_MAGIC || m.version != UDP_VERSION || m.token != token) continue;
+        if(m.type == UDP_RPC_CALL || m.type == UDP_RPC_REPLY) {
+            receiveRpc(&m);
+            continue;
+        }
+        if(m.type != UDP_REQ) continue;
+        gotReq = true;
+        UdpMsg resp = m;
+        resp.type = UDP_RESP;
+        resp.t2 = t2;
+        resp.t3 = 0;
+        resp.flags = 0;
+        const int64_t t3 = steadyNs();
+        if(!sendPacket(&resp, sizeof(resp))) continue;
+        UdpMsg fup = m;
+        fup.type = UDP_FUP;
+        fup.t2 = t2;
+        fup.t3 = t3;
+        fup.flags = 0;
+        sendPacket(&fup, sizeof(fup));
+        answeredCount++;
+    }
+    #endif
 }
 
 PtpGroup::Setup PtpGroup::setUp(const std::vector<const void*>& devices) {
@@ -807,6 +923,7 @@ bool TimesyncUdpResponder::supported() {
     return false;
 }
 TimesyncUdpResponder::TimesyncUdpResponder(const std::string&, uint64_t token, const void* owner) : token(token), owner(owner) {}
+TimesyncUdpResponder::TimesyncUdpResponder(void*, int, uint64_t token, const void* owner) : token(token), owner(owner) {}
 TimesyncUdpResponder::~TimesyncUdpResponder() = default;
 bool TimesyncUdpResponder::ok() const {
     return false;
