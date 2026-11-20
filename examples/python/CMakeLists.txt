@@ -288,6 +288,10 @@ add_python_example(virtual_patern_projection Vpp/virtual_patern_projection.py)
 add_python_example(tof_stereo_vpp Vpp/tof_stereo_vpp.py)
 dai_set_example_test_labels(virtual_patern_projection ondevice rvc4 ci)
 
+## ToF
+add_python_example(tof_minimal ToF/tof_minimal.py)
+dai_set_example_test_labels(tof_minimal ondevice tof ci)
+
 ## RGBD
 add_python_example(rgbd RGBD/rgbd.py)
 dai_set_example_test_labels(rgbd ondevice rvc2_all rvc4 ci nowindows)
