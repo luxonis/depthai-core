@@ -529,11 +529,13 @@ class CameraControl : public Buffer {
     CameraControl& setAutoFocusMethod(AutoFocusMethod method);
 
     /**
-     * Set a command to refocus on every scene change, also when phase detection reads the new scene as in focus (e.g. after the
-     * camera turns to a new target at a similar distance). Default on; about twice the searches while the camera moves.
-     * No effect with the `CONTRAST` method, which always refocuses on scene changes. RVC4 only.
+     * Set a command to set how readily continuous autofocus refocuses, `0..1` (clamped). 0 refocuses almost never, only when
+     * phase detection reads the scene far out of focus; 1 refocuses on the smallest defocus or scene change, i.e. very often.
+     * Default 0.5: refocus on every scene change, also when phase detection reads the new scene as in focus (e.g. after the
+     * camera turns to a new target at a similar distance); about twice the searches of 0.25 while the camera moves.
+     * No effect with the `CONTRAST` method, which refocuses on scene changes by its own tuning. RVC4 only.
      */
-    CameraControl& setAutoFocusResponsiveRefocus(bool enable);
+    CameraControl& setAutoFocusResponsiveRefocus(float responsiveness);
 
     /**
      * Set a command to use the device IMU (gyroscope) in autofocus: searches started during a camera rotation wait for it to end.
@@ -819,7 +821,7 @@ class CameraControl : public Buffer {
     uint8_t lensPosAutoInfinity, lensPosAutoMacro;
 
     AutoFocusMethod autoFocusMethod = AutoFocusMethod::HYBRID;
-    bool autoFocusResponsiveRefocus = true;
+    float autoFocusResponsiveRefocus = 0.5f;
     bool autoFocusImu = true;
     bool autoFocusPdafOffsetLearning = false;
 

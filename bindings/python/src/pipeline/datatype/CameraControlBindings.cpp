@@ -256,7 +256,7 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .def("setAutoFocusMethod", &CameraControl::setAutoFocusMethod, py::arg("method"), DOC(dai, CameraControl, setAutoFocusMethod))
         .def("setAutoFocusResponsiveRefocus",
              &CameraControl::setAutoFocusResponsiveRefocus,
-             py::arg("enable"),
+             py::arg("responsiveness"),
              DOC(dai, CameraControl, setAutoFocusResponsiveRefocus))
         .def("setAutoFocusImu", &CameraControl::setAutoFocusImu, py::arg("enable"), DOC(dai, CameraControl, setAutoFocusImu))
         .def("setAutoFocusPdafOffsetLearning",

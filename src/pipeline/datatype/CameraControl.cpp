@@ -73,9 +73,9 @@ CameraControl& CameraControl::setAutoFocusMethod(AutoFocusMethod method) {
     autoFocusMethod = method;
     return *this;
 }
-CameraControl& CameraControl::setAutoFocusResponsiveRefocus(bool enable) {
+CameraControl& CameraControl::setAutoFocusResponsiveRefocus(float responsiveness) {
     setCommand(Command::AF_RESPONSIVE_REFOCUS);
-    autoFocusResponsiveRefocus = enable;
+    autoFocusResponsiveRefocus = responsiveness;
     return *this;
 }
 CameraControl& CameraControl::setAutoFocusImu(bool enable) {
