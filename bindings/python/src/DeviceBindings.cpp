@@ -917,14 +917,14 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 py::gil_scoped_release release;
                 return d.getEthernetLinkSpeed();
             },
-            "Get the current Ethernet link speed in Mbps")
+            DOC(dai, DeviceBase, getEthernetLinkSpeed))
         .def(
             "getEthernetLinkDuplex",
             [](DeviceBase& d) {
                 py::gil_scoped_release release;
                 return d.getEthernetLinkDuplex();
             },
-            "Get whether the Ethernet link is full duplex")
+            DOC(dai, DeviceBase, getEthernetLinkDuplex))
         .def(
             "getEmmcMemorySize",
             [](DeviceBase& d) {
