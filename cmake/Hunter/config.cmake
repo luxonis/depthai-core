@@ -114,12 +114,25 @@ hunter_config(
 
 # TMP, could be read from XLink
 # libusb without udev
+set(libusb_windows_args "")
+if(WIN32)
+    set(libusb_windows_patch "${CMAKE_CURRENT_LIST_DIR}/libusb-windows-claim-interface.cmake")
+    # Recalculate Hunter's cache key when the patch changes.
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${libusb_windows_patch}")
+    file(SHA256 "${libusb_windows_patch}" libusb_windows_patch_hash)
+    list(APPEND libusb_windows_args
+        "CMAKE_PROJECT_libusb_INCLUDE=${libusb_windows_patch}"
+        "DEPTHAI_LIBUSB_PATCH_HASH=${libusb_windows_patch_hash}"
+    )
+endif()
+
 hunter_config(
     libusb-luxonis
     VERSION "1.0.24-cmake"
     URL "https://github.com/luxonis/libusb/archive/b7e4548958325b18feb73977163ad44398099534.tar.gz"
     SHA1 "2d79573d57628fe56d2868d2f6ce756d40906cf4"
     CMAKE_ARGS
+        ${libusb_windows_args}
         WITH_UDEV=OFF
         # Build shared libs by default to not cause licensing issues
         BUILD_SHARED_LIBS=ON
