@@ -14,10 +14,10 @@ on:
         description: Five-boot test repetitions per libusb variant (1-100)
         type: number
         default: 100
-      runner_labels:
-        description: JSON labels for a Windows runner with an RVC2 USB camera
+      camera_model:
+        description: RVC2 USB camera model to reserve on Windows HIL
         type: string
-        default: '["self-hosted","hil-test","windows","x64"]'
+        default: oak_d_s2
       device_mxid:
         description: Optional RVC2 MXID to select one camera when several are attached
         type: string
@@ -94,21 +94,20 @@ jobs:
         cd build
         ctest -C Release --output-on-failure -L usb --no-tests=error --repeat until-pass:3
 
-  libusb-ab:
-    name: Windows RVC2 libusb comparison
+  build-libusb-ab:
+    name: Build Windows libusb comparison
     if: >-
       (github.event_name == 'workflow_dispatch' && inputs.test_mode == 'libusb-ab') ||
       (github.event_name == 'push' && github.ref == 'refs/heads/fix/v2.33-libusb')
-    # Push runs use repository variables, falling back to these defaults.
-    runs-on: ${{ fromJSON(inputs.runner_labels || vars.LIBUSB_AB_RUNNER_LABELS || '["self-hosted","hil-test","windows","x64"]') }}
-    timeout-minutes: 360
+    runs-on: windows-2022
+    timeout-minutes: 180
     permissions:
       contents: read
+    outputs:
+      artifact_id: ${{ steps.bundle.outputs.artifact-id }}
     env:
       LIBUSB_REPETITIONS: ${{ github.event_name == 'workflow_dispatch' && format('{0}', inputs.repetitions) || vars.LIBUSB_AB_REPETITIONS || '100' }}
       DEPTHAI_DEVICE_MXID_LIST: ${{ inputs.device_mxid || vars.LIBUSB_AB_DEVICE_MXID }}
-      DEPTHAI_LEVEL: debug
-      LIBUSB_DEBUG: '4'
     steps:
     - uses: actions/checkout@v4
       with:
@@ -120,7 +119,7 @@ jobs:
         cmakeVersion: '3.31.x'
         useCloudCache: false
 
-    - name: Compare unpatched and patched libusb
+    - name: Build and package unpatched and patched libusb
       shell: pwsh
       run: |
         $ErrorActionPreference = 'Stop'
@@ -131,14 +130,18 @@ jobs:
         }
 
         $workRoot = Join-Path $env:RUNNER_TEMP "libusb-ab-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
-        $logRoot = Join-Path $env:GITHUB_WORKSPACE 'libusb-ab-logs'
-        New-Item -ItemType Directory -Force -Path $logRoot | Out-Null
-        git rev-parse HEAD | Set-Content "$logRoot/commit.txt"
+        $logRoot = Join-Path $env:GITHUB_WORKSPACE 'libusb-ab-build-logs'
+        $bundle = Join-Path $env:GITHUB_WORKSPACE 'libusb-ab'
+        New-Item -ItemType Directory -Force -Path $logRoot, $bundle | Out-Null
+        git rev-parse HEAD | Set-Content "$bundle/commit.txt"
         cmake --version | Set-Content "$logRoot/cmake-version.txt"
-        "| Variant | CTest exit code |" >> $env:GITHUB_STEP_SUMMARY
-        "| --- | --- |" >> $env:GITHUB_STEP_SUMMARY
+        Copy-Item ci/windows_libusb_ab.ps1 "$bundle/run.ps1"
+        Copy-Item (Get-Command ctest).Source $bundle
+        @{ repetitions = $repetitions; device_mxid = $env:DEPTHAI_DEVICE_MXID_LIST } | ConvertTo-Json | Set-Content "$bundle/options.json"
+        # Ship the VC runtime with the tests so the HIL host needs no compiler.
+        $runtimeDlls = Get-ChildItem "$env:WINDIR/System32/*" -Include 'msvcp140*.dll', 'vcruntime140*.dll', 'concrt140.dll'
+        $runtimeDlls | Copy-Item -Destination $bundle
 
-        $results = @{}
         foreach ($variant in @('unpatched', 'patched')) {
           $fix = if ($variant -eq 'patched') { 'ON' } else { 'OFF' }
           $variantLogs = Join-Path $logRoot $variant
@@ -158,32 +161,99 @@ jobs:
 
           & cmake --build $buildDir --target regression_boot_test --parallel 4 --config Release 2>&1 | Tee-Object "$variantLogs/build.log"
           if ($LASTEXITCODE -ne 0) { throw "$variant build failed: $LASTEXITCODE" }
-          $usbDlls = @(Get-ChildItem "$buildDir/tests/Release" -Filter '*usb*.dll')
+          $variantDir = Join-Path $bundle $variant
+          New-Item -ItemType Directory -Force -Path $variantDir | Out-Null
+          Copy-Item "$buildDir/tests/Release/regression_boot_test.exe" $variantDir
+          Get-ChildItem "$buildDir/tests/Release/*.dll" | Copy-Item -Destination $variantDir
+          $runtimeDlls | Copy-Item -Destination $variantDir
+          $usbDlls = @(Get-ChildItem $variantDir -Filter '*usb*.dll')
           if ($usbDlls.Count -eq 0) { throw "No libusb DLL found next to the $variant test executable" }
-          $usbDlls | Get-FileHash -Algorithm SHA256 | Format-List | Out-File "$variantLogs/libusb-dll-hashes.txt"
-
-          # Keep testing the patched build even if the unpatched test fails.
-          & ctest --test-dir $buildDir -C Release -R '^regression_boot_test$' --repeat "until-fail:$repetitions" --output-on-failure --no-tests=error --output-log "$variantLogs/ctest.log" --output-junit "$variantLogs/results.xml"
-          $results[$variant] = $LASTEXITCODE
-          Copy-Item "$buildDir/Testing/Temporary/LastTest*.log" $variantLogs -ErrorAction SilentlyContinue
-          "| $variant | $($results[$variant]) |" >> $env:GITHUB_STEP_SUMMARY
-          # Allow watchdog recovery if the baseline left the device disconnected.
-          if ($variant -eq 'unpatched') { Start-Sleep -Seconds 15 }
+          # Recreate only this test with relative paths; the build tree is not portable.
+          @'
+        add_test(regression_boot_test "${CMAKE_CURRENT_LIST_DIR}/regression_boot_test.exe")
+        set_tests_properties(regression_boot_test PROPERTIES TIMEOUT 180 ENVIRONMENT "DEPTHAI_PROTOCOL=usb")
+        '@ | Set-Content "$variantDir/CTestTestfile.cmake"
         }
 
-        if ($results['patched'] -ne 0) { throw 'The patched regression test failed; inspect the uploaded logs' }
-        if ($results['unpatched'] -eq 0) {
-          'Both variants passed. The baseline did not reproduce the issue; the comparison is inconclusive.' >> $env:GITHUB_STEP_SUMMARY
-          Write-Output '::warning::Both libusb variants passed; the original issue was not reproduced.'
-        } else {
-          'Unpatched failed and patched passed. Check the baseline log for the expected endpoint/interface failure.' >> $env:GITHUB_STEP_SUMMARY
-        }
+    - name: Upload test bundle
+      id: bundle
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-rvc2-libusb-bundle-${{ github.run_attempt }}
+        path: libusb-ab/
+        retention-days: 14
+
+    - name: Upload build logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-rvc2-libusb-build-logs-${{ github.run_attempt }}
+        path: libusb-ab-build-logs/
+        if-no-files-found: warn
+        retention-days: 14
+
+  libusb-ab:
+    name: Compare libusb on Windows RVC2 HIL
+    needs: build-libusb-ab
+    runs-on: [self-hosted, testbed-runner]
+    timeout-minutes: 360
+    permissions:
+      actions: read
+      contents: read
+    env:
+      COMPARISON_LOG_DIR: libusb-ab-logs-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+    - name: Check out shared HIL setup
+      uses: actions/checkout@v4
+      with:
+        ref: 5428f885656ce711810ec0091305154e1713cd56 # develop HIL tooling
+        path: hil-tools
+        sparse-checkout: scripts/hil/prepare_hil_framework.sh
+        sparse-checkout-cone-mode: false
+
+    - name: Download test bundle
+      uses: actions/download-artifact@v4
+      with:
+        artifact-ids: ${{ needs.build-libusb-ab.outputs.artifact_id }}
+        path: libusb-ab-${{ github.run_id }}-${{ github.run_attempt }}
+        merge-multiple: true
+
+    - name: Reserve Windows RVC2 and run both variants
+      shell: bash
+      env:
+        HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
+        CAMERA_MODEL: ${{ inputs.camera_model || vars.LIBUSB_AB_CAMERA_MODEL || 'oak_d_s2' }}
+      run: |
+        set -euo pipefail
+        source hil-tools/scripts/hil/prepare_hil_framework.sh "$HIL_PAT_TOKEN"
+        bundle="libusb-ab-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+        remote="AppData/Local/Temp/$bundle"
+        mkdir -p "$COMPARISON_LOG_DIR"
+        # Artifact downloads reset file modes; rsync preserves them on the host.
+        find "$bundle" -type f \( -name '*.exe' -o -name '*.dll' \) -exec chmod +x {} +
+        hil --models "$CAMERA_MODEL" -os windows --no-shell --wait \
+          --reservation-name "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#libusb-ab" \
+          --sync-workspace --local-path "$GITHUB_WORKSPACE/$bundle" --remote-path AppData/Local/Temp \
+          --pull "$remote/logs/" --save-to "$GITHUB_WORKSPACE/$COMPARISON_LOG_DIR" \
+          --commands "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $remote/run.ps1" \
+          2>&1 | tee "$COMPARISON_LOG_DIR/hil-windows.log"
+
+    - name: Report comparison
+      if: always()
+      shell: bash
+      run: |
+        if [ -f "$COMPARISON_LOG_DIR/summary.md" ] && [ -f "$COMPARISON_LOG_DIR/exit-codes.json" ]; then
+          cat "$COMPARISON_LOG_DIR/summary.md" >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo 'No comparison results were retrieved; inspect the HIL log.' >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+        fi
 
     - name: Upload comparison logs
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: windows-rvc2-libusb-comparison-${{ github.run_attempt }}
-        path: libusb-ab-logs/
+        path: ${{ env.COMPARISON_LOG_DIR }}/
         if-no-files-found: warn
         retention-days: 14
