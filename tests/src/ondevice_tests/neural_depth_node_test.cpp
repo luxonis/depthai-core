@@ -258,17 +258,14 @@ TEST_CASE("NeuralDepth follows runtime calibration updates") {
     dai::Pipeline pipeline;
     auto device = pipeline.getDefaultDevice();
     if(!isModelSupported(device, kModel)) {
-        WARN("Skipping NeuralDepth calibration update test: model " << magic_enum::enum_name(kModel) << " is not supported on this device.");
-        return;
+        SKIP("Model " << magic_enum::enum_name(kModel) << " is not supported on this device.");
     }
 
     // Scale the left -> right baseline while keeping its direction, so rectification and disparity stay the same and depth scales with the baseline
-    const auto originalCalibration = device->getCalibration();
-    auto eepromData = originalCalibration.getEepromData();
+    auto eepromData = device->getCalibration().getEepromData();
     auto& leftExtrinsics = eepromData.cameraData.at(dai::CameraBoardSocket::CAM_B).extrinsics;
     if(leftExtrinsics.toCameraSocket != dai::CameraBoardSocket::CAM_C) {
-        WARN("Skipping NeuralDepth calibration update test: CAM_B extrinsics are not relative to CAM_C.");
-        return;
+        SKIP("CAM_B extrinsics are not relative to CAM_C.");
     }
     leftExtrinsics.translation.x *= kBaselineScale;
     leftExtrinsics.translation.y *= kBaselineScale;
@@ -282,6 +279,7 @@ TEST_CASE("NeuralDepth follows runtime calibration updates") {
     neuralDepth->build(*leftCamera->requestFullResolutionOutput(), *rightCamera->requestFullResolutionOutput(), kModel);
     auto depthQueue = neuralDepth->depth.createOutputQueue(4, false);
     auto disparityQueue = neuralDepth->disparity.createOutputQueue(4, false);
+    auto configQueue = neuralDepth->inputConfig.createInputQueue();
 
     // depth = multiplier / disparity, so depth * disparity recovers the disparity-to-depth multiplier independently of the scene
     auto medianDepthMultiplier = [&](size_t numFrames) {
@@ -313,29 +311,21 @@ TEST_CASE("NeuralDepth follows runtime calibration updates") {
 
     pipeline.start();
     const double multiplierBefore = medianDepthMultiplier(5);
-
-    // Restore the original calibration even if a check below fails
-    struct CalibrationRestorer {
-        std::shared_ptr<dai::Device> device;
-        dai::CalibrationHandler calibration;
-        ~CalibrationRestorer() {
-            try {
-                device->setCalibration(calibration);
-            } catch(const std::exception& e) {
-                WARN("Failed to restore the original calibration: " << e.what());
-            }
+    auto waitForRatio = [&](double expected) {
+        double ratio = 0.0;
+        for(int attempt = 0; attempt < 10 && ratio != Catch::Approx(expected).epsilon(0.05); ++attempt) {
+            ratio = medianDepthMultiplier(2) / multiplierBefore;
         }
-    } restorer{device, originalCalibration};
+        return ratio;
+    };
 
     device->setCalibration(scaledCalibration);
-    double ratio = 0.0;
-    for(int attempt = 0; attempt < 10 && ratio < 0.95 * kBaselineScale; ++attempt) {
-        ratio = medianDepthMultiplier(2) / multiplierBefore;
-    }
+    REQUIRE(waitForRatio(kBaselineScale) == Catch::Approx(kBaselineScale).epsilon(0.05));
 
-    INFO("Disparity to depth multiplier before: " << multiplierBefore << ", ratio after scaling the baseline by " << kBaselineScale << ": " << ratio);
-    REQUIRE(ratio > 0.95 * kBaselineScale);
-    REQUIRE(ratio < 1.05 * kBaselineScale);
+    auto config = std::make_shared<dai::NeuralDepthConfig>(*neuralDepth->initialConfig);
+    config->setDepthUnit(dai::DepthUnit::CENTIMETER);
+    configQueue->send(config);
+    REQUIRE(waitForRatio(kBaselineScale * 0.1) == Catch::Approx(kBaselineScale * 0.1).epsilon(0.05));
 
     pipeline.stop();
     pipeline.wait();
