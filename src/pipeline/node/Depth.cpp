@@ -67,7 +67,6 @@ inline constexpr std::array BACKEND_PROFILES = {
     stereo(StereoDepth::PresetMode::FAST_ACCURACY, 30.f),
     stereo(StereoDepth::PresetMode::FAST_DENSITY, 30.f),
 
-    noConfig(Depth::Algorithm::GPU_STEREO, 2592, 1944, 5.f),
     noConfig(Depth::Algorithm::GPU_STEREO, 1280, 800, 30.f),
     noConfig(Depth::Algorithm::GPU_STEREO, 640, 400, 55.f),
 };
@@ -953,14 +952,19 @@ void Depth::buildInternal() {
             break;
         }
         case Algorithm::GPU_STEREO: {
+            // Rectification node in front of GPUStereo (its in-node EVA rectification is off), so that Depth can
+            // expose the rectified pair like the other stereo backends.
+            gpuStereoRectification_ = std::make_unique<Subnode<Rectification>>(*this, "gpuStereoRectification");
             gpuStereoBackend_ = std::make_unique<Subnode<GPUStereo>>(*this, "gpuStereo");
             const auto stereo = ensureStereoOutputs(pipeline, *stereoPair, sizeOverride_, stereoOutputFps_);
-            (*gpuStereoBackend_)->setRectification(true).build(*stereo.left, *stereo.right);
+            auto& rectification = **gpuStereoRectification_;
+            stereo.left->link(rectification.input1);
+            stereo.right->link(rectification.input2);
+            (*gpuStereoBackend_)->setRectification(false).build(rectification.output1, rectification.output2);
             depthOut_ = &(**gpuStereoBackend_).depth;
             confidenceOut_ = &(**gpuStereoBackend_).confidenceMap;
-            auto& rectification = *(*gpuStereoBackend_)->rectification;
-            rectifiedLeftOut_ = &rectification->output1;
-            rectifiedRightOut_ = &rectification->output2;
+            rectifiedLeftOut_ = &rectification.output1;
+            rectifiedRightOut_ = &rectification.output2;
             wiredResolution = stereo.resolution;
             if((!wiredFps || *wiredFps <= 0.f) && stereo.maxCameraFps > 0.f) {
                 wiredFps = stereo.maxCameraFps;

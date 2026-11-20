@@ -17,6 +17,7 @@
 #include "depthai/pipeline/node/ImageAlign.hpp"
 #include "depthai/pipeline/node/NeuralAssistedStereo.hpp"
 #include "depthai/pipeline/node/NeuralDepth.hpp"
+#include "depthai/pipeline/node/Rectification.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
 #include "depthai/pipeline/node/ToF.hpp"
 
@@ -309,6 +310,7 @@ class Depth : public DeviceNodeGroup {
     std::unique_ptr<::dai::Subnode<StereoDepth>> stereoBackend_;
     std::unique_ptr<::dai::Subnode<NeuralDepth>> neuralBackend_;
     std::unique_ptr<::dai::Subnode<GPUStereo>> gpuStereoBackend_;
+    std::unique_ptr<::dai::Subnode<Rectification>> gpuStereoRectification_;
     std::shared_ptr<NeuralAssistedStereo> nasBackend_;
     std::shared_ptr<ToF> tofBackend_;
     std::shared_ptr<beta::node::ToFStereoFusion> tofStereoFusionBackend_;
