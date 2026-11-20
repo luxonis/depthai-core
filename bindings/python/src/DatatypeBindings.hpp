@@ -19,7 +19,7 @@ namespace dai {
 template <typename T, typename Enable = void>
 // This is used so pybind detects the classes as overridable in python,
 // which trigers the holders to keep the python part of the object alive
-class Py : public T {
+class Py : public T, public py::trampoline_self_life_support {
    public:
     using T::T;
     dai::VisualizeType getVisualizationMessage() const override {
@@ -31,7 +31,7 @@ class Py : public T {
 };
 
 template <typename T>
-class Py<T, std::enable_if_t<std::is_base_of_v<dai::TransformableBuffer, T>>> : public T {
+class Py<T, std::enable_if_t<std::is_base_of_v<dai::TransformableBuffer, T>>> : public T, public py::trampoline_self_life_support {
    public:
     using T::T;
 

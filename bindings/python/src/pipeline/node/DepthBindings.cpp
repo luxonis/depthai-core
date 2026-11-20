@@ -53,6 +53,9 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
                     py::call_guard<py::gil_scoped_release>(),
                     DOC(dai, node, Depth, getDefaultAlgorithm))
         .def("setAlgorithm", &Depth::setAlgorithm, py::arg("algorithm"), DOC(dai, node, Depth, setAlgorithm))
+        .def("setStereoPair", &Depth::setStereoPair, py::arg("stereoPair"), DOC(dai, node, Depth, setStereoPair))
+        .def("getRequestedStereoPair", &Depth::getRequestedStereoPair, DOC(dai, node, Depth, getRequestedStereoPair))
+        .def("getResolvedStereoPair", &Depth::getResolvedStereoPair, DOC(dai, node, Depth, getResolvedStereoPair))
         .def(
             "getRequestedConfig",
             [configToPy](const Depth& d) -> py::object { return d.getRequestedConfig().has_value() ? configToPy(*d.getRequestedConfig()) : py::none(); },
@@ -118,6 +121,9 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
             py::arg("fps") = std::nullopt,
             py::arg("size") = std::nullopt,
             DOC(dai, node, Depth, build, 4))
+        .def("hasRectifiedOutputs", &Depth::hasRectifiedOutputs, DOC(dai, node, Depth, hasRectifiedOutputs))
+        .def_property_readonly("rectifiedLeft", &Depth::rectifiedLeft, py::return_value_policy::reference_internal, DOC(dai, node, Depth, rectifiedLeft))
+        .def_property_readonly("rectifiedRight", &Depth::rectifiedRight, py::return_value_policy::reference_internal, DOC(dai, node, Depth, rectifiedRight))
         .def_property_readonly(
             "depth", [](Depth& d) -> Node::Output& { return d.depth(); }, py::return_value_policy::reference_internal, DOC(dai, node, Depth, depth))
         .def_property_readonly(

@@ -14,7 +14,7 @@ class NodeState {
     struct DurationEvent {
         PipelineEvent startEvent;
         uint64_t durationUs = 0;
-        DEPTHAI_SERIALIZE(DurationEvent, startEvent, durationUs);
+        DEPTHAI_SERIALIZE_DECL(DurationEvent, startEvent, durationUs);
     };
     struct DurationStats {
         uint64_t minMicros = -1;
@@ -24,7 +24,8 @@ class NodeState {
         uint64_t minMicrosRecent = -1;
         uint64_t maxMicrosRecent = 0;
         uint64_t medianMicrosRecent = 0;
-        DEPTHAI_SERIALIZE(DurationStats, minMicros, maxMicros, averageMicrosRecent, stdDevMicrosRecent, minMicrosRecent, maxMicrosRecent, medianMicrosRecent);
+        DEPTHAI_SERIALIZE_DECL(
+            DurationStats, minMicros, maxMicros, averageMicrosRecent, stdDevMicrosRecent, minMicrosRecent, maxMicrosRecent, medianMicrosRecent);
     };
     struct Timing {
         float fps = 0.0f;
@@ -34,14 +35,14 @@ class NodeState {
             return durationStats.minMicros <= durationStats.maxMicros;
         }
 
-        DEPTHAI_SERIALIZE(Timing, fps, durationStats);
+        DEPTHAI_SERIALIZE_DECL(Timing, fps, durationStats);
     };
     struct QueueStats {
         uint32_t maxQueued = 0;
         uint32_t minQueuedRecent = 0;
         uint32_t maxQueuedRecent = 0;
         uint32_t medianQueuedRecent = 0;
-        DEPTHAI_SERIALIZE(QueueStats, maxQueued, minQueuedRecent, maxQueuedRecent, medianQueuedRecent);
+        DEPTHAI_SERIALIZE_DECL(QueueStats, maxQueued, minQueuedRecent, maxQueuedRecent, medianQueuedRecent);
     };
     struct InputQueueState {
         // Current state of the input queue.
@@ -61,7 +62,7 @@ class NodeState {
             return timing.isValid();
         }
 
-        DEPTHAI_SERIALIZE(InputQueueState, state, numQueued, timing, queueStats);
+        DEPTHAI_SERIALIZE_DECL(InputQueueState, state, numQueued, timing, queueStats);
     };
     struct OutputQueueState {
         // Current state of the output queue. Send should ideally be instant. This is not the case when the input queue is full.
@@ -74,7 +75,7 @@ class NodeState {
             return timing.isValid();
         }
 
-        DEPTHAI_SERIALIZE(OutputQueueState, state, timing);
+        DEPTHAI_SERIALIZE_DECL(OutputQueueState, state, timing);
     };
     enum class State : std::int32_t { IDLE = 0, GETTING_INPUTS = 1, PROCESSING = 2, SENDING_OUTPUTS = 3 };
 
@@ -95,7 +96,7 @@ class NodeState {
     // Other timings that the developer of the node decided to add
     std::unordered_map<std::string, Timing> otherTimings;
 
-    DEPTHAI_SERIALIZE(NodeState, state, events, outputStates, inputStates, inputsGetTiming, outputsSendTiming, mainLoopTiming, otherTimings);
+    DEPTHAI_SERIALIZE_DECL(NodeState, state, events, outputStates, inputStates, inputsGetTiming, outputsSendTiming, mainLoopTiming, otherTimings);
 };
 
 /**
@@ -109,10 +110,7 @@ class PipelineState : public Buffer {
     std::unordered_map<int64_t, NodeState> nodeStates;
     uint32_t configSequenceNum = 0;
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::PipelineState;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::PipelineState;
@@ -120,7 +118,7 @@ class PipelineState : public Buffer {
 
     nlohmann::json toJson() const;
 
-    DEPTHAI_SERIALIZE(PipelineState, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, nodeStates, configSequenceNum);
+    DEPTHAI_SERIALIZE_DECL(PipelineState, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, nodeStates, configSequenceNum);
 };
 
 }  // namespace dai

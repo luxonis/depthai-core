@@ -12,6 +12,8 @@ struct GPUStereoProperties : PropertiesSerializable<Properties, GPUStereoPropert
     ~GPUStereoProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(GPUStereoProperties, initialConfig, rectification);
+DEPTHAI_SERIALIZE_EXT_DECL(GPUStereoProperties, initialConfig, rectification);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::GPUStereoProperties>;

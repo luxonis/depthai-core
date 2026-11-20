@@ -427,6 +427,11 @@ class DeviceBase::Impl {
 
     std::thread startupNotificationsThread;
 
+    // Telemetry ID of the pipeline started on this device. A copy: telemetry events are sent from
+    // device threads, which must not own the pipeline.
+    mutable std::mutex activeTelemetryPipelineIdMtx;
+    std::string activeTelemetryPipelineId;
+
     // RPC
     std::mutex rpcMutex;
     std::shared_ptr<XLinkStream> rpcStream;
@@ -1802,10 +1807,16 @@ std::string DeviceBase::getTemporaryTelemetryDeviceId() const {
 }
 
 std::optional<std::string> DeviceBase::getActiveTelemetryPipelineId() const {
-    if(auto pipeline = pipelinePtr.lock()) {
-        return pipeline->telemetryPipelineId;
+    std::lock_guard<std::mutex> lock(pimpl->activeTelemetryPipelineIdMtx);
+    if(pimpl->activeTelemetryPipelineId.empty()) {
+        return std::nullopt;
     }
-    return std::nullopt;
+    return pimpl->activeTelemetryPipelineId;
+}
+
+void DeviceBase::setActiveTelemetryPipelineId(std::string telemetryPipelineId) {
+    std::lock_guard<std::mutex> lock(pimpl->activeTelemetryPipelineIdMtx);
+    pimpl->activeTelemetryPipelineId = std::move(telemetryPipelineId);
 }
 
 std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
@@ -2046,6 +2057,18 @@ void DeviceBase::setXLinkChunkSize(int sizeBytes) {
 
 int DeviceBase::getXLinkChunkSize() {
     return pimpl->rpcCallChecked<int>("getXLinkChunkSize");
+}
+
+int DeviceBase::getEthernetLinkSpeed() {
+    return pimpl->rpcCallChecked<int>("getEthernetLinkSpeed", std::string{});
+}
+
+int DeviceBase::getEthernetLinkDuplex() {
+    return pimpl->rpcCall("getEthernetLinkDuplex").as<int>();
+}
+
+int64_t DeviceBase::getEmmcMemorySize() {
+    return pimpl->rpcCallChecked<int64_t>("getEmmcMemorySize");
 }
 
 void DeviceBase::setSippBufferSize(int sizeBytes) {

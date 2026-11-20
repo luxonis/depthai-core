@@ -15,6 +15,19 @@ using dai::node::StereoDepth;
 namespace dai::node {
 
 struct DepthTestAccess {
+    // Test the optional-output contract without connecting a device or building a backend.
+    static void setWiredOutputs(Depth& depth, Depth::Algorithm algorithm, Node::Output& depthOutput, Node::Output* left, Node::Output* right) {
+        depth.graphBuilt_ = true;
+        depth.resolved_.algorithm = algorithm;
+        depth.depthOut_ = &depthOutput;
+        depth.rectifiedLeftOut_ = left;
+        depth.rectifiedRightOut_ = right;
+    }
+
+    static StereoPair selectStereoPair(const std::vector<StereoPair>& pairs, const std::optional<StereoPair>& requested) {
+        return Depth::selectStereoPair(pairs, requested);
+    }
+
     static std::pair<Depth::Algorithm, Depth::Config> selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                                                     float targetFps,
                                                                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
@@ -89,6 +102,69 @@ TEST_CASE("Depth::selectBackend preserves RVC4 stereo selection when ToF is also
     const auto sel = select(std::make_pair(640u, 400u), 30.f, {Depth::Algorithm::STEREO, Depth::Algorithm::TOF});
     REQUIRE(sel.algorithm == Depth::Algorithm::STEREO);
     REQUIRE(std::get<StereoDepth::PresetMode>(sel.config) == StereoDepth::PresetMode::FAST_ACCURACY);
+}
+
+TEST_CASE("Depth stereo pair selection preserves the default and device metadata", "[Depth][stereo-pair]") {
+    const dai::StereoPair first{dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, 7.5f, false};
+    const dai::StereoPair second{dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_D, 12.f, true};
+    const std::vector<dai::StereoPair> pairs{first, second};
+    auto requested = std::optional<dai::StereoPair>{};
+    auto expected = first;
+    SECTION("no override keeps the first pair") {}
+    SECTION("a non-default pair uses metadata from the device") {
+        requested = dai::StereoPair{second.left, second.right, 999.f, false};
+        expected = second;
+    }
+    const auto selected = dai::node::DepthTestAccess::selectStereoPair(pairs, requested);
+    REQUIRE(selected.left == expected.left);
+    REQUIRE(selected.right == expected.right);
+    REQUIRE(selected.baseline == expected.baseline);
+    REQUIRE(selected.isVertical == expected.isVertical);
+}
+
+TEST_CASE("Depth stereo pair selection rejects missing and unavailable pairs", "[Depth][stereo-pair]") {
+    const dai::StereoPair pair{dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C};
+    SECTION("no stereo cameras") {
+        REQUIRE_THROWS_WITH(dai::node::DepthTestAccess::selectStereoPair({}, std::nullopt), Catch::Matchers::ContainsSubstring("no stereo camera pair"));
+    }
+    SECTION("requested pair is not available") {
+        const dai::StereoPair requested{dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_D};
+        REQUIRE_THROWS_WITH(dai::node::DepthTestAccess::selectStereoPair({pair}, requested),
+                            Catch::Matchers::ContainsSubstring("not reported by Device::getStereoPairs()"));
+    }
+    SECTION("socket order must match an available pair") {
+        const dai::StereoPair reversed{pair.right, pair.left};
+        REQUIRE_THROWS_WITH(dai::node::DepthTestAccess::selectStereoPair({pair}, reversed),
+                            Catch::Matchers::ContainsSubstring("not reported by Device::getStereoPairs()"));
+    }
+}
+
+TEST_CASE("Depth stereo pair overrides can be reset without changing the algorithm", "[Depth][stereo-pair]") {
+    const auto depth = Depth::create();
+    REQUIRE_FALSE(depth->getRequestedStereoPair().has_value());
+    REQUIRE_FALSE(depth->getResolvedStereoPair().has_value());
+    const dai::StereoPair pair{dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_D};
+    REQUIRE(depth->setStereoPair(pair) == depth);
+    depth->build(Depth::Algorithm::STEREO, StereoDepth::PresetMode::DEFAULT);
+    REQUIRE(depth->getRequestedStereoPair()->left == pair.left);
+    REQUIRE(depth->getRequestedStereoPair()->right == pair.right);
+    REQUIRE_FALSE(depth->getResolvedStereoPair().has_value());
+    depth->setStereoPair(std::nullopt);
+    REQUIRE_FALSE(depth->getRequestedStereoPair().has_value());
+    REQUIRE(depth->getRequestedAlgorithm() == Depth::Algorithm::STEREO);
+    REQUIRE(std::get<StereoDepth::PresetMode>(*depth->getRequestedConfig()) == StereoDepth::PresetMode::DEFAULT);
+}
+
+TEST_CASE("Depth stereo pair setter rejects ambiguous sockets without changing the request", "[Depth][stereo-pair]") {
+    const auto depth = Depth::create();
+    const dai::StereoPair pair{dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C};
+    depth->setStereoPair(pair);
+    const auto invalid = GENERATE(dai::StereoPair{dai::CameraBoardSocket::AUTO, dai::CameraBoardSocket::CAM_C},
+                                  dai::StereoPair{dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::AUTO},
+                                  dai::StereoPair{dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_B});
+    REQUIRE_THROWS_WITH(depth->setStereoPair(invalid), Catch::Matchers::ContainsSubstring("two distinct, explicit camera sockets"));
+    REQUIRE(depth->getRequestedStereoPair()->left == pair.left);
+    REQUIRE(depth->getRequestedStereoPair()->right == pair.right);
 }
 
 TEST_CASE("Depth::selectBackend picks NeuralDepth model whose tensor band fits the user resolution", "[Depth]") {
@@ -182,4 +258,35 @@ TEST_CASE("Depth::selectBackend honors supportedModels filter for NEURAL rows", 
     const auto sel = select(std::make_pair(640u, 400u), 30.f, kAllRvc4Backends, only);
     REQUIRE(sel.algorithm == Depth::Algorithm::NEURAL);
     REQUIRE(std::get<DeviceModelZoo>(sel.config) == DeviceModelZoo::NEURAL_DEPTH_480X300);
+}
+
+TEST_CASE("Depth rectified outputs require a wired backend", "[Depth][RectifiedOutputs]") {
+    auto depth = Depth::create();
+    REQUIRE_THROWS_WITH(depth->hasRectifiedOutputs(), Catch::Matchers::ContainsSubstring("attach the node to a pipeline"));
+    REQUIRE_THROWS(depth->rectifiedLeft());
+    REQUIRE_THROWS(depth->rectifiedRight());
+}
+
+TEST_CASE("Depth ToF has no rectified pair and keeps its depth output usable", "[Depth][RectifiedOutputs]") {
+    auto depth = Depth::create();
+    auto stereo = StereoDepth::create();  // Only owns dummy outputs; no hardware connection.
+    dai::node::DepthTestAccess::setWiredOutputs(*depth, Depth::Algorithm::TOF, stereo->depth, nullptr, nullptr);
+    REQUIRE_FALSE(depth->hasRectifiedOutputs());
+    REQUIRE_THROWS_WITH(depth->rectifiedLeft(), Catch::Matchers::ContainsSubstring("unavailable for the TOF backend"));
+    REQUIRE_THROWS_WITH(depth->rectifiedRight(), Catch::Matchers::ContainsSubstring("unavailable for the TOF backend"));
+    REQUIRE(depth->getRequestedAlgorithm() == Depth::Algorithm::AUTO);
+    REQUIRE(depth->getResolvedAlgorithm() == Depth::Algorithm::TOF);
+    REQUIRE(&depth->depth() == &stereo->depth);
+    REQUIRE(depth->getNodeMap().empty());  // Querying did not create extra stereo nodes.
+}
+
+TEST_CASE("Depth rectified access forwards backend outputs and locks configuration", "[Depth][RectifiedOutputs]") {
+    auto depth = Depth::create();
+    auto stereo = StereoDepth::create();
+    dai::node::DepthTestAccess::setWiredOutputs(*depth, Depth::Algorithm::STEREO, stereo->depth, &stereo->rectifiedLeft, &stereo->rectifiedRight);
+    REQUIRE(depth->hasRectifiedOutputs());
+    REQUIRE(&depth->rectifiedLeft() == &stereo->rectifiedLeft);
+    REQUIRE(&depth->rectifiedRight() == &stereo->rectifiedRight);
+    REQUIRE(&depth->depth() == &stereo->depth);
+    REQUIRE_THROWS(depth->setAlgorithm(Depth::Algorithm::TOF));
 }

@@ -7,7 +7,7 @@
 void bind_gpustereoconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<GPUStereoConfig, Py<GPUStereoConfig>, Buffer, std::shared_ptr<GPUStereoConfig>> gpuStereoConfig(m, "GPUStereoConfig", DOC(dai, GPUStereoConfig));
+    py::class_<GPUStereoConfig, Py<GPUStereoConfig>, Buffer, py::smart_holder> gpuStereoConfig(m, "GPUStereoConfig", DOC(dai, GPUStereoConfig));
     py::enum_<GPUStereoConfig::ComputeMode> computeMode(gpuStereoConfig, "ComputeMode", DOC(dai, GPUStereoConfig, ComputeMode));
 
     Callstack* callstack = (Callstack*)pCallstack;

@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "Metadata.hpp"
@@ -62,6 +63,28 @@ struct Head {
      */
     std::string parser;
 };
+
+/** @brief Read Head from its NNArchive JSON representation. */
+inline void from_json(const nlohmann::json& j, Head& value) {
+    Head head;
+    j.at("metadata").get_to(head.metadata);
+    if(j.contains("name")) j.at("name").get_to(head.name);
+    if(j.contains("outputs")) j.at("outputs").get_to(head.outputs);
+    j.at("parser").get_to(head.parser);
+    value = std::move(head);
+}
+
+/** @brief Write Head in NNArchive JSON format, preserving custom metadata fields. */
+inline void to_json(nlohmann::json& j, const Head& value) {
+    j = nlohmann::json::object();
+    j["metadata"] = value.metadata;
+    j["name"] = value.name;
+    j["outputs"] = value.outputs;
+    j["parser"] = value.parser;
+}
+
+NOP_EXTERNAL_STRUCTURE(Head, metadata, name, outputs, parser);
+
 }  // namespace v1
 }  // namespace nn_archive
 }  // namespace dai

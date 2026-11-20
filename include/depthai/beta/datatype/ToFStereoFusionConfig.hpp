@@ -38,6 +38,6 @@ struct ToFStereoFusionConfig {
     }
 };
 
-DEPTHAI_SERIALIZE_EXT(ToFStereoFusionConfig, confidenceThreshold, cropToOverlap);
+DEPTHAI_SERIALIZE_EXT_DECL(ToFStereoFusionConfig, confidenceThreshold, cropToOverlap);
 
 }  // namespace dai::beta
