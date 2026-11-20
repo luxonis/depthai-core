@@ -809,6 +809,11 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         target_compile_definitions(world_constraints_test PRIVATE DEPTHAI_TEST_WORLD_CONSTRAINTS_RECONSTRUCTION)
     endif()
     dai_set_test_labels(world_constraints_test onhost ci)
+
+    # Synthetic stereo images through the pinned calibration library: a pose that puts the scene behind the cameras is refused.
+    dai_add_test(dynamic_calibration_cheirality_test src/onhost_tests/dynamic_calibration_cheirality_test.cpp)
+    target_link_libraries(dynamic_calibration_cheirality_test PRIVATE dynamic_calibration_imported)
+    dai_set_test_labels(dynamic_calibration_cheirality_test onhost ci)
 endif()
 
 dai_add_test(flash_eeprom_fields_test src/ondevice_tests/flash_eeprom_fields_test.cpp)
@@ -896,6 +901,13 @@ dai_set_test_labels(input_output_naming_test ondevice rvc2_all rvc4 rvc4ffc rvc4
 # Resolutions test
 dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
 dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runnable in CI
+
+# Production network config test
+dai_add_test(production_network_config_test src/ondevice_tests/production_network_config_test.cpp)
+dai_set_test_labels(production_network_config_test ondevice rvc2 poe ci noreplayci nousb)
+
+dai_add_test(board_config_serialization_test src/onhost_tests/board_config_serialization_test.cpp)
+dai_set_test_labels(board_config_serialization_test onhost ci)
 
 # Serialization test
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
