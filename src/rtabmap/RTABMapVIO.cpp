@@ -155,6 +155,8 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
 
             pose = pimplRtabmap->localTransform * pose * pimplRtabmap->localTransform.inverse();
             auto out = rtabmapToOdometry(pose, velocity);
+            out->setTimestamp(imgFrame->getTimestamp(dai::CameraExposureOffset::MIDDLE));
+            out->setTimestampDevice(imgFrame->getTimestampDevice(dai::CameraExposureOffset::MIDDLE));
             transform.send(out);
             passthroughRect.send(imgFrame);
             passthroughDepth.send(depthFrame);
