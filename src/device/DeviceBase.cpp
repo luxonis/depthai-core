@@ -945,6 +945,17 @@ void DeviceBase::closeImpl() {
         } catch(const std::exception& ex) {
             pimpl->logger.debug("isRunning call error: {}", ex.what());
         }
+        // The gate kills the running device process once the connection closes. Close its cameras first: the camera stack
+        // saves what its autofocus learned (the phase detection offsets) when a camera closes.
+        if(!waitForGate) {
+            try {
+                auto closeStart = steady_clock::now();
+                pimpl->rpcCallCheckedVoid(milliseconds(5000), "closeCameras");
+                pimpl->logger.debug("Device cameras closed in {} ms", duration_cast<milliseconds>(steady_clock::now() - closeStart).count());
+            } catch(const std::exception& ex) {
+                pimpl->logger.debug("closeCameras call error: {}", ex.what());
+            }
+        }
     }
 
     // Close connection first; causes Xlink internal calls to unblock semaphore waits and
