@@ -1118,6 +1118,13 @@ dai_set_test_labels(stereo_depth_alignment_test ondevice rvc2_all rvc4 ci)
 dai_add_test(image_manip_mono_color_test src/onhost_tests/image_manip_mono_color_test.cpp)
 dai_set_test_labels(image_manip_mono_color_test onhost ci)
 
+# ImageManip regressions in the implementation shared by the host node and the RVC4 firmware.
+# The crop case needs the host warp backend, which is OpenCV.
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    dai_add_test(image_manip_regression_test src/onhost_tests/image_manip_regression_test.cpp)
+    dai_set_test_labels(image_manip_regression_test onhost ci)
+endif()
+
 # ImageManip test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(image_manip_node_test src/ondevice_tests/pipeline/node/image_manip_test.cpp)
