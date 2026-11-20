@@ -199,8 +199,9 @@ def _update_wheel_file(dist_info_dir: str, combined_infos: list[WheelInfo]):
     with open(wheel_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
-    # Filter out old Tag lines
-    new_lines = [line for line in lines if not line.startswith("Tag:")]
+    # Filter out old Tag lines and blank lines. setuptools ends the file with a blank line, and
+    # a blank line ends the headers: Tag lines after it are not read (for example by `pip check`).
+    new_lines = [line for line in lines if line.strip() and not line.startswith("Tag:")]
     
     # Generate new Tag lines
     for wheel_info in combined_infos:
