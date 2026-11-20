@@ -809,6 +809,11 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         target_compile_definitions(world_constraints_test PRIVATE DEPTHAI_TEST_WORLD_CONSTRAINTS_RECONSTRUCTION)
     endif()
     dai_set_test_labels(world_constraints_test onhost ci)
+
+    # Synthetic stereo images through the pinned calibration library: a pose that puts the scene behind the cameras is refused.
+    dai_add_test(dynamic_calibration_cheirality_test src/onhost_tests/dynamic_calibration_cheirality_test.cpp)
+    target_link_libraries(dynamic_calibration_cheirality_test PRIVATE dynamic_calibration_imported)
+    dai_set_test_labels(dynamic_calibration_cheirality_test onhost ci)
 endif()
 
 dai_add_test(flash_eeprom_fields_test src/ondevice_tests/flash_eeprom_fields_test.cpp)
