@@ -1,5 +1,7 @@
+#include <algorithm>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <chrono>
 #include <map>
 #include <memory>
@@ -159,4 +161,76 @@ TEST_CASE("ToF depth streams at the requested FPS", "[ToF]") {
 
         pipeline.stop();
     }
+}
+
+TEST_CASE("RVC2 ToF accepts automatic camera, explicit camera and replay inputs", "[ToF][replay]") {
+    const auto info = requireTofDevice();
+    const bool explicitCamera = GENERATE(false, true);
+    auto cameraCount = [](const dai::Pipeline& pipeline) {
+        size_t count = 0;
+        for(const auto& node : pipeline.getAllNodes()) {
+            if(std::dynamic_pointer_cast<dai::node::Camera>(node)) ++count;
+        }
+        return count;
+    };
+    waitUntilAvailable(info);
+    std::shared_ptr<dai::ImgFrame> raw;
+    dai::CameraBoardSocket socket;
+    {
+        auto device = std::make_shared<dai::Device>(info);
+        if(device->getPlatform() != dai::Platform::RVC2) SKIP("RVC2 replay test");
+        dai::Pipeline pipeline{device};
+        std::shared_ptr<dai::node::Camera> camera;
+        auto requestedSocket = dai::CameraBoardSocket::AUTO;
+        if(explicitCamera) {
+            for(const auto& features : device->getConnectedCameraFeatures()) {
+                for(const auto type : features.supportedTypes) {
+                    if(type == dai::CameraSensorType::TOF) requestedSocket = features.socket;
+                }
+            }
+            camera = pipeline.create<dai::node::Camera>();
+            camera->setSensorType(dai::CameraSensorType::TOF);
+            camera->build(requestedSocket, std::nullopt, 5.0f);
+        }
+        auto tof = pipeline.create<dai::node::ToF>()->build(requestedSocket, dai::ToFConfig::Profile::MID_RANGE, 5.0f);
+        socket = tof->tofBaseNode.getBoardSocket();
+        if(camera) camera->raw.link(*tof->tofBaseNode.getInputRef("rawInput"));
+        auto queue = tof->raw.createOutputQueue(2, false);
+        auto depthQueue = tof->depth.createOutputQueue(2, false);
+        pipeline.start();
+        CHECK(cameraCount(pipeline) == 1);
+        raw = requireFrame(*queue, "raw");
+        auto depth = requireFrame(*depthQueue, "live depth");
+        CHECK(raw->getWidth() == 1280);
+        CHECK(raw->getHeight() == 3848);
+        CHECK(raw->getStride() == 2560);
+        CHECK(depth->getWidth() == 640);
+        pipeline.stop();
+    }
+    waitUntilAvailable(info);
+    dai::Pipeline pipeline{std::make_shared<dai::Device>(info)};
+    auto tof = pipeline.create<dai::node::ToF>()->build(socket, dai::ToFConfig::Profile::MID_RANGE, 5.0f);
+    tof->tofBaseNode.initialConfig->enableBurstMode = true;
+    auto input = tof->tofBaseNode.getInputRef("rawInput")->createInputQueue();
+    auto output = tof->depth.createOutputQueue(2, false);
+    auto rawOutput = tof->raw.createOutputQueue(2, false);
+    pipeline.start();
+    CHECK(cameraCount(pipeline) == 0);
+    bool timedOut = false;
+    auto unsolicited = output->get<dai::ImgFrame>(std::chrono::seconds(1), timedOut);
+    REQUIRE(timedOut);
+    REQUIRE(unsolicited == nullptr);
+    raw->setSequenceNum(37);
+    input->send(raw);
+    auto forwarded = requireFrame(*rawOutput, "forwarded raw");
+    CHECK(std::equal(forwarded->getData().begin(), forwarded->getData().end(), raw->getData().begin(), raw->getData().end()));
+    CHECK(forwarded->getSequenceNum() == 37);
+    auto depth = requireFrame(*output, "replayed depth");
+    REQUIRE(depth->getSequenceNum() == 37);
+    REQUIRE(depth->getWidth() == 640);
+    REQUIRE(depth->getHeight() == 480);
+    auto extra = output->get<dai::ImgFrame>(std::chrono::seconds(1), timedOut);
+    REQUIRE(timedOut);
+    REQUIRE(extra == nullptr);
+    pipeline.stop();
 }

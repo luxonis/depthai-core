@@ -25,7 +25,7 @@ bool usesImageFilters(const std::shared_ptr<Device>& device) {
 }
 
 bool usesAutoCamera(const std::shared_ptr<const Device>& device) {
-    return device && device->getPlatform() == Platform::RVC4;
+    return device && (device->getPlatform() == Platform::RVC2 || device->getPlatform() == Platform::RVC4);
 }
 
 ImageFiltersPresetMode profileToPresetMode(ToFConfig::Profile profile) {
@@ -134,8 +134,6 @@ ToF::ToF(const std::shared_ptr<Device>& device)
       ,
       imageFilters{usesImageFilters(device) ? std::make_unique<Subnode<ImageFilters>>(*this, "imageFilter") : nullptr}
 #endif
-      ,
-      autoCamera{usesAutoCamera(device) ? std::make_unique<Subnode<Camera>>(*this, "autoCamera") : nullptr}
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
       ,
       rawDepth{device && device->getPlatform() == Platform::RVC2 ? tofBase->depth : rawDepthPlaceholder}
@@ -175,8 +173,12 @@ void ToF::buildInternal() {
 #endif
 }
 
+void ToF::buildStage1() {
+    buildAutoCamera();
+}
+
 void ToF::buildAutoCamera() {
-    if(!usesAutoCamera(getDevice())) {
+    if(!usesAutoCamera(getDevice()) || tofBase->rawInput.isConnected()) {
         return;
     }
 
@@ -186,9 +188,13 @@ void ToF::buildAutoCamera() {
 
     auto& camera = **autoCamera;
     camera.setSensorType(CameraSensorType::TOF);
+    const bool isRvc2 = getDevice()->getPlatform() == Platform::RVC2;
     camera.build(tofBase->getBoardSocket(),
-                 std::pair<uint32_t, uint32_t>{1344, 7244},
-                 tofBase->properties.fps > 0 ? std::optional<float>(tofBase->properties.fps) : std::nullopt);
+                 isRvc2 ? std::nullopt : std::optional<std::pair<uint32_t, uint32_t>>{{1344, 7244}},
+                 tofBase->properties.fps > 0 ? std::optional<float>(tofBase->properties.fps) : (isRvc2 ? std::optional<float>(30.0f) : std::nullopt));
+    if(isRvc2) {
+        camera.setNumFramesPools(tofBase->properties.numFramesPoolRaw, 2, 2);
+    }
     camera.raw.link(tofBase->rawInput);
 }
 
@@ -198,7 +204,7 @@ std::shared_ptr<ToF> ToF::build(dai::CameraBoardSocket boardSocket, dai::ImageFi
 
 std::shared_ptr<ToF> ToF::build(dai::CameraBoardSocket boardSocket, dai::ToFConfig::Profile profile, std::optional<float> fps) {
     tofBase->build(boardSocket, profile, fps);
-    buildAutoCamera();
+    if(getDevice()->getPlatform() == Platform::RVC4) buildAutoCamera();
 
     const auto presetMode = profileToPresetMode(profile);
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -233,9 +239,6 @@ std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ToFConfig
         }
         DAI_CHECK_V(foundAvailableSocket, "All ToF-capable sensors are already used by other Camera or ToF nodes in this pipeline.");
     } else {
-        DAI_CHECK_V(!isSocketAlreadyConnected(pipeline, boardSocket),
-                    "Camera socket {} is already used by another Camera node in this pipeline.",
-                    static_cast<int>(boardSocket));
         const bool isToFSocket = std::find(tofSockets.begin(), tofSockets.end(), boardSocket) != tofSockets.end();
         DAI_CHECK_V(isToFSocket, "Camera socket {} is not a ToF-capable socket on the connected device.", static_cast<int>(boardSocket));
         properties.boardSocket = boardSocket;
