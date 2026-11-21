@@ -1,9 +1,12 @@
+#include <algorithm>
 #include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <memory>
 #include <opencv2/opencv.hpp>
 #include <sstream>
+#include <string>
+#include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
@@ -17,7 +20,7 @@
     but pixels saturate about 2.6x sooner. Auto exposure compensates for the extra signal,
     so watch the exposure and ISO shown on the frame drop when HCG is enabled.
 
-    This example only works on IMX462 sensors.
+    Supported sensors: IMX462 (RVC2 and RVC4) and IMX678 (RVC2 only).
 */
 
 int main() {
@@ -26,17 +29,20 @@ int main() {
 
     // Define source and output
     auto cam = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
-    auto cameraFeatures = pipeline.getDefaultDevice()->getConnectedCameraFeatures();
+    auto device = pipeline.getDefaultDevice();
+    std::vector<std::string> supportedSensors = {"IMX462"};
+    if(device->getPlatform() == dai::Platform::RVC2) supportedSensors.push_back("IMX678");
     bool success = false;
-    for(const auto& feature : cameraFeatures) {
-        if(feature.socket == dai::CameraBoardSocket::CAM_A && feature.sensorName == "IMX462") {
+    for(const auto& feature : device->getConnectedCameraFeatures()) {
+        if(feature.socket == dai::CameraBoardSocket::CAM_A
+           && std::find(supportedSensors.begin(), supportedSensors.end(), feature.sensorName) != supportedSensors.end()) {
             success = true;
             break;
         }
     }
 
     if(!success) {
-        throw std::runtime_error("No suitable camera found, high conversion gain is only supported on IMX462 sensors!");
+        throw std::runtime_error("No suitable camera found, high conversion gain is only supported on IMX462 (RVC2, RVC4) and IMX678 (RVC2) sensors!");
     }
 
     bool hcg = false;

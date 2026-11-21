@@ -216,7 +216,7 @@ dai_set_example_test_labels(camera_undistortion ondevice rvc2_all rvc4 ci)
 add_python_example(camera_hdr Camera/camera_hdr.py)
 dai_set_example_test_labels(camera_hdr ondevice rvc4 rvc4rgb ci)
 
-# Needs an IMX462 sensor, so no test labels
+# Needs an IMX462 (RVC2, RVC4) or IMX678 (RVC2) sensor, so no test labels
 add_python_example(camera_hcg Camera/camera_hcg.py)
 
 ## GPUStereo

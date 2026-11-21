@@ -11,19 +11,22 @@ import depthai as dai
 # but pixels saturate about 2.6x sooner. Auto exposure compensates for the extra signal,
 # so watch the exposure and ISO shown on the frame drop when HCG is enabled.
 
-# This example only works on IMX462 sensors.
+# Supported sensors: IMX462 (RVC2 and RVC4) and IMX678 (RVC2 only).
 
 with dai.Pipeline() as pipeline:
     cam = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    cameraFeatures = pipeline.getDefaultDevice().getConnectedCameraFeatures()
+    device = pipeline.getDefaultDevice()
+    supportedSensors = ["IMX462", "IMX678"] if device.getPlatform() == dai.Platform.RVC2 else ["IMX462"]
     success = False
-    for feature in cameraFeatures:
-        if feature.socket == dai.CameraBoardSocket.CAM_A and feature.sensorName == "IMX462":
+    for feature in device.getConnectedCameraFeatures():
+        if feature.socket == dai.CameraBoardSocket.CAM_A and feature.sensorName in supportedSensors:
             success = True
             break
 
     if not success:
-        raise RuntimeError("No suitable camera found, high conversion gain is only supported on IMX462 sensors!")
+        raise RuntimeError(
+            "No suitable camera found, high conversion gain is only supported on IMX462 (RVC2, RVC4) and IMX678 (RVC2) sensors!"
+        )
 
     hcg = False
     cam.initialControl.setMisc("high-conversion-gain", int(hcg))
