@@ -61,11 +61,24 @@ struct ToFProperties : PropertiesSerializable<Properties, ToFProperties> {
      */
     int numFramesPoolRaw = 3;
 
+    /// Optional raw sensor EEPROM asset. Empty uses the attached sensor's calibration.
+    std::string sensorCalibrationUri = "";
+
     ~ToFProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT_DECL(
-    ToFProperties, initialConfig, numFramesPool, numShaves, warpHwIds, enableUndistortion, boardSocket, cameraName, imageOrientation, fps, numFramesPoolRaw);
+DEPTHAI_SERIALIZE_EXT_DECL(ToFProperties,
+                           initialConfig,
+                           numFramesPool,
+                           numShaves,
+                           warpHwIds,
+                           enableUndistortion,
+                           boardSocket,
+                           cameraName,
+                           imageOrientation,
+                           fps,
+                           numFramesPoolRaw,
+                           sensorCalibrationUri);
 
 }  // namespace dai
 

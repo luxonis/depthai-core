@@ -104,6 +104,20 @@ bool isSocketAlreadyConnected(const Pipeline& pipeline, CameraBoardSocket boardS
 
 }  // namespace
 
+std::shared_ptr<ToFBase> ToFBase::setSensorCalibration(const std::vector<uint8_t>& eepromData) {
+    if(eepromData.size() != 65536 && eepromData.size() != 16384) {
+        throw std::invalid_argument("ToF sensor calibration must be a complete 64 KiB S5K33D or 16 KiB S5K63D EEPROM dump");
+    }
+    auto device = getDevice();
+    if(device && device->getPlatform() != Platform::RVC2) {
+        throw std::runtime_error("ToF sensor calibration override is supported only on RVC2");
+    }
+    Asset asset("sensorCalibration");
+    asset.setData(eepromData);
+    properties.sensorCalibrationUri = assetManager.set(asset)->getRelativeUri();
+    return std::static_pointer_cast<ToFBase>(shared_from_this());
+}
+
 void ToF::postBuildStage() {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     auto& logger = pimpl->logger;

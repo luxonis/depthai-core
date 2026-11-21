@@ -81,6 +81,14 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
      */
     std::shared_ptr<ToFBase> setOutputUndistortion(bool enable);
 
+    /**
+     * Override RVC2 sensor calibration for this pipeline without writing EEPROM.
+     * Supply a complete dump from DeviceBase::readCcmEepromRaw: 64 KiB for S5K33D
+     * or 16 KiB for S5K63D. Camera geometry is set separately on the pipeline.
+     * Requires firmware with sensor calibration override support.
+     */
+    std::shared_ptr<ToFBase> setSensorCalibration(const std::vector<uint8_t>& eepromData);
+
    private:
     friend class ToF;
 

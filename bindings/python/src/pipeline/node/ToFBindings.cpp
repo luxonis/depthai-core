@@ -55,6 +55,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
              "profile"_a = ToFConfig::Profile::MID_RANGE,
              "fps"_a = std::nullopt,
              DOC(dai, node, ToFBase, build))
+        .def("setSensorCalibration", &ToFBase::setSensorCalibration, "eepromData"_a, DOC(dai, node, ToFBase, setSensorCalibration))
         .def("setOutputUndistortion", &ToFBase::setOutputUndistortion, "enable"_a, DOC(dai, node, ToFBase, setOutputUndistortion))
         .def("getBoardSocket", &ToFBase::getBoardSocket, DOC(dai, node, ToFBase, getBoardSocket));
 
