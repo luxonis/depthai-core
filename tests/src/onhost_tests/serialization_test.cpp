@@ -253,3 +253,16 @@ TEST_CASE("AssetManager rolls back all assets when a later path-backed asset cha
 
     std::filesystem::remove(path);
 }
+
+TEST_CASE("ToF sensor calibration asset survives property serialization", "[ToF]") {
+    auto tof = std::make_shared<dai::node::ToFBase>();
+    std::vector<uint8_t> calibration(65536, 0x5a);
+    tof->setSensorCalibration(calibration);
+
+    dai::ToFProperties restored;
+    REQUIRE(dai::utility::deserialize(dai::utility::serialize(tof->properties), restored));
+    REQUIRE(restored.sensorCalibrationUri == tof->properties.sensorCalibrationUri);
+    REQUIRE_FALSE(restored.sensorCalibrationUri.empty());
+    REQUIRE(tof->getAssetManager().get("sensorCalibration")->getData() == calibration);
+    REQUIRE_THROWS_AS(tof->setSensorCalibration(std::vector<uint8_t>(1024)), std::invalid_argument);
+}
