@@ -28,10 +28,15 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
 
    protected:
     Properties& getProperties();
+
+   public:
     /**
-     * Input for raw sensor frames used by the RVC4 host implementation.
-     * This stays internal to the node group API, but must remain on the base
-     * node so the auto-created ToF camera can be linked in the pipeline schema.
+     * Raw sensor superframes. On RVC2, connecting this input replaces live capture
+     * (requires firmware with ToF replay support). Build with the recorded FPS
+     * and the socket of the attached ToF sensor, whose factory calibration is used.
+     * Send unpacked RAW10/RAW16 frames, preserving metadata rows, instance number,
+     * sequence number and timestamps. One superframe may produce multiple outputs.
+     * The raw output is unavailable in replay mode. RVC4 uses this input internally.
      */
     Input rawInput{*this, {"rawInput", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 

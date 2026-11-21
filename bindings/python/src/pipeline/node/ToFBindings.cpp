@@ -41,7 +41,8 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_readwrite("enableUndistortion", &ToFProperties::enableUndistortion, DOC(dai, ToFProperties, enableUndistortion));
 
     // ToFBase Node
-    tofBase.def_readonly("inputConfig", &ToFBase::inputConfig, DOC(dai, node, ToFBase, inputConfig), DOC(dai, node, ToFBase, inputConfig))
+    tofBase.def_readonly("rawInput", &ToFBase::rawInput, DOC(dai, node, ToFBase, rawInput))
+        .def_readonly("inputConfig", &ToFBase::inputConfig, DOC(dai, node, ToFBase, inputConfig), DOC(dai, node, ToFBase, inputConfig))
         .def_readonly("depth", &ToFBase::depth, DOC(dai, node, ToFBase, depth), DOC(dai, node, ToFBase, depth))
         .def_readonly("amplitude", &ToFBase::amplitude, DOC(dai, node, ToFBase, amplitude), DOC(dai, node, ToFBase, amplitude))
         .def_readonly("intensity", &ToFBase::intensity, DOC(dai, node, ToFBase, intensity), DOC(dai, node, ToFBase, intensity))

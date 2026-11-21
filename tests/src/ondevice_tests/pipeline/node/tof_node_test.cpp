@@ -160,3 +160,43 @@ TEST_CASE("ToF depth streams at the requested FPS", "[ToF]") {
         pipeline.stop();
     }
 }
+
+TEST_CASE("RVC2 ToF replay waits for raw input and preserves output sequence", "[ToF][replay]") {
+    const auto info = requireTofDevice();
+    waitUntilAvailable(info);
+    std::shared_ptr<dai::ImgFrame> raw;
+    dai::CameraBoardSocket socket;
+    {
+        auto device = std::make_shared<dai::Device>(info);
+        if(device->getPlatform() != dai::Platform::RVC2) SKIP("RVC2 replay test");
+        dai::Pipeline pipeline{device};
+        auto tof = pipeline.create<dai::node::ToFBase>()->build(dai::CameraBoardSocket::AUTO, dai::ToFConfig::Profile::MID_RANGE, 5.0f);
+        socket = tof->getBoardSocket();
+        auto queue = tof->raw.createOutputQueue(2, false);
+        auto depthQueue = tof->depth.createOutputQueue(2, false);
+        pipeline.start();
+        raw = requireFrame(*queue, "raw");
+        pipeline.stop();
+    }
+    waitUntilAvailable(info);
+    dai::Pipeline pipeline{std::make_shared<dai::Device>(info)};
+    auto tof = pipeline.create<dai::node::ToFBase>()->build(socket, dai::ToFConfig::Profile::MID_RANGE, 5.0f);
+    tof->initialConfig->enableBurstMode = true;
+    auto input = tof->rawInput.createInputQueue();
+    auto output = tof->depth.createOutputQueue(2, false);
+    pipeline.start();
+    bool timedOut = false;
+    auto unsolicited = output->get<dai::ImgFrame>(std::chrono::seconds(1), timedOut);
+    REQUIRE(timedOut);
+    REQUIRE(unsolicited == nullptr);
+    raw->setSequenceNum(37);
+    input->send(raw);
+    auto depth = requireFrame(*output, "replayed depth");
+    REQUIRE(depth->getSequenceNum() == 37);
+    REQUIRE(depth->getWidth() == 640);
+    REQUIRE(depth->getHeight() == 480);
+    auto extra = output->get<dai::ImgFrame>(std::chrono::seconds(1), timedOut);
+    REQUIRE(timedOut);
+    REQUIRE(extra == nullptr);
+    pipeline.stop();
+}
