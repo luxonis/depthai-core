@@ -68,7 +68,7 @@ struct CoverageData : public Buffer {
 
     ///@}
 
-    DEPTHAI_SERIALIZE(CoverageData, coveragePerCellA, coveragePerCellB, coveragePerCell, meanCoverage, dataAcquired, coverageAcquired);
+    DEPTHAI_SERIALIZE_DECL(CoverageData, coveragePerCellA, coveragePerCellB, coveragePerCell, meanCoverage, dataAcquired, coverageAcquired);
 };
 
 /**
@@ -107,7 +107,7 @@ struct CalibrationQuality : public Buffer {
         /** Pairwise per-axis rotation deltas keyed by camera socket pairs. */
         std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, RotationChangePerAxis> pairwiseRotationDifference;
 
-        DEPTHAI_SERIALIZE(Data, rotationChange, sampsonErrorCurrent, sampsonErrorNew, depthErrorDifference, pairwiseRotationDifference);
+        DEPTHAI_SERIALIZE_DECL(Data, rotationChange, sampsonErrorCurrent, sampsonErrorNew, depthErrorDifference, pairwiseRotationDifference);
     };
 
     CalibrationQuality() = default;
@@ -138,7 +138,7 @@ struct CalibrationQuality : public Buffer {
         return DatatypeEnum::CalibrationQuality;
     }
 
-    DEPTHAI_SERIALIZE(CalibrationQuality, qualityData, info);
+    DEPTHAI_SERIALIZE_DECL(CalibrationQuality, qualityData, info);
 };
 
 /**
@@ -171,7 +171,7 @@ struct CalibrationMetrics : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(CalibrationMetrics, calibrationConfidence, dataConfidence);
+    DEPTHAI_SERIALIZE_DECL(CalibrationMetrics, calibrationConfidence, dataConfidence);
 };
 
 /**
@@ -202,7 +202,7 @@ struct DynamicCalibrationResult : public Buffer {
 
         double dataConfidence = 0.0;
 
-        DEPTHAI_SERIALIZE(Data, newCalibration, currentCalibration, calibrationDifference, dataConfidence);
+        DEPTHAI_SERIALIZE_DECL(Data, newCalibration, currentCalibration, calibrationDifference, dataConfidence);
     };
 
     DynamicCalibrationResult() = default;
@@ -230,7 +230,7 @@ struct DynamicCalibrationResult : public Buffer {
         return DatatypeEnum::DynamicCalibrationResult;
     }
 
-    DEPTHAI_SERIALIZE(DynamicCalibrationResult, calibrationData, info);
+    DEPTHAI_SERIALIZE_DECL(DynamicCalibrationResult, calibrationData, info);
 };
 
 /** @}  End of dcl_results group */

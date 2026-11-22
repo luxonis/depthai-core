@@ -41,28 +41,30 @@ struct RecordVideoProperties : PropertiesSerializable<Properties, RecordVideoPro
     ~RecordVideoProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(RecordVideoProperties,
-                      format,
-                      recordingName,
-                      recordingNameSet,
-                      outputDirectory,
-                      outputDirectorySet,
-                      streamName,
-                      streamNameSet,
-                      fps,
-                      fpsSet,
-                      compressionLevel,
-                      waitForTrigger,
-                      preTriggerFrames,
-                      maxPreTriggerBytes,
-                      transferToHost,
-                      transferToHostSet,
-                      keepOnDevice,
-                      keepOnDeviceSet,
-                      runOnHostMode,
-                      recordVideoFile,
-                      recordVideoFileSet,
-                      recordMetadataFile,
-                      recordMetadataFileSet);
+DEPTHAI_SERIALIZE_EXT_DECL(RecordVideoProperties,
+                           format,
+                           recordingName,
+                           recordingNameSet,
+                           outputDirectory,
+                           outputDirectorySet,
+                           streamName,
+                           streamNameSet,
+                           fps,
+                           fpsSet,
+                           compressionLevel,
+                           waitForTrigger,
+                           preTriggerFrames,
+                           maxPreTriggerBytes,
+                           transferToHost,
+                           transferToHostSet,
+                           keepOnDevice,
+                           keepOnDeviceSet,
+                           runOnHostMode,
+                           recordVideoFile,
+                           recordVideoFileSet,
+                           recordMetadataFile,
+                           recordMetadataFileSet);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::RecordVideoProperties>;

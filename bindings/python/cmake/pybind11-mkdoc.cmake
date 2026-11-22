@@ -74,6 +74,10 @@ function(pybind11_mkdoc_setup_internal_combined output_path mkdoc_headers includ
 
     # Prepare the output folder for the mkdoc
     get_filename_component(output_directory "${output_path}" DIRECTORY)
+    # The docstrings depend on the mkdoc arguments too. file(GENERATE) changes this file only when the
+    # arguments change, so a reconfigure does not run mkdoc again or recompile the bindings.
+    set(mkdoc_args_file "${output_directory}/pybind11_mkdoc_args.txt")
+    file(GENERATE OUTPUT "${mkdoc_args_file}" CONTENT "-I$<JOIN:${include_dirs},;-I>\n-D$<JOIN:${compile_defs},;-D>\n${mkdoc_headers}\n")
     # Create the command
     add_custom_command(
         OUTPUT "${output_path}"
@@ -96,7 +100,7 @@ function(pybind11_mkdoc_setup_internal_combined output_path mkdoc_headers includ
             ${mkdoc_headers}
             # Redirect stderr to not spam output
             # 2> /dev/null
-        DEPENDS ${mkdoc_headers} #${target}
+        DEPENDS ${mkdoc_headers} "${mkdoc_args_file}"
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Creating docstrings with ${PYTHON_EXECUTABLE} -m ${PYBIND11_MKDOC_MODULE_NAME} ..."
         VERBATIM
@@ -109,7 +113,5 @@ function(pybind11_mkdoc_setup_internal_combined output_path mkdoc_headers includ
         DEPENDS "${output_path}"
     )
 
-    # Force target build
-    file(TOUCH_NOCREATE ${mkdoc_headers})
 
 endfunction()

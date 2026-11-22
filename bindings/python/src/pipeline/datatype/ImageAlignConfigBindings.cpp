@@ -14,7 +14,8 @@
 void bind_imagealignconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<ImageAlignConfig, Py<ImageAlignConfig>, Buffer, py::smart_holder> imageAlignConfig(m, "ImageAlignConfig", DOC(dai, ImageAlignConfig));
+    py::class_<ImageAlignConfig, Py<ImageAlignConfig>, Buffer, py::smart_holder> imageAlignConfig(
+        m, "ImageAlignConfig", DOC(dai, ImageAlignConfig));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

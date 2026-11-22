@@ -77,24 +77,26 @@ struct StitchingProperties : PropertiesSerializable<Properties, StitchingPropert
     ~StitchingProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(StitchingProperties::Plane, point, normal, unit);
-DEPTHAI_SERIALIZE_EXT(StitchingProperties::VirtualCamera, pose, unit, intrinsics, width, height);
-DEPTHAI_SERIALIZE_EXT(StitchingProperties,
-                      mode,
-                      cameraModel,
-                      continuous,
-                      estimationFrames,
-                      maxPanoramaWidth,
-                      maxPanoramaHeight,
-                      panoConfidenceThreshold,
-                      seamFinder,
-                      plane,
-                      view,
-                      maxViewWidth,
-                      maxViewHeight,
-                      maxRange,
-                      minIncidenceAngle,
-                      numInputs,
-                      useInputCalibration);
+DEPTHAI_SERIALIZE_EXT_DECL(StitchingProperties::Plane, point, normal, unit);
+DEPTHAI_SERIALIZE_EXT_DECL(StitchingProperties::VirtualCamera, pose, unit, intrinsics, width, height);
+DEPTHAI_SERIALIZE_EXT_DECL(StitchingProperties,
+                           mode,
+                           cameraModel,
+                           continuous,
+                           estimationFrames,
+                           maxPanoramaWidth,
+                           maxPanoramaHeight,
+                           panoConfidenceThreshold,
+                           seamFinder,
+                           plane,
+                           view,
+                           maxViewWidth,
+                           maxViewHeight,
+                           maxRange,
+                           minIncidenceAngle,
+                           numInputs,
+                           useInputCalibration);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::StitchingProperties>;

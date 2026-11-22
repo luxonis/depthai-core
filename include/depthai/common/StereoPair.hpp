@@ -16,7 +16,7 @@ struct StereoPair {
      */
     float baseline = -1;
     bool isVertical = false;
-    DEPTHAI_SERIALIZE(StereoPair, left, right, baseline, isVertical);
+    DEPTHAI_SERIALIZE_DECL(StereoPair, left, right, baseline, isVertical);
 };
 }  // namespace dai
 

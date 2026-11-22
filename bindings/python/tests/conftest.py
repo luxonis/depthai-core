@@ -16,6 +16,7 @@ import textwrap
 import pytest
 
 # Early diagnostic for failed imports
+import depthai  # noqa: F401  # Supplies SDK symbols for the macOS test helper.
 import depthai_pybind11_tests  # noqa: F401
 
 

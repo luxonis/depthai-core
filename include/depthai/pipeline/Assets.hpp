@@ -53,7 +53,7 @@ class Assets {
         return allAssets;
     }
 
-    DEPTHAI_SERIALIZE(Assets, map);
+    DEPTHAI_SERIALIZE_DECL(Assets, map);
 };
 
 }  // namespace dai

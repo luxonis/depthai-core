@@ -20,8 +20,6 @@
 namespace dai {
 namespace beta {
 
-RegressionParserProperties::~RegressionParserProperties() = default;
-
 namespace node {
 
 namespace {

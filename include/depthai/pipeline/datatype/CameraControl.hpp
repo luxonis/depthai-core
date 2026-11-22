@@ -388,7 +388,7 @@ class CameraControl : public Buffer {
         uint32_t sensitivityIso;
         uint32_t frameDurationUs;
 
-        DEPTHAI_SERIALIZE(ManualExposureParams, exposureTimeUs, sensitivityIso, frameDurationUs);
+        DEPTHAI_SERIALIZE_DECL(ManualExposureParams, exposureTimeUs, sensitivityIso, frameDurationUs);
     };
 
     // AE_REGION / AF_REGION
@@ -400,7 +400,7 @@ class CameraControl : public Buffer {
         // Set to 1 for now. TODO
         uint32_t priority;
 
-        DEPTHAI_SERIALIZE(RegionParams, x, y, width, height, priority);
+        DEPTHAI_SERIALIZE_DECL(RegionParams, x, y, width, height, priority);
     };
 
     struct StrobeTimings {
@@ -411,7 +411,7 @@ class CameraControl : public Buffer {
         /// Fixed duration in microseconds. If set (non-zero), overrides `exposureEndOffsetUs`
         uint32_t durationUs;
 
-        DEPTHAI_SERIALIZE(StrobeTimings, exposureBeginOffsetUs, exposureEndOffsetUs, durationUs);
+        DEPTHAI_SERIALIZE_DECL(StrobeTimings, exposureBeginOffsetUs, exposureEndOffsetUs, durationUs);
     };
 
     struct StrobeConfig {
@@ -422,7 +422,7 @@ class CameraControl : public Buffer {
         /// GPIO number to drive, or -1 if sensor driven
         int8_t gpioNumber;
 
-        DEPTHAI_SERIALIZE(StrobeConfig, enable, activeLevel, gpioNumber);
+        DEPTHAI_SERIALIZE_DECL(StrobeConfig, enable, activeLevel, gpioNumber);
     };
 
     /**
@@ -812,41 +812,41 @@ class CameraControl : public Buffer {
         return DatatypeEnum::CameraControl;
     }
 
-    DEPTHAI_SERIALIZE(CameraControl,
-                      cmdMask,
-                      autoFocusMode,
-                      lensPosition,
-                      lensPositionRaw,
-                      lensPosAutoInfinity,
-                      lensPosAutoMacro,
-                      expManual,
-                      aeRegion,
-                      afRegion,
-                      awbMode,
-                      sceneMode,
-                      antiBandingMode,
-                      aeLockMode,
-                      awbLockMode,
-                      captureIntent,
-                      controlMode,
-                      effectMode,
-                      frameSyncMode,
-                      strobeConfig,
-                      strobeTimings,
-                      aeMaxExposureTimeUs,
-                      aeMaxISO,
-                      expCompensation,
-                      brightness,
-                      contrast,
-                      saturation,
-                      sharpness,
-                      lumaDenoise,
-                      chromaDenoise,
-                      wbColorTemp,
-                      lowPowerNumFramesBurst,
-                      lowPowerNumFramesDiscard,
-                      enableHdr,
-                      miscControls);
+    DEPTHAI_SERIALIZE_DECL(CameraControl,
+                           cmdMask,
+                           autoFocusMode,
+                           lensPosition,
+                           lensPositionRaw,
+                           lensPosAutoInfinity,
+                           lensPosAutoMacro,
+                           expManual,
+                           aeRegion,
+                           afRegion,
+                           awbMode,
+                           sceneMode,
+                           antiBandingMode,
+                           aeLockMode,
+                           awbLockMode,
+                           captureIntent,
+                           controlMode,
+                           effectMode,
+                           frameSyncMode,
+                           strobeConfig,
+                           strobeTimings,
+                           aeMaxExposureTimeUs,
+                           aeMaxISO,
+                           expCompensation,
+                           brightness,
+                           contrast,
+                           saturation,
+                           sharpness,
+                           lumaDenoise,
+                           chromaDenoise,
+                           wbColorTemp,
+                           lowPowerNumFramesBurst,
+                           lowPowerNumFramesDiscard,
+                           enableHdr,
+                           miscControls);
     /**
      * Retrieves lens position, range 0.0f..1.0f.
      */

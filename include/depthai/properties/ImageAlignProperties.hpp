@@ -45,6 +45,9 @@ struct ImageAlignProperties : PropertiesSerializable<Properties, ImageAlignPrope
     ~ImageAlignProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ImageAlignProperties, initialConfig, numFramesPool, alignWidth, alignHeight, warpHwIds, interpolation, outKeepAspectRatio, numShaves);
+DEPTHAI_SERIALIZE_EXT_DECL(
+    ImageAlignProperties, initialConfig, numFramesPool, alignWidth, alignHeight, warpHwIds, interpolation, outKeepAspectRatio, numShaves);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::ImageAlignProperties>;

@@ -49,6 +49,7 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("median", &ToFConfig::median, DOC(dai, ToFConfig, median))
         .def_readwrite("enablePhaseShuffleTemporalFilter", &ToFConfig::enablePhaseShuffleTemporalFilter, DOC(dai, ToFConfig, enablePhaseShuffleTemporalFilter))
         .def_readwrite("enableBurstMode", &ToFConfig::enableBurstMode, DOC(dai, ToFConfig, enableBurstMode))
+        .def_readwrite("enableIntermediateDepth", &ToFConfig::enableIntermediateDepth, DOC(dai, ToFConfig, enableIntermediateDepth))
         .def_readwrite("enableDistortionCorrection", &ToFConfig::enableDistortionCorrection, DOC(dai, ToFConfig, enableDistortionCorrection))
         .def_readwrite("phaseUnwrappingLevel", &ToFConfig::phaseUnwrappingLevel, DOC(dai, ToFConfig, phaseUnwrappingLevel))
         .def_readwrite("enableFPPNCorrection", &ToFConfig::enableFPPNCorrection, DOC(dai, ToFConfig, enableFPPNCorrection))

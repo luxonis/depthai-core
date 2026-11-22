@@ -48,7 +48,7 @@ struct SpatialFilter {
      */
     std::int32_t numIterations = 1;
 
-    DEPTHAI_SERIALIZE(SpatialFilter, enable, holeFillingRadius, alpha, delta, numIterations);
+    DEPTHAI_SERIALIZE_DECL(SpatialFilter, enable, holeFillingRadius, alpha, delta, numIterations);
 };
 
 /**
@@ -98,7 +98,7 @@ struct TemporalFilter {
      */
     std::int32_t delta = DEFAULT_DELTA_VALUE;
 
-    DEPTHAI_SERIALIZE(TemporalFilter, enable, persistencyMode, alpha, delta);
+    DEPTHAI_SERIALIZE_DECL(TemporalFilter, enable, persistencyMode, alpha, delta);
 };
 
 /**
@@ -118,7 +118,7 @@ struct ThresholdFilter {
      */
     std::int32_t maxRange = 65535;
 
-    DEPTHAI_SERIALIZE(ThresholdFilter, minRange, maxRange);
+    DEPTHAI_SERIALIZE_DECL(ThresholdFilter, minRange, maxRange);
 };
 
 /**
@@ -141,7 +141,7 @@ struct SpeckleFilter {
      */
     std::uint32_t differenceThreshold = 2;
 
-    DEPTHAI_SERIALIZE(SpeckleFilter, enable, speckleRange, differenceThreshold);
+    DEPTHAI_SERIALIZE_DECL(SpeckleFilter, enable, speckleRange, differenceThreshold);
 };
 
 }  // namespace params

@@ -34,7 +34,7 @@ class SystemInformationRVC4 : public Buffer {
         return DatatypeEnum::SystemInformationRVC4;
     }
 
-    DEPTHAI_SERIALIZE(SystemInformationRVC4, ddrMemoryUsage, processMemoryUsage, cpuAvgUsage, processCpuAvgUsage, cpuUsages, chipTemperature);
+    DEPTHAI_SERIALIZE_DECL(SystemInformationRVC4, ddrMemoryUsage, processMemoryUsage, cpuAvgUsage, processCpuAvgUsage, cpuUsages, chipTemperature);
 };
 
 }  // namespace dai

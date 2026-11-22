@@ -21,8 +21,6 @@
 namespace dai {
 namespace beta {
 
-MLSDParserProperties::~MLSDParserProperties() = default;
-
 namespace node {
 
 MLSDParser::MLSDParser(std::unique_ptr<Properties> props)

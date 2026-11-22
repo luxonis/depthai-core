@@ -13,8 +13,6 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     )
 endif()
 
-dai_add_example(replay_video_meta replay_video_meta.cpp OFF OFF)
-
 dai_add_example(replay_video replay_video.cpp OFF OFF)
 
 dai_add_example(replay_to_camera replay_to_camera.cpp OFF OFF)
@@ -30,8 +28,6 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     target_compile_definitions(holistic_replay PRIVATE RECORDING_PATH="${recording_path}")
 endif()
 
-dai_add_example(record_video record_video.cpp OFF OFF)
-
 dai_add_example(holistic_record holistic_record.cpp OFF OFF)
 
 dai_add_example(record_basic record_basic.cpp OFF OFF)
@@ -39,13 +35,5 @@ dai_add_example(record_basic record_basic.cpp OFF OFF)
 dai_add_example(record_naming record_naming.cpp OFF OFF)
 
 dai_add_example(record_start_stop record_start_stop.cpp OFF OFF)
-
-dai_add_example(record_encoded record_encoded.cpp OFF OFF)
-
-dai_add_example(record_raw record_raw.cpp OFF OFF)
-
-dai_add_example(record_raw_frames record_raw_frames.cpp OFF OFF)
-
-dai_add_example(record_event record_event.cpp OFF OFF)
 
 dai_add_example(record_imu record_imu.cpp OFF OFF)

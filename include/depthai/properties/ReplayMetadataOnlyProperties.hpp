@@ -36,24 +36,26 @@ struct ReplayMetadataOnlyProperties : PropertiesSerializable<Properties, ReplayM
     ~ReplayMetadataOnlyProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ReplayMetadataOnlyProperties,
-                      sourcePath,
-                      sourcePathSet,
-                      sourceLocation,
-                      sourceLocationSet,
-                      fps,
-                      fpsSet,
-                      loop,
-                      loopSet,
-                      runOnHostMode,
-                      persistentUpload,
-                      persistentUploadSet,
-                      archiveEntry,
-                      archiveEntrySet,
-                      stopPipelineAtEnd,
-                      stopPipelineAtEndSet,
-                      resolvedPath,
-                      sourceHash,
-                      resolvedOnHost);
+DEPTHAI_SERIALIZE_EXT_DECL(ReplayMetadataOnlyProperties,
+                           sourcePath,
+                           sourcePathSet,
+                           sourceLocation,
+                           sourceLocationSet,
+                           fps,
+                           fpsSet,
+                           loop,
+                           loopSet,
+                           runOnHostMode,
+                           persistentUpload,
+                           persistentUploadSet,
+                           archiveEntry,
+                           archiveEntrySet,
+                           stopPipelineAtEnd,
+                           stopPipelineAtEndSet,
+                           resolvedPath,
+                           sourceHash,
+                           resolvedOnHost);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::ReplayMetadataOnlyProperties>;
