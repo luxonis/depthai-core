@@ -186,6 +186,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_BOOTLOADER_BINARY_ETH | Overrides device Network Bootloader binary. Mostly for internal debugging purposes. |
 | DEPTHAI_ALLOW_FACTORY_FLASHING | Internal use only |
 | DEPTHAI_CRASHDUMP | Path to where the crashdump is saved in case the FW crashes. If not specified, crash dump is not enabled. |
+| DEPTHAI_GATE_SESSION_END_TIMEOUT | RVC3: seconds `close()` waits for the device's gate session to end (default 60). After that it returns and leaves the session running; the device may need a reboot. |
 
 ## Running tests
 

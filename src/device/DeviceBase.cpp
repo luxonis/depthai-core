@@ -3,6 +3,8 @@
 // std
 #include <ctime>
 #include <fstream>
+#include <future>
+#include <system_error>
 #include <iostream>
 
 // shared
@@ -521,9 +523,22 @@ void DeviceBase::closeImpl() {
     auto t1 = steady_clock::now();
     pimpl->logger.debug("Device about to be closed...");
 
-    // The VPU crash dump is only reachable over RPC, so save it before the connection goes down
-    // The caller may have already read (and cleared) the dump, so also check whether a crash was seen earlier
-    bool vpuCrashed = gate && (saveVpuCrashDump() || vpuCrashSeen);
+    // The VPU crash dump is only reachable over RPC, so save it before the connection goes down. The RPC calls block
+    // until the device answers, and only closing the connection unblocks them, so wait for them at most
+    // vpuCrashDumpTimeout and close the connection anyway: a device that doesn't answer must not hang close().
+    const seconds vpuCrashDumpTimeout{5};
+    std::future<bool> vpuCrashDumpSaved;
+    if(gate && !utility::getEnv("DEPTHAI_CRASHDUMP").empty()) {
+        try {
+            vpuCrashDumpSaved = std::async(std::launch::async, [this]() { return saveVpuCrashDump(); });
+        } catch(const std::exception& ex) {
+            // close() also runs from the destructor, which must not throw (std::system_error, std::bad_alloc)
+            pimpl->logger.warn("Couldn't start reading the VPU crash dump: {}", ex.what());
+        }
+        if(vpuCrashDumpSaved.valid() && vpuCrashDumpSaved.wait_for(vpuCrashDumpTimeout) != std::future_status::ready) {
+            pimpl->logger.warn("The device didn't send the VPU crash dump in {}s, closing without it", vpuCrashDumpTimeout.count());
+        }
+    }
 
     // Close connection first; causes Xlink internal calls to unblock semaphore waits and
     // return error codes, which then allows queues to unblock
@@ -531,6 +546,10 @@ void DeviceBase::closeImpl() {
     // keep the shared_ptr valid (even if closed). Otherwise leads to using null pointers,
     // invalid memory, etc. which hard crashes main app
     connection->close();
+
+    // A crash dump read that was still waiting returns now that the connection is closed (like the threads below).
+    // Wait for it before the RPC client it uses is destroyed.
+    const bool vpuCrashDumpFound = vpuCrashDumpSaved.valid() && vpuCrashDumpSaved.get();
 
     // Stop various threads
     watchdogRunning = false;
@@ -558,6 +577,8 @@ void DeviceBase::closeImpl() {
 
     // If the device was operated throgh gate, wait for the session to end
     if(gate) {
+        // The caller may have already read (and cleared) the dump, so also check whether a crash was seen earlier
+        bool vpuCrashed = vpuCrashDumpFound || vpuCrashSeen;
         gate->waitForSessionEnd(vpuCrashed);
     }
     pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
@@ -569,10 +590,8 @@ bool DeviceBase::saveVpuCrashDump() {
     try {
         if(!hasCrashDump()) return false;
         auto json = getCrashDump().serializeToJson().dump(2);
-        char timestamp[32];
-        auto now = std::time(nullptr);
-        std::strftime(timestamp, sizeof(timestamp), "%Y%m%d_%H%M%S", std::localtime(&now));
-        auto path = fmt::format("{}{}-vpu_crash_dump_{}.json", crashDumpDir, deviceInfo.getMxId(), timestamp);
+        if(crashDumpDir.back() != '/' && crashDumpDir.back() != '\\') crashDumpDir += '/';
+        auto path = fmt::format("{}{}-vpu_crash_dump_{:%Y%m%d_%H%M%S}.json", crashDumpDir, deviceInfo.getMxId(), fmt::localtime(std::time(nullptr)));
         std::ofstream file(path, std::ios::binary);
         file << json;
         if(file.good()) {
@@ -1308,6 +1327,12 @@ std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
 }
 
 dai::CrashDump DeviceBase::getCrashDump(bool clearCrashDump) {
+    auto crashDump = getCrashDumpImpl(clearCrashDump);
+    if(!crashDump.crashReports.empty()) vpuCrashSeen = true;
+    return crashDump;
+}
+
+dai::CrashDump DeviceBase::getCrashDumpImpl(bool clearCrashDump) {
     return pimpl->rpcClient->call("getCrashDump", clearCrashDump).as<dai::CrashDump>();
 }
 

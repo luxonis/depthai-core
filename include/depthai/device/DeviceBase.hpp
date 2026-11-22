@@ -897,6 +897,8 @@ class DeviceBase {
    private:
     // Saves the VPU crash dump to DEPTHAI_CRASHDUMP, returns true if the VPU crashed
     bool saveVpuCrashDump();
+    dai::CrashDump getCrashDumpImpl(bool clearCrashDump);
+    // Set when hasCrashDump() or getCrashDump() saw a VPU crash
     std::atomic<bool> vpuCrashSeen{false};
 
    protected:

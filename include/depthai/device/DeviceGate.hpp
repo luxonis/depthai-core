@@ -46,8 +46,9 @@ class DeviceGate {
     bool deleteSession();
     bool destroySession();
     SessionState getState();
-    // Waits for the gate session to end, at most DEPTHAI_GATE_SESSION_END_TIMEOUT seconds (default 60), and tries to
-    // get the logs and crash dump out if it crashed, or if it stopped and saveLogsOnStop is set
+    // Waits for the gate session to end and tries to get the logs and crash dump out if it crashed, or if it stopped and
+    // saveLogsOnStop is set. Gives up waiting when the session is still running after DEPTHAI_GATE_SESSION_END_TIMEOUT
+    // seconds (default 60); the deadline is checked between the gate state requests.
     void waitForSessionEnd(bool saveLogsOnStop = false);
     static constexpr int DEFAULT_SESSION_END_TIMEOUT_S = 60;
 

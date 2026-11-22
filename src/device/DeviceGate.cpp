@@ -336,9 +336,14 @@ void DeviceGate::waitForSessionEnd(bool saveLogsOnStop) {
     auto timeout = std::chrono::seconds(DEFAULT_SESSION_END_TIMEOUT_S);
     auto timeoutStr = utility::getEnv("DEPTHAI_GATE_SESSION_END_TIMEOUT");
     if(!timeoutStr.empty()) {
+        int seconds = 0;
         try {
-            timeout = std::chrono::seconds(std::stoi(timeoutStr));
-        } catch(const std::exception& ex) {
+            seconds = std::stoi(timeoutStr);
+        } catch(const std::exception&) {
+        }
+        if(seconds > 0) {
+            timeout = std::chrono::seconds(seconds);
+        } else {
             spdlog::warn("Invalid DEPTHAI_GATE_SESSION_END_TIMEOUT value '{}', using {}s", timeoutStr, timeout.count());
         }
     }
@@ -360,7 +365,11 @@ void DeviceGate::waitForSessionEnd(bool saveLogsOnStop) {
                 return;
             case SessionState::STOPPED:
                 // A clean exit after a VPU crash produces no crash archive, but its firmware log is still needed
-                if(saveLogsOnStop) saveSessionArchive("Firmware stopped after a VPU crash - getting its logs out");
+                if(saveLogsOnStop) {
+                    // The gate writes the log file when the process output ends, which can be after the session stopped
+                    std::this_thread::sleep_for(std::chrono::seconds(3));
+                    saveSessionArchive("Firmware stopped after a VPU crash - getting its logs out");
+                }
                 return;
             case SessionState::CRASHED:
             case SessionState::DESTROYED:
