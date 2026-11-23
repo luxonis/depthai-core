@@ -22,6 +22,11 @@ TEST_CASE("Device OS version cache refreshes after reconnect", "[DeviceOSVersion
     std::atomic<bool> reconnected{false};
     dai::Device device;
     if(device.getPlatform() != dai::Platform::RVC4) SKIP("Requires RVC4");
+    // Reconnection discovers by ID. A device reachable only by explicit IP cannot
+    // exercise that path on hosts outside its discovery network.
+    if(!std::get<0>(dai::XLinkConnection::getDeviceById(device.getDeviceId(), X_LINK_ANY_STATE, false))) {
+        SKIP("Reconnect requires device discovery by ID");
+    }
     device.setMaxReconnectionAttempts(3, [&](dai::DeviceBase::ReconnectionStatus status) {
         if(status == dai::DeviceBase::ReconnectionStatus::RECONNECTED) reconnected = true;
     });
