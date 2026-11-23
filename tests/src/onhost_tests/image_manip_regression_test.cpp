@@ -67,11 +67,6 @@ std::optional<Image> run(Manip& manip, const ImageManipConfig& cfg, const Image&
     return Image{type, manip.getOutputFrameSpecs(type), out};
 }
 
-std::optional<Image> run(const ImageManipConfig& cfg, const Image& in) {
-    Manip manip({});
-    return run(manip, cfg, in);
-}
-
 /// Number of pixels (of a packed w x h region) where out(x, y) != expected(x, y)
 size_t countMismatches(const Image& out, uint32_t width, uint32_t height, uint32_t channels, const PixelFn& expected) {
     size_t mismatches = 0;
