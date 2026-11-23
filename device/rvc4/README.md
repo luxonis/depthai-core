@@ -269,7 +269,10 @@ to attach to a stuck production firmware and how to parse core dumps.
   the vendor module, the agreement prevails. The package contains both texts (`LICENSE.fwp` and
   `legal/DEPTHAI-EULA.txt`). The build writes the full license bundle of the package, with every
   third-party notice, to `depthai-device-rvc4-fwp-LICENSE` next to the package, and the SBOMs in SPDX 2.3 and
-  CycloneDX 1.6 format. The bundle ends with the legal files of the vendor module, in the layout of the Luxonis OS
+  CycloneDX 1.6 format. For each third-party dependency the bundle gives its license, its version, its upstream
+  source and its recipe: the vcpkg port that built it, with the patches that the build applied to the source (in
+  the vcpkg repository at the pinned baseline, or in `cmake/ports` of depthai-core). The bundle ends with the legal
+  files of the vendor module, in the layout of the Luxonis OS
   BSP packages: `NOTICE.txt`, the vendor module EULA (`legal/DEPTHAI-EULA.txt`),
   `legal/NOTICE.md` and the texts in `legal/licenses/`. The
   vendor module supplies them: its build writes them, and the prebuilt archive has them at its top.
