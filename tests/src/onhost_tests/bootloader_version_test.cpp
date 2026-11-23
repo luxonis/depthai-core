@@ -128,3 +128,34 @@ TEST_CASE("Device OS version parsing preserves release semantics", "[DeviceOSVer
         REQUIRE_FALSE(dai::utility::parseDeviceOSVersion(version));
     }
 }
+
+TEST_CASE("Device OS cache replaces metadata for each connection", "[DeviceOSVersion]") {
+    dai::utility::DeviceOSVersionCache cache;
+    int calls = 0;
+    REQUIRE_FALSE(cache.get()->parsed);
+    cache.refresh([&] { ++calls; return "1.45.0"; });
+    const auto firstSession = cache.get();
+    cache.refresh([&] { ++calls; return "r2-1.47.0"; });
+    REQUIRE(cache.get()->parsed == Version(1, 47, 0));
+    REQUIRE(cache.get()->raw == "r2-1.47.0");
+    REQUIRE(firstSession->parsed == Version(1, 45, 0));
+    for(int i = 0; i < 10; ++i) REQUIRE(cache.get()->parsed == Version(1, 47, 0));
+    REQUIRE(calls == 2);
+
+    SECTION("Malformed metadata clears the previous parsed version") {
+        cache.refresh([&] { ++calls; return "invalid"; });
+        REQUIRE(cache.get()->raw == "invalid");
+        REQUIRE_FALSE(cache.get()->parsed);
+    }
+    SECTION("Unavailable RPC clears the previous session") {
+        REQUIRE_THROWS(cache.refresh([&]() -> std::string { ++calls; throw std::runtime_error("RPC unavailable"); }));
+        REQUIRE(cache.get()->raw.empty());
+        REQUIRE_FALSE(cache.get()->parsed);
+    }
+    SECTION("Unsupported platform clears metadata") {
+        cache.refresh([] { return std::string{}; });
+        REQUIRE(cache.get()->raw.empty());
+        REQUIRE_FALSE(cache.get()->parsed);
+        REQUIRE(calls == 2);
+    }
+}
