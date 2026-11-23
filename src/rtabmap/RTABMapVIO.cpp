@@ -40,11 +40,6 @@ void RTABMapVIO::buildInternal() {
     rect.setMaxSize(1);
     depth.setBlocking(false);
     depth.setMaxSize(1);
-    if(useFeatures) {
-        features.setBlocking(false);
-        features.setMaxSize(1);
-        inputs[featuresInputName] = features;
-    }
     inSync.setMaxSize(1);
     inSync.setBlocking(false);
     imu.addCallback(std::bind(&RTABMapVIO::imuCB, this, std::placeholders::_1));

@@ -99,7 +99,7 @@ void BasaltVIO::stereoCB(std::shared_ptr<ADatatype> in) {
     auto group = std::dynamic_pointer_cast<MessageGroup>(in);
     if(group == nullptr) return;
     if(!initialized) {
-        // Basalt needs IMU data covering its first frame; frames from before the IMU stream starts get none.
+        // Don't start Basalt until the IMU stream is live; otherwise its first frames have no IMU data.
         if(!pimpl->imuStarted) return;
         std::vector<std::shared_ptr<ImgFrame>> imgFrames;
         for(auto& msg : *group) {
