@@ -20,6 +20,8 @@ struct CastProperties : PropertiesSerializable<Properties, CastProperties> {
     ~CastProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(CastProperties, numFramesPool, outputType, scale, offset);
+DEPTHAI_SERIALIZE_EXT_DECL(CastProperties, numFramesPool, outputType, scale, offset);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::CastProperties>;

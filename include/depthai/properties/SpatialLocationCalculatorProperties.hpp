@@ -17,6 +17,8 @@ struct SpatialLocationCalculatorProperties : PropertiesSerializable<Properties, 
     ~SpatialLocationCalculatorProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(SpatialLocationCalculatorProperties, roiConfig);
+DEPTHAI_SERIALIZE_EXT_DECL(SpatialLocationCalculatorProperties, roiConfig);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::SpatialLocationCalculatorProperties>;

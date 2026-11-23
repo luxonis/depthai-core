@@ -10,11 +10,12 @@
 #include <depthai/pipeline/node/DynamicCalibrationNode.hpp>
 #include <depthai/pipeline/node/Gate.hpp>
 #include <depthai/properties/AutoCalibrationProperties.hpp>
+#include <filesystem>
 #include <map>
 #include <nlohmann/json.hpp>
 #include <optional>
 
-#include "depthai/device/Platform.hpp"
+#include "depthai/common/WorldConstraints.hpp"
 
 namespace spdlog {
 class async_logger;
@@ -24,6 +25,8 @@ namespace node {
 
 class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoCalibrationProperties>, public HostRunnable {
    private:
+    friend struct AutoCalibrationTestAccess;
+
     Subnode<node::DynamicCalibration> dynamicCalibration{*this, "dynamicCalibration"};
 
     Subnode<node::Sync> sync{*this, "sync"};
@@ -46,43 +49,46 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     constexpr static const char* NAME = "AutoCalibration";
 
-    AutoCalibration() = default;
-    AutoCalibration(const std::shared_ptr<Device>& device) : DeviceNodeCRTP(device) {}
-    // Constructed from serialized properties (the firmware, or a pipeline loaded from a schema): the config the
-    // host serialized becomes the initial config. getProperties() keeps the properties in sync with later edits.
-    AutoCalibration(std::unique_ptr<Properties> props) : DeviceNodeCRTP(std::move(props)) {
-        *initialConfig = properties.initialConfig;
-    }
-    AutoCalibration(std::unique_ptr<Properties> props, bool confMode) : DeviceNodeCRTP(std::move(props), confMode) {
-        *initialConfig = properties.initialConfig;
-    }
-    AutoCalibration(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool confMode)
-        : DeviceNodeCRTP(device, std::move(props), confMode) {
-        *initialConfig = properties.initialConfig;
-    }
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
     ~AutoCalibration() override;
 
-    std::shared_ptr<AutoCalibrationConfig> initialConfig = std::make_shared<AutoCalibrationConfig>();
+    /**
+     * Initial config of the node. The RVC4 firmware constructs the node from the serialized properties, so the
+     * config starts from the properties there; getProperties() writes host-side edits back before serialization.
+     */
+    std::shared_ptr<AutoCalibrationConfig> initialConfig = std::make_shared<AutoCalibrationConfig>(properties.initialConfig);
 
     void run() override;
 
     /**
      * Specify whether to run on host or device.
-     * By default, the node runs on the host on RVC2 and on the device on RVC4. The DynamicCalibration subnode follows
-     * the placement of the node, the Sync and Gate subnodes always run on the device.
+     * By default, the node runs on the host. Running on the device is supported only on RVC4. The DynamicCalibration
+     * subnode follows the placement of the node, the Sync and Gate subnodes always run on the device.
      */
     void setRunOnHost(bool runOnHost);
 
     /**
-     * Whether the node runs on the host. Without an explicit setRunOnHost() call this is decided by the
-     * platform of the assigned device: RVC4 runs on the device, everything else on the host.
+     * Check if the node is set to run on host
      */
     bool runOnHost() const override;
 
     void buildInternal() override;
 
-    void buildStage1() override;
+    /**
+     * Give the calibration a metric reference through fiducial markers in the scene, see
+     * DynamicCalibration::setWorldConstraints(). Forwarded to the DynamicCalibration subnode; set before the
+     * pipeline is built.
+     */
+    void setWorldConstraints(const WorldConstraints& constraints);
+    /// Same as setWorldConstraints() with the JSON form described in WorldConstraints.
+    void setWorldConstraintsFromJson(const std::string& json);
+    /// Same as setWorldConstraints() with the JSON form described in WorldConstraints read from a file.
+    void setWorldConstraintsFromFile(const std::filesystem::path& path);
+    /// Remove the marker constraints again. Takes effect before the pipeline is built.
+    void clearWorldConstraints();
+    /// The marker constraints set with setWorldConstraints(), or none.
+    std::optional<WorldConstraints> getWorldConstraints() const;
 
     Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::AutoCalibrationResult, false}}}}};
 
@@ -91,10 +97,9 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     /**
      * Calibration access used by the node. The host implementation goes through the dai::Device handle; the
-     * RVC4 firmware overrides these to use the device pipeline directly.
+     * RVC4 firmware overrides it to use the device pipeline directly.
      */
     virtual CalibrationHandler readCurrentCalibration();
-    virtual Platform getPlatform() const;
 
    private:
     struct TelemetryAggregateState;
@@ -128,6 +133,8 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     InputMap& syncedInput = sync->inputs;
 #endif
 
+    void buildStage1() override;
+
     void postBuildStage() override;
 
     bool validateIncomingData();
@@ -148,9 +155,8 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     void loadData(unsigned int numImages);
     void discardQueuedFrames();
-    /// Creates the logger and telemetry state and resolves config defaults. Runs from buildInternal() on the host and
-    /// from run() on the device, where the firmware constructs the node without calling buildInternal().
-    void ensureInitialized();
+    /// Gate rate: the gate subnode config on the host, the value serialized in the properties inside the firmware.
+    int gateFps() const;
     std::shared_ptr<Device> requireDevice() const;
 
     std::shared_ptr<dai::CalibrationMetrics> getMetrics(const std::shared_ptr<dai::CalibrationHandler>& calibration);
@@ -158,6 +164,10 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     static void appendTelemetryAggregateProperties(nlohmann::json& properties, const TelemetryAggregateState& telemetryAggregateState);
 
     void recordAggregateCycle(double elapsedSeconds);
+
+    void recordAggregateRecalibrationTriggered();
+
+    void recordAggregateOutput(bool calibrationUpdated);
 
     void recordAggregateRecalibration(bool passed, double elapsedSeconds);
 
@@ -178,8 +188,7 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     Input gateOutput{*this, {"gateOutput", DEFAULT_GROUP, false, 1, {{DatatypeEnum::Buffer, true}}}};
 
-    std::optional<bool> runOnHostVar;
-    bool initialized = false;
+    bool runOnHostVar = true;
     std::shared_ptr<TelemetryAggregateState> telemetryAggregateState;
     std::uint64_t telemetryAggregateMetricsHandle = 0;
 

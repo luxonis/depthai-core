@@ -20,6 +20,6 @@ struct CpuUsage {
     int32_t msTime = 0;
 };
 
-DEPTHAI_SERIALIZE_EXT(CpuUsage, average, msTime);
+DEPTHAI_SERIALIZE_EXT_DECL(CpuUsage, average, msTime);
 
 }  // namespace dai

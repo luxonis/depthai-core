@@ -115,7 +115,7 @@ class Keypoints : public Buffer, public TransformableCRTP<Keypoints> {
         return DatatypeEnum::Keypoints;
     }
 
-    DEPTHAI_SERIALIZE(Keypoints, sequenceNum, ts, tsDevice, tsSystem, transformation, keypointsList);
+    DEPTHAI_SERIALIZE_DECL(Keypoints, sequenceNum, ts, tsDevice, tsSystem, transformation, keypointsList);
 };
 
 }  // namespace beta

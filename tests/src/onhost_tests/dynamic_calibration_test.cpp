@@ -385,6 +385,10 @@ void requireControlRoundTrips() {
     REQUIRE(std::get<Commands::Calibrate>(calibrate.command).force);
     REQUIRE_FALSE(std::get<Commands::Calibrate>(calibrate.command).keepCameraCenters);
 
+    const auto quality = roundTrip<Type>(*DCC::calibrationQuality(true));
+    REQUIRE(std::holds_alternative<Commands::CalibrationQuality>(quality.command));
+    REQUIRE(std::get<Commands::CalibrationQuality>(quality.command).force);
+
     const auto mode = roundTrip<Type>(*DCC::setPerformanceMode(DCC::PerformanceMode::OPTIMIZE_SPEED));
     REQUIRE(std::holds_alternative<Commands::SetPerformanceMode>(mode.command));
     REQUIRE(std::get<Commands::SetPerformanceMode>(mode.command).performanceMode == DCC::PerformanceMode::OPTIMIZE_SPEED);
@@ -393,6 +397,16 @@ void requireControlRoundTrips() {
     REQUIRE(std::holds_alternative<Commands::LoadImage>(roundTrip<Type>(*DCC::loadImage()).command));
     REQUIRE(std::holds_alternative<Commands::ResetData>(roundTrip<Type>(*DCC::resetData()).command));
     REQUIRE(std::holds_alternative<std::monostate>(roundTrip<Type>(DCC{}).command));
+
+    // The Buffer fields travel with the command, as for every other message.
+    auto stamped = DCC::resetData();
+    stamped->setSequenceNum(42);
+    stamped->setTimestamp(std::chrono::steady_clock::time_point(std::chrono::milliseconds(1234)));
+    stamped->setTimestampDevice(std::chrono::steady_clock::time_point(std::chrono::milliseconds(5678)));
+    const auto stampedParsed = roundTrip<Type>(*stamped);
+    REQUIRE(stampedParsed.getSequenceNum() == 42);
+    REQUIRE(stampedParsed.getTimestamp() == stamped->getTimestamp());
+    REQUIRE(stampedParsed.getTimestampDevice() == stamped->getTimestampDevice());
 
     dai::CalibrationHandler calibration;
     calibration.setCameraIntrinsics(Socket::CAM_B, std::vector<std::vector<float>>{{800.f, 0.f, 640.f}, {0.f, 800.f, 400.f}, {0.f, 0.f, 1.f}}, 1280, 800);
@@ -403,6 +417,8 @@ void requireControlRoundTrips() {
 
     const auto metrics = roundTrip<Type>(*DCC::computeCalibrationMetrics(calibration));
     REQUIRE(std::holds_alternative<Commands::ComputeCalibrationMetrics>(metrics.command));
+    REQUIRE(std::get<Commands::ComputeCalibrationMetrics>(metrics.command).calibration.getCameraIntrinsics(Socket::CAM_B, 1280, 800)[0][0]
+            == Catch::Approx(800.f));
 }
 
 }  // namespace

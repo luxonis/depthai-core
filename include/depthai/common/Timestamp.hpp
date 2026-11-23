@@ -22,6 +22,6 @@ struct Timestamp {
     }
 };
 
-DEPTHAI_SERIALIZE_EXT(Timestamp, sec, nsec);
+DEPTHAI_SERIALIZE_EXT_DECL(Timestamp, sec, nsec);
 
 }  // namespace dai

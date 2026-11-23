@@ -1,0 +1,751 @@
+#include <array>
+#include <catch2/catch_all.hpp>
+#include <cmath>
+#include <depthai/depthai.hpp>
+#include <deque>
+#include <filesystem>
+#include <fstream>
+#include <limits>
+#include <map>
+#include <memory>
+#include <random>
+#include <string>
+
+#include "../../../src/pipeline/node/DynamicCalibrationTransforms.hpp"
+#include "../../../src/pipeline/node/DynamicCalibrationUtils.hpp"
+#include "../../../src/pipeline/node/WorldConstraintsValidation.hpp"
+#include "../../../src/utility/WorldConstraintsUtils.hpp"
+
+// After the depthai headers: the DCL headers define macros that collide with depthai enumerators.
+#include <DynamicCalibration.hpp>
+
+namespace {
+using Socket = dai::CameraBoardSocket;
+
+const char* kWorldJson = R"({
+    "markerType": "ARUCO",
+    "arucoDictionary": "DICT_4X4_50",
+    "markerDistances": [{"markers": [37, 43], "distance": 0.84}],
+    "socketDistances": [{"marker": 37, "socket": "CAM_A", "distance": 1.68}],
+    "markerSizes": [{"marker": 43, "size": 0.15}]
+})";
+
+std::shared_ptr<dcl::CameraCalibrationHandle> dclCalibration(double x) {
+    const dcl::scalar_t rotation[3] = {0.0, 0.0, 0.0};
+    const dcl::scalar_t translation[3] = {x, 0.0, 0.0};
+    const dcl::scalar_t cameraMatrix[9] = {500.0, 0.0, 320.0, 0.0, 500.0, 240.0, 0.0, 0.0, 1.0};
+    dcl::scalar_t distortion[14] = {0.0};
+    return std::make_shared<dcl::CameraCalibrationHandle>(rotation, translation, cameraMatrix, dcl::PerspectiveDistortion::fromArray(distortion));
+}
+}  // namespace
+
+TEST_CASE("WorldConstraints parses the documented JSON form", "[WorldConstraints]") {
+    const auto constraints = dai::WorldConstraints::fromJsonString(kWorldJson);
+    REQUIRE(constraints.markerType == dai::MarkerType::ARUCO);
+    REQUIRE(constraints.arucoDictionary == dai::ArucoDictionary::DICT_4X4_50);
+    REQUIRE(constraints.markerDistances.size() == 1);
+    REQUIRE(constraints.markerDistances[0].markerA == 37);
+    REQUIRE(constraints.markerDistances[0].markerB == 43);
+    REQUIRE(constraints.markerDistances[0].distance == Catch::Approx(0.84f));
+    REQUIRE(constraints.socketDistances.size() == 1);
+    REQUIRE(constraints.socketDistances[0].marker == 37);
+    REQUIRE(constraints.socketDistances[0].socket == Socket::CAM_A);
+    REQUIRE(constraints.socketDistances[0].distance == Catch::Approx(1.68f));
+    REQUIRE(dai::utility::referencedMarkerIds(constraints) == std::vector<int32_t>{37, 43});
+    REQUIRE(dai::utility::referencedSockets(constraints) == std::vector<Socket>{Socket::CAM_A});
+    REQUIRE_FALSE(constraints.toJson().contains("markers"));
+    REQUIRE_FALSE(constraints.toJson().contains("lengthUnit"));
+
+    // Entries built in code may give their length in another unit; it is stored in meters.
+    REQUIRE(dai::WorldConstraints::MarkerDistance(0, 1, 15.0f, dai::LengthUnit::CENTIMETER).distance == Catch::Approx(0.15f));
+    REQUIRE(dai::WorldConstraints::MarkerSocketDistance(0, Socket::CAM_A, 1200.0f, dai::LengthUnit::MILLIMETER).distance == Catch::Approx(1.2f));
+    REQUIRE(dai::WorldConstraints::MarkerSize(0, 4.0f, dai::LengthUnit::INCH).size == Catch::Approx(0.1016f).epsilon(1e-3));
+    REQUIRE(dai::WorldConstraints::MarkerSize(0, 0.1f).size == Catch::Approx(0.1f));
+    REQUIRE_FALSE(constraints.empty());
+
+    // Round trip through the documented form and through the wire form.
+    const auto roundTrip = dai::WorldConstraints::fromJson(constraints.toJson());
+    REQUIRE(roundTrip.markerDistances[0].distance == Catch::Approx(0.84f));
+    REQUIRE(roundTrip.markerType == dai::MarkerType::ARUCO);
+    REQUIRE(constraints.toJson().at("markerType") == "ARUCO");
+    REQUIRE(roundTrip.socketDistances[0].socket == Socket::CAM_A);
+    nlohmann::json wire = constraints;
+    const auto fromWire = wire.get<dai::WorldConstraints>();
+    REQUIRE(fromWire.socketDistances[0].socket == Socket::CAM_A);
+    REQUIRE(fromWire.markerDistances[0].distance == Catch::Approx(0.84f));
+
+    REQUIRE(constraints.markerSizes.size() == 1);
+    REQUIRE(constraints.markerSizes[0].marker == 43);
+    REQUIRE(constraints.markerSizes[0].size == Catch::Approx(0.15f));
+    REQUIRE(roundTrip.markerSizes[0].size == Catch::Approx(0.15f));
+    REQUIRE(fromWire.markerSizes[0].marker == 43);
+
+    // Keep all documented dictionary spellings, including names without DICT_.
+    for(const char* spelling : {"DICT_APRILTAG_36h11", "DICT_APRILTAG_36H11", "dict_apriltag_36h11"}) {
+        REQUIRE(dai::arucoDictionaryFromString(spelling) == dai::ArucoDictionary::DICT_APRILTAG_36h11);
+    }
+    REQUIRE(dai::arucoDictionaryFromString("APRILTAG_36h11") == dai::ArucoDictionary::DICT_APRILTAG_36h11);
+    REQUIRE(dai::arucoDictionaryFromString("4X4_50") == dai::ArucoDictionary::DICT_4X4_50);
+    REQUIRE(dai::markerTypeFromString("luxonis") == dai::MarkerType::LUXONIS);
+    for(const auto dictionary : {dai::ArucoDictionary::DICT_APRILTAG_16h5,
+                                 dai::ArucoDictionary::DICT_APRILTAG_25h9,
+                                 dai::ArucoDictionary::DICT_APRILTAG_36h10,
+                                 dai::ArucoDictionary::DICT_APRILTAG_36h11,
+                                 dai::ArucoDictionary::DICT_ARUCO_ORIGINAL,
+                                 dai::ArucoDictionary::DICT_7X7_1000}) {
+        dai::WorldConstraints apriltag;
+        apriltag.markerDistances = {{0, 1, 0.5f}};
+        apriltag.arucoDictionary = dictionary;
+        REQUIRE(dai::arucoDictionaryFromString(dai::toString(dictionary)) == dictionary);
+        REQUIRE(dai::WorldConstraints::fromJson(apriltag.toJson()).arucoDictionary == dictionary);
+        REQUIRE(dai::WorldConstraints::fromJsonString(apriltag.toJson().dump()).arucoDictionary == dictionary);
+    }
+}
+
+TEST_CASE("WorldConstraints preserves documented aliases and rejects conflicts", "[WorldConstraints]") {
+    using dai::WorldConstraints;
+    const auto aliases = WorldConstraints::fromJsonString(
+        R"({"dictionary":"4X4_100", "markerDistances":[{"markerA":1,"markerB":2,"distance":0.5}], "socketDistances":[{"marker":2,"socket":"b","distance":1.0}]})");
+    REQUIRE(aliases.arucoDictionary == dai::ArucoDictionary::DICT_4X4_100);
+    REQUIRE(aliases.markerDistances[0].markerA == 1);
+    REQUIRE(aliases.markerDistances[0].markerB == 2);
+    REQUIRE(aliases.socketDistances[0].socket == Socket::CAM_B);
+    const auto numeric = WorldConstraints::fromJson({{"markerType", static_cast<int>(dai::MarkerType::ARUCO)},
+                                                     {"arucoDictionary", static_cast<int>(dai::ArucoDictionary::DICT_4X4_50)},
+                                                     {"socketDistances", {{{"marker", 1}, {"socket", static_cast<int>(Socket::CAM_C)}, {"distance", 1.0}}}}});
+    REQUIRE(numeric.socketDistances[0].socket == Socket::CAM_C);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"dictionary":"4X4_100","arucoDictionary":"DICT_4X4_50"})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances":[{"markers":[1,2],"markerA":3,"distance":1}]})"), std::invalid_argument);
+    // Both forms may name the same pair in either order; a different pair is still a conflict.
+    REQUIRE(WorldConstraints::fromJsonString(R"({"markerDistances":[{"markers":[1,2],"markerA":2,"markerB":1,"distance":1}]})").markerDistances.size() == 1);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances":[{"markers":[1,2],"markerA":2,"markerB":3,"distance":1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"dictionary":999})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType":0.5})"), std::invalid_argument);
+}
+
+TEST_CASE("WorldConstraints rejects malformed input", "[WorldConstraints]") {
+    using dai::WorldConstraints;
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 1], "distance": 0.5}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 2], "distance": 0}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 2, 3], "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": "CAM_Z", "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": "AUTO", "distance": 1}]})"), std::invalid_argument);
+    // Every length is in meters: a unit key is rejected instead of being interpreted.
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"lengthUnit": "cm", "markerDistances": [{"markers": [1, 2], "distance": 100}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"lengthUnit": "m", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": "cctag", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    // Luxonis Markers are a known type, round-tripped without a dictionary.
+    const auto luxonis = WorldConstraints::fromJsonString(R"({"markerType": "LUXONIS", "markerDistances": [{"markers": [0, 3], "distance": 0.5}]})");
+    REQUIRE(luxonis.markerType == dai::MarkerType::LUXONIS);
+    REQUIRE(luxonis.toJson().at("markerType") == "LUXONIS");
+    REQUIRE_FALSE(luxonis.toJson().contains("arucoDictionary"));
+    REQUIRE(WorldConstraints::fromJson(luxonis.toJson()).markerType == dai::MarkerType::LUXONIS);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": 99})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"dictionary": "DICT_9X9", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString("[1, 2]"), std::invalid_argument);
+    // Closed validation holes: socket out of range, negative or fractional marker ids, malformed JSON and missing keys
+    // all surface as std::invalid_argument, never as a nlohmann exception.
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": 99, "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [-3, 2], "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1.5, 2], "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markerA": 1, "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 2], "distance": "far"}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString("{not json"), std::invalid_argument);
+    // Enumerators given as numbers are range-checked.
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"arucoDictionary": 99, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": 7, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"), std::invalid_argument);
+    // Integers that do not fit the destination type are rejected instead of being narrowed (4294967296 would become 0).
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [4294967296, 2], "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerSizes": [{"marker": 2147483648, "size": 0.1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": 4294967296, "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": 4294967296, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"arucoDictionary": 4294967296, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    // The largest int32 parses as an integer and is then rejected for its dictionary.
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [2147483647, 0], "distance": 1}]})"), std::invalid_argument);
+    // Luxonis Markers only carry ids 0..kLuxonisMarkerIdMax.
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": "LUXONIS", "markerDistances": [{"markers": [6, 7], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": "LUXONIS", "markerSizes": [{"marker": 9, "size": 0.1}]})"), std::invalid_argument);
+    REQUIRE(WorldConstraints::fromJsonString(R"({"markerType": "LUXONIS", "markerDistances": [{"markers": [0, 5], "distance": 1}]})").markerType
+            == dai::MarkerType::LUXONIS);
+    {
+        dai::WorldConstraints luxonisSizes;
+        luxonisSizes.markerType = dai::MarkerType::LUXONIS;
+        luxonisSizes.markerSizes = {{6, 0.1f}};
+        REQUIRE_THROWS_AS(luxonisSizes.validate(), std::invalid_argument);
+    }
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"arucoDictionary": -1, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    {
+        WorldConstraints negative;
+        negative.socketDistances.push_back({-1, Socket::CAM_A, 1.0f});
+        REQUIRE_THROWS_AS(negative.validate(), std::invalid_argument);
+        WorldConstraints unknownSocket;
+        unknownSocket.socketDistances.push_back({1, static_cast<Socket>(99), 1.0f});
+        REQUIRE_THROWS_AS(unknownSocket.validate(), std::invalid_argument);
+        WorldConstraints unknownDictionary = WorldConstraints::fromJsonString(kWorldJson);
+        unknownDictionary.arucoDictionary = static_cast<dai::ArucoDictionary>(99);
+        REQUIRE_THROWS_AS(unknownDictionary.validate(), std::invalid_argument);
+    }
+
+    dai::Pipeline pipeline(false);
+    auto node = pipeline.create<dai::node::DynamicCalibration>();
+    REQUIRE_FALSE(node->getWorldConstraints().has_value());
+    REQUIRE_THROWS_AS(node->setWorldConstraints(WorldConstraints{}), std::invalid_argument);
+    node->setWorldConstraintsFromJson(kWorldJson);
+    REQUIRE(node->getWorldConstraints().has_value());
+    REQUIRE(node->getWorldConstraints()->socketDistances[0].socket == Socket::CAM_A);
+    node->clearWorldConstraints();
+    REQUIRE_FALSE(node->getWorldConstraints().has_value());
+}
+
+TEST_CASE("WorldConstraints JSON is strict", "[WorldConstraints]") {
+    using dai::WorldConstraints;
+    const auto rejected = [](const std::string& json, const std::string& expected) {
+        try {
+            WorldConstraints::fromJsonString(json);
+        } catch(const std::invalid_argument& ex) {
+            INFO(json << " -> " << ex.what());
+            return std::string(ex.what()).find(expected) != std::string::npos;
+        }
+        return false;
+    };
+    // A key outside the documented form is an error: a misspelled list would otherwise be dropped without a word.
+    REQUIRE(rejected(R"({"markerDistance": [{"markers": [1, 2], "distance": 1}]})", "unknown key \"markerDistance\""));
+    REQUIRE(rejected(R"({"markersizes": [{"marker": 1, "size": 0.1}]})", "unknown key \"markersizes\""));
+    REQUIRE(rejected(R"({"markerDistances": [{"markers": [1, 2], "distance": 1, "unit": "cm"}]})", "unknown key \"unit\""));
+    REQUIRE(rejected(R"({"markerSizes": [{"marker": 1, "size": 0.1, "sise": 0.2}]})", "unknown key \"sise\""));
+    REQUIRE(rejected(R"({"lengthUnit": "cm"})", "every distance and size is in meters"));
+    // Names match in any case; previously documented aliases still work.
+    REQUIRE(WorldConstraints::fromJsonString(
+                R"({"markerType": "Aruco", "arucoDictionary": "dict_4x4_100", "socketDistances": [{"marker": 1, "socket": "cam_b", "distance": 1}]})")
+                .socketDistances[0]
+                .socket
+            == Socket::CAM_B);
+    REQUIRE(WorldConstraints::fromJsonString(R"({"markerType": "luxonis", "markerSizes": [{"marker": 1, "size": 0.1}]})").markerType
+            == dai::MarkerType::LUXONIS);
+    REQUIRE(rejected(R"({"markerType": "cctag", "markerSizes": [{"marker": 1, "size": 0.1}]})", "unknown markerType"));
+    for(const char* socket : {R"("Z")", "99", R"("AUTO")"}) {
+        REQUIRE(rejected(std::string(R"({"socketDistances": [{"marker": 1, "socket": )") + socket + R"(, "distance": 1}]})", "concrete socket"));
+    }
+    // A dictionary has no meaning for Luxonis Markers.
+    REQUIRE(rejected(R"({"markerType": "LUXONIS", "arucoDictionary": "DICT_4X4_50", "markerSizes": [{"marker": 1, "size": 0.1}]})", "aruco only"));
+    // Wrong shapes and missing members name what is wrong.
+    REQUIRE(rejected(R"({"markerDistances": {"markers": [1, 2], "distance": 1}})", "\"markerDistances\" must be an array"));
+    REQUIRE(rejected(R"({"markerSizes": [[1, 0.1]]})", "must be a JSON object"));
+    REQUIRE(rejected(R"({"markerSizes": [{"marker": 1}]})", "needs \"size\""));
+    REQUIRE(rejected(R"({"markerDistances": [{"distance": 1}]})", "needs \"markerA\""));
+    REQUIRE(rejected(R"({"markerDistances": [{"markers": 3, "distance": 1}]})", "array of two marker ids"));
+    REQUIRE(rejected(R"({"markerDistances": [{"markers": [1, 2], "distance": "0.5"}]})", "must be a number of meters"));
+    REQUIRE(rejected(R"({"markerDistances": [{"markers": [1, 2], "distance": 1e40}]})", "out of range"));
+    // The same thing measured twice is ambiguous, in either order of the markers.
+    REQUIRE(rejected(R"({"markerDistances": [{"markers": [1, 2], "distance": 0.15}, {"markers": [2, 1], "distance": 0.45}]})", "given twice"));
+    REQUIRE(
+        rejected(R"({"socketDistances": [{"marker": 1, "socket": "CAM_A", "distance": 1}, {"marker": 1, "socket": "CAM_A", "distance": 1}]})", "given twice"));
+    // A marker id the dictionary does not contain can never be detected.
+    REQUIRE(rejected(R"({"markerSizes": [{"marker": 77, "size": 0.1}]})", "DICT_4X4_50 has marker ids 0..49, got 77"));
+    REQUIRE(rejected(R"({"arucoDictionary": "DICT_APRILTAG_16h5", "markerDistances": [{"markers": [1, 30], "distance": 1}]})", "0..29, got 30"));
+    REQUIRE(WorldConstraints::fromJsonString(R"({"arucoDictionary": "DICT_4X4_100", "markerSizes": [{"marker": 77, "size": 0.1}]})").markerSizes.size() == 1);
+    // A directory is not a constraints file.
+    REQUIRE_THROWS_AS(WorldConstraints::fromFile(std::filesystem::temp_directory_path()), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromFile("/nonexistent/world_constraints.json"), std::invalid_argument);
+    // A key given twice in one object would silently lose one of its values; separate entries may repeat keys.
+    REQUIRE(rejected(R"({"markerSizes": [{"marker": 1, "size": "large", "size": 0.1}]})", "\"size\" is given twice"));
+    REQUIRE(rejected(R"({"markerSizes": [], "markerSizes": [{"marker": 1, "size": 0.1}]})", "\"markerSizes\" is given twice"));
+    REQUIRE(WorldConstraints::fromJsonString(R"({"markerSizes": [{"marker": 1, "size": 0.1}, {"marker": 2, "size": 0.1}]})").markerSizes.size() == 2);
+    // A file holds one document: whatever follows it is an error, trailing whitespace excepted.
+    // A directory of its own, so that test runs in parallel do not share the file; removed even when an assertion fails.
+    struct TemporaryDirectory {
+        std::filesystem::path path = std::filesystem::temp_directory_path() / ("depthai_world_constraints_test_" + std::to_string(std::random_device{}()));
+        TemporaryDirectory() {
+            std::filesystem::create_directories(path);
+        }
+        ~TemporaryDirectory() {
+            std::error_code ignored;
+            std::filesystem::remove_all(path, ignored);
+        }
+    } directory;
+    const auto path = directory.path / "constraints.json";
+    const auto writeFile = [&path](const std::string& text) { std::ofstream(path, std::ios::binary) << text; };
+    writeFile(std::string(R"({"markerSizes": [{"marker": 1, "size": 0.1}]})") + "\n\n");
+    REQUIRE(WorldConstraints::fromFile(path).markerSizes.size() == 1);
+    writeFile(R"({"markerSizes": [{"marker": 1, "size": 0.1}]} {"markerSises": []})");
+    REQUIRE_THROWS_AS(WorldConstraints::fromFile(path), std::invalid_argument);
+    // nlohmann stops at a NUL byte, which would hide whatever follows it.
+    const auto withNul = std::string(R"({"markerSizes": [{"marker": 1, "size": 0.1}]})") + std::string(1, '\0') + R"({"markerSises": []})";
+    REQUIRE(rejected(withNul, "NUL"));
+    writeFile(withNul);
+    REQUIRE_THROWS_AS(WorldConstraints::fromFile(path), std::invalid_argument);
+    // A 0x1A byte ends a text-mode stream on Windows; the file is read in binary, so the content after it is seen.
+    writeFile(std::string(R"({"markerSizes": [{"marker": 1, "size": 0.1}]})") + "\x1a" + std::string(1, '\0') + R"({"markerSises": []})");
+    REQUIRE_THROWS_AS(WorldConstraints::fromFile(path), std::invalid_argument);
+}
+
+#ifdef DEPTHAI_TEST_WORLD_CONSTRAINTS_RECONSTRUCTION
+TEST_CASE("DynamicCalibration compares world constraints with the reconstructed scene", "[WorldConstraints]") {
+    namespace validation = dai::node::detail;
+    const std::vector<std::vector<float>> intrinsics = {{500.f, 0.f, 640.f}, {0.f, 500.f, 400.f}, {0.f, 0.f, 1.f}};
+    const std::vector<std::vector<float>> identity = {{1.f, 0.f, 0.f}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}};
+    const std::map<Socket, float> positions = {{Socket::CAM_B, 0.f}, {Socket::CAM_C, 0.075f}, {Socket::CAM_A, 0.0375f}};
+    const validation::ObservationCamera observed{intrinsics, std::vector<float>(14, 0.f), dai::CameraModel::Perspective};
+    const std::map<Socket, validation::ObservationCamera> cameras = {{Socket::CAM_B, observed}, {Socket::CAM_C, observed}};
+    dai::CalibrationHandler calibration;
+    for(const auto& [socket, x] : positions) {
+        calibration.setCameraIntrinsics(socket, intrinsics, 1280, 800);
+        calibration.setDistortionCoefficients(socket, std::vector<float>(14, 0.f));
+        calibration.setCameraType(socket, dai::CameraModel::Perspective);
+    }
+    calibration.setCameraExtrinsics(Socket::CAM_B, Socket::CAM_C, identity, {-7.5f, 0.f, 0.f});
+    calibration.setCameraExtrinsics(Socket::CAM_C, Socket::CAM_A, identity, {3.75f, 0.f, 0.f});
+    const auto project = [&](Socket socket, const std::array<double, 3>& point) {
+        const double x = point[0] - positions.at(socket);
+        return std::array<float, 2>{static_cast<float>(500.0 * x / point[2] + 640.0), static_cast<float>(500.0 * point[1] / point[2] + 400.0)};
+    };
+    // Markers 1 and 2 are 0.5 m apart, 2 m in front of the cameras; marker 1 is a 10 cm square facing them.
+    const std::array<double, 3> marker1{-0.25, 0.0, 2.0};
+    const std::array<double, 3> marker2{0.25, 0.0, 2.0};
+    std::deque<dai::MarkerObservationSet> sets(3);
+    for(auto& set : sets) {
+        for(const auto socket : {Socket::CAM_B, Socket::CAM_C}) {
+            set.centers[1][socket] = project(socket, marker1);
+            set.centers[2][socket] = project(socket, marker2);
+            for(const auto& [dx, dy] : std::vector<std::pair<double, double>>{{-0.05, -0.05}, {0.05, -0.05}, {0.05, 0.05}, {-0.05, 0.05}}) {
+                set.outlines[1][socket].corners.push_back(project(socket, {marker1[0] + dx, marker1[1] + dy, marker1[2]}));
+            }
+        }
+    }
+    dai::WorldConstraints constraints;
+    constraints.markerDistances = {{1, 2, 0.5f}};
+    constraints.socketDistances = {{2, Socket::CAM_A, static_cast<float>(std::hypot(0.25 - 0.0375, 2.0))}};
+    constraints.markerSizes = {{1, 0.10f}};
+    auto residuals = validation::worldConstraintResiduals(constraints, sets, calibration, Socket::CAM_B, cameras);
+    REQUIRE(residuals.size() == 3);
+    for(const auto& residual : residuals) {
+        REQUIRE(residual.measured.has_value());
+        INFO(residual.what << ": configured " << residual.configured << ", measured " << *residual.measured);
+        REQUIRE(residual.fits());
+        REQUIRE(*residual.measured == Catch::Approx(residual.configured).epsilon(0.01));
+    }
+    {
+        // An even number of frame sets: the median is the mean of the two middle values, 0.4 m and 0.6 m here.
+        std::deque<dai::MarkerObservationSet> twoSets(2);
+        const std::array<double, 2> marker2X = {0.15, 0.35};
+        for(size_t idx = 0; idx < twoSets.size(); ++idx) {
+            for(const auto socket : {Socket::CAM_B, Socket::CAM_C}) {
+                twoSets[idx].centers[1][socket] = project(socket, marker1);
+                twoSets[idx].centers[2][socket] = project(socket, {marker2X[idx], 0.0, 2.0});
+            }
+        }
+        dai::WorldConstraints distanceOnly;
+        distanceOnly.markerDistances = {{1, 2, 0.5f}};
+        const auto evenResiduals = validation::worldConstraintResiduals(distanceOnly, twoSets, calibration, Socket::CAM_B, cameras);
+        REQUIRE(evenResiduals.size() == 1);
+        REQUIRE(evenResiduals.front().measured.has_value());
+        REQUIRE(*evenResiduals.front().measured == Catch::Approx(0.5).epsilon(0.01));
+    }
+    auto factory = calibration;
+    factory.updateCameraExtrinsics(Socket::CAM_C, Socket::CAM_A, identity, {200.f, 0.f, 0.f});
+    const std::map<Socket, std::vector<std::vector<float>>> calibratedPoses = {
+        {Socket::CAM_B, calibration.getCameraExtrinsics(Socket::CAM_B, Socket::CAM_B, false, dai::LengthUnit::METER)},
+        {Socket::CAM_C, calibration.getCameraExtrinsics(Socket::CAM_B, Socket::CAM_C, false, dai::LengthUnit::METER)}};
+    const auto assembled = validation::assembleDynamicCalibration(
+        calibration, factory, {Socket::CAM_B, Socket::CAM_C, Socket::CAM_A}, calibratedPoses, false, {{Socket::CAM_B, Socket::CAM_C}}, dai::Platform::RVC2);
+    const auto assembledResiduals = validation::worldConstraintResiduals(constraints, sets, assembled, Socket::CAM_B, cameras);
+    REQUIRE(assembledResiduals[0].fits());
+    REQUIRE(assembledResiduals[1].measured.has_value());
+    REQUIRE(*assembledResiduals[1].measured == Catch::Approx(std::hypot(0.25 + 1.925, 2.0)).epsilon(0.01));
+    REQUIRE_FALSE(assembledResiduals[1].fits());
+    REQUIRE(assembledResiduals[2].fits());
+    // Choosing another reconstruction frame must not change any measurement.
+    const auto otherBase = validation::worldConstraintResiduals(constraints, sets, calibration, Socket::CAM_C, cameras);
+    for(size_t i = 0; i < residuals.size(); ++i) REQUIRE(*otherBase[i].measured == Catch::Approx(*residuals[i].measured));
+    // Image transformation intrinsics can differ from EEPROM intrinsics after cropping.
+    auto croppedSets = sets;
+    for(auto& set : croppedSets) {
+        for(auto& [id, centers] : set.centers)
+            for(auto& [socket, center] : centers) {
+                center[0] -= 200.f;
+                center[1] -= 100.f;
+            }
+        for(auto& [id, outlines] : set.outlines)
+            for(auto& [socket, outline] : outlines)
+                for(auto& corner : outline.corners) {
+                    corner[0] -= 200.f;
+                    corner[1] -= 100.f;
+                }
+    }
+    auto croppedCameras = cameras;
+    for(auto& [socket, camera] : croppedCameras) {
+        camera.intrinsics[0][2] -= 200.f;
+        camera.intrinsics[1][2] -= 100.f;
+    }
+    const auto croppedResiduals = validation::worldConstraintResiduals(constraints, croppedSets, calibration, Socket::CAM_B, croppedCameras);
+    for(size_t i = 0; i < residuals.size(); ++i) REQUIRE(*croppedResiduals[i].measured == Catch::Approx(*residuals[i].measured));
+    // A distance typed in centimeters and a wrong marker size stand out; the correct socket distance does not.
+    constraints.markerDistances = {{1, 2, 50.f}};
+    constraints.markerSizes = {{1, 0.15f}};
+    residuals = validation::worldConstraintResiduals(constraints, sets, calibration, Socket::CAM_B, cameras);
+    REQUIRE(residuals.size() == 3);
+    REQUIRE(residuals[0].what == "the distance between markers 1 and 2");
+    REQUIRE(*residuals[0].measured == Catch::Approx(0.5).epsilon(0.01));
+    REQUIRE_FALSE(residuals[0].fits());
+    REQUIRE(residuals[1].fits());
+    REQUIRE(*residuals[2].measured == Catch::Approx(0.10).epsilon(0.01));
+    REQUIRE_FALSE(residuals[2].fits());
+    // Short lengths get an absolute allowance on top of the relative one.
+    REQUIRE(validation::ConstraintResidual{"", 0.05, 0.058}.fits());
+    REQUIRE_FALSE(validation::ConstraintResidual{"", 0.05, 0.062}.fits());
+    REQUIRE(validation::ConstraintResidual{"", 1.0, 1.14}.fits());
+    REQUIRE_FALSE(validation::ConstraintResidual{"", 1.0, 0.84}.fits());
+    // A marker no frame set shows to two cameras has nothing to compare with.
+    constraints.markerSizes = {{7, 0.10f}};
+    residuals = validation::worldConstraintResiduals(constraints, sets, calibration, Socket::CAM_B, cameras);
+    REQUIRE(residuals.size() == 3);
+    REQUIRE_FALSE(residuals[2].measured.has_value());
+    REQUIRE_FALSE(residuals[2].fits());
+    // Failed triangulation must reject constraints rather than disappearing from the check.
+    auto singleView = sets;
+    for(auto& set : singleView)
+        for(auto& [id, centers] : set.centers) centers.erase(Socket::CAM_C);
+    const auto unavailable = validation::worldConstraintResiduals(constraints, singleView, calibration, Socket::CAM_B, cameras);
+    REQUIRE(unavailable.size() == 3);
+    for(const auto& residual : unavailable) {
+        REQUIRE_FALSE(residual.measured.has_value());
+        REQUIRE_FALSE(residual.fits());
+    }
+    REQUIRE_FALSE(validation::ConstraintResidual{"", 1.0, std::numeric_limits<double>::quiet_NaN()}.fits());
+    REQUIRE_FALSE(validation::ConstraintResidual{"", 1.0, std::numeric_limits<double>::infinity()}.fits());
+
+    // A Luxonis Marker: the size is the outer diameter of its ring, here 10 cm around marker 1, facing the cameras.
+    {
+        auto ringSets = sets;
+        for(auto& set : ringSets) {
+            for(const auto socket : {Socket::CAM_B, Socket::CAM_C}) {
+                auto& outline = set.outlines[1][socket];
+                outline.corners.clear();
+                for(int step = 0; step < 32; ++step) {
+                    const double angle = 2.0 * std::acos(-1.0) * step / 32.0;
+                    outline.outerEdge.push_back(project(socket, {marker1[0] + 0.05 * std::cos(angle), marker1[1] + 0.05 * std::sin(angle), marker1[2]}));
+                }
+            }
+        }
+        dai::WorldConstraints ring;
+        ring.markerType = dai::MarkerType::LUXONIS;
+        ring.markerSizes = {{1, 0.10f}};
+        auto ringResiduals = validation::worldConstraintResiduals(ring, ringSets, calibration, Socket::CAM_B, cameras);
+        REQUIRE(ringResiduals.size() == 1);
+        REQUIRE(ringResiduals[0].measured.has_value());
+        REQUIRE(*ringResiduals[0].measured == Catch::Approx(0.10).epsilon(0.02));
+        REQUIRE(ringResiduals[0].fits());
+        ring.markerSizes = {{1, 0.15f}};
+        ringResiduals = validation::worldConstraintResiduals(ring, ringSets, calibration, Socket::CAM_B, cameras);
+        REQUIRE_FALSE(ringResiduals[0].fits());
+    }
+
+    // The epipolar error may not grow past both limits when constraints are applied.
+    REQUIRE_FALSE(validation::epipolarErrorContradictsConstraints(0.22, 0.23));
+    REQUIRE_FALSE(validation::epipolarErrorContradictsConstraints(3.0, 0.6));
+    REQUIRE_FALSE(validation::epipolarErrorContradictsConstraints(0.1, 0.4));
+    REQUIRE(validation::epipolarErrorContradictsConstraints(0.22, 1.26));
+    REQUIRE(validation::epipolarErrorContradictsConstraints(0.22, std::numeric_limits<double>::quiet_NaN()));
+    REQUIRE(validation::epipolarErrorContradictsConstraints(std::numeric_limits<double>::infinity(), 0.22));
+}
+#endif
+
+TEST_CASE("Pipeline keeps world constraints for the implicit AutoCalibration node", "[WorldConstraints]") {
+    dai::Pipeline pipeline(false);
+    REQUIRE_FALSE(pipeline.getAutoCalibrationWorldConstraints().has_value());
+    REQUIRE_THROWS_AS(pipeline.setAutoCalibrationWorldConstraints(dai::WorldConstraints{}), std::invalid_argument);
+    pipeline.setAutoCalibrationWorldConstraintsFromJson(kWorldJson);
+    REQUIRE(pipeline.getAutoCalibrationWorldConstraints().has_value());
+    REQUIRE(pipeline.getAutoCalibrationWorldConstraints()->socketDistances[0].socket == Socket::CAM_A);
+    pipeline.clearAutoCalibrationWorldConstraints();
+    REQUIRE_FALSE(pipeline.getAutoCalibrationWorldConstraints().has_value());
+}
+
+TEST_CASE("DynamicCalibration assembles world constraints from marker observations", "[WorldConstraints]") {
+    using dai::node::DclUtils;
+    const auto constraints = dai::WorldConstraints::fromJsonString(kWorldJson);
+
+    dcl::DynamicCalibration dcl;
+    auto device = dcl.addDevice();
+    const dcl::resolution_t resolution{1280, 800};
+    std::map<Socket, std::shared_ptr<const dcl::CameraSensorHandle>> sensors;
+    sensors[Socket::CAM_B] = dcl.addSensor(device, dclCalibration(0.0), resolution, 1);
+    sensors[Socket::CAM_C] = dcl.addSensor(device, dclCalibration(-0.075), resolution, 2);
+    sensors[Socket::CAM_A] = dcl.addSensor(device, dclCalibration(0.0375), resolution, 0);
+    const auto sensorForSocket = [&](Socket socket) -> std::shared_ptr<const dcl::CameraSensorHandle> {
+        const auto it = sensors.find(socket);
+        return it == sensors.end() ? nullptr : it->second;
+    };
+
+    std::deque<dai::MarkerObservationSet> sets(3);
+    // Frame set 0: both markers in both stereo cameras -> two points, one marker distance, one socket distance.
+    sets[0].centers[37] = {{Socket::CAM_B, {100.f, 200.f}}, {Socket::CAM_C, {80.f, 201.f}}};
+    sets[0].centers[43] = {{Socket::CAM_B, {600.f, 210.f}}, {Socket::CAM_C, {578.f, 211.f}}};
+    // Frame set 1: marker 43 seen by one camera only -> only marker 37 counts, no marker distance.
+    sets[1].centers[37] = {{Socket::CAM_B, {101.f, 200.f}}, {Socket::CAM_C, {81.f, 201.f}}};
+    sets[1].centers[43] = {{Socket::CAM_B, {600.f, 210.f}}};
+    // Frame set 2: marker 43 only -> a point but no distance at all.
+    sets[2].centers[43] = {{Socket::CAM_B, {600.f, 210.f}}, {Socket::CAM_C, {578.f, 211.f}}};
+
+    DclUtils::WorldConstraintsSummary summary;
+    const auto world = DclUtils::buildWorldConstraints(constraints, sets, sensorForSocket, &summary);
+    REQUIRE(world.points.size() == 4);
+    REQUIRE(world.pointDistances.size() == 1);
+    REQUIRE(world.sensorDistances.size() == 2);
+    REQUIRE(summary.observationSets == 3);
+    REQUIRE(summary.points == 4);
+    REQUIRE(world.pointDistances[0].pointIndexA == 0);
+    REQUIRE(world.pointDistances[0].pointIndexB == 1);
+    REQUIRE(world.pointDistances[0].distanceMeters == Catch::Approx(0.84));
+    REQUIRE(world.sensorDistances[0].pointIndex == 0);
+    REQUIRE(world.sensorDistances[0].sensor == sensors[Socket::CAM_A]);
+    REQUIRE(world.sensorDistances[0].distanceMeters == Catch::Approx(1.68));
+    REQUIRE(world.sensorDistances[1].pointIndex == 2);
+    REQUIRE(world.points[0].observations.size() == 2);
+    REQUIRE(world.points[0].observations[0].pixel[0] == Catch::Approx(100.0));
+    REQUIRE_FALSE(world.empty());
+
+    // Without the auxiliary socket the socket distances are skipped, the marker distance stays.
+    sensors.erase(Socket::CAM_A);
+    const auto withoutAuxiliary = DclUtils::buildWorldConstraints(constraints, sets, sensorForSocket);
+    REQUIRE(withoutAuxiliary.pointDistances.size() == 1);
+    REQUIRE(withoutAuxiliary.sensorDistances.empty());
+
+    // A socket distance to a camera that is itself an image input resolves to that connected sensor.
+    auto toImageInput = constraints;
+    toImageInput.socketDistances = {{37, Socket::CAM_C, 1.2f}};
+    const auto withImageInput = DclUtils::buildWorldConstraints(toImageInput, sets, sensorForSocket);
+    REQUIRE(withImageInput.sensorDistances.size() == 2);
+    REQUIRE(withImageInput.sensorDistances[0].sensor == sensors[Socket::CAM_C]);
+    REQUIRE(withImageInput.sensorDistances[0].distanceMeters == Catch::Approx(1.2));
+
+    // A marker size adds one observation per sensor that saw the marker of a scene point.
+    auto sized = constraints;
+    sized.markerDistances.clear();
+    sized.socketDistances.clear();
+    sized.markerSizes = {{43, 0.2f}};
+    auto outlined = sets;
+    dai::MarkerOutline outline;
+    outline.corners = {{{1.f, 2.f}}, {{3.f, 2.f}}, {{3.f, 4.f}}, {{1.f, 4.f}}};
+    outlined[0].outlines[43] = {{Socket::CAM_B, outline}, {Socket::CAM_C, outline}};
+    outlined[1].outlines[43] = {{Socket::CAM_B, outline}};  // this marker is no scene point in frame set 1
+    DclUtils::WorldConstraintsSummary sizedSummary;
+    const auto withSizes = DclUtils::buildWorldConstraints(sized, outlined, sensorForSocket, &sizedSummary);
+    REQUIRE(sizedSummary.markerSizes == 2);
+    REQUIRE(withSizes.markerSizes.size() == 2);
+    REQUIRE(withSizes.markerSizes[0].pointIndex == 1);
+    REQUIRE(withSizes.markerSizes[0].sensor == sensors[Socket::CAM_B]);
+    REQUIRE(withSizes.markerSizes[1].sensor == sensors[Socket::CAM_C]);
+    REQUIRE(withSizes.markerSizes[0].type == dcl::MarkerType::ARUCO);
+    REQUIRE(withSizes.markerSizes[0].sizeMeters == Catch::Approx(0.2));
+    REQUIRE(withSizes.markerSizes[0].detection.center[0] == Catch::Approx(600.0));
+    REQUIRE(withSizes.markerSizes[0].detection.corners.size() == 4);
+    REQUIRE(withSizes.markerSizes[0].detection.corners[2][1] == Catch::Approx(4.0));
+    REQUIRE_FALSE(withSizes.empty());
+    // Without outlines there is nothing to measure the size against.
+    REQUIRE(DclUtils::buildWorldConstraints(sized, sets, sensorForSocket).markerSizes.empty());
+
+    // Nothing seen by two cameras: no constraints at all.
+    std::deque<dai::MarkerObservationSet> single(1);
+    single[0].centers[37] = {{Socket::CAM_B, {100.f, 200.f}}};
+    REQUIRE(DclUtils::buildWorldConstraints(constraints, single, sensorForSocket).empty());
+}
+
+TEST_CASE("DynamicCalibration accepts a frame set only when every required marker is seen by two cameras", "[WorldConstraints]") {
+    using dai::node::DclUtils;
+    const auto constraints = dai::WorldConstraints::fromJsonString(kWorldJson);  // markers 37 and 43
+
+    dai::MarkerObservationSet complete;
+    complete.centers[37] = {{Socket::CAM_B, {100.f, 200.f}}, {Socket::CAM_C, {80.f, 201.f}}};
+    complete.centers[43] = {{Socket::CAM_B, {600.f, 210.f}}, {Socket::CAM_C, {578.f, 211.f}}};
+    const auto accepted = DclUtils::markerCoverage(constraints, complete, {}, 4);
+    REQUIRE(accepted.accepted);
+    REQUIRE(accepted.requiredMarkers == std::vector<int32_t>{37, 43});
+    REQUIRE(accepted.missingMarkers.empty());
+    REQUIRE(accepted.markersAcquired == Catch::Approx(1.0f));
+    REQUIRE(accepted.observationSets == 4);
+    REQUIRE(accepted.seenBy.at(37).size() == 2);
+
+    // Marker 43 in one camera only: not accepted, half of the markers acquired, the too-small size is reported.
+    dai::MarkerObservationSet partial = complete;
+    partial.centers[43].erase(Socket::CAM_C);
+    const auto rejected = DclUtils::markerCoverage(constraints, partial, {{43, 18.5f}}, 4);
+    REQUIRE_FALSE(rejected.accepted);
+    REQUIRE(rejected.missingMarkers == std::vector<int32_t>{43});
+    REQUIRE(rejected.markersAcquired == Catch::Approx(0.5f));
+    REQUIRE(rejected.seenBy.at(43) == std::vector<Socket>{Socket::CAM_B});
+    REQUIRE(rejected.tooSmallPx.at(43) == Catch::Approx(18.5f));
+
+    // Nothing seen at all.
+    const auto empty = DclUtils::markerCoverage(constraints, dai::MarkerObservationSet{}, {}, 0);
+    REQUIRE_FALSE(empty.accepted);
+    REQUIRE(empty.missingMarkers == std::vector<int32_t>{37, 43});
+    REQUIRE(empty.markersAcquired == Catch::Approx(0.0f));
+    REQUIRE(empty.seenBy.empty());
+
+    // The block travels inside CoverageData.
+    dai::CoverageData coverage;
+    coverage.markers = rejected;
+    nlohmann::json wire = coverage;
+    const auto back = wire.get<dai::CoverageData>();
+    REQUIRE(back.markers.has_value());
+    REQUIRE(back.markers->missingMarkers == std::vector<int32_t>{43});
+    REQUIRE(back.markers->seenBy.at(43) == std::vector<Socket>{Socket::CAM_B});
+}
+
+TEST_CASE("WorldConstraints validates marker sizes", "[WorldConstraints]") {
+    using Constraints = dai::WorldConstraints;
+    const auto sizesOnly = Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3, "size": 0.1}]})");
+    REQUIRE_FALSE(sizesOnly.empty());
+    REQUIRE(sizesOnly.markerSizes[0].size == Catch::Approx(0.1f));
+    REQUIRE(dai::utility::referencedMarkerIds(sizesOnly) == std::vector<int32_t>{3});
+    REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3, "size": 0}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3, "size": -0.1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"size": 0.1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": -1, "size": 0.1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3, "size": 0.1}, {"marker": 3, "size": 0.2}]})"), std::invalid_argument);
+}
+
+namespace {
+// DICT_4X4_50 marker 37 with its one-cell black border, one character per cell ('1' = white).
+constexpr std::array<const char*, 6> kMarker37 = {"000000", "000000", "001000", "011110", "011110", "000000"};
+
+dcl::ImageData whiteImage(int width, int height) {
+    dcl::ImageData image;
+    image.width = width;
+    image.height = height;
+    image.format = dcl::DCL_8UC1;
+    image.data.assign(static_cast<size_t>(width) * height, 255);
+    return image;
+}
+
+/// Draws kMarker37 with `cell` pixels per cell, top-left corner at (x, y).
+void drawMarker37(dcl::ImageData& image, int x, int y, int cell) {
+    for(int row = 0; row < 6; ++row) {
+        for(int col = 0; col < 6; ++col) {
+            const uint8_t value = kMarker37[row][col] == '1' ? 255 : 0;
+            for(int dy = 0; dy < cell; ++dy) {
+                for(int dx = 0; dx < cell; ++dx) {
+                    image.data[static_cast<size_t>(y + row * cell + dy) * image.width + (x + col * cell + dx)] = value;
+                }
+            }
+        }
+    }
+}
+
+/// Reference points of the configured markers found in one image, keyed by marker id.
+std::map<int32_t, std::array<float, 2>> markerCenters(const dcl::ImageData& image, const dai::WorldConstraints& constraints) {
+    auto detected = dai::node::DclUtils::detectConfiguredMarkers(image, constraints);
+    REQUIRE(detected.passed());
+    std::map<int32_t, std::array<float, 2>> centers;
+    for(const auto& [id, detection] : detected.value) {
+        centers[id] = {static_cast<float>(detection.center[0]), static_cast<float>(detection.center[1])};
+    }
+    return centers;
+}
+}  // namespace
+
+TEST_CASE("DynamicCalibration detects marker centers through DCL", "[WorldConstraints]") {
+    using dai::node::DclUtils;
+    const auto constraints = dai::WorldConstraints::fromJsonString(kWorldJson);
+
+    // A white image holds no marker.
+    REQUIRE(markerCenters(whiteImage(64, 64), constraints).empty());
+
+    // Marker 37 drawn at 16 px per cell with its top-left corner at (40, 40): the center is the middle of the 96 px
+    // square, i.e. 40 + 48 - 0.5 in pixel-center coordinates.
+    auto image = whiteImage(320, 240);
+    drawMarker37(image, 40, 40, 16);
+    const auto centers = markerCenters(image, constraints);
+    REQUIRE(centers.size() == 1);
+    REQUIRE(centers.count(37) == 1);
+    REQUIRE(centers.at(37)[0] == Catch::Approx(87.5).margin(0.75));
+    REQUIRE(centers.at(37)[1] == Catch::Approx(87.5).margin(0.75));
+
+    // A marker smaller than DclUtils::kMinMarkerSizePx (3 px per cell, 18 px side) is dropped; one at 6 px per cell
+    // (36 px side) is used. Each is drawn alone so that it is the only copy of id 37 in the image. (Sub-pixel corners
+    // sit on pixel centers, so a square printed exactly 25 px wide measures about 24 px and is not a usable boundary.)
+    auto small = whiteImage(320, 240);
+    drawMarker37(small, 40, 40, 3);
+    REQUIRE(markerCenters(small, constraints).empty());
+    std::map<int32_t, double> tooSmall;
+    REQUIRE(dai::node::DclUtils::detectConfiguredMarkers(small, constraints, &tooSmall).value.empty());
+    REQUIRE(tooSmall.size() == 1);
+    REQUIRE(tooSmall.at(37) > 0.0);
+    REQUIRE(tooSmall.at(37) < dai::node::DclUtils::kMinMarkerSizePx);
+    auto bigEnough = whiteImage(320, 240);
+    drawMarker37(bigEnough, 40, 40, 6);
+    REQUIRE(markerCenters(bigEnough, constraints).count(37) == 1);
+
+    // A marker id that is not part of the constraints is dropped.
+    auto others = constraints;
+    others.markerDistances.clear();
+    others.socketDistances = {{43, Socket::CAM_A, 1.0f}};
+    REQUIRE(markerCenters(image, others).empty());
+
+    // The same id twice in one image is ambiguous: neither copy is used.
+    drawMarker37(image, 200, 120, 16);
+    REQUIRE(markerCenters(image, constraints).empty());
+}
+
+TEST_CASE("DynamicCalibration detects Luxonis Marker centers through DCL", "[WorldConstraints]") {
+    using dai::node::DclUtils;
+    auto constraints = dai::WorldConstraints::fromJsonString(
+        R"({"markerType": "LUXONIS", "markerDistances": [{"markers": [0, 4], "distance": 0.6}], "socketDistances": [{"marker": 2, "socket": "CAM_A", "distance": 1.5}]})");
+
+    // Three Luxonis Markers (ids 0, 2, 4; outer radius 40 px, 128 px tiles) pasted on a 640x480 grey canvas; the
+    // raster centre is the middle of the square tile, i.e. x0 + n / 2 - 0.5 in pixel-center coordinates.
+    auto image = whiteImage(640, 480);
+    std::fill(image.data.begin(), image.data.end(), static_cast<uint8_t>(190));
+    const std::array<std::pair<int, std::pair<int, int>>, 3> placements = {{{0, {30, 40}}, {2, {250, 60}}, {4, {400, 250}}}};
+    std::map<int, std::array<float, 2>> truth;
+    for(const auto& [id, origin] : placements) {
+        const auto tile = dcl::drawLuxonisMarker(id, 40.0);
+        for(unsigned y = 0; y < tile.height; ++y) {
+            for(unsigned x = 0; x < tile.width; ++x) {
+                image.data[(origin.second + y) * image.width + origin.first + x] = tile.data[y * tile.width + x];
+            }
+        }
+        truth[id] = {origin.first + tile.width / 2.0f - 0.5f, origin.second + tile.height / 2.0f - 0.5f};
+    }
+    const auto centers = markerCenters(image, constraints);
+    REQUIRE(centers.size() == 3);
+    const auto outline = DclUtils::toMarkerOutline(DclUtils::detectConfiguredMarkers(image, constraints).value.at(0));
+    REQUIRE(outline.corners.size() == 4);
+    REQUIRE_FALSE(outline.outerEdge.empty());
+    REQUIRE_FALSE(outline.innerEdge.empty());
+    for(const auto& [id, uv] : truth) {
+        REQUIRE(centers.count(id) == 1);
+        REQUIRE(centers.at(id)[0] == Catch::Approx(uv[0]).margin(0.3));
+        REQUIRE(centers.at(id)[1] == Catch::Approx(uv[1]).margin(0.3));
+    }
+    // A ring smaller than DclUtils::kMinMarkerSizePx (outer radius 10 px, 20 px diameter) is dropped.
+    {
+        auto small = whiteImage(640, 480);
+        std::fill(small.data.begin(), small.data.end(), static_cast<uint8_t>(190));
+        const auto tile = dcl::drawLuxonisMarker(0, 10.0);
+        for(unsigned y = 0; y < tile.height; ++y) {
+            for(unsigned x = 0; x < tile.width; ++x) {
+                small.data[(100 + y) * small.width + 100 + x] = tile.data[y * tile.width + x];
+            }
+        }
+        REQUIRE(markerCenters(small, constraints).empty());
+    }
+    // Ids outside the constraints are dropped, and an ArUco spec sees no Luxonis Marker.
+    constraints.socketDistances.clear();
+    constraints.markerDistances = {{0, 4, 0.6f}};
+    REQUIRE(markerCenters(image, constraints).size() == 2);
+    auto aruco = dai::WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [0, 4], "distance": 0.6}]})");
+    REQUIRE(markerCenters(image, aruco).empty());
+}

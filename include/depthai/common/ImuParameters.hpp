@@ -11,14 +11,14 @@ struct AccelAxisNoiseParams {
     float noiseDensity = 0.0f;
     float randomWalk = 0.0f;
     float biasStability = 0.0f;
-    DEPTHAI_SERIALIZE(AccelAxisNoiseParams, noiseDensity, randomWalk, biasStability);
+    DEPTHAI_SERIALIZE_DECL(AccelAxisNoiseParams, noiseDensity, randomWalk, biasStability);
 };
 
 struct GyroAxisNoiseParams {
     float noiseDensity = 0.0f;
     float randomWalk = 0.0f;
     float biasStability = 0.0f;
-    DEPTHAI_SERIALIZE(GyroAxisNoiseParams, noiseDensity, randomWalk, biasStability);
+    DEPTHAI_SERIALIZE_DECL(GyroAxisNoiseParams, noiseDensity, randomWalk, biasStability);
 };
 
 struct AccelerometerNoiseParams {
@@ -26,7 +26,7 @@ struct AccelerometerNoiseParams {
     AccelAxisNoiseParams y;
     AccelAxisNoiseParams z;
 
-    DEPTHAI_SERIALIZE(AccelerometerNoiseParams, x, y, z);
+    DEPTHAI_SERIALIZE_DECL(AccelerometerNoiseParams, x, y, z);
 };
 
 struct GyroscopeNoiseParams {
@@ -34,7 +34,7 @@ struct GyroscopeNoiseParams {
     GyroAxisNoiseParams y;
     GyroAxisNoiseParams z;
 
-    DEPTHAI_SERIALIZE(GyroscopeNoiseParams, x, y, z);
+    DEPTHAI_SERIALIZE_DECL(GyroscopeNoiseParams, x, y, z);
 };
 
 /// Allan-variance-derived IMU noise parameters.
@@ -48,7 +48,7 @@ struct ImuNoiseParameters {
     // Gyroscope parameters
     GyroscopeNoiseParams gyroscope;
 
-    DEPTHAI_SERIALIZE(ImuNoiseParameters, name, accelerometer, gyroscope);
+    DEPTHAI_SERIALIZE_DECL(ImuNoiseParameters, name, accelerometer, gyroscope);
 };
 
 /// Complete IMU parameter payload: noise + per-sensor canonical affine calibration.
@@ -57,7 +57,7 @@ struct ImuCalibrationParams {
     std::vector<std::vector<float>> accelerometer = {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}};
     std::vector<std::vector<float>> gyroscope = {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}};
 
-    DEPTHAI_SERIALIZE(ImuCalibrationParams, noise, accelerometer, gyroscope);
+    DEPTHAI_SERIALIZE_DECL(ImuCalibrationParams, noise, accelerometer, gyroscope);
 };
 
 }  // namespace dai

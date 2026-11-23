@@ -37,7 +37,7 @@ class SystemInformation : public Buffer {
         return DatatypeEnum::SystemInformation;
     }
 
-    DEPTHAI_SERIALIZE(
+    DEPTHAI_SERIALIZE_DECL(
         SystemInformation, ddrMemoryUsage, cmxMemoryUsage, leonCssMemoryUsage, leonMssMemoryUsage, leonCssCpuUsage, leonMssCpuUsage, chipTemperature);
 };
 

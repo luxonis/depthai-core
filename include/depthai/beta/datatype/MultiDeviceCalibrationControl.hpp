@@ -45,10 +45,7 @@ class MultiDeviceCalibrationControl : public Buffer {
         return std::make_shared<MultiDeviceCalibrationControl>(Commands::Reset{});
     }
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = getDatatype();
-    }
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::MultiDeviceCalibrationControl;

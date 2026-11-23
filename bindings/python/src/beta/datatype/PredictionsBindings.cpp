@@ -10,7 +10,7 @@ void bind_beta_predictions(pybind11::module& m, void* pCallstack) {
 
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
     py::class_<beta::Prediction> prediction(betaModule, "Prediction", DOC(dai, beta, Prediction));
-    py::class_<beta::Predictions, Py<beta::Predictions>, Buffer, Transformable, std::shared_ptr<beta::Predictions>> predictions(
+    py::class_<beta::Predictions, Py<beta::Predictions>, Buffer, Transformable, py::smart_holder> predictions(
         betaModule, "Predictions", DOC(dai, beta, Predictions));
 
     ///////////////////////////////////////////////////////////////////////

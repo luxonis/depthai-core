@@ -1,5 +1,6 @@
 #include "depthai/beta/BetaNode.hpp"
 
+#include "depthai/device/Device.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
 namespace dai {

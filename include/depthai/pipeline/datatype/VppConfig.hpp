@@ -120,7 +120,7 @@ class VppConfig : public Buffer {
         }
 
         // clang-format off
-        DEPTHAI_SERIALIZE(
+        DEPTHAI_SERIALIZE_DECL(
 	    InjectionParameters,
 	    useInjection,
 	    kernelSize,
@@ -273,12 +273,9 @@ class VppConfig : public Buffer {
         maxFPS = value;
     }
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::VppConfig;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(VppConfig, blending, distanceGamma, maxPatchSize, patchColoringType, uniformPatch, injectionParameters, maxNumThreads, maxFPS);
+    DEPTHAI_SERIALIZE_DECL(VppConfig, blending, distanceGamma, maxPatchSize, patchColoringType, uniformPatch, injectionParameters, maxNumThreads, maxFPS);
 };
 
 }  // namespace dai

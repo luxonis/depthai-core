@@ -20,7 +20,7 @@ void bind_edgedetectorconfig(pybind11::module& m, void* pCallstack) {
         m, "EdgeDetectorConfigData", DOC(dai, EdgeDetectorConfig, EdgeDetectorConfigData));
     // py::class_<RawEdgeDetectorConfig, RawBuffer, std::shared_ptr<RawEdgeDetectorConfig>> rawEdgeDetectorConfig(m, "RawEdgeDetectorConfig", DOC(dai,
     // RawEdgeDetectorConfig));
-    py::class_<EdgeDetectorConfig, Py<EdgeDetectorConfig>, Buffer, std::shared_ptr<EdgeDetectorConfig>> edgeDetectorConfig(
+    py::class_<EdgeDetectorConfig, Py<EdgeDetectorConfig>, Buffer, py::smart_holder> edgeDetectorConfig(
         m, "EdgeDetectorConfig", DOC(dai, EdgeDetectorConfig));
 
     ///////////////////////////////////////////////////////////////////////

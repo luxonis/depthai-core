@@ -29,6 +29,7 @@
 #include "depthai/pipeline/node/BenchmarkOut.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/IMU.hpp"
+#include "depthai/pipeline/node/ToF.hpp"
 #include "pipeline/Pipeline.hpp"
 #include "utility/Logging.hpp"
 
@@ -453,6 +454,7 @@ bool verifyImuCalibrationMetadata(const std::string& imuName, const std::optiona
 void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
                            const HealthCheckConfig& config,
                            const std::vector<CameraBoardSocket>& connectedCameras,
+                           const std::vector<CameraBoardSocket>& tofSockets,
                            const std::string& imuName,
                            HealthCheckMetrics& metrics,
                            const std::function<bool()>& shouldStop) {
@@ -466,8 +468,12 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
     // Prepare camera streams for camera verification and power-supply load
     if(shouldCreateCameraStreams) {
         for(auto socket : connectedCameras) {
-            auto camera = pipeline.create<node::Camera>()->build(socket);
-            auto* output = camera->requestFullResolutionOutput();
+            Node::Output* output = nullptr;
+            if(std::find(tofSockets.begin(), tofSockets.end(), socket) != tofSockets.end()) {
+                output = &pipeline.create<node::ToF>()->build(socket)->tofBase->depth;
+            } else {
+                output = pipeline.create<node::Camera>()->build(socket)->requestFullResolutionOutput();
+            }
             if(output == nullptr) {
                 if(config.verifyCameraFunctionality && metrics.cameraFunctionality == HealthCheckResult::NOT_RUN) {
                     metrics.cameraFunctionality = HealthCheckResult::FAIL;
@@ -703,11 +709,13 @@ HealthCheckMetrics runChecks(const DeviceInfo& devInfo, const HealthCheckConfig&
     // Query cameras for camera verification and power-supply load
     throwIfStopRequested(shouldStop);
     std::vector<CameraBoardSocket> connectedCameras;
+    std::vector<CameraBoardSocket> tofSockets;
     std::vector<StereoPair> deviceStereoPairs;
     if(config.verifyCameraFunctionality || config.verifyCameraCalibration || config.verifyPowerSupply) {
         logger::info("Health check: Querying connected cameras");
         try {
             connectedCameras = device->getConnectedCameras();
+            tofSockets = device->getConnectedCameras(CameraSensorType::TOF);
             if(connectedCameras.empty()) {
                 if(config.verifyCameraFunctionality) {
                     metrics.cameraFunctionality = HealthCheckResult::FAIL;
@@ -773,7 +781,7 @@ HealthCheckMetrics runChecks(const DeviceInfo& devInfo, const HealthCheckConfig&
     throwIfStopRequested(shouldStop);
     if(config.verifyCameraFunctionality || config.verifyImuFunctionality || config.verifyPowerSupply) {
         logger::info("Health check: Running diagnostic pipeline");
-        runDiagnosticPipeline(device, config, connectedCameras, imuName, metrics, shouldStop);
+        runDiagnosticPipeline(device, config, connectedCameras, tofSockets, imuName, metrics, shouldStop);
     }
 
     // Measure the bandwidth
