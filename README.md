@@ -17,6 +17,8 @@ Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.co
 
 For platform differences when reading tensors in Script, see [NNData inside Script](docs/ScriptNNData.md).
 
+To bundle SNPE User Defined Operation libraries with an RVC4 model, see [NNArchive runtime dependencies](docs/NNArchiveRuntimeDependencies.md).
+
 ## Examples
 For the complete model-description YAML format, see the [model zoo reference](docs/ModelZoo.md).
 

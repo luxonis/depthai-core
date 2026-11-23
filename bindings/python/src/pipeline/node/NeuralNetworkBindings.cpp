@@ -1,5 +1,8 @@
+#include <pybind11/stl_bind.h>
+
 #include <optional>
 #include <string_view>
+#include <vector>
 
 #include "Common.hpp"
 #include "NodeBindings.hpp"
@@ -7,6 +10,8 @@
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
+
+PYBIND11_MAKE_OPAQUE(std::vector<dai::NeuralNetworkProperties::UdoPackage>);
 
 void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -16,6 +21,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
     py::class_<NeuralNetworkProperties, std::shared_ptr<NeuralNetworkProperties>> neuralNetworkProperties(
         m, "NeuralNetworkProperties", DOC(dai, NeuralNetworkProperties));
     py::enum_<NeuralNetworkProperties::ModelSource> modelSource(neuralNetworkProperties, "ModelSource", DOC(dai, NeuralNetworkProperties, ModelSource));
+    py::class_<NeuralNetworkProperties::UdoPackage> udoPackage(neuralNetworkProperties, "UdoPackage", DOC(dai, NeuralNetworkProperties, UdoPackage));
     auto neuralNetwork = ADD_NODE(NeuralNetwork);
     py::class_<NeuralNetwork::Model> neuralNetworkModel(neuralNetwork, "Model");
     neuralNetworkModel.def(py::init<const NNModelDescription&>(), py::arg("modelDesc"))
@@ -38,11 +44,19 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
     modelSource.value("BLOB", NeuralNetworkProperties::ModelSource::BLOB).value("CUSTOM_MODEL", NeuralNetworkProperties::ModelSource::CUSTOM_MODEL);
 
     // Properties
+    udoPackage.def(py::init<>())
+        .def_readwrite("registration", &NeuralNetworkProperties::UdoPackage::registration, DOC(dai, NeuralNetworkProperties, UdoPackage, registration))
+        .def_readwrite(
+            "dspImplementations", &NeuralNetworkProperties::UdoPackage::dspImplementations, DOC(dai, NeuralNetworkProperties, UdoPackage, dspImplementations));
+    py::bind_vector<std::vector<NeuralNetworkProperties::UdoPackage>>(neuralNetworkProperties, "UdoPackageVector");
+    py::implicitly_convertible<py::list, std::vector<NeuralNetworkProperties::UdoPackage>>();
     neuralNetworkProperties.def(py::init<>());
 
     neuralNetworkProperties.def_readwrite("modelSource", &NeuralNetworkProperties::modelSource, DOC(dai, NeuralNetworkProperties, modelSource))
         .def_readwrite("backend", &dai::NeuralNetworkProperties::backend, DOC(dai, NeuralNetworkProperties, backend))
         .def_readwrite("backendProperties", &dai::NeuralNetworkProperties::backendProperties, DOC(dai, NeuralNetworkProperties, backendProperties))
+        .def_readwrite("udoPackages", &dai::NeuralNetworkProperties::udoPackages, DOC(dai, NeuralNetworkProperties, udoPackages))
+        .def_readwrite("udoLibraryUris", &dai::NeuralNetworkProperties::udoLibraryUris, DOC(dai, NeuralNetworkProperties, udoLibraryUris))
         .def_readwrite("deviceModel", &dai::NeuralNetworkProperties::deviceModel, DOC(dai, NeuralNetworkProperties, deviceModel))
         .def_readwrite("modelUri", &dai::NeuralNetworkProperties::modelUri, DOC(dai, NeuralNetworkProperties, modelUri))
         .def_readwrite("numShavesPerThread", &dai::NeuralNetworkProperties::numShavesPerThread, DOC(dai, NeuralNetworkProperties, numShavesPerThread))

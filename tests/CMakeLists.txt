@@ -538,6 +538,10 @@ dai_add_test(nn_archive_head_test src/onhost_tests/nn_archive/head_test.cpp)
 dai_set_test_labels(nn_archive_head_test onhost ci)
 
 # NNArchive test
+dai_add_test(nn_archive_runtime_dependencies_test src/onhost_tests/nn_archive/runtime_dependencies_test.cpp)
+target_link_libraries(nn_archive_runtime_dependencies_test PRIVATE LibArchive::LibArchive liblzma::liblzma)
+dai_set_test_labels(nn_archive_runtime_dependencies_test onhost ci)
+
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(nn_archive_test src/onhost_tests/nn_archive/nn_archive_test.cpp)
     target_compile_definitions(nn_archive_test PRIVATE
@@ -1014,6 +1018,11 @@ dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 ci)
 dai_add_test(neural_network_nnarchive_behavior_test src/ondevice_tests/pipeline/node/neural_network_nnarchive_behavior_test.cpp)
 target_link_libraries(neural_network_nnarchive_behavior_test PRIVATE LibArchive::LibArchive liblzma::liblzma BZip2::BZip2)
 dai_set_test_labels(neural_network_nnarchive_behavior_test ondevice rvc4 ci)
+
+# NeuralNetwork UDO test
+dai_add_test(neural_network_udo_test src/ondevice_tests/pipeline/node/neural_network_udo_test.cpp)
+target_link_libraries(neural_network_udo_test PRIVATE LibArchive::LibArchive liblzma::liblzma BZip2::BZip2)
+dai_set_test_labels(neural_network_udo_test ondevice rvc4 rvc4ffc ci)
 
 # NeuralNetwork node test
 if(DEPTHAI_FETCH_ARTIFACTS)

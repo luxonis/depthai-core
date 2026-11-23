@@ -125,6 +125,7 @@ inline void from_json(const json& j, Model& x) {
     x.inputs = j.at("inputs").get<std::vector<Input>>();
     x.metadata = j.at("metadata").get<MetadataClass>();
     x.outputs = j.at("outputs").get<std::vector<Output>>();
+    x.runtimeDependencies = get_stack_optional<RuntimeDependencies>(j, "runtime_dependencies");
 }
 
 inline void to_json(json& j, const Model& x) {
@@ -133,6 +134,7 @@ inline void to_json(json& j, const Model& x) {
     j["inputs"] = x.inputs;
     j["metadata"] = x.metadata;
     j["outputs"] = x.outputs;
+    if(x.runtimeDependencies) j["runtime_dependencies"] = *x.runtimeDependencies;
 }
 
 inline void from_json(const json& j, Config& x) {
