@@ -1548,9 +1548,8 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             }
             // OS metadata is optional (RVC2/custom firmware may not provide it).
             try {
-                pimpl->osVersion.refresh([&]() {
-                    return getPlatform() == Platform::RVC4 ? pimpl->rpcCallChecked<std::string>("getOSVersion") : std::string{};
-                });
+                pimpl->osVersion.refresh(
+                    [&]() { return getPlatform() == Platform::RVC4 ? pimpl->rpcCallChecked<std::string>("getOSVersion") : std::string{}; });
             } catch(const std::exception& ex) {
                 pimpl->logger.debug("Could not read device OS version: {}", ex.what());
             }
