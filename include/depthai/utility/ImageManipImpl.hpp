@@ -768,6 +768,11 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
 
     assert(inFrameType != ImgFrame::Type::NONE);
     base = newBase;
+    if(!(mode & MODE_WARP)) {
+        // Without warp the output keeps the input size. The warp path reads base.outputWidth/outputHeight as the requested size.
+        base.outputWidth = srcFrameSpecs.width;
+        base.outputHeight = srcFrameSpecs.height;
+    }
     outputFrameType = outType;
     inType = inFrameType;
     type = inType;
@@ -779,9 +784,6 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
     }
 
     if(mode == 0) {
-        // Passthrough
-        base.outputWidth = srcFrameSpecs.width;
-        base.outputHeight = srcFrameSpecs.height;
         return *this;
     } else if(mode == MODE_CONVERT) {
         auto ccDstSpecs = getCcDstFrameSpecs(srcSpecs, inType, outputFrameType);
@@ -834,9 +836,6 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
         warpEngine.build(srcSpecs, getOutputFrameSpecs(type), type, matrix, srcCorners);
         warpEngine.setBackgroundColor(base.backgroundR, base.backgroundG, base.backgroundB);
         clrChange.build(getOutputFrameSpecs(type), getOutputFrameSpecs(outputFrameType), type, outputFrameType);
-    } else {
-        base.outputWidth = inputWidth;
-        base.outputHeight = inputHeight;
     }
     size_t newConvertedSize = getAlignedOutputFrameSize(type, inputWidth, inputHeight);
     size_t newColormapSize = getAlignedOutputFrameSize(type, base.outputWidth, base.outputHeight);
