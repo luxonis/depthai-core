@@ -102,6 +102,38 @@ TEST_CASE("WorldConstraints parses the documented JSON form", "[WorldConstraints
     }
 }
 
+TEST_CASE("WorldConstraints socket distances may name their device", "[WorldConstraints]") {
+    using dai::WorldConstraints;
+    const auto parsed = WorldConstraints::fromJsonString(
+        R"({"socketDistances": [{"marker": 37, "deviceId": "device-a", "socket": "CAM_A", "distance": 1.68},
+                                {"marker": 37, "deviceId": "device-b", "socket": "CAM_A", "distance": 1.5},
+                                {"marker": 43, "socket": "CAM_A", "distance": 2.0}]})");
+    REQUIRE(parsed.socketDistances.size() == 3);
+    REQUIRE(parsed.socketDistances[0].deviceId == "device-a");
+    REQUIRE(parsed.socketDistances[1].deviceId == "device-b");
+    REQUIRE(parsed.socketDistances[2].deviceId.empty());
+
+    // The ID survives the documented form and the wire form; an entry without one does not gain the key.
+    const auto json = parsed.toJson();
+    REQUIRE(json.at("socketDistances")[0].at("deviceId") == "device-a");
+    REQUIRE_FALSE(json.at("socketDistances")[2].contains("deviceId"));
+    REQUIRE(WorldConstraints::fromJson(json).socketDistances[1].deviceId == "device-b");
+    const nlohmann::json wire = parsed;
+    REQUIRE(wire.get<WorldConstraints>().socketDistances[0].deviceId == "device-a");
+    REQUIRE(WorldConstraints::MarkerSocketDistance(1, "device-a", Socket::CAM_B, 120.0f, dai::LengthUnit::CENTIMETER).distance == Catch::Approx(1.2f));
+    REQUIRE(WorldConstraints::MarkerSocketDistance(1, "device-a", Socket::CAM_B, 1.2f).deviceId == "device-a");
+
+    // The same marker and socket twice is a repeated measurement only on the same device.
+    REQUIRE_THROWS_WITH(WorldConstraints::fromJsonString(
+                            R"({"socketDistances": [{"marker": 1, "deviceId": "a", "socket": "CAM_A", "distance": 1},
+                                                    {"marker": 1, "deviceId": "a", "socket": "CAM_A", "distance": 2}]})"),
+                        Catch::Matchers::ContainsSubstring("given twice"));
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "deviceId": "", "socket": "CAM_A", "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "deviceId": 7, "socket": "CAM_A", "distance": 1}]})"),
+                      std::invalid_argument);
+}
+
 TEST_CASE("WorldConstraints preserves documented aliases and rejects conflicts", "[WorldConstraints]") {
     using dai::WorldConstraints;
     const auto aliases = WorldConstraints::fromJsonString(

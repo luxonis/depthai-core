@@ -60,13 +60,10 @@ struct ReconstructionCamera {
     }
 };
 
-ReconstructionCamera reconstructionCamera(const CalibrationHandler& calibration,
-                                          CameraBoardSocket base,
-                                          CameraBoardSocket socket,
-                                          const ObservationCamera& observed) {
-    const auto& intrinsics = observed.intrinsics;
-    const auto pose = calibration.getCameraExtrinsics(base, socket, false, LengthUnit::METER);
-    const auto& distortion = observed.distortion;
+ReconstructionCamera reconstructionCamera(const PosedObservationCamera& posed) {
+    const auto& intrinsics = posed.model.intrinsics;
+    const auto& pose = posed.baseToCamera;
+    const auto& distortion = posed.model.distortion;
     ReconstructionCamera camera;
     for(int row = 0; row < 3; ++row) {
         for(int col = 0; col < 3; ++col) {
@@ -75,7 +72,7 @@ ReconstructionCamera reconstructionCamera(const CalibrationHandler& calibration,
         }
         camera.translation[row] = pose.at(row).at(3);
     }
-    camera.fisheye = observed.distortionModel == CameraModel::Fisheye;
+    camera.fisheye = posed.model.distortionModel == CameraModel::Fisheye;
     const size_t count = camera.fisheye ? 4
                                         : (distortion.size() >= 14   ? 14
                                            : distortion.size() >= 12 ? 12
@@ -139,21 +136,29 @@ std::vector<ConstraintResidual> worldConstraintResiduals(const WorldConstraints&
                                                          const CalibrationHandler& calibration,
                                                          CameraBoardSocket base,
                                                          const std::map<CameraBoardSocket, ObservationCamera>& cameras) {
-    std::map<CameraBoardSocket, ReconstructionCamera> converted;
+    std::map<CameraBoardSocket, PosedObservationCamera> posed;
     for(const auto& [socket, observed] : cameras) {
-        converted.emplace(socket, reconstructionCamera(calibration, base, socket, observed));
+        posed.emplace(socket, PosedObservationCamera{observed, calibration.getCameraExtrinsics(base, socket, false, LengthUnit::METER)});
     }
     // A referenced socket need not supply images, but its final camera center is still needed.
     for(const auto& distance : constraints.socketDistances) {
-        if(converted.count(distance.socket) == 0) {
-            converted.emplace(distance.socket,
-                              reconstructionCamera(calibration,
-                                                   base,
-                                                   distance.socket,
-                                                   {calibration.getCameraIntrinsics(distance.socket),
-                                                    calibration.getDistortionCoefficients(distance.socket),
-                                                    calibration.getDistortionModel(distance.socket)}));
+        if(posed.count(distance.socket) == 0) {
+            posed.emplace(distance.socket,
+                          PosedObservationCamera{{calibration.getCameraIntrinsics(distance.socket),
+                                                  calibration.getDistortionCoefficients(distance.socket),
+                                                  calibration.getDistortionModel(distance.socket)},
+                                                 calibration.getCameraExtrinsics(base, distance.socket, false, LengthUnit::METER)});
         }
+    }
+    return worldConstraintResiduals(constraints, observationSets, posed);
+}
+
+std::vector<ConstraintResidual> worldConstraintResiduals(const WorldConstraints& constraints,
+                                                         const std::deque<MarkerObservationSet>& observationSets,
+                                                         const std::map<CameraBoardSocket, PosedObservationCamera>& cameras) {
+    std::map<CameraBoardSocket, ReconstructionCamera> converted;
+    for(const auto& [key, posed] : cameras) {
+        converted.emplace(key, reconstructionCamera(posed));
     }
     const auto toPixels = [](const std::vector<std::array<float, 2>>& points) {
         std::vector<cv::Point2d> pixels;

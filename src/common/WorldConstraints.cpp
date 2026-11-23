@@ -9,6 +9,7 @@
 #include <set>
 #include <sstream>
 #include <stdexcept>
+#include <tuple>
 #include <utility>
 
 #include "depthai/common/DepthUnit.hpp"
@@ -226,14 +227,21 @@ WorldConstraints::MarkerDistance markerDistanceFromJson(const nlohmann::json& en
     return distance;
 }
 
-/// A "socketDistances" entry, {"marker": m, "socket": s, "distance": d}.
+/// A "socketDistances" entry, {"marker": m, "socket": s, "distance": d} with an optional "deviceId": id.
 WorldConstraints::MarkerSocketDistance socketDistanceFromJson(const nlohmann::json& entry) {
     const std::string what = "a \"socketDistances\" entry";
-    requireObjectWithKeys(entry, what, {"marker", "socket", "distance"});
+    requireObjectWithKeys(entry, what, {"marker", "deviceId", "socket", "distance"});
     WorldConstraints::MarkerSocketDistance distance;
     distance.marker = markerIdFromJson(requiredMember(entry, "marker", what));
     distance.socket = socketFromJson(requiredMember(entry, "socket", what));
     distance.distance = lengthFromJson(requiredMember(entry, "distance", what), "\"distance\" of " + what);
+    if(entry.contains("deviceId")) {
+        const auto& deviceId = entry.at("deviceId");
+        if(!deviceId.is_string() || deviceId.get<std::string>().empty()) {
+            throw std::invalid_argument("WorldConstraints: \"deviceId\" of " + what + " must be a non-empty string, got " + deviceId.dump());
+        }
+        distance.deviceId = deviceId.get<std::string>();
+    }
     return distance;
 }
 
@@ -390,7 +398,9 @@ nlohmann::json WorldConstraints::toJson() const {
     json["markerDistances"] = markerDistancesJson;
     auto socketDistancesJson = nlohmann::json::array();
     for(const auto& distance : socketDistances) {
-        socketDistancesJson.push_back({{"marker", distance.marker}, {"socket", toString(distance.socket)}, {"distance", distance.distance}});
+        nlohmann::json entry = {{"marker", distance.marker}, {"socket", toString(distance.socket)}, {"distance", distance.distance}};
+        if(!distance.deviceId.empty()) entry["deviceId"] = distance.deviceId;
+        socketDistancesJson.push_back(std::move(entry));
     }
     json["socketDistances"] = socketDistancesJson;
     auto markerSizesJson = nlohmann::json::array();
@@ -413,6 +423,9 @@ WorldConstraints::MarkerDistance::MarkerDistance(int32_t markerA, int32_t marker
 
 WorldConstraints::MarkerSocketDistance::MarkerSocketDistance(int32_t marker, CameraBoardSocket socket, float distance, LengthUnit unit)
     : marker(marker), socket(socket), distance(toMeters(distance, unit)) {}
+
+WorldConstraints::MarkerSocketDistance::MarkerSocketDistance(int32_t marker, std::string deviceId, CameraBoardSocket socket, float distance, LengthUnit unit)
+    : marker(marker), socket(socket), distance(toMeters(distance, unit)), deviceId(std::move(deviceId)) {}
 
 WorldConstraints::MarkerSize::MarkerSize(int32_t marker, float size, LengthUnit unit) : marker(marker), size(toMeters(size, unit)) {}
 
@@ -440,10 +453,11 @@ void WorldConstraints::validate() const {
         }
         checkDistance(distance.distance, what);
     }
-    std::set<std::pair<int32_t, CameraBoardSocket>> measuredSockets;
+    std::set<std::tuple<int32_t, std::string, CameraBoardSocket>> measuredSockets;
     for(const auto& distance : socketDistances) {
-        const std::string what = "distance between marker " + std::to_string(distance.marker) + " and " + toString(distance.socket);
-        if(!measuredSockets.insert({distance.marker, distance.socket}).second) {
+        const std::string what = "distance between marker " + std::to_string(distance.marker) + " and "
+                                 + (distance.deviceId.empty() ? std::string() : distance.deviceId + "/") + toString(distance.socket);
+        if(!measuredSockets.insert({distance.marker, distance.deviceId, distance.socket}).second) {
             throw std::invalid_argument("WorldConstraints: " + what + " is given twice");
         }
         if(distance.marker < 0) {

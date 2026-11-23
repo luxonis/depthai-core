@@ -1,4 +1,5 @@
 #include <pybind11/stl.h>
+#include <pybind11/stl/filesystem.h>
 
 #include "../../pipeline/node/Common.hpp"
 #include "../../pipeline/node/NodeBindings.hpp"
@@ -44,5 +45,10 @@ void bind_beta_multi_device_calibration(pybind11::module& m, void* pCallstack) {
         .def("setInitialGuesses", py::overload_cast<const std::vector<MultiDeviceExtrinsics>&>(&MultiDeviceCalibration::setInitialGuesses), "guesses"_a)
         .def("setInitialGuesses", py::overload_cast<const beta::MultiDeviceCalibrationHandler&>(&MultiDeviceCalibration::setInitialGuesses), "previous"_a)
         .def("setStereoPair", &MultiDeviceCalibration::setStereoPair, "deviceId"_a, "leftSocket"_a, "rightSocket"_a)
-        .def("setDeviceCalibration", &MultiDeviceCalibration::setDeviceCalibration, "deviceId"_a, "calibration"_a);
+        .def("setDeviceCalibration", &MultiDeviceCalibration::setDeviceCalibration, "deviceId"_a, "calibration"_a)
+        .def("setWorldConstraints", &MultiDeviceCalibration::setWorldConstraints, "constraints"_a)
+        .def("setWorldConstraintsFromJson", &MultiDeviceCalibration::setWorldConstraintsFromJson, "json"_a)
+        .def("setWorldConstraintsFromFile", &MultiDeviceCalibration::setWorldConstraintsFromFile, "path"_a)
+        .def("clearWorldConstraints", &MultiDeviceCalibration::clearWorldConstraints)
+        .def("getWorldConstraints", &MultiDeviceCalibration::getWorldConstraints);
 }

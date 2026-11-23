@@ -82,6 +82,11 @@ MarkerType markerTypeFromString(const std::string& name);
  *       "markerSizes": [ {"marker": 37, "size": 0.10} ]
  *     }
  *
+ * A "socketDistances" entry may name the device of the socket with "deviceId", as in
+ * {"marker": 37, "deviceId": "1844301021B6E81200", "socket": "CAM_A", "distance": 1.68}. A calibration of one
+ * device (DynamicCalibration, AutoCalibration) does not need it and ignores it; a calibration across devices
+ * (MultiDeviceCalibration) requires it.
+ *
  * "markerType" is optional and defaults to "aruco"; "luxonis" selects Luxonis Markers. "arucoDictionary" is optional,
  * defaults to "DICT_4X4_50" and is allowed with "aruco" only. JSON comments are not accepted.
  *
@@ -115,10 +120,15 @@ struct WorldConstraints {
         MarkerSocketDistance() = default;
         /// distance is given in unit (meters by default) and stored in meters.
         MarkerSocketDistance(int32_t marker, CameraBoardSocket socket, float distance, LengthUnit unit = LengthUnit::METER);
+        /// The socket of the device with the given ID; distance is given in unit (meters by default) and stored in meters.
+        MarkerSocketDistance(int32_t marker, std::string deviceId, CameraBoardSocket socket, float distance, LengthUnit unit = LengthUnit::METER);
         int32_t marker = -1;
         CameraBoardSocket socket = CameraBoardSocket::AUTO;
         float distance = 0.0f;
-        DEPTHAI_SERIALIZE_DECL(MarkerSocketDistance, marker, socket, distance);
+        /// ID of the device the socket belongs to. Empty when not given: a calibration of one device does not need
+        /// it and ignores it, MultiDeviceCalibration requires it.
+        std::string deviceId;
+        DEPTHAI_SERIALIZE_DECL(MarkerSocketDistance, marker, socket, distance, deviceId);
     };
 
     /// Printed size of a marker: ARUCO the length of a side of the black square, LUXONIS the outer diameter of the ring.
@@ -151,7 +161,7 @@ struct WorldConstraints {
     /// True when neither a distance nor a marker size is given.
     bool empty() const;
     /// Throws std::invalid_argument when a distance or size is not positive and finite, a distance refers to the
-    /// same marker twice, a pair of markers, a marker and socket, or a marker size is measured twice, an entry
+    /// same marker twice, a pair of markers, a marker and socket (of the same device), or a marker size is measured twice, an entry
     /// names a negative marker id or the AUTO socket, markerType / arucoDictionary is not one of the enumerators,
     /// an ARUCO configuration refers to a marker id its dictionary does not contain, or a LUXONIS configuration
     /// refers to a marker id above kLuxonisMarkerIdMax.

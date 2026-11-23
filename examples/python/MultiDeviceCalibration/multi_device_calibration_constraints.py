@@ -7,6 +7,8 @@ example covers the optional MultiDeviceCalibration configuration:
 
   * setKnownDistance     metric scale from a measured camera-to-camera distance,
                          so a single camera per device is enough
+  * setWorldConstraints  metric scale from fiducial markers in the scene: measured
+                         distances between markers and printed marker sizes
   * setInitialGuess      an approximate rig layout as the solver's starting point
   * setInitialGuesses    a previous result as the starting point of the next run
   * setDeviceCalibration calibration loaded from a file instead of the device EEPROM
@@ -23,6 +25,13 @@ Re-running with the previous result as the starting point:
 
   python3 multi_device_calibration_constraints.py -d <A> <B> \
       --known-distance <A> <B> 80 --seed multi_device_calibration_constraints.json
+
+Metric scale from two markers that every camera sees, 84 cm apart (the JSON form
+is described in ../DynamicCalibration/README.md, a socket distance also needs
+"deviceId"):
+
+  python3 multi_device_calibration_constraints.py -d <A> <B> \
+      --world-constraints ../DynamicCalibration/world_constraints.json
 
 Device tokens are the IDs printed by the script, or whatever was passed to -d.
 """
@@ -75,6 +84,7 @@ parser.add_argument(
     metavar=("FROM", "TO", "X", "Y", "Z", "YAW", "PITCH", "ROLL"),
     help="Approximate transform from FROM's camera to TO's camera: translation in cm, rotation in degrees (repeatable)",
 )
+parser.add_argument("--world-constraints", type=Path, help="JSON file with marker distances and marker sizes (setWorldConstraintsFromFile)")
 parser.add_argument("--seed", type=Path, help="Previous calibration JSON whose edges seed this run (setInitialGuesses)")
 parser.add_argument(
     "--calibration",
@@ -136,8 +146,15 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
     # different devices. With one camera per device this is the only source of scale.
     for fromToken, toToken, centimeters in args.known_distance:
         calibration.setKnownDistance(resolve(fromToken), socket, resolve(toToken), socket, float(centimeters), dai.LengthUnit.CENTIMETER)
-    if not args.known_distance:
-        print("Warning: no --known-distance given; with a single camera per device the solver has no metric scale.")
+
+    # setWorldConstraints: markers in the scene with measured distances between them or
+    # known printed sizes. Every marker the file refers to must be seen by at least two
+    # of the registered cameras; a group of frames without them is not used.
+    if args.world_constraints is not None:
+        calibration.setWorldConstraintsFromFile(args.world_constraints)
+        print(f"World constraints from {args.world_constraints}")
+    if not args.known_distance and args.world_constraints is None:
+        print("Warning: no --known-distance or --world-constraints given; with a single camera per device the solver has no metric scale.")
 
     # setInitialGuess: an approximate pose between the two registered cameras
     # (X_to = R * X_from + t). Any socket pair known to the device calibrations works;

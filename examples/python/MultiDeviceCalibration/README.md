@@ -8,7 +8,7 @@ counterparts live in `examples/cpp/MultiDeviceCalibration/`.
 | Script | Shows |
 | --- | --- |
 | `multi_device_calibration.py` | Uses CAM_B/CAM_C where available, otherwise CAM_A. At least one device needs a factory-calibrated stereo pair for metric scale. Saves the result to JSON. |
-| `multi_device_calibration_constraints.py` | The optional configuration: a measured camera-to-camera distance (`setKnownDistance`), an approximate rig layout or a previous result as starting point (`setInitialGuess`, `setInitialGuesses`), calibration loaded from files (`setDeviceCalibration`) and `getSampleCount()`. |
+| `multi_device_calibration_constraints.py` | The optional configuration: a measured camera-to-camera distance (`setKnownDistance`), markers with measured distances or sizes (`setWorldConstraints`), an approximate rig layout or a previous result as starting point (`setInitialGuess`, `setInitialGuesses`), calibration loaded from files (`setDeviceCalibration`) and `getSampleCount()`. |
 
 Generic multi-device plumbing (frame sync, host nodes, device-to-device relay)
 is covered by the examples in `../MultiDevice/`.
@@ -37,8 +37,10 @@ whether to save it, or hand it to the pipeline with
   support (`DEPTHAI_BUILD_BETA`, `DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT` and
   `DEPTHAI_OPENCV_SUPPORT`; the first two default to ON).
 - A source of **metric scale**: at least two registered cameras on one device
-  (their factory calibration fixes the baseline) or a measured camera-to-camera
-  distance across devices (`setKnownDistance`).
+  (their factory calibration fixes the baseline), a measured camera-to-camera
+  distance across devices (`setKnownDistance`), or fiducial markers in the scene
+  with measured distances between them or known printed sizes
+  (`setWorldConstraints`).
 - All cameras must see the **same static, textured scene** while samples are
   collected. Keep the devices still.
 
@@ -128,7 +130,7 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
 
 ---
 
-## Constraints example: known distance, initial guess, calibration files
+## Constraints example: known distance, world constraints, initial guess, calibration files
 
 **Script:** `multi_device_calibration_constraints.py`
 (C++: `multi_device_calibration_constraints.cpp`)
@@ -142,6 +144,10 @@ optional configuration instead:
 python3 multi_device_calibration_constraints.py -d <A> <B> \
     --known-distance <A> <B> 80 \
     --initial-guess  <A> <B>  -80 0 0   15 0 0
+
+# Scale from markers in the scene instead of a camera-to-camera distance
+python3 multi_device_calibration_constraints.py -d <A> <B> \
+    --world-constraints world_constraints.json
 
 # Same, but take device A's calibration from a file instead of its EEPROM
 python3 multi_device_calibration_constraints.py -d <A> <B> \
@@ -161,10 +167,32 @@ to `-d` (an IP works too). All three options are repeatable.
 | --- | --- | --- |
 | `-s`, `--socket` | `addCamera(output)` | Same socket on every device, default `CAM_A`. |
 | `--known-distance FROM TO CM` | `setKnownDistance(from, socket, to, socket, cm, CENTIMETER)` | Tape-measured distance between the two camera centers. With one camera per device this is the only source of scale, so the script warns when it is missing. |
+| `--world-constraints PATH` | `setWorldConstraintsFromFile(path)` | Markers in the scene with measured center-to-center distances and/or printed sizes, see below. |
 | `--initial-guess FROM TO X Y Z YAW PITCH ROLL` | `setInitialGuess(MultiDeviceExtrinsics)` | Transform from FROM's registered camera to TO's: `X_to = R * X_from + t`, translation in cm, rotation as yaw/pitch/roll in degrees (`R = Rz * Ry * Rx`). Useful when the devices are strongly rotated relative to each other. |
 | `--seed PATH` | `setInitialGuesses(MultiDeviceCalibrationHandler(path))` | Every edge of a previous result becomes an initial guess. `setInitialGuesses(result.graph)` does the same in-process. |
 | `--calibration DEVICE PATH` | `setDeviceCalibration(deviceId, dai.CalibrationHandler(path))` | Overrides the device's live calibration. Required for replayed streams; here it also lets you test a calibration file before flashing it. |
 | | `getSampleCount()` | Printed when collection starts. |
+
+**World constraints.** The file uses the `dai.WorldConstraints` JSON form of the
+DynamicCalibration node (`../DynamicCalibration/README.md`): ArUco / AprilTag
+markers of one dictionary or Luxonis Markers, `markerDistances` between marker
+centers, `socketDistances` from a marker center to a camera and `markerSizes`,
+all in meters. `world_constraints.json` in this folder
+describes two 15 cm markers of `DICT_4X4_50`, ids 37 and 43, 84 cm apart. Every
+marker the file refers to must be seen, at least 25 px across, by two or more of
+the registered cameras, of one device or of different devices; a group of frames
+that does not show them is not counted, so the node waits until they are in
+view. The markers take part in the whole calibration: a marker center seen from
+two devices is a point match used next to the image features, and the
+measurements are fitted together with both. They set how far apart the devices
+are, which one camera per device cannot tell, and they refine the rotations. A
+result that does not reproduce the measurements, or that contradicts what
+stereo pairs alone give, is reported as failed with the reason in `result.info`.
+A `socketDistances` entry must name the device of its socket, because socket
+names repeat across devices:
+`{"marker": 37, "deviceId": "<device ID>", "socket": "CAM_A", "distance": 1.68}`.
+The socket is a registered camera or any other calibrated socket of that
+device.
 
 **Local origins.** An initial guess may connect any two sockets the device
 calibrations know, registered or not. The node converts it to the devices'
@@ -216,6 +244,7 @@ first `start`, or after a `reset`. They raise otherwise.
 | `setSampleCount(n)` / `getSampleCount()` | Number of complete synchronized groups to collect before solving. Default `10`, minimum `1`. |
 | `setStereoPair(deviceId, leftSocket, rightSocket)` | Optional. Restrict metric scale recovery to this factory-calibrated pair on `deviceId`, for example to pin it to the widest baseline. By default every pair of registered cameras on the same device may anchor the scale. Both sockets must be registered cameras. One pair per device. |
 | `setKnownDistance(fromDeviceId, fromSocket, toDeviceId, toSocket, distance, unit=CENTIMETER)` | Supply a measured camera-center distance between two cameras on **different** devices. Alternative or complement to a stereo pair for metric scale. |
+| `setWorldConstraints(constraints)` / `setWorldConstraintsFromJson(json)` / `setWorldConstraintsFromFile(path)` | Metric reference from fiducial markers: measured distances between marker centers, distances from marker centers to cameras and printed marker sizes as a `dai.WorldConstraints`. Alternative or complement to a stereo pair or a known distance. Socket distances need a `deviceId`. `clearWorldConstraints()` removes them, `getWorldConstraints()` returns them. |
 | `setInitialGuess(guess)` | Optional starting pose between two devices as a `dai.MultiDeviceExtrinsics`: `fromDeviceId`/`fromSocket` plus `extrinsics` with `toDeviceId`/`toCameraSocket`. Any sockets known to the device calibrations are accepted; the node converts to the calibration origins at start. One guess per device pair, the last one set wins. |
 | `setInitialGuesses(graph)` / `setInitialGuesses(handler)` | Several guesses at once. Pass a previous `result.graph`, or a `MultiDeviceCalibrationHandler` loaded from a saved JSON, to seed the next run. |
 | `setDeviceCalibration(deviceId, calibrationHandler)` | Override the live device calibration. Needed for replayed or recorded streams and tests; live devices are read automatically. |
@@ -316,7 +345,7 @@ edge; this one maps device `232264861` to device `1531764865`, both via their
   a requested socket. The Python example detects CAM_B/CAM_C and falls back to
   CAM_A; at least one device still needs a factory-calibrated stereo pair. For
   rigs with only single-camera devices, use the constraints example with
-  `--known-distance`.
+  `--known-distance` or `--world-constraints`.
 - **No result within the timeout** — groups never complete. Check that every
   camera streams, raise the sync threshold, or lower the fps.
 - **`DynamicCalibration failed: ... optimization failed`** — the views do not

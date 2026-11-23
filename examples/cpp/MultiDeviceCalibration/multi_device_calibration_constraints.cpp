@@ -5,6 +5,8 @@
 //
 //   * setKnownDistance     metric scale from a measured camera-to-camera distance,
 //                          so a single camera per device is enough
+//   * setWorldConstraints  metric scale from fiducial markers in the scene: measured
+//                          distances between markers and printed marker sizes
 //   * setInitialGuess      an approximate rig layout as the solver's starting point
 //   * setInitialGuesses    a previous result as the starting point of the next run
 //   * setDeviceCalibration calibration loaded from a file instead of the device EEPROM
@@ -14,6 +16,11 @@
 // rotated 15 degrees to the left (about the vertical axis):
 //
 //   multi_device_calibration_constraints -d <A> <B> --known-distance <A> <B> 80 --initial-guess <A> <B> -80 0 0 15 0 0
+//
+// Metric scale from two markers that every camera sees (the JSON form is described in
+// ../DynamicCalibration/README.md, a socket distance also needs "deviceId"):
+//
+//   multi_device_calibration_constraints -d <A> <B> --world-constraints world_constraints.json
 //
 // Device tokens are the IDs printed by the program, or whatever was passed to -d.
 
@@ -55,6 +62,7 @@ struct ParsedArgs {
     std::vector<InitialGuessArg> initialGuesses;
     std::map<std::string, std::filesystem::path> calibrationFiles;
     std::optional<std::filesystem::path> seed;
+    std::optional<std::filesystem::path> worldConstraints;
 };
 
 dai::CameraBoardSocket parseSocket(const std::string& name) {
@@ -77,7 +85,7 @@ std::optional<ParsedArgs> parseArguments(int argc, char** argv) {
         std::cout << "Usage: " << argv[0]
                   << " [-d|--devices <device_1> <device_2> ...] [-s|--socket CAM_A] [-n|--sample-count <count>] [-o|--output <path>]\n"
                      "       [--known-distance FROM TO CM]... [--initial-guess FROM TO X Y Z YAW PITCH ROLL]... [--calibration DEVICE PATH]...\n"
-                     "       [--seed <previous_calibration.json>]"
+                     "       [--seed <previous_calibration.json>] [--world-constraints <world_constraints.json>]"
                   << std::endl;
     };
     auto need = [&](int i, int count, const std::string& arg) {
@@ -124,6 +132,10 @@ std::optional<ParsedArgs> parseArguments(int argc, char** argv) {
             } else if(arg == "--seed") {
                 need(i, 1, arg);
                 parsed.seed = argv[i + 1];
+                i += 2;
+            } else if(arg == "--world-constraints") {
+                need(i, 1, arg);
+                parsed.worldConstraints = argv[i + 1];
                 i += 2;
             } else if(arg == "-h" || arg == "--help") {
                 printUsage();
@@ -214,8 +226,16 @@ int main(int argc, char** argv) {
     for(const auto& known : parsed->knownDistances) {
         calibration->setKnownDistance(resolve(known.from), socket, resolve(known.to), socket, known.centimeters, dai::LengthUnit::CENTIMETER);
     }
-    if(parsed->knownDistances.empty()) {
-        std::cout << "Warning: no --known-distance given; with a single camera per device the solver has no metric scale." << std::endl;
+
+    // setWorldConstraints: markers in the scene with measured distances between them or
+    // known printed sizes. Every marker the file refers to must be seen by at least two
+    // of the registered cameras; a group of frames without them is not used.
+    if(parsed->worldConstraints.has_value()) {
+        calibration->setWorldConstraintsFromFile(*parsed->worldConstraints);
+        std::cout << "World constraints from " << parsed->worldConstraints->string() << std::endl;
+    }
+    if(parsed->knownDistances.empty() && !parsed->worldConstraints.has_value()) {
+        std::cout << "Warning: no --known-distance or --world-constraints given; with a single camera per device the solver has no metric scale." << std::endl;
     }
 
     // setInitialGuess: an approximate pose between the two registered cameras

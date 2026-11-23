@@ -1,0 +1,11 @@
+{
+    "markerType": "aruco",
+    "arucoDictionary": "DICT_4X4_50",
+    "markerDistances": [
+        {"markers": [37, 43], "distance": 0.84}
+    ],
+    "markerSizes": [
+        {"marker": 37, "size": 0.15},
+        {"marker": 43, "size": 0.15}
+    ]
+}

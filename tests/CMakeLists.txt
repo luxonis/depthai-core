@@ -929,6 +929,15 @@ if(DEPTHAI_BUILD_BETA)
     dai_add_test(multi_device_calibration_result_test src/onhost_tests/multi_device_calibration_result_test.cpp)
     dai_set_test_labels(multi_device_calibration_result_test onhost ci)
 
+    if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+        dai_add_test(multi_device_calibration_world_constraints_test src/onhost_tests/multi_device_calibration_world_constraints_test.cpp)
+        # The reconstruction is compiled into depthai::core only when OpenCV is part of it, the same condition as in the main CMakeLists.
+        if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
+            target_compile_definitions(multi_device_calibration_world_constraints_test PRIVATE DEPTHAI_TEST_WORLD_CONSTRAINTS_RECONSTRUCTION)
+        endif()
+        dai_set_test_labels(multi_device_calibration_world_constraints_test onhost ci)
+    endif()
+
     # One RVC2 device with a RAM-only calibration whose chain root is not the lowest socket.
     dai_add_test(multi_device_calibration_origin_test src/ondevice_tests/multi_device_calibration_origin_test.cpp)
     dai_set_test_labels(multi_device_calibration_origin_test ondevice rvc2_all ci noreplayci)  # Replayed frames keep their recorded extrinsics

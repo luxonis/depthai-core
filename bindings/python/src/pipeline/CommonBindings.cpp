@@ -367,6 +367,14 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("distance"),
              py::arg("unit") = LengthUnit::METER,
              "The distance between a marker and a camera socket, given in unit (meters by default) and stored in meters.")
+        .def(py::init<int32_t, std::string, CameraBoardSocket, float, LengthUnit>(),
+             py::arg("marker"),
+             py::arg("deviceId"),
+             py::arg("socket"),
+             py::arg("distance"),
+             py::arg("unit") = LengthUnit::METER,
+             "The distance between a marker and a camera socket of the device with the given ID, given in unit (meters by default) and stored in meters.")
+        .def_readwrite("deviceId", &WorldConstraints::MarkerSocketDistance::deviceId, DOC(dai, WorldConstraints, MarkerSocketDistance, deviceId))
         .def_readwrite("marker", &WorldConstraints::MarkerSocketDistance::marker)
         .def_readwrite("socket", &WorldConstraints::MarkerSocketDistance::socket)
         .def_readwrite("distance", &WorldConstraints::MarkerSocketDistance::distance, "Meters");

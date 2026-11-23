@@ -2,10 +2,14 @@
 
 #include <DynamicCalibration.hpp>
 #include <algorithm>
+#include <array>
 #include <atomic>
+#include <chrono>
 #include <cmath>
+#include <deque>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -29,7 +33,9 @@
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/utility/matrixOps.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/node/DynamicCalibrationUtils.hpp"
+#include "pipeline/node/WorldConstraintsValidation.hpp"
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
@@ -72,6 +78,22 @@ std::string cameraInputName(const std::string& deviceId, CameraBoardSocket socke
     return "camera_" + deviceId + "_" + toString(socket);
 }
 
+/// "0, 4" for a list of marker ids, "none" when empty.
+std::string joinIds(const std::vector<int32_t>& ids) {
+    if(ids.empty()) return "none";
+    std::string joined;
+    for(const auto id : ids) joined += (joined.empty() ? "" : ", ") + std::to_string(id);
+    return joined;
+}
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+/// Marker observations are kept in the sets of the DynamicCalibration node, which key cameras by socket. Devices
+/// share socket names, so here the key is the position of the camera in the registration order.
+CameraBoardSocket observationKey(std::size_t cameraIndex) {
+    return static_cast<CameraBoardSocket>(static_cast<int32_t>(cameraIndex));
+}
+#endif
+
 }  // namespace
 
 class MultiDeviceCalibration::Impl {
@@ -86,6 +108,7 @@ class MultiDeviceCalibration::Impl {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         std::pair<unsigned, unsigned> resolution{0, 0};
         ImgTransformation transformation;
+        detail::MultiDeviceTransform originToCamera;
         std::shared_ptr<dcl::CameraSensorHandle> sensor;
 #endif
     };
@@ -101,12 +124,61 @@ class MultiDeviceCalibration::Impl {
     // initialGuesses converted to local-origin-to-local-origin transforms for the current cycle
     std::vector<detail::PairwiseDeviceTransform> originGuesses;
     std::vector<StereoPair> stereoPairs;
+    std::optional<WorldConstraints> worldConstraints;
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     std::unique_ptr<dcl::DynamicCalibration> dcl;
     std::map<std::string, std::shared_ptr<dcl::Device>> dclDevices;
     std::size_t collectedGroups = 0;
     bool dclInitialized = false;
+    /// A socket that a marker distance refers to but that supplies no images: it keeps its place inside its device.
+    struct AuxiliaryCamera {
+        std::string deviceId;
+        CameraBoardSocket socket = CameraBoardSocket::AUTO;
+        detail::MultiDeviceTransform originToCamera;
+        dai::node::detail::ObservationCamera model;
+        std::shared_ptr<dcl::CameraSensorHandle> sensor;
+    };
+    // Keyed by observationKey(cameras.size() + position)
+    std::vector<AuxiliaryCamera> auxiliaryCameras;
+    // worldConstraints with the socket of every socket distance replaced by the observationKey() of its camera
+    std::optional<WorldConstraints> keyedWorldConstraints;
+    // Marker observations of the groups loaded in the current cycle, cameras keyed by observationKey()
+    std::deque<MarkerObservationSet> markerObservations;
+    std::set<int32_t> markerSizeWarningIssued;
+    bool markerDetectionWarningIssued = false;
+    std::optional<std::chrono::steady_clock::time_point> markersMissingSince;
+    std::optional<std::chrono::steady_clock::time_point> markersMissingReportedAt;
+
+    /// Warns when groups keep being skipped because a configured marker is not seen by two cameras: after 5 s and
+    /// then every 30 s, as the DynamicCalibration node does.
+    void trackMissingMarkers(const CoverageData::MarkerCoverage& coverage, spdlog::async_logger& logger) {
+        constexpr std::chrono::seconds kMarkersMissingWarnAfter{5};
+        constexpr std::chrono::seconds kMarkersMissingWarnPeriod{30};
+        const auto now = std::chrono::steady_clock::now();
+        if(coverage.accepted) {
+            if(markersMissingReportedAt) logger.info("Every configured marker is seen by two cameras again");
+            markersMissingSince.reset();
+            markersMissingReportedAt.reset();
+            return;
+        }
+        if(!markersMissingSince) markersMissingSince = now;
+        const bool due =
+            markersMissingReportedAt ? now - *markersMissingReportedAt >= kMarkersMissingWarnPeriod : now - *markersMissingSince >= kMarkersMissingWarnAfter;
+        if(!due) return;
+        markersMissingReportedAt = now;
+        std::string tooSmall;
+        for(const auto& [id, sizePx] : coverage.tooSmallPx) tooSmall += fmt::format("{}{} ({:.0f} px)", tooSmall.empty() ? "" : ", ", id, sizePx);
+        const bool noneSeen = coverage.seenBy.empty() && coverage.tooSmallPx.empty();
+        logger.warn(
+            "No synchronized group accepted for {} s, markers not seen by two cameras: {}{}. Calibration waits until every configured marker is visible{}",
+            std::chrono::duration_cast<std::chrono::seconds>(now - *markersMissingSince).count(),
+            joinIds(coverage.missingMarkers),
+            tooSmall.empty() ? "" : fmt::format(", too small (minimum {:.0f} px): {}", dai::node::DclUtils::kMinMarkerSizePx, tooSmall),
+            noneSeen ? fmt::format("; none of them has been detected, check markerType{} and the marker ids",
+                                   worldConstraints && worldConstraints->markerType == MarkerType::ARUCO ? " / arucoDictionary" : "")
+                     : "");
+    }
 #endif
 
     void requireIdle(const char* setting) const {
@@ -121,10 +193,18 @@ class MultiDeviceCalibration::Impl {
         dclDevices.clear();
         collectedGroups = 0;
         dclInitialized = false;
+        markerObservations.clear();
+        auxiliaryCameras.clear();
+        keyedWorldConstraints.reset();
+        markerSizeWarningIssued.clear();
+        markerDetectionWarningIssued = false;
+        markersMissingSince.reset();
+        markersMissingReportedAt.reset();
         for(auto& camera : cameras) {
             camera.localOrigin = CameraBoardSocket::AUTO;
             camera.resolution = {0, 0};
             camera.transformation = {};
+            camera.originToCamera.clear();
             camera.sensor.reset();
         }
 #else
@@ -280,6 +360,43 @@ void MultiDeviceCalibration::setDeviceCalibration(std::string deviceId, const Ca
     pimpl->calibrationOverrides.insert_or_assign(std::move(deviceId), calibration);
 }
 
+void MultiDeviceCalibration::setWorldConstraints(const WorldConstraints& constraints) {
+    constraints.validate();
+    if(constraints.empty()) {
+        throw std::invalid_argument("MultiDeviceCalibration::setWorldConstraints: at least one marker distance or marker size is required");
+    }
+    for(const auto& distance : constraints.socketDistances) {
+        if(distance.deviceId.empty()) {
+            throw std::invalid_argument(fmt::format(
+                "MultiDeviceCalibration::setWorldConstraints: the distance between marker {} and {} needs the deviceId of the device the socket belongs to",
+                distance.marker,
+                toString(distance.socket)));
+        }
+    }
+    std::lock_guard<std::mutex> lock(pimpl->mutex);
+    pimpl->requireIdle("world constraints");
+    pimpl->worldConstraints = constraints;
+}
+
+void MultiDeviceCalibration::setWorldConstraintsFromJson(const std::string& json) {
+    setWorldConstraints(WorldConstraints::fromJsonString(json));
+}
+
+void MultiDeviceCalibration::setWorldConstraintsFromFile(const std::filesystem::path& path) {
+    setWorldConstraints(WorldConstraints::fromFile(path));
+}
+
+void MultiDeviceCalibration::clearWorldConstraints() {
+    std::lock_guard<std::mutex> lock(pimpl->mutex);
+    pimpl->requireIdle("world constraints");
+    pimpl->worldConstraints.reset();
+}
+
+std::optional<WorldConstraints> MultiDeviceCalibration::getWorldConstraints() const {
+    std::lock_guard<std::mutex> lock(pimpl->mutex);
+    return pimpl->worldConstraints;
+}
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 
 namespace {
@@ -414,6 +531,7 @@ bool MultiDeviceCalibration::initializeCycle(const std::shared_ptr<MessageGroup>
 
     for(auto& camera : pimpl->cameras) {
         const auto originToCamera = pimpl->calibrations.at(camera.deviceId).getCameraExtrinsics(camera.localOrigin, camera.socket, false, LengthUnit::METER);
+        camera.originToCamera = originToCamera;
         const auto calibration = dai::node::DclUtils::createDclCalibration(camera.transformation.getIntrinsicMatrix(),
                                                                            camera.transformation.getDistortionCoefficients(),
                                                                            matrix::extractRotationMatrix(originToCamera),
@@ -421,6 +539,71 @@ bool MultiDeviceCalibration::initializeCycle(const std::shared_ptr<MessageGroup>
                                                                            camera.transformation.getDistortionModel());
         camera.sensor =
             pimpl->dcl->addSensor(pimpl->dclDevices.at(camera.deviceId), calibration, dcl::resolution_t{camera.resolution.first, camera.resolution.second});
+    }
+
+    // Socket distances name a device and a socket: a registered camera, or any other calibrated socket of a
+    // registered device, which then keeps its place inside the device.
+    if(pimpl->worldConstraints) {
+        auto keyed = *pimpl->worldConstraints;
+        for(auto& distance : keyed.socketDistances) {
+            const auto what = fmt::format("the distance between marker {} and {}/{}", distance.marker, distance.deviceId, toString(distance.socket));
+            if(deviceIds.count(distance.deviceId) == 0) {
+                error = "world constraints: " + what + " refers to a device without registered cameras";
+                return false;
+            }
+            const auto matches = [&](const auto& camera) { return camera.deviceId == distance.deviceId && camera.socket == distance.socket; };
+            std::size_t key = 0;
+            const auto registered = std::find_if(pimpl->cameras.begin(), pimpl->cameras.end(), matches);
+            const auto auxiliary = std::find_if(pimpl->auxiliaryCameras.begin(), pimpl->auxiliaryCameras.end(), matches);
+            if(registered != pimpl->cameras.end()) {
+                key = static_cast<std::size_t>(registered - pimpl->cameras.begin());
+            } else if(auxiliary != pimpl->auxiliaryCameras.end()) {
+                key = pimpl->cameras.size() + static_cast<std::size_t>(auxiliary - pimpl->auxiliaryCameras.begin());
+            } else {
+                const auto& calibration = pimpl->calibrations.at(distance.deviceId);
+                const auto& cameraData = calibration.getEepromData().cameraData;
+                const auto info = cameraData.find(distance.socket);
+                if(info == cameraData.end()) {
+                    error = "world constraints: " + what + " refers to a socket without calibration on that device";
+                    return false;
+                }
+                Impl::AuxiliaryCamera camera;
+                camera.deviceId = distance.deviceId;
+                camera.socket = distance.socket;
+                try {
+                    const auto localOrigin = std::find_if(pimpl->cameras.begin(), pimpl->cameras.end(), [&](const auto& other) {
+                                                 return other.deviceId == distance.deviceId;
+                                             })->localOrigin;
+                    camera.originToCamera = calibration.getCameraExtrinsics(localOrigin, distance.socket, false, LengthUnit::METER);
+                    camera.model = {calibration.getCameraIntrinsics(distance.socket),
+                                    calibration.getDistortionCoefficients(distance.socket),
+                                    calibration.getDistortionModel(distance.socket)};
+                } catch(const std::exception& ex) {
+                    error = "world constraints: " + what + " refers to a socket whose calibration cannot be read: " + ex.what();
+                    return false;
+                }
+                std::array<std::array<float, 3>, 3> intrinsics{};
+                for(std::size_t row = 0; row < 3; ++row) {
+                    for(std::size_t col = 0; col < 3; ++col) intrinsics[row][col] = camera.model.intrinsics.at(row).at(col);
+                }
+                const auto dclCalibration = dai::node::DclUtils::createDclCalibration(intrinsics,
+                                                                                      camera.model.distortion,
+                                                                                      matrix::extractRotationMatrix(camera.originToCamera),
+                                                                                      matrix::extractTranslationVector(camera.originToCamera),
+                                                                                      camera.model.distortionModel);
+                camera.sensor =
+                    pimpl->dcl->addSensor(pimpl->dclDevices.at(camera.deviceId),
+                                          dclCalibration,
+                                          dcl::resolution_t{std::max<unsigned>(1U, info->second.width), std::max<unsigned>(1U, info->second.height)});
+                key = pimpl->cameras.size() + pimpl->auxiliaryCameras.size();
+                pimpl->auxiliaryCameras.push_back(std::move(camera));
+                ThreadedNode::pimpl->logger->debug("Marker constraints: {}/{} is not a registered camera, using its place in the device calibration",
+                                                   distance.deviceId,
+                                                   toString(distance.socket));
+            }
+            distance.socket = observationKey(key);
+        }
+        pimpl->keyedWorldConstraints = std::move(keyed);
     }
 
     pimpl->dclInitialized = true;
@@ -455,10 +638,66 @@ bool MultiDeviceCalibration::loadCompleteGroup(const std::shared_ptr<MessageGrou
         images.emplace_back(camera.sensor, dai::node::DclUtils::cvMatToImageData(image));
     }
 
+    // Collected now, kept only when DCL accepts the group below. A group that does not show every required marker
+    // to two cameras is not loaded at all: with constraints configured, every counted group carries them.
+    std::optional<MarkerObservationSet> pendingObservations;
+    if(pimpl->worldConstraints) {
+        const auto& constraints = *pimpl->worldConstraints;
+        auto& logger = *ThreadedNode::pimpl->logger;
+        MarkerObservationSet observations;
+        std::map<int32_t, float> tooSmallPx;
+        for(std::size_t idx = 0; idx < images.size(); ++idx) {
+            std::map<int32_t, double> tooSmall;
+            auto detected = dai::node::DclUtils::detectConfiguredMarkers(images[idx].second, constraints, &tooSmall);
+            for(const auto& [markerId, sizePx] : tooSmall) {
+                auto& recorded = tooSmallPx[markerId];
+                recorded = std::max(recorded, static_cast<float>(sizePx));
+                // Once per marker: a configured marker that is seen but too small is otherwise a silent loss of constraints.
+                if(pimpl->markerSizeWarningIssued.insert(markerId).second) {
+                    logger.warn(
+                        "Marker {} is only {:.1f} px across in {}/{}, below the {:.0f} px minimum, and is ignored: move the camera closer or print it "
+                        "larger",
+                        markerId,
+                        sizePx,
+                        pimpl->cameras[idx].deviceId,
+                        toString(pimpl->cameras[idx].socket),
+                        dai::node::DclUtils::kMinMarkerSizePx);
+                }
+            }
+            if(!detected.passed()) {
+                if(!pimpl->markerDetectionWarningIssued) {
+                    logger.warn("Marker detection failed, world constraints are not applied: {}", detected.errorMessage());
+                    pimpl->markerDetectionWarningIssued = true;
+                }
+                continue;
+            }
+            for(const auto& [markerId, detection] : detected.value) {
+                observations.centers[markerId][observationKey(idx)] = {static_cast<float>(detection.center[0]), static_cast<float>(detection.center[1])};
+                if(!constraints.markerSizes.empty()) {
+                    observations.outlines[markerId][observationKey(idx)] = dai::node::DclUtils::toMarkerOutline(detection);
+                }
+            }
+        }
+        const auto coverage = dai::node::DclUtils::markerCoverage(constraints, observations, tooSmallPx, pimpl->markerObservations.size());
+        pimpl->trackMissingMarkers(coverage, logger);
+        if(!coverage.accepted) {
+            error = "markers not seen by two cameras: " + joinIds(coverage.missingMarkers);
+            logger.trace("Synchronized group skipped, {}", error);
+            return false;
+        }
+        pendingObservations = std::move(observations);
+    }
+
     const auto loaded = pimpl->dcl->loadImages(images, timestamp);
     if(!loaded.passed()) {
         error = loaded.errorMessage();
         return false;
+    }
+    if(pendingObservations) {
+        pimpl->markerObservations.push_back(std::move(*pendingObservations));
+        while(pimpl->markerObservations.size() > dai::node::DclUtils::kMaxMarkerObservationSets) {
+            pimpl->markerObservations.pop_front();
+        }
     }
     ++pimpl->collectedGroups;
     return true;
@@ -570,11 +809,154 @@ void MultiDeviceCalibration::estimateAndEmit() {
         if(device != pimpl->dclDevices.end()) request.initialGuesses.push_back(makeDclPose(device->second, transform));
     }
 
+    // Marker distances and sizes give the calibration a metric reference that the image features cannot provide.
+    if(pimpl->keyedWorldConstraints && !pimpl->markerObservations.empty()) {
+        const auto sensorForKey = [&](CameraBoardSocket key) -> std::shared_ptr<const dcl::CameraSensorHandle> {
+            const auto index = static_cast<std::size_t>(static_cast<int32_t>(key));
+            if(index < pimpl->cameras.size()) return pimpl->cameras[index].sensor;
+            const auto auxiliary = index - pimpl->cameras.size();
+            return auxiliary < pimpl->auxiliaryCameras.size() ? pimpl->auxiliaryCameras[auxiliary].sensor : nullptr;
+        };
+        dai::node::DclUtils::WorldConstraintsSummary summary;
+        request.worldConstraints = dai::node::DclUtils::buildWorldConstraints(*pimpl->keyedWorldConstraints, pimpl->markerObservations, sensorForKey, &summary);
+        ThreadedNode::pimpl->logger->info("Marker constraints: {} frame sets, {} scene points, {} marker distances, {} socket distances, {} marker sizes",
+                                          summary.observationSets,
+                                          summary.points,
+                                          summary.pointDistances,
+                                          summary.sensorDistances,
+                                          summary.markerSizes);
+    }
+
     auto calibrated = pimpl->dcl->findMultiDeviceCalibration(request);
     if(!calibrated.passed()) {
         result->info = "DynamicCalibration failed: " + calibrated.errorMessage();
         calibrationOutput.send(std::move(result));
         return;
+    }
+
+    if(!request.worldConstraints.empty()) {
+        // The measurements are fitted, not enforced: a result that does not reproduce them is not a calibration.
+        std::string mismatch;
+        try {
+            std::map<std::string, MultiDeviceTransform> referenceToDevice;
+            for(const auto& dclPose : calibrated.value.poses) {
+                const auto device =
+                    std::find_if(pimpl->dclDevices.begin(), pimpl->dclDevices.end(), [&](const auto& entry) { return entry.second == dclPose.device; });
+                if(device != pimpl->dclDevices.end()) referenceToDevice.emplace(device->first, transformFromDclPose(dclPose));
+            }
+            std::map<CameraBoardSocket, dai::node::detail::PosedObservationCamera> cameras;
+            for(std::size_t idx = 0; idx < pimpl->cameras.size(); ++idx) {
+                const auto& camera = pimpl->cameras[idx];
+                const auto pose = referenceToDevice.find(camera.deviceId);
+                if(pose == referenceToDevice.end()) continue;
+                const auto intrinsics = camera.transformation.getIntrinsicMatrix();
+                dai::node::detail::PosedObservationCamera posed;
+                for(const auto& row : intrinsics) posed.model.intrinsics.emplace_back(row.begin(), row.end());
+                posed.model.distortion = camera.transformation.getDistortionCoefficients();
+                posed.model.distortionModel = camera.transformation.getDistortionModel();
+                posed.baseToCamera = detail::composeRigidTransforms(camera.originToCamera, pose->second);
+                cameras.emplace(observationKey(idx), std::move(posed));
+            }
+            for(std::size_t idx = 0; idx < pimpl->auxiliaryCameras.size(); ++idx) {
+                const auto& camera = pimpl->auxiliaryCameras[idx];
+                const auto pose = referenceToDevice.find(camera.deviceId);
+                if(pose == referenceToDevice.end()) continue;
+                cameras.emplace(observationKey(pimpl->cameras.size() + idx),
+                                dai::node::detail::PosedObservationCamera{camera.model, detail::composeRigidTransforms(camera.originToCamera, pose->second)});
+            }
+            auto residuals = dai::node::detail::worldConstraintResiduals(*pimpl->keyedWorldConstraints, pimpl->markerObservations, cameras);
+            // Reported in configuration order: marker distances, socket distances, marker sizes. The keyed copy does
+            // not know the names of the sockets.
+            for(std::size_t idx = 0; idx < pimpl->worldConstraints->socketDistances.size(); ++idx) {
+                const auto& distance = pimpl->worldConstraints->socketDistances[idx];
+                residuals.at(pimpl->worldConstraints->markerDistances.size() + idx).what =
+                    fmt::format("the distance between marker {} and {}/{}", distance.marker, distance.deviceId, toString(distance.socket));
+            }
+            for(const auto& residual : residuals) {
+                ThreadedNode::pimpl->logger->debug("Marker constraints: {} configured {:.4f} m, reconstructed {}",
+                                                   residual.what,
+                                                   residual.configured,
+                                                   residual.measured ? fmt::format("{:.4f} m", *residual.measured) : std::string("not available"));
+                if(residual.fits()) continue;
+                if(!mismatch.empty()) mismatch += "; ";
+                mismatch +=
+                    residual.measured
+                        ? fmt::format(
+                              "{} is configured as {:.3f} m but is {:.3f} m in the calibrated result", residual.what, residual.configured, *residual.measured)
+                        : fmt::format("{} could not be reconstructed from the marker observations", residual.what);
+            }
+        } catch(const std::exception& ex) {
+            mismatch = std::string("constraint validation failed: ") + ex.what();
+        }
+        if(mismatch.empty()) {
+            // Measurements that agree with the images leave the epipolar error of the feature solve almost unchanged.
+            const auto intrinsics = pimpl->cameras.front().transformation.getIntrinsicMatrix();
+            const auto focalPx = 0.5 * (static_cast<double>(intrinsics[0][0]) + static_cast<double>(intrinsics[1][1]));
+            const auto featuresPx = calibrated.value.featureSampsonError * focalPx;
+            const auto constrainedPx = calibrated.value.sampsonError * focalPx;
+            if(dai::node::detail::epipolarErrorContradictsConstraints(featuresPx, constrainedPx)) {
+                mismatch = fmt::format("the epipolar error of the image features changes from {:.2f} px to {:.2f} px", featuresPx, constrainedPx);
+            }
+        }
+        if(mismatch.empty()) {
+            // Registered cameras with a fixed baseline make the image features metric on their own. The measurements
+            // may refine the device poses that those give, not contradict them.
+            constexpr double maxRotationChangeDeg = 5.0;
+            auto featureRequest = request;
+            featureRequest.worldConstraints = {};
+            auto features = pimpl->dcl->findMultiDeviceCalibration(featureRequest);
+            if(features.passed()) {
+                const auto distanceOf = [](const dcl::MultiDevicePose& pose) {
+                    return std::sqrt(pose.tvecMeters[0] * pose.tvecMeters[0] + pose.tvecMeters[1] * pose.tvecMeters[1]
+                                     + pose.tvecMeters[2] * pose.tvecMeters[2]);
+                };
+                // Angle between two rotations given as rotation vectors, through their quaternions.
+                const auto rotationBetweenDeg = [](const dcl::MultiDevicePose& first, const dcl::MultiDevicePose& second) {
+                    const auto quaternionOf = [](const dcl::MultiDevicePose& pose) {
+                        const double angle = std::sqrt(pose.rvec[0] * pose.rvec[0] + pose.rvec[1] * pose.rvec[1] + pose.rvec[2] * pose.rvec[2]);
+                        const double scale = angle > 1e-12 ? std::sin(0.5 * angle) / angle : 0.5;
+                        return std::array<double, 4>{std::cos(0.5 * angle), scale * pose.rvec[0], scale * pose.rvec[1], scale * pose.rvec[2]};
+                    };
+                    const auto a = quaternionOf(first);
+                    const auto b = quaternionOf(second);
+                    const double dot = std::abs(a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3]);
+                    return 2.0 * std::acos(std::min(1.0, dot)) * 180.0 / 3.14159265358979323846;
+                };
+                for(const auto& constrained : calibrated.value.poses) {
+                    const auto device =
+                        std::find_if(pimpl->dclDevices.begin(), pimpl->dclDevices.end(), [&](const auto& entry) { return entry.second == constrained.device; });
+                    const auto fromFeatures = std::find_if(features.value.poses.begin(), features.value.poses.end(), [&](const dcl::MultiDevicePose& pose) {
+                        return pose.device == constrained.device;
+                    });
+                    if(device == pimpl->dclDevices.end() || device->first == referenceDeviceId || fromFeatures == features.value.poses.end()) continue;
+                    const dai::node::detail::ConstraintResidual distance{"", distanceOf(*fromFeatures), distanceOf(constrained)};
+                    const double rotationChangeDeg = rotationBetweenDeg(*fromFeatures, constrained);
+                    if(rotationChangeDeg > maxRotationChangeDeg) {
+                        if(!mismatch.empty()) mismatch += "; ";
+                        mismatch += fmt::format("the rotation between devices {} and {} differs by {:.1f} deg from the one the image features give alone",
+                                                referenceDeviceId,
+                                                device->first,
+                                                rotationChangeDeg);
+                        continue;
+                    }
+                    if(distance.fits()) continue;
+                    if(!mismatch.empty()) mismatch += "; ";
+                    mismatch += fmt::format("the distance between devices {} and {} is {:.3f} m with the measurements but {:.3f} m from the image features",
+                                            referenceDeviceId,
+                                            device->first,
+                                            *distance.measured,
+                                            distance.configured);
+                }
+            }
+        }
+        if(!mismatch.empty()) {
+            result->info = "World constraints could not be validated: " + mismatch + ". Check the measured values (meters) and marker ids";
+            ThreadedNode::pimpl->logger->warn("{}", result->info);
+            result->dataConfidence = calibrated.value.dataConfidence;
+            result->sampsonError = calibrated.value.sampsonError;
+            calibrationOutput.send(std::move(result));
+            return;
+        }
     }
 
     std::vector<MultiDeviceExtrinsics> graph;

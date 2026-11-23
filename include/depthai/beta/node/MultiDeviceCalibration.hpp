@@ -9,11 +9,14 @@
 #include <depthai/common/CameraBoardSocket.hpp>
 #include <depthai/common/DepthUnit.hpp>
 #include <depthai/common/Extrinsics.hpp>
+#include <depthai/common/WorldConstraints.hpp>
 #include <depthai/device/CalibrationHandler.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/ThreadedHostNode.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
+#include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace dai {
@@ -105,6 +108,35 @@ class MultiDeviceCalibration : public NodeCRTP<dai::node::ThreadedHostNode, Mult
 
     /** Override live calibration for recorded/offline streams and tests. */
     void setDeviceCalibration(std::string deviceId, const CalibrationHandler& calibration);
+
+    /**
+     * Give the calibration a metric reference through fiducial markers placed in the scene: measured distances
+     * between marker centers, distances from marker centers to cameras, and printed marker sizes, as described in
+     * WorldConstraints. Markers are detected in every synchronized group; a group counts towards the sample count
+     * only when every marker the constraints refer to is seen by at least two registered cameras, of the same
+     * device or of different devices.
+     *
+     * The markers take part in the whole calibration. A marker center seen from two devices is a point match
+     * that is used next to the image features, and the measurements are fitted together with both: they set how
+     * far apart the devices are, which one camera per device cannot tell, and they refine the rotations.
+     *
+     * The result is reported as failed, with the reason in its info, when it does not reproduce a measurement,
+     * when fitting the measurements raises the epipolar error of the image features, or when the distance
+     * between two devices leaves what registered stereo pairs give on their own.
+     *
+     * A socket distance must name the device of its socket in its deviceId, with the ID the cameras of that
+     * device are registered under. The socket is a registered camera or any other calibrated socket of the
+     * device. Can be changed only while the node is idle.
+     */
+    void setWorldConstraints(const WorldConstraints& constraints);
+    /// Same as setWorldConstraints() with the JSON form described in WorldConstraints.
+    void setWorldConstraintsFromJson(const std::string& json);
+    /// Same as setWorldConstraints() with the JSON form described in WorldConstraints read from a file.
+    void setWorldConstraintsFromFile(const std::filesystem::path& path);
+    /// Remove the marker constraints again. Can be changed only while the node is idle.
+    void clearWorldConstraints();
+    /// The marker constraints set with setWorldConstraints(), or none.
+    std::optional<WorldConstraints> getWorldConstraints() const;
 
     void buildInternal() override;
 

@@ -21,6 +21,12 @@ struct ObservationCamera {
     CameraModel distortionModel = CameraModel::Perspective;
 };
 
+/// A camera of the reconstruction with its pose: the 4x4 transform from the common base frame to the camera, in meters.
+struct PosedObservationCamera {
+    ObservationCamera model;
+    std::vector<std::vector<float>> baseToCamera;
+};
+
 /// One configured measurement; measured is empty when the observations cannot reconstruct it.
 struct ConstraintResidual {
     std::string what;
@@ -42,6 +48,12 @@ std::vector<ConstraintResidual> worldConstraintResiduals(const WorldConstraints&
                                                          const CalibrationHandler& calibration,
                                                          CameraBoardSocket base,
                                                          const std::map<CameraBoardSocket, ObservationCamera>& cameras);
+
+/// The same reconstruction for cameras whose poses in a common base frame are given directly. The cameras are keyed
+/// as in the observation sets; a socket distance to a key that is not among them is reported as not reconstructed.
+std::vector<ConstraintResidual> worldConstraintResiduals(const WorldConstraints& constraints,
+                                                         const std::deque<MarkerObservationSet>& observationSets,
+                                                         const std::map<CameraBoardSocket, PosedObservationCamera>& cameras);
 #endif
 
 }  // namespace detail
