@@ -1,6 +1,4 @@
 // Regression tests for the ImageManip implementation shared by the host node and the RVC4 firmware.
-#include <algorithm>
-#include <array>
 #include <catch2/catch_all.hpp>
 #include <cstdint>
 #include <functional>
@@ -21,6 +19,11 @@ namespace {
 using Manip = ImageManipOperations<_ImageManipMemory, ColorChangeH, WarpH>;
 using PixelFn = std::function<uint8_t(uint32_t x, uint32_t y, uint32_t c)>;
 
+/// Channels of a packed (interleaved / single channel) type
+uint32_t packedChannels(ImgFrame::Type type) {
+    return type == ImgFrame::Type::RGB888i || type == ImgFrame::Type::BGR888i ? 3 : 1;
+}
+
 struct Image {
     ImgFrame::Type type;
     FrameSpecs specs;
@@ -31,8 +34,7 @@ struct Image {
     }
     /// Packed (interleaved / single channel) pixel
     uint8_t at(uint32_t x, uint32_t y, uint32_t c = 0) const {
-        const uint32_t channels = type == ImgFrame::Type::RGB888i || type == ImgFrame::Type::BGR888i ? 3 : 1;
-        return bytes()[specs.p1Offset + y * specs.p1Stride + x * channels + c];
+        return bytes()[specs.p1Offset + y * specs.p1Stride + x * packedChannels(type) + c];
     }
 };
 
@@ -41,15 +43,14 @@ uint8_t pattern(uint32_t x, uint32_t y, uint32_t c) {
     return static_cast<uint8_t>((x * 7 + y * 13 + c * 61 + (x * y) % 17) & 0xFF);
 }
 
-/// Packed RGB888i / BGR888i / GRAY8 / RAW8 image. A stride larger than the row size leaves padding filled with 0xEE.
-Image makePacked(ImgFrame::Type type, uint32_t width, uint32_t height, const PixelFn& value = pattern, uint32_t stride = 0) {
-    const uint32_t channels = type == ImgFrame::Type::RGB888i || type == ImgFrame::Type::BGR888i ? 3 : 1;
-    if(stride == 0) stride = width * channels;
+/// Packed RGB888i / BGR888i / GRAY8 / RAW8 image without row padding, filled with pattern()
+Image makePacked(ImgFrame::Type type, uint32_t width, uint32_t height) {
+    const uint32_t channels = packedChannels(type);
+    const uint32_t stride = width * channels;
     Image img{type, FrameSpecs{width, height, 0, 0, 0, stride, 0, 0}, std::make_shared<_ImageManipMemory>(stride * height)};
-    std::fill(img.bytes(), img.bytes() + stride * height, 0xEE);
     for(uint32_t y = 0; y < height; ++y) {
         for(uint32_t x = 0; x < width; ++x) {
-            for(uint32_t c = 0; c < channels; ++c) img.bytes()[y * stride + x * channels + c] = value(x, y, c);
+            for(uint32_t c = 0; c < channels; ++c) img.bytes()[y * stride + x * channels + c] = pattern(x, y, c);
         }
     }
     return img;
