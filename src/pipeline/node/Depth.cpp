@@ -37,31 +37,33 @@ struct BackendProfile {
     Depth::Config config;
     std::pair<uint32_t, uint32_t> maxSize;
     float maxFps;
+    float liteMaxFps;  // TODO: measure Lite devices; currently uses regular-device placeholders.
 };
 
-constexpr BackendProfile neural(DeviceModelZoo model, uint32_t width, uint32_t height, float maxFps) {
-    return {Depth::Algorithm::NEURAL, model, {width, height}, maxFps};
+constexpr BackendProfile neural(DeviceModelZoo model, uint32_t width, uint32_t height, float maxFps, float liteMaxFps) {
+    return {Depth::Algorithm::NEURAL, model, {width, height}, maxFps, liteMaxFps};
 }
 
 constexpr BackendProfile stereo(StereoDepth::PresetMode preset, float maxFps) {
-    return {Depth::Algorithm::STEREO, preset, {1280, 1280}, maxFps};
+    return {Depth::Algorithm::STEREO, preset, {1280, 1280}, maxFps, maxFps};
 }
 
 constexpr BackendProfile noConfig(Depth::Algorithm algorithm, uint32_t width, uint32_t height, float maxFps) {
-    return {algorithm, std::monostate{}, {width, height}, maxFps};
+    return {algorithm, std::monostate{}, {width, height}, maxFps, maxFps};
 }
 
+// Neural columns: guide FPS, Lite FPS placeholder (not measured).
 inline constexpr std::array BACKEND_PROFILES = {
-    neural(DeviceModelZoo::NEURAL_DEPTH_1248X780, 1248, 780, 8.5f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_1056X660, 1056, 660, 12.5f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_960X600, 960, 600, 14.f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_864X540, 864, 540, 18.f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_768X480, 768, 480, 22.f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_576X360, 576, 360, 38.f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_480X300, 480, 300, 56.f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_384X240, 384, 240, 60.f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_288X180, 288, 180, 60.f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_192X120, 192, 120, 60.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_1248X780, 1248, 780, 9.4f, 9.4f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_1056X660, 1056, 660, 14.f, 14.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_960X600, 960, 600, 16.f, 16.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_864X540, 864, 540, 21.f, 21.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_768X480, 768, 480, 25.f, 25.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_576X360, 576, 360, 43.f, 43.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_480X300, 480, 300, 60.f, 60.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_384X240, 384, 240, 60.f, 60.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_288X180, 288, 180, 60.f, 60.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_192X120, 192, 120, 60.f, 60.f),
 
     noConfig(Depth::Algorithm::NEURAL_ASSISTED_STEREO, 1280, 800, 55.f),
 
@@ -74,16 +76,13 @@ inline constexpr std::array BACKEND_PROFILES = {
     noConfig(Depth::Algorithm::GPU_STEREO, 640, 400, 55.f),
 };
 
-// Live depth-pipeline capacities measured on OS 1.47 / SDK 3.12, with
-// 1280x800 camera inputs at 60 FPS. Faster models are input-rate capped.
-float profileMaxFps(const BackendProfile& profile, const std::optional<Version>& osVersion) {
-    if(!osVersion || *osVersion < Version(1, 46, 0) || profile.algorithm != Depth::Algorithm::NEURAL) return profile.maxFps;
-    const auto model = std::get<DeviceModelZoo>(profile.config);
-    if(model == DeviceModelZoo::NEURAL_DEPTH_1248X780) return 20.f;
-    if(model == DeviceModelZoo::NEURAL_DEPTH_1056X660) return 30.f;
-    if(model == DeviceModelZoo::NEURAL_DEPTH_960X600) return 38.f;
-    if(model == DeviceModelZoo::NEURAL_DEPTH_864X540) return 45.f;
-    return 60.f;
+// Selection depends on device class, never on its OS version.
+float profileMaxFps(const BackendProfile& profile, bool isLite) {
+    return isLite ? profile.liteMaxFps : profile.maxFps;
+}
+
+bool isLiteDevice(const std::shared_ptr<Device>& device) {
+    return device->getProductName().find("LITE") != std::string::npos;
 }
 
 bool modelPassesOptionalFilter(DeviceModelZoo model, const std::vector<DeviceModelZoo>& modelFilter) {
@@ -258,11 +257,11 @@ bool profileMatches(const BackendProfile& profile,
                     const std::vector<DeviceModelZoo>& modelFilter,
                     float requiredFps,
                     std::optional<std::pair<uint32_t, uint32_t>> resolution,
-                    const std::optional<Version>& osVersion) {
+                    bool isLite) {
     if(!supportsAlgorithm(supportedAlgorithms, profile.algorithm)) {
         return false;
     }
-    if(profileMaxFps(profile, osVersion) < requiredFps) {
+    if(profileMaxFps(profile, isLite) < requiredFps) {
         return false;
     }
     if(!profilePassesModelFilter(profile, modelFilter)) {
@@ -278,13 +277,13 @@ bool profileMatches(const BackendProfile& profile,
 std::optional<BackendProfile> pickHighestFpsForResolution(std::pair<uint32_t, uint32_t> resolution,
                                                           const std::vector<Depth::Algorithm>& supportedAlgorithms,
                                                           const std::vector<DeviceModelZoo>& modelFilter,
-                                                          const std::optional<Version>& osVersion) {
+                                                          bool isLite) {
     std::optional<BackendProfile> best;
     for(const auto& profile : BACKEND_PROFILES) {
         if(!supportsAlgorithm(supportedAlgorithms, profile.algorithm)) continue;
         if(!profilePassesModelFilter(profile, modelFilter)) continue;
         if(!resolutionFits(profile, resolution)) continue;
-        if(!best || profileMaxFps(profile, osVersion) > profileMaxFps(*best, osVersion)) {
+        if(!best || profileMaxFps(profile, isLite) > profileMaxFps(*best, isLite)) {
             best = profile;
         }
     }
@@ -294,10 +293,10 @@ std::optional<BackendProfile> pickHighestFpsForResolution(std::pair<uint32_t, ui
 std::optional<DeviceModelZoo> pickNeuralModel(float requiredFps,
                                               std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                               const std::vector<DeviceModelZoo>& modelFilter,
-                                              const std::optional<Version>& osVersion) {
+                                              bool isLite) {
     const auto picked = findBackendProfile([&](const BackendProfile& profile) {
-        return profile.algorithm == Depth::Algorithm::NEURAL && profileMaxFps(profile, osVersion) >= requiredFps
-               && profilePassesModelFilter(profile, modelFilter) && (!resolution.has_value() || resolutionFits(profile, *resolution));
+        return profile.algorithm == Depth::Algorithm::NEURAL && profileMaxFps(profile, isLite) >= requiredFps && profilePassesModelFilter(profile, modelFilter)
+               && (!resolution.has_value() || resolutionFits(profile, *resolution));
     });
     if(picked) {
         return std::get<DeviceModelZoo>(picked->config);
@@ -631,7 +630,7 @@ Depth::Algorithm Depth::getDefaultAlgorithm(const std::shared_ptr<Device>& devic
     if(!supportsAlgorithm(supported, Algorithm::TOF) || (isRvc4 && supportsAlgorithm(supported, Algorithm::STEREO))) {
         resolution = sizeFromDeviceFeatures(device, requireFirstStereoPair(device));
     }
-    return selectBackend(platform, resolution, DEFAULT_TARGET_FPS, supported, models, false, device->getDeviceOSVersion()).algorithm;
+    return selectBackend(platform, resolution, DEFAULT_TARGET_FPS, supported, models, false, isRvc4 && isLiteDevice(device)).algorithm;
 }
 
 // --- Algorithm resolution ---
@@ -647,7 +646,7 @@ Depth::Selection Depth::selectBackend(Platform platform,
                                       const std::vector<Algorithm>& supportedAlgorithms,
                                       const std::vector<DeviceModelZoo>& modelFilter,
                                       bool requireFpsAndResolutionMatch,
-                                      const std::optional<Version>& osVersion) {
+                                      bool isLite) {
     if(supportsAlgorithm(supportedAlgorithms, Algorithm::TOF) && (platform != Platform::RVC4 || !supportsAlgorithm(supportedAlgorithms, Algorithm::STEREO))) {
         return {Algorithm::TOF, std::monostate{}};
     }
@@ -660,7 +659,7 @@ Depth::Selection Depth::selectBackend(Platform platform,
 
     // 1. Priority scan honoring the requested FPS and (optional) resolution.
     if(const auto picked = findBackendProfile(
-           [&](const BackendProfile& profile) { return profileMatches(profile, supportedAlgorithms, modelFilter, requiredFps, resolution, osVersion); })) {
+           [&](const BackendProfile& profile) { return profileMatches(profile, supportedAlgorithms, modelFilter, requiredFps, resolution, isLite); })) {
         return {picked->algorithm, picked->config};
     }
 
@@ -675,7 +674,7 @@ Depth::Selection Depth::selectBackend(Platform platform,
     // 2. No backend can serve the resolution at the requested FPS: pick the algorithm whose
     //    catalog row covers the resolution with the highest available maxFps.
     if(resolution.has_value()) {
-        if(const auto picked = pickHighestFpsForResolution(*resolution, supportedAlgorithms, modelFilter, osVersion)) {
+        if(const auto picked = pickHighestFpsForResolution(*resolution, supportedAlgorithms, modelFilter, isLite)) {
             return {picked->algorithm, picked->config};
         }
     }
@@ -692,6 +691,17 @@ Depth::Selection Depth::selectBackend(Platform platform,
 void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline) {
     const auto platform = device->getPlatform();
     const bool isRvc4 = platform == Platform::RVC4;
+
+    const bool isLite = isRvc4 && isLiteDevice(device);
+    if(isRvc4) {
+        const auto osVersion = device->getDeviceOSVersion();
+        if(!osVersion || *osVersion < Version(1, 47, 0)) {
+            pimpl->logger->warn(
+                "Depth FPS targets use the depth guide. OS 1.47.0 or newer is recommended for the fastest neural models; "
+                "the current OS may not reach these targets. Continuing with the configured FPS.");
+        }
+        if(isLite) pimpl->logger->warn("Depth Lite FPS limits are placeholders pending measurement.");
+    }
 
     // getSupportedDeviceModels() is an RVC4-only RPC; on other platforms there is no model catalog.
     const auto supportedModels = isRvc4 ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
@@ -731,14 +741,13 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     const auto pair = requireFirstStereoPair(device);
     const auto [left, right] = findCamerasForPair(pipeline, pair, device);
     const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_);
-    const auto osVersion = device->getDeviceOSVersion();
     const float targetFps = inputs.targetFps;
     const auto& resolution = inputs.resolution;
 
     if(algorithmOverride_ == Algorithm::AUTO) {
         // Only enforce an exact FPS+resolution match when the user pinned both via build().
         const bool userPinnedFpsAndResolution = stereoOutputFps_.has_value() && sizeOverride_.has_value();
-        resolved_ = selectBackend(platform, resolution, targetFps, supported, supportedModels, userPinnedFpsAndResolution, osVersion);
+        resolved_ = selectBackend(platform, resolution, targetFps, supported, supportedModels, userPinnedFpsAndResolution, isLite);
         if(resolved_.algorithm == Algorithm::STEREO && resolution) {
             validateStereoDepthResolution(resolution->first, resolution->second);
         }
@@ -766,7 +775,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
 
     switch(resolved_.algorithm) {
         case Algorithm::NEURAL:
-            if(const auto model = pickNeuralModel(targetFps * SELECTION_FPS_SAFETY_MARGIN, resolution, supportedModels, osVersion)) {
+            if(const auto model = pickNeuralModel(targetFps * SELECTION_FPS_SAFETY_MARGIN, resolution, supportedModels, isLite)) {
                 resolved_.config = *model;
             } else {
                 resolved_.config = DEFAULT_NEURAL_DEPTH_MODEL;

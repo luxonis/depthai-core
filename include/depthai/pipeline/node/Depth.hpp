@@ -253,14 +253,14 @@ class Depth : public DeviceNodeGroup {
 
     static std::vector<Algorithm> getSupportedAlgorithmsWithModels(const std::shared_ptr<Device>& device, std::optional<std::vector<DeviceModelZoo>> models);
 
-    // Keep selection independent of a live device and use the cached OS version to choose FPS limits.
+    // Keep selection independent of a live device and choose FPS limits by device class.
     static Selection selectBackend(Platform platform,
                                    std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                    float targetFps,
                                    const std::vector<Algorithm>& supportedAlgorithms,
                                    const std::vector<DeviceModelZoo>& modelFilter = {},
                                    bool requireFpsAndResolutionMatch = false,
-                                   const std::optional<Version>& osVersion = std::nullopt);
+                                   bool isLite = false);
 
     void resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline);
 

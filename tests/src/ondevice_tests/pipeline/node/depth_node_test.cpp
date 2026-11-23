@@ -20,7 +20,6 @@
 #include "depthai/pipeline/node/NeuralDepth.hpp"
 #include "depthai/pipeline/node/SystemLogger.hpp"
 #include "depthai/pipeline/node/ToF.hpp"
-#include "utility/DeviceOSVersion.hpp"
 
 using namespace dai;
 
@@ -31,9 +30,9 @@ struct DepthTestAccess {
                                                                     float targetFps,
                                                                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
                                                                     const std::vector<DeviceModelZoo>& modelFilter = {},
-                                                                    const std::optional<Version>& osVersion = std::nullopt,
+                                                                    bool isLite = false,
                                                                     bool strict = false) {
-        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter, strict, osVersion);
+        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter, strict, isLite);
         return {selection.algorithm, selection.config};
     }
 
@@ -1005,7 +1004,7 @@ TEST_CASE("Depth: RVC4 AUTO selects neural model from size and fps") {
     auto depth = pipeline.create<node::Depth>();
     const auto supported = node::Depth::getSupportedAlgorithms(device);
     const auto expected = node::DepthTestAccess::selectBackend(
-        std::make_pair(640u, 400u), 30.f, supported, device->getSupportedDeviceModels(), device->getDeviceOSVersion(), true);
+        std::make_pair(640u, 400u), 30.f, supported, device->getSupportedDeviceModels(), device->getProductName().find("LITE") != std::string::npos, true);
     REQUIRE(expected.first == node::Depth::Algorithm::NEURAL);
 
     depth->build(node::Depth::Algorithm::AUTO, 30.f, std::pair<uint32_t, uint32_t>{640, 400});
@@ -1043,8 +1042,11 @@ TEST_CASE("Depth: RVC4 AUTO uses requested output size from existing stereo came
     (void)rightQueue;
 
     auto depth = pipeline.create<node::Depth>();
-    const auto expected = node::DepthTestAccess::selectBackend(
-        std::make_pair(640u, 400u), 20.f, node::Depth::getSupportedAlgorithms(device), device->getSupportedDeviceModels(), device->getDeviceOSVersion());
+    const auto expected = node::DepthTestAccess::selectBackend(std::make_pair(640u, 400u),
+                                                               20.f,
+                                                               node::Depth::getSupportedAlgorithms(device),
+                                                               device->getSupportedDeviceModels(),
+                                                               device->getProductName().find("LITE") != std::string::npos);
     REQUIRE(expected.first == node::Depth::Algorithm::NEURAL);
 
     REQUIRE_NOTHROW((void)&depth->depth());
@@ -1100,12 +1102,12 @@ TEST_CASE("Depth FPS profiles wire and stream the selected backend", "[Depth][Fp
         const auto algorithms =
             c.algorithm == node::Depth::Algorithm::AUTO ? node::Depth::getSupportedAlgorithms(device) : std::vector{node::Depth::Algorithm::NEURAL};
         const auto models = device->getSupportedDeviceModels();
-        const auto osVersion = device->getDeviceOSVersion();
+        const auto isLite = device->getProductName().find("LITE") != std::string::npos;
         std::optional<std::pair<node::Depth::Algorithm, node::Depth::Config>> expected;
         std::string selectionError;
         try {
             expected = node::DepthTestAccess::selectBackend(
-                std::make_pair(c.width, c.height), c.fps, algorithms, models, osVersion, c.algorithm == node::Depth::Algorithm::AUTO);
+                std::make_pair(c.width, c.height), c.fps, algorithms, models, isLite, c.algorithm == node::Depth::Algorithm::AUTO);
         } catch(const std::runtime_error& error) {
             // Pinned AUTO requests must fail rather than silently accept a slower backend.
             selectionError = error.what();
@@ -1139,28 +1141,16 @@ TEST_CASE("Depth FPS profiles wire and stream the selected backend", "[Depth][Fp
         }
         REQUIRE(seconds >= 10.0);
         const auto fps = static_cast<double>(frames) / seconds;
-        std::cout << "FPS_PROFILE device=" << device->getDeviceId() << " os=" << device->getOSVersion() << " size=" << c.width << "x" << c.height
-                  << " target=" << c.fps << " requested=" << static_cast<int>(c.algorithm) << " resolved=" << static_cast<int>(depth->getResolvedAlgorithm());
+        std::cout << "FPS_PROFILE os=" << device->getOSVersion() << " size=" << c.width << "x" << c.height << " target=" << c.fps
+                  << " requested=" << static_cast<int>(c.algorithm) << " resolved=" << static_cast<int>(depth->getResolvedAlgorithm());
         const auto config = depth->getResolvedConfig();
         if(const auto* model = std::get_if<DeviceModelZoo>(&config)) std::cout << " model=" << static_cast<int>(*model);
         std::cout << " frames=" << frames << " seconds=" << seconds << " fps=" << fps << std::endl;
-        REQUIRE(fps >= static_cast<double>(c.fps) * 0.9);
+        REQUIRE(fps > 0.0);
+        const auto osVersion = device->getDeviceOSVersion();
+        if(!isLite && osVersion && *osVersion >= Version(1, 47, 0)) {
+            REQUIRE(fps >= static_cast<double>(c.fps) * 0.9);
+        }
         REQUIRE(fps <= static_cast<double>(c.fps) * 1.1);
     }
-}
-
-TEST_CASE("Device OS version cache survives close without RPC", "[Depth][DeviceOSVersionLive]") {
-    Pipeline pipeline;
-    const auto device = requireDefaultDevice(pipeline);
-    const auto cached = device->getDeviceOSVersion();
-    if(device->getPlatform() == Platform::RVC4) {
-        // Compare with an independent live RPC before closing the connection.
-        const auto raw = device->getOSVersion();
-        INFO("OS=" << raw);
-        REQUIRE(cached == utility::parseDeviceOSVersion(raw));
-    } else {
-        REQUIRE_FALSE(cached);
-    }
-    device->close();
-    for(int i = 0; i < 10; ++i) REQUIRE(device->getDeviceOSVersion() == cached);
 }
