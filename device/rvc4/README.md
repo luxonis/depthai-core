@@ -184,6 +184,13 @@ the build:
 `install-hexagon-sdk.sh` in the images puts the Qualcomm Hexagon SDK into an image of your own, to build the DSP
 offload from source. `HEXAGON_SDK_DIR` (see above) does the same without a new image.
 
+Each image has `/usr/share/doc/depthai-device-sdk/NOTICE.md`. It tells where the license texts and the source code
+of each part of the image are: the Ubuntu packages (`ubuntu-packages.tsv` in the same folder gives the source package
+and the version of each installed package, with a link to its source on Launchpad), numpy and the libraries in its
+wheel, the FastCV headers, the depthai-core files and the public sysroot (`/opt/rvc4-sysroot/NOTICE.md`).
+`docker/sdk/write-notices.sh` writes these files when the image is built, and stops the build when a part has no
+license text.
+
 The public sysroot is made in the private CI of the vendor module, from the Luxonis OS SDK image. When the sysroot
 changes, that CI builds both images with `docker/sdk-images.sh`, checks them and pushes them:
 
@@ -266,6 +273,9 @@ to attach to a stuck production firmware and how to parse core dumps.
   BSP packages: `NOTICE.txt`, the vendor module EULA (`legal/DEPTHAI-EULA.txt`),
   `legal/NOTICE.md` and the texts in `legal/licenses/`. The
   vendor module supplies them: its build writes them, and the prebuilt archive has them at its top.
+* The public build images (`ghcr.io/luxonis/depthai-device-sdk`) contain software under many licenses.
+  `/usr/share/doc/depthai-device-sdk/NOTICE.md` in each image lists the parts of the image, their license texts and
+  their source code, see [Public build container](#public-build-container).
 
 ## What is not in this repository
 

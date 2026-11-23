@@ -4,7 +4,9 @@
 # GCC 11.4 and binutils 2.38, the same versions as the Luxonis OS SDK) and the public sysroot of Luxonis OS at
 # /opt/rvc4-sysroot. The sysroot has link stubs, not the code, of the Qualcomm libraries that the firmware links; the
 # device has the real libraries. All software of the images comes from the Ubuntu archive (its source code is there),
-# except the sysroot and the FastCV headers.
+# except the sysroot, the FastCV headers, numpy (the wheel of PyPI) and the scripts of depthai-core.
+# /usr/share/doc/depthai-device-sdk/NOTICE.md in the images (written by sdk/write-notices.sh) tells where the license
+# texts and the source code of each part are.
 #
 # This file gives two images (docker build --target <name>):
 #   release  the default image: what the build of the release firmware (target rvc4) needs
@@ -22,7 +24,8 @@
 #   Hexagon SDK   optional, not in the images: builds the DSP offload from source instead of taking it prebuilt
 #                 (sdk/install-hexagon-sdk.sh in a derived image, or HEXAGON_SDK_DIR of the build scripts)
 #
-# Build with sdk-images.sh: it gives the sysroot tarball to the build as the build context 'sysroot' and sets the tags.
+# Build with sdk-images.sh: it gives the sysroot tarball to the build as the build context 'sysroot' and the LICENSE
+# file of depthai-core as the build context 'legal', and sets the tags.
 #   ./sdk-images.sh build <path of rvc4-public-sysroot-<version>.tar.xz>
 FROM ubuntu:22.04 AS base
 
@@ -114,6 +117,16 @@ ENV DEPTHAI_DEVICE_RVC4_SYSROOT=/opt/rvc4-sysroot \
 
 # RVC4_CORE_REVISION: the depthai-core commit of this Dockerfile
 ARG RVC4_CORE_REVISION=unknown
+
+# The notices of the images: where the license texts and the source code of each part are
+# (/usr/share/doc/depthai-device-sdk/NOTICE.md, ubuntu-packages.tsv and LICENSE-depthai-core). sdk/write-notices.sh
+# writes them from the installed software, with the build arguments above in its environment, and stops when a part
+# has no license text. This is the last change of the installed software: the dev image adds only files of Ubuntu
+# packages that are already in the list.
+RUN --mount=type=bind,from=legal,target=/legal-input \
+    --mount=type=bind,source=sdk/write-notices.sh,target=/tmp/write-notices.sh \
+    bash /tmp/write-notices.sh /usr/share/doc/depthai-device-sdk /legal-input/LICENSE
+
 LABEL org.opencontainers.image.title="depthai-device-sdk" \
       org.opencontainers.image.description="Public build image of the DepthAI RVC4 firmware" \
       org.opencontainers.image.source="https://github.com/luxonis/depthai-core" \

@@ -95,7 +95,12 @@ check() {
             aarch64-linux-gnu-readelf -d /tmp/check | grep -q "NEEDED.*\[libstdc++\.so\.6\]" || { echo "error: the test program does not link the shared libstdc++ of the OS" >&2; exit 1; }
             newest=$(aarch64-linux-gnu-readelf -V /tmp/check | grep -o "GLIBCXX_3\.4\.[0-9]*" | sort -t. -k3 -n | tail -1)
             test "${newest##*.}" -le 29 || { echo "error: the test program needs $newest" >&2; exit 1; }
-            echo "compile check: ok (stdio.h from the sysroot, newest libstdc++ symbol version $newest)"'
+            echo "compile check: ok (stdio.h from the sysroot, newest libstdc++ symbol version $newest)"
+            # The notices of the image (sdk/write-notices.sh) list each installed Ubuntu package
+            N=/usr/share/doc/depthai-device-sdk
+            for f in NOTICE.md ubuntu-packages.tsv LICENSE-depthai-core; do test -s "$N/$f"; done
+            diff <(dpkg-query -W -f="\${Package}\n" | sort) <(tail -n +2 "$N/ubuntu-packages.tsv" | cut -f1 | sort)
+            echo "notices: ok ($(($(wc -l < "$N/ubuntu-packages.tsv") - 1)) Ubuntu packages in $N/ubuntu-packages.tsv)"'
     done
     # Only the dev image has the sanitizer libraries
     test "$(docker run --rm "$1" aarch64-linux-gnu-g++ -print-file-name=libasan.so)" = libasan.so
@@ -114,15 +119,20 @@ build() {
     context=$(mktemp -d)
     # shellcheck disable=SC2064 # expand now: the variable is local
     trap "rm -rf '$context'" EXIT
-    # The build context 'sysroot' has only the tarball, under the name that Dockerfile.sdk expects
-    ln "$TARBALL" "$context/rvc4-public-sysroot.tar.xz" 2>/dev/null || cp "$TARBALL" "$context/rvc4-public-sysroot.tar.xz"
+    # The build context 'sysroot' has only the tarball, under the name that Dockerfile.sdk expects. The build context
+    # 'legal' has only the LICENSE file of depthai-core, for the notices of the images.
+    mkdir "$context/sysroot" "$context/legal"
+    ln "$TARBALL" "$context/sysroot/rvc4-public-sysroot.tar.xz" 2>/dev/null \
+        || cp "$TARBALL" "$context/sysroot/rvc4-public-sysroot.tar.xz"
+    cp "$CORE_DIR/LICENSE" "$context/legal/LICENSE"
     revision=$(git -C "$CORE_DIR" rev-parse HEAD 2>/dev/null || echo unknown)
     echo "Public sysroot: $TARBALL (Luxonis OS $OS_VERSION, sha256 $SYSROOT_SHA256)"
     for target in release dev; do
         if [ "$target" = release ]; then tag="$TAG_FIXED"; else tag="$TAG_FIXED_DEV"; fi
         # shellcheck disable=SC2086 # extra arguments are split at spaces on purpose
         docker build ${DEPTHAI_DEVICE_SDK_BUILD_ARGS:-} -f "$DOCKER_DIR/Dockerfile.sdk" --target "$target" \
-            --build-context sysroot="$context" \
+            --build-context sysroot="$context/sysroot" \
+            --build-context legal="$context/legal" \
             --build-arg RVC4_SYSROOT_SHA256="$SYSROOT_SHA256" \
             --build-arg RVC4_OS_VERSION="$OS_VERSION" \
             --build-arg RVC4_CORE_REVISION="$revision" \
