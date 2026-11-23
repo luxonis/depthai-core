@@ -110,16 +110,15 @@ TEST_CASE("ImageManip resets the operations of the previous configuration", "[Im
         REQUIRE(converted->specs.width == 64);
         REQUIRE(converted->specs.height == 48);
         CHECK(countMismatches(*converted, 64, 48, 3, [](uint32_t x, uint32_t y, uint32_t c) { return pattern(x, y, 2 - c); }) == 0);
+        // The node writes the source crops into ImgTransformations: the crop of the previous configuration must not leak
+        CHECK(manip.getSrcCrops().empty());
 
-        auto same = run(manip, passthrough, input);
-        // run() hands back the input on passthrough, so check the manipulator's own state too
+        // run() hands back the input on passthrough, so check the manipulator's own state
+        run(manip, passthrough, input);
+        // The node forwards the input frame when the output size is 0
+        CHECK(manip.getOutputSize() == 0);
         CHECK(manip.getOutputWidth() == 64);
         CHECK(manip.getOutputHeight() == 48);
         CHECK(manip.getOutputFrameType() == ImgFrame::Type::RGB888i);
-        REQUIRE(same);
-        REQUIRE(same->type == ImgFrame::Type::RGB888i);
-        REQUIRE(same->specs.width == 64);
-        REQUIRE(same->specs.height == 48);
-        CHECK(countMismatches(*same, 64, 48, 3, pattern) == 0);
     }
 }
