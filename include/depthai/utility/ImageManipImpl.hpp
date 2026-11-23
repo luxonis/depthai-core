@@ -750,7 +750,6 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
        && inFrameType == inType)
         return *this;
     prevConfig = newCfgStr;
-    outputOps.clear();
 
     if(srcFrameSpecs.width <= 1 || srcFrameSpecs.height <= 1) {
         throw std::runtime_error("Input image is one dimensional");
@@ -758,6 +757,7 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
 
     // Reset all state derived from a previous configuration
     mode = 0;
+    outputOps.clear();
     convertInput = false;
     srcCorners.clear();
     matrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
@@ -804,7 +804,6 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
     const uint32_t inputWidth = srcSpecs.width;
     const uint32_t inputHeight = srcSpecs.height;
     assert(inputWidth > 0 && inputHeight > 0);
-    matrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
 
     if(mode & MODE_WARP) {
         auto [matrix, imageCorners, _srcCorners] = getFullTransform<Container>(base, inputWidth, inputHeight, type, outputFrameType, outputOps);
