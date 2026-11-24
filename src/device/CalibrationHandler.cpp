@@ -629,6 +629,10 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOriginExt
                                                                                         LengthUnit unit) const {
     const float mmToUnitScale = getDistanceUnitScale(unit, LengthUnit::MILLIMETER);
     const Extrinsics& housingExtrinsics = eepromData.housingExtrinsics;
+    // Devices calibrated before housing data was stored (e.g. OAK4 before DepthAI 3.2.0) have an empty rotation matrix.
+    if(!housingExtrinsics.hasValidRotationMatrix()) {
+        throw std::runtime_error("Device calibration has no housing extrinsics; housing calibration is not available for this device");
+    }
 
     originSocket = housingExtrinsics.toCameraSocket;
 

@@ -48,7 +48,7 @@ void ThreadedNode::start() {
                 spdlog::trace(expStr);
             }
             running = false;
-        } catch(const std::runtime_error& ex) {
+        } catch(const std::exception& ex) {  // also covers pybind11::error_already_set from Python run()
             auto expStr = fmt::format("Node threw exception, stopping the node. Exception message: {}", ex.what());
             if(pimpl->logger) {
                 pimpl->logger->error(expStr);
