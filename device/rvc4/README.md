@@ -184,6 +184,13 @@ the build:
 `install-hexagon-sdk.sh` in the images puts the Qualcomm Hexagon SDK into an image of your own, to build the DSP
 offload from source. `HEXAGON_SDK_DIR` (see above) does the same without a new image.
 
+Each image has `/usr/share/doc/depthai-device-sdk/NOTICE.md`. It tells where the license texts and the source code
+of each part of the image are: the Ubuntu packages (`ubuntu-packages.tsv` in the same folder gives the source package
+and the version of each installed package, with a link to its source on Launchpad), numpy and the libraries in its
+wheel, the FastCV headers, the depthai-core files and the public sysroot (`/opt/rvc4-sysroot/NOTICE.md`).
+`docker/sdk/write-notices.sh` writes these files when the image is built, and stops the build when a part has no
+license text.
+
 The public sysroot is made in the private CI of the vendor module, from the Luxonis OS SDK image. When the sysroot
 changes, that CI builds both images with `docker/sdk-images.sh`, checks them and pushes them:
 
@@ -262,10 +269,16 @@ to attach to a stuck production firmware and how to parse core dumps.
   the vendor module, the agreement prevails. The package contains both texts (`LICENSE.fwp` and
   `legal/DEPTHAI-EULA.txt`). The build writes the full license bundle of the package, with every
   third-party notice, to `depthai-device-rvc4-fwp-LICENSE` next to the package, and the SBOMs in SPDX 2.3 and
-  CycloneDX 1.6 format. The bundle ends with the legal files of the vendor module, in the layout of the Luxonis OS
+  CycloneDX 1.6 format. For each third-party dependency the bundle gives its license, its version, its upstream
+  source and its recipe: the vcpkg port that built it, with the patches that the build applied to the source (in
+  the vcpkg repository at the pinned baseline, or in `cmake/ports` of depthai-core). The bundle ends with the legal
+  files of the vendor module, in the layout of the Luxonis OS
   BSP packages: `NOTICE.txt`, the vendor module EULA (`legal/DEPTHAI-EULA.txt`),
   `legal/NOTICE.md` and the texts in `legal/licenses/`. The
   vendor module supplies them: its build writes them, and the prebuilt archive has them at its top.
+* The public build images (`ghcr.io/luxonis/depthai-device-sdk`) contain software under many licenses.
+  `/usr/share/doc/depthai-device-sdk/NOTICE.md` in each image lists the parts of the image, their license texts and
+  their source code, see [Public build container](#public-build-container).
 
 ## What is not in this repository
 

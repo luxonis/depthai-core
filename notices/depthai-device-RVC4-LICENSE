@@ -59,6 +59,9 @@ The public part of the source code of this firmware (directory device/rvc4 of th
 is available under the MIT License (see LICENSE in that repository). The license above and the
 third-party terms below apply to this binary firmware package.
 
+For each third-party dependency, "Source" is the upstream source and "Recipe" is the vcpkg port that built
+it: the build script and the patches that the build applied to that source.
+
 ---
 
 Third-Party Licenses
@@ -75,6 +78,7 @@ apriltag
 License: BSD-2-Clause
 Version: 3.4.3
 Source: https://april.eecs.umich.edu/software/apriltag
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/apriltag
 
 BSD 2-Clause License
 
@@ -112,6 +116,7 @@ backward-cpp
 License: MIT
 Version: 2023-11-24#1
 Source: https://github.com/bombela/backward-cpp
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/backward-cpp
 
 Copyright 2013 Google Inc. All Rights Reserved.
 
@@ -141,6 +146,7 @@ brotli
 License: MIT
 Version: 1.1.0#1
 Source: https://github.com/google/brotli
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/brotli
 
 Copyright (c) 2009, 2010, 2013-2016 by the Brotli Authors.
 
@@ -168,6 +174,7 @@ bzip2
 License: bzip2-1.0.6
 Version: 1.0.8#6
 Source: https://sourceware.org/bzip2/
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/bzip2
 
 --------------------------------------------------------------------------
 
@@ -217,6 +224,7 @@ cpp-httplib
 License: MIT
 Version: 0.20.1
 Source: https://github.com/yhirose/cpp-httplib
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/cpp-httplib
 
 The MIT License (MIT)
 
@@ -246,6 +254,7 @@ eigen3
 License: MPL-2.0
 Version: 3.4.0#5
 Source: http://eigen.tuxfamily.org
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/eigen3
 
 Eigen is primarily MPL2 licensed. See COPYING.MPL2 and these links:
   http://www.mozilla.org/MPL/2.0/
@@ -272,6 +281,7 @@ fmt
 License: MIT
 Version: 11.0.2#1
 Source: https://github.com/fmtlib/fmt
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/fmt
 
 Copyright (c) 2012 - present, Victor Zverovich and {fmt} contributors
 
@@ -307,6 +317,7 @@ fp16
 License: MIT
 Version: 2021-02-21#2
 Source: https://github.com/Maratyszcza/FP16
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/fp16
 
 The MIT License (MIT)
 
@@ -326,6 +337,7 @@ libarchive
 License: BSD-2-Clause AND BSD-3-Clause AND (CC0-1.0 OR OpenSSL OR Apache-2.0)
 Version: 3.7.7#1
 Source: https://www.libarchive.org
+Recipe: https://github.com/luxonis/depthai-core, folder cmake/ports/libarchive (in the depthai-core commit of this firmware)
 
 The libarchive distribution as a whole is Copyright by Tim Kientzle
 and is subject to the copyright notice reproduced at the bottom of
@@ -399,6 +411,7 @@ libjpeg-turbo
 License: BSD-3-Clause
 Version: 3.1.0#1
 Source: https://github.com/libjpeg-turbo/libjpeg-turbo
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/libjpeg-turbo
 
 libjpeg-turbo Licenses
 ======================
@@ -542,6 +555,7 @@ liblzma
 License: 0BSD
 Version: 5.8.1
 Source: https://tukaani.org/xz/
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/liblzma
 
 XZ Utils Licensing
 ==================
@@ -618,6 +632,7 @@ libnop
 License: Apache-2.0
 Version: 1.0-ec8f75a
 Source: https://github.com/luxonis/libnop/tree/00938ba06ad513e4e0a12f9f2ec41cecad7e40d1
+Recipe: https://github.com/luxonis/depthai-core, folder cmake/ports/libnop (in the depthai-core commit of this firmware)
 
 Copyright 2017 The Native Object Protocols Authors
 
@@ -639,6 +654,7 @@ libpng
 License: libpng-2.0
 Version: 1.6.47
 Source: https://github.com/pnggroup/libpng
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/libpng
 
 COPYRIGHT NOTICE, DISCLAIMER, and LICENSE
 =========================================
@@ -781,6 +797,7 @@ lz4
 License: BSD-2-Clause
 Version: 1.10.0
 Source: https://github.com/lz4/lz4
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/lz4
 
 LZ4 Library
 Copyright (c) 2011-2020, Yann Collet
@@ -813,6 +830,7 @@ magic-enum
 License: MIT
 Version: 0.9.7#1
 Source: https://github.com/Neargye/magic_enum
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/magic-enum
 
 MIT License
 
@@ -842,6 +860,7 @@ mp4v2
 License: MPL-1.1
 Version: 2.1.3
 Source: https://github.com/luxonis/mp4v2/tree/1dc9f4d24645ea43405582e5c813dec3eaa8fd3e
+Recipe: https://github.com/luxonis/depthai-core, folder cmake/ports/mp4v2 (in the depthai-core commit of this firmware)
 
 MOZILLA PUBLIC LICENSE
                                 Version 1.1
@@ -1308,6 +1327,7 @@ neargye-semver
 License: MIT
 Version: 0.3.1
 Source: https://github.com/Neargye/semver
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/neargye-semver
 
 MIT License
 
@@ -1338,6 +1358,7 @@ nlohmann-json
 License: MIT
 Version: 3.9.1
 Source: https://github.com/nlohmann/json
+Recipe: https://github.com/microsoft/vcpkg, port nlohmann-json 3.9.1, git tree 3b9a6d5f3d94db5699d4448f717ff32e4ea5722b
 
 MIT License 
 
@@ -1367,6 +1388,7 @@ psimd
 License: MIT
 Version: 2021-02-21#2
 Source: https://github.com/Maratyszcza/psimd
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/psimd
 
 The MIT License (MIT)
 
@@ -1386,6 +1408,7 @@ pthreads
 License: Apache-2.0
 Version: 3.0.0#14
 Source: https://sourceforge.net/projects/pthreads4w/
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/pthreads
 
 No license text was found by the collector.
 
@@ -1395,6 +1418,7 @@ pybind11
 License: BSD-3-Clause
 Version: 3.2.0-dev-218a429500#1
 Source: https://github.com/pybind/pybind11/tree/218a429500971f5030eda1855c870637a62aabdb
+Recipe: https://github.com/luxonis/depthai-core, folder cmake/ports/pybind11 (in the depthai-core commit of this firmware)
 
 Copyright (c) 2016 Wenzel Jakob <wenzel.jakob@epfl.ch>, All rights reserved.
 
@@ -1432,6 +1456,7 @@ spdlog
 License: MIT
 Version: 1.12.0
 Source: https://github.com/gabime/spdlog
+Recipe: https://github.com/microsoft/vcpkg, port spdlog 1.12.0, git tree 41cf31aa350a44644863d7777489501d240f248c
 
 The MIT License (MIT)
 
@@ -1465,6 +1490,7 @@ tiff
 License: libtiff
 Version: 4.7.0
 Source: https://libtiff.gitlab.io/libtiff/
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/tiff
 
 # LibTIFF license
 
@@ -1496,6 +1522,7 @@ xlink
 License: Apache-2.0
 Version: luxonis-develop-server
 Source: https://github.com/luxonis/XLink/tree/7f5633ab542df632acaf4ccaf5e98d30f984e6e4
+Recipe: https://github.com/luxonis/depthai-core, folder cmake/ports/xlink (in the depthai-core commit of this firmware)
 
 Apache License
                            Version 2.0, January 2004
@@ -1705,6 +1732,7 @@ xtensor
 License: BSD-3-Clause
 Version: 0.26.0
 Source: https://github.com/xtensor-stack/xtensor
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/xtensor
 
 Copyright (c) 2016, Johan Mabille, Sylvain Corlay and Wolf Vollprecht
 Copyright (c) 2016, QuantStack
@@ -1741,6 +1769,7 @@ xtl
 License: BSD-3-Clause
 Version: 0.8.0
 Source: https://github.com/xtensor-stack/xtl
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/xtl
 
 BSD 3-Clause License
 
@@ -1779,6 +1808,7 @@ yaml-cpp
 License: MIT
 Version: 0.8.0#3
 Source: https://github.com/jbeder/yaml-cpp
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/yaml-cpp
 
 Copyright (c) 2008-2015 Jesse Beder.
 
@@ -1806,6 +1836,7 @@ zlib
 License: Zlib
 Version: 1.3.1
 Source: https://www.zlib.net/
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/zlib
 
 Copyright notice:
 

@@ -32,8 +32,14 @@ FWP_LICENSE_FILE_NAME = "LICENSE.fwp"
 SOURCE_LICENSE_NOTE = (
     "The public part of the source code of this firmware (directory device/rvc4 of the depthai-core repository)\n"
     "is available under the MIT License (see LICENSE in that repository). The license above and the\n"
-    "third-party terms below apply to this binary firmware package."
+    "third-party terms below apply to this binary firmware package.\n"
+    "\n"
+    "For each third-party dependency, \"Source\" is the upstream source and \"Recipe\" is the vcpkg port that built\n"
+    "it: the build script and the patches that the build applied to that source."
 )
+
+VCPKG_DEFAULT_REPOSITORY = "https://github.com/microsoft/vcpkg"
+DEPTHAI_CORE_REPOSITORY = "https://github.com/luxonis/depthai-core"
 
 
 def parse_args() -> argparse.Namespace:
@@ -173,6 +179,62 @@ def upstream_source(package: dict[str, Any]) -> str | None:
     return None
 
 
+class VcpkgPorts:
+    """Where the vcpkg ports of the firmware build are, from vcpkg.json and vcpkg-configuration.json of the manifest
+    folder: the overlay ports (in this repository), the overrides (a port version from the version database) and the
+    baseline of the default registry (all other ports)."""
+
+    def __init__(self, repo_root: Path, manifest_root: Path, vcpkg_root: Path, builtin_baseline: str | None) -> None:
+        manifest = json.loads((manifest_root / "vcpkg.json").read_text(encoding="utf-8"))
+        config_path = manifest_root / "vcpkg-configuration.json"
+        config = json.loads(config_path.read_text(encoding="utf-8")) if config_path.is_file() else {}
+        registry = config.get("default-registry") or {}
+        repository = registry.get("repository") or VCPKG_DEFAULT_REPOSITORY
+        self.repository = repository[: -len(".git")] if repository.endswith(".git") else repository
+        self.baseline = registry.get("baseline") or builtin_baseline
+        self.overlays = [(manifest_root / path).resolve() for path in config.get("overlay-ports", [])]
+        self.overrides = {
+            item["name"]: item.get("version") or item.get("version-semver") or item.get("version-string") or item.get("version-date")
+            for item in manifest.get("overrides", [])
+        }
+        self.repo_root = repo_root
+        self.vcpkg_root = vcpkg_root
+        # The firmware sources are device/rvc4 of the depthai-core repository: links to overlay ports use that layout
+        core_root = repo_root.parents[1]
+        self.core_root = core_root if (core_root / "device" / "rvc4").resolve() == repo_root.resolve() else None
+
+    def override_git_tree(self, name: str, version: str, port_version: int) -> str | None:
+        versions = self.vcpkg_root / "versions" / f"{name[0]}-" / f"{name}.json"
+        if not versions.is_file():
+            return None
+        for entry in json.loads(versions.read_text(encoding="utf-8")).get("versions", []):
+            entry_version = entry.get("version") or entry.get("version-semver") or entry.get("version-string") or entry.get("version-date")
+            if entry_version == version and int(entry.get("port-version", 0)) == port_version:
+                return entry.get("git-tree")
+        return None
+
+    def recipe(self, package: dict[str, Any]) -> str:
+        """The vcpkg port of a vcpkg package. No commit of this repository is in the text: the build compares the
+        bundle with the committed notices/depthai-device-RVC4-LICENSE."""
+        name = package["package"]
+        for overlay in self.overlays:
+            if (overlay / name / "portfile.cmake").is_file():
+                if self.core_root is not None:
+                    path = (overlay / name).relative_to(self.core_root.resolve()).as_posix()
+                    return f"{DEPTHAI_CORE_REPOSITORY}, folder {path} (in the depthai-core commit of this firmware)"
+                return f"overlay port {overlay / name}"
+        version = package_version(package) or ""
+        base_version, _, port_version = version.partition("#")
+        if name in self.overrides:
+            git_tree = self.override_git_tree(name, base_version, int(port_version or 0))
+            if not git_tree:
+                raise SystemExit(f"error: no git tree of the vcpkg port {name} {version} in {self.vcpkg_root / 'versions'}")
+            return f"{self.repository}, port {name} {version}, git tree {git_tree}"
+        if not self.baseline:
+            raise SystemExit("error: no vcpkg baseline in vcpkg-configuration.json or vcpkg.json")
+        return f"{self.repository}/tree/{self.baseline}/ports/{name}"
+
+
 def sorted_packages(payload: dict[str, Any]) -> list[dict[str, Any]]:
     packages = payload.get("packages")
     if not isinstance(packages, list):
@@ -201,6 +263,7 @@ def generate_license_bundle(
     payload: dict[str, Any],
     license_text: str,
     vendor_license_text: str | None = None,
+    vcpkg_ports: VcpkgPorts | None = None,
 ) -> str:
     packages = sorted_packages(payload)
     if vendor_license_text:
@@ -237,6 +300,8 @@ def generate_license_bundle(
             homepage = package_homepage(package)
             if homepage:
                 lines.append(f"Source: {homepage}")
+            if source_type == "vcpkg" and vcpkg_ports is not None:
+                lines.append(f"Recipe: {vcpkg_ports.recipe(package)}")
             lines.append("")
             notice_text = (package.get("notice_text") or "").strip()
             if notice_text:
@@ -268,10 +333,17 @@ def main() -> int:
         vendor_license_text = vendor_legal_text(args.vendor_legal_dir)
     else:
         print(f"warning: no --vendor-legal-dir: the bundle has no legal files of the {PRIVATE_MODULE_NAME} module", file=sys.stderr)
+    vcpkg_ports = VcpkgPorts(
+        repo_root=args.repo_root,
+        manifest_root=(args.manifest_root or args.repo_root).resolve(),
+        vcpkg_root=args.vcpkg_root,
+        builtin_baseline=(payload.get("vcpkg") or {}).get("registry_builtin_baseline"),
+    )
     license_bundle = generate_license_bundle(
         payload=payload,
         license_text=license_text,
         vendor_license_text=vendor_license_text,
+        vcpkg_ports=vcpkg_ports,
     )
 
     args.license_output.parent.mkdir(parents=True, exist_ok=True)
