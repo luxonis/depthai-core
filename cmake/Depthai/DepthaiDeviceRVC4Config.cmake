@@ -9,7 +9,7 @@ set(DEPTHAI_DEVICE_RVC4_VERSION "" CACHE STRING "RVC4 firmware package to downlo
 
 # Prebuilt vendor module (licensee-only code of the RVC4 firmware) that a firmware build of device/rvc4 links:
 # depthai-device-rvc4-vendor-<version>[-asan-ubsan|-tsan].tar.xz (cmake/DepthaiDeviceRvc4VendorDownloader.cmake)
-set(DEPTHAI_DEVICE_RVC4_VENDOR_VERSION "0.0.1+40d934ae2adea0f0ada596bce1e1b6bbb7400743")
+set(DEPTHAI_DEVICE_RVC4_VENDOR_VERSION "0.0.1+5aeb67fb4fc609e726b142349bc1968513b4a375")
 
 # Public build image of the RVC4 firmware (device/rvc4/docker/Dockerfile.sdk) that the build scripts of device/rvc4 use
 # when DEPTHAI_DEVICE_SDK_IMAGE is not set: ghcr.io/luxonis/depthai-device-sdk:os-<Luxonis OS version>-<first 12
@@ -17,4 +17,4 @@ set(DEPTHAI_DEVICE_RVC4_VENDOR_VERSION "0.0.1+40d934ae2adea0f0ada596bce1e1b6bbb7
 # tag with -dev.
 # device/rvc4/docker/sdk-images.sh builds and pushes it; a fixed tag is never moved. The OS release of its sysroot must
 # be the one of the vendor module above: the firmware build compares them.
-set(DEPTHAI_DEVICE_RVC4_SDK_IMAGE "ghcr.io/luxonis/depthai-device-sdk:os-1.37.0-40d934ae2ade")
+set(DEPTHAI_DEVICE_RVC4_SDK_IMAGE "ghcr.io/luxonis/depthai-device-sdk:os-1.37.0-5aeb67fb4fc6")
