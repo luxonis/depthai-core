@@ -675,8 +675,13 @@ def add_artifacts(repo: Path, build_dir: Path | None, cache: Cache | None, inven
             # No version: the host build builds the firmware from device/rvc4 (cmake/DepthaiDeviceRvc4FirmwareBuild.cmake)
             entry["properties"]["depthai:source"] = "device/rvc4 of this tree"
         if name == "depthai-device-rvc4" and build_dir is not None:
+            # The package that the library embeds: the pinned version with its sanitizer variant, or a local package
+            embedded = cache.get("DEPTHAI_DEVICE_RVC4_EMBEDDED_VERSION")
+            if embedded:
+                version = embedded
+                entry["version"] = version
             # CMakeLists.txt appends the sanitizer variant to the firmware version
-            if version and on(cache, "DEPTHAI_SANITIZE"):
+            elif version and on(cache, "DEPTHAI_SANITIZE"):
                 version += "-tsan" if on(cache, "SANITIZE_THREAD") else "-asan-ubsan"
                 entry["version"] = version
             link_firmware_sbom(build_dir, version, entry, inventory, output_dir)

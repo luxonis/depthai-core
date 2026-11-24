@@ -47,6 +47,12 @@ function(DepthaiDeviceRvc4LocalFwp fwp_path output_dir version_var resource_list
     else()
         message(STATUS "No license bundle next to the local RVC4 firmware package (${_fwp_stem}-LICENSE): none is embedded")
     endif()
+    foreach(_sbom_extension spdx.json cdx.json)
+        if(EXISTS "${_fwp_dir}/${_fwp_stem}.${_sbom_extension}")
+            configure_file("${_fwp_dir}/${_fwp_stem}.${_sbom_extension}"
+                           "${output_dir}/depthai-device-rvc4-fwp-${_version}.${_sbom_extension}" COPYONLY)
+        endif()
+    endforeach()
 
     message(STATUS "RVC4 firmware: local package ${_fwp}, version ${_version}")
     set(${version_var} "${_version}" PARENT_SCOPE)

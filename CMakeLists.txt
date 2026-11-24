@@ -993,6 +993,8 @@ if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
         )
     endif()
     list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_RVC4_RESOURCE_LIST})
+    set(DEPTHAI_DEVICE_RVC4_EMBEDDED_VERSION "${DEPTHAI_DEVICE_RVC4_VERSION}" CACHE INTERNAL
+        "Version of the RVC4 firmware package that the library embeds (scripts/generate_sbom.py)")
 endif()
 
 

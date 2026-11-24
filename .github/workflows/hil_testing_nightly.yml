@@ -22,6 +22,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  publish-rvc4-fwp-asan-ubsan:
+    uses: ./.github/workflows/rvc4_fwp.yml
+    with:
+      target: rvc4-asan-ubsan
+    secrets: inherit
+
   build_wheels:
     if: inputs.build_and_bom
     uses: ./.github/workflows/python-main.yml

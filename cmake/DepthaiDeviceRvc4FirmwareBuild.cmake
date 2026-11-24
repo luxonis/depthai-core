@@ -1,34 +1,14 @@
-# Builds the RVC4 firmware package from device/rvc4 of this checkout and embeds it in the library. The host build uses
-# this when cmake/Depthai/DepthaiDeviceRVC4Config.cmake sets no DEPTHAI_DEVICE_RVC4_VERSION (the default) and
-# DEPTHAI_DEVICE_RVC4_FWP_PATH is not set. A version downloads that package from the artifact server instead.
+# Builds the RVC4 firmware package from device/rvc4 (in Docker) and embeds it in the library.
+# Used when DEPTHAI_DEVICE_RVC4_VERSION and DEPTHAI_DEVICE_RVC4_FWP_PATH are not set.
 #
-# Each build of the library runs device/rvc4/create_deployment_artifacts.sh in its build container (Docker): the
-# target rvc4, or rvc4-tsan / rvc4-asan-ubsan for a sanitizer build of the library. The firmware build is incremental,
-# and the package and its license bundle are copied to the resources only when they changed, so an unchanged firmware
-# does not compile the library again. The environment variables of create_deployment_artifacts.sh apply (for example
-# DEPTHAI_ACCEPT_QUALCOMM_LICENSE, DEPTHAI_ACCEPT_VENDOR_EULA, DEPTHAI_BUILD_JOBS, DEPTHAI_DEVICE_RVC4_VENDOR).
-# The cache entries DEPTHAI_ACCEPT_VENDOR_EULA, DEPTHAI_ACCEPT_QUALCOMM_LICENSE, DEPTHAI_DEVICE_SDK_IMAGE,
-# DEPTHAI_DEVICE_RVC4_VENDOR and DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR of the library (-D, or a preset of
-# CMakePresets.json or CMakeUserPresets.json) are given to the script as these environment variables; empty, the
-# environment applies.
+# - Configure step: configures the firmware build too (-D DEPTHAI_DEVICE_RVC4_FWP_CONFIGURE=OFF skips it).
+# - Build step: incremental; the package is copied only when it changed.
+# - The cache entries below go to create_deployment_artifacts.sh as environment variables.
+# - The license bundle must be notices/depthai-device-RVC4-LICENSE. After an intended change, copy it over.
+# - Version: "<firmware version>+local.<12-digit commit>".
 #
-# Each configure step of the library also configures the firmware build in its build container
-# (DEPTHAI_DEVICE_CONFIGURE_ONLY=1 of create_deployment_artifacts.sh): an error of the firmware configuration, for
-# example a license agreement that is not accepted, stops the configure step and not the build. The step also writes
-# device/rvc4/build_docker_arm64_<target>/compile_commands.json. -D DEPTHAI_DEVICE_RVC4_FWP_CONFIGURE=OFF leaves the
-# firmware configuration to the build.
-#
-# The build stops when the license bundle of the package is not the committed notices/depthai-device-RVC4-LICENSE, as a
-# download stops (cmake/VerifyLicense.cmake): the wheel and the install ship that notice file. After an intended change
-# of the bundle (third-party components, the legal files of the vendor module), copy the bundle over the notice file.
-#
-# The version string of the embedded package is "<firmware version>+local.<first 12 hex digits of the commit>".
-# At run time, the environment variable DEPTHAI_DEVICE_RVC4_FWP still selects another package.
-#
-# DepthaiDeviceRvc4FirmwareBuild(<output folder> <version variable> <resource list variable> <target variable>)
-#   <version variable>        out: version of the embedded package
-#   <resource list variable>  out: files to embed
-#   <target variable>         out: target that builds the package; the resource library depends on it
+# DepthaiDeviceRvc4FirmwareBuild(<output folder> <version var> <resource list var> <target var>)
+#   out: package version, files to embed, target that builds the package
 function(DepthaiDeviceRvc4FirmwareBuild output_dir version_var resource_list_var target_var)
     set(_source_dir "${CMAKE_SOURCE_DIR}/device/rvc4")
     if(DEPTHAI_SANITIZE AND SANITIZE_THREAD)
@@ -103,6 +83,7 @@ function(DepthaiDeviceRvc4FirmwareBuild output_dir version_var resource_list_var
     set(_package_dir "${_source_dir}/build_docker_arm64_${_target}/RelWithDebInfo")
     set(_embedded_fwp "${output_dir}/depthai-device-rvc4-fwp-${_version}.tar.xz")
     set(_embedded_license "${output_dir}/depthai-device-rvc4-fwp-${_version}-LICENSE")
+    set(_sbom_stem "${output_dir}/depthai-device-rvc4-fwp-${_version}")
     set(_committed_notice "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../notices/depthai-device-RVC4-LICENSE")
     add_custom_target(depthai-device-rvc4-fwp ALL
         COMMAND "${CMAKE_COMMAND}" -E env --unset=DEPTHAI_DEVICE_CONFIGURE_ONLY ${_script_env}
@@ -112,7 +93,10 @@ function(DepthaiDeviceRvc4FirmwareBuild output_dir version_var resource_list_var
                 -D "EXPECTED=${_committed_notice}" -D ORIGIN=Built -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/VerifyLicense.cmake"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_package_dir}/depthai-device-rvc4-fwp.tar.xz" "${_embedded_fwp}"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_package_dir}/depthai-device-rvc4-fwp-LICENSE" "${_embedded_license}"
-        BYPRODUCTS "${_embedded_fwp}" "${_embedded_license}"
+        # The firmware SBOMs, for scripts/generate_sbom.py, as the download of a version does. Not embedded.
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_package_dir}/depthai-device-rvc4-fwp.spdx.json" "${_sbom_stem}.spdx.json"
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_package_dir}/depthai-device-rvc4-fwp.cdx.json" "${_sbom_stem}.cdx.json"
+        BYPRODUCTS "${_embedded_fwp}" "${_embedded_license}" "${_sbom_stem}.spdx.json" "${_sbom_stem}.cdx.json"
         WORKING_DIRECTORY "${_source_dir}"
         COMMENT "Building the RVC4 firmware package from device/rvc4 (target ${_target})"
         USES_TERMINAL
