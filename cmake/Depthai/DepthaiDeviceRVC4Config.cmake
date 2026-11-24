@@ -13,7 +13,8 @@ set(DEPTHAI_DEVICE_RVC4_VENDOR_VERSION "0.0.1+0a6d9452cc8af555f16d33d1e7c2bc551c
 
 # Public build image of the RVC4 firmware (device/rvc4/docker/Dockerfile.sdk) that the build scripts of device/rvc4 use
 # when DEPTHAI_DEVICE_SDK_IMAGE is not set: ghcr.io/luxonis/depthai-device-sdk:os-<Luxonis OS version>-<first 12
-# characters of the sha256 of the public sysroot>. The sanitizer targets use the same tag with -dev.
+# characters of the commit of the vendor repository that made the public sysroot>. The sanitizer targets use the same
+# tag with -dev.
 # device/rvc4/docker/sdk-images.sh builds and pushes it; a fixed tag is never moved. The OS release of its sysroot must
 # be the one of the vendor module above: the firmware build compares them.
 set(DEPTHAI_DEVICE_RVC4_SDK_IMAGE "ghcr.io/luxonis/depthai-device-sdk:os-1.37.0-f610793ec1db")

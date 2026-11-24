@@ -51,7 +51,7 @@ utility_scripts/        Developer helpers: build, deploy, debug, core dumps, lic
 
 The firmware is cross-compiled in a Docker image on an x86-64 host. These images can build it:
 
-* the public build images `ghcr.io/luxonis/depthai-device-sdk:os-<OS version>-<sysroot>` (for the release firmware)
+* the public build images `ghcr.io/luxonis/depthai-device-sdk:os-<OS version>-<vendor commit>` (for the release firmware)
   and the same tag with `-dev` (the same plus the sanitizer libraries): Ubuntu 22.04, the cross compiler of Ubuntu (GCC 11.4)
   and the public sysroot of Luxonis OS. Anyone can use them, see [Public build container](#public-build-container).
 * the Luxonis OS SDK image: the OpenEmbedded toolchain, the full sysroot and the Hexagon SDK (Luxonis licensees).
@@ -154,14 +154,16 @@ Luxonis builds and publishes two images from `docker/Dockerfile.sdk`. You pull t
 
 | Image | For | Content |
 |---|---|---|
-| `ghcr.io/luxonis/depthai-device-sdk:os-<OS version>-<sysroot>` | the release firmware (target `rvc4`) | Ubuntu 22.04, the build tools, the cross compiler of Ubuntu (`g++-11-aarch64-linux-gnu`, GCC 11.4 and binutils 2.38, the versions of the Luxonis OS SDK) without its own C library, the public sysroot of Luxonis OS `<OS version>`, the FastCV headers |
-| `ghcr.io/luxonis/depthai-device-sdk:os-<OS version>-<sysroot>-dev` | the targets `rvc4-tsan` and `rvc4-asan-ubsan`, and `start_dev_shell.sh` | the same plus the sanitizer libraries of the compiler |
+| `ghcr.io/luxonis/depthai-device-sdk:os-<OS version>-<vendor commit>` | the release firmware (target `rvc4`) | Ubuntu 22.04, the build tools, the cross compiler of Ubuntu (`g++-11-aarch64-linux-gnu`, GCC 11.4 and binutils 2.38, the versions of the Luxonis OS SDK) without its own C library, the public sysroot of Luxonis OS `<OS version>`, the FastCV headers |
+| `ghcr.io/luxonis/depthai-device-sdk:os-<OS version>-<vendor commit>-dev` | the targets `rvc4-tsan` and `rvc4-asan-ubsan`, and `start_dev_shell.sh` | the same plus the sanitizer libraries of the compiler |
 
-`<sysroot>` is the start of the sha256 of the public sysroot. A tag with it never moves to another image. The tags
-`os-<OS version>` and `os-<OS version>-dev` are the newest images for that OS version. depthai-core pins the image
-in `cmake/Depthai/DepthaiDeviceRVC4Config.cmake` (`DEPTHAI_DEVICE_RVC4_SDK_IMAGE`), and the build scripts use the
-pinned image when `DEPTHAI_DEVICE_SDK_IMAGE` is not set. The OS version of the image is the one of the prebuilt
-vendor module (`DEPTHAI_DEVICE_RVC4_VENDOR_VERSION`): the build compares them.
+`<vendor commit>` is the first 12 characters of the commit of the vendor repository that made the public sysroot. The
+labels `com.luxonis.rvc4.vendor-revision` and `com.luxonis.rvc4.sysroot-sha256` of the image give that commit and the
+sha256 of the sysroot. A tag with a vendor commit never moves to another image. The tags `os-<OS version>` and
+`os-<OS version>-dev` are the newest images for that OS version. depthai-core pins the image in
+`cmake/Depthai/DepthaiDeviceRVC4Config.cmake` (`DEPTHAI_DEVICE_RVC4_SDK_IMAGE`), and the build scripts use the pinned
+image when `DEPTHAI_DEVICE_SDK_IMAGE` is not set. The OS version of the image is the one of the prebuilt vendor module
+(`DEPTHAI_DEVICE_RVC4_VENDOR_VERSION`): the build compares them.
 
 The images have no Qualcomm software that Luxonis may not redistribute: the sysroot has link stubs of the Qualcomm
 libraries (same names and symbols, no code; the device has the real libraries). Two Qualcomm SDKs give headers to

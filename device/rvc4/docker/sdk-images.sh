@@ -7,17 +7,19 @@
 #   sdk-images.sh build <sysroot tarball>  Build the release and the dev image with the public sysroot <tarball>
 #                                          (rvc4-public-sysroot-<version>.tar.xz), give them the four tags, check them.
 #   sdk-images.sh push <sysroot tarball>   Push the four tags of the images that 'build' made from <tarball>. Stops
-#                                          before it pushes anything when the fixed tag is already in the registry.
+#                                          before it pushes anything when the fixed tag is already in the registry,
+#                                          or when <tarball> was not made from a clean commit of the vendor repository.
 #   sdk-images.sh tags <sysroot tarball>   Print the four tags (fixed release, fixed dev, OS release, OS dev).
 #   sdk-images.sh check [<image>]          Check <image> and <image>-dev. Default: the pinned image (docker pulls it
 #                                          when it is not on this host).
 #   sdk-images.sh pinned [release|dev]     Print the image that depthai-core pins: DEPTHAI_DEVICE_RVC4_SDK_IMAGE in
 #                                          cmake/Depthai/DepthaiDeviceRVC4Config.cmake, with -dev for dev.
 #
-# Tags. <os> is the Luxonis OS version of the sysroot (the os-release line of its VERSION file), <sha> the first 12
-# characters of the sha256 of the tarball:
-#   os-<os>-<sha>, os-<os>-<sha>-dev   Fixed: one sysroot. A push never moves them. depthai-core pins these.
-#   os-<os>, os-<os>-dev               The newest images for that OS version. Each push moves them.
+# Tags. <os> is the Luxonis OS version of the sysroot (the os-release line of its VERSION file), <vendor> the commit of
+# the vendor repository that made the sysroot (12 characters, the "tool: make-public-sysroot.py, revision" line of its
+# VERSION file). The sha256 of the tarball is the label com.luxonis.rvc4.sysroot-sha256 of the images.
+#   os-<os>-<vendor>, os-<os>-<vendor>-dev   Fixed: one vendor commit. A push never moves them. depthai-core pins these.
+#   os-<os>, os-<os>-dev                     The newest images for that OS version. Each push moves them.
 #
 # Environment:
 #   DEPTHAI_DEVICE_SDK_REPOSITORY  Image repository for build, push and tags. Default: ghcr.io/luxonis/depthai-device-sdk
@@ -48,7 +50,8 @@ pinned() {
     esac
 }
 
-# Sets TARBALL, SYSROOT_SHA256, OS_VERSION and the four tags for the tarball $1
+# Sets TARBALL, SYSROOT_SHA256, OS_VERSION, VENDOR_REVISION and the four tags for the tarball $1. A tarball of a vendor
+# checkout with changes (revision <commit>-dirty) gives tags for a local test; 'push' refuses it.
 sysroot_info() {
     if [ ! -f "$1" ]; then
         echo "error: no sysroot tarball '$1'" >&2
@@ -56,12 +59,19 @@ sysroot_info() {
     fi
     TARBALL=$(readlink -f "$1")
     SYSROOT_SHA256=$(sha256sum "$TARBALL" | cut -d' ' -f1)
-    OS_VERSION=$(tar -xJOf "$TARBALL" rvc4-sysroot/VERSION | sed -n 's/^os-release: Luxonis OS RVC4 \([0-9][0-9.]*\) .*/\1/p')
+    local version
+    version=$(tar -xJOf "$TARBALL" rvc4-sysroot/VERSION)
+    OS_VERSION=$(sed -n 's/^os-release: Luxonis OS RVC4 \([0-9][0-9.]*\) .*/\1/p' <<< "$version")
     if [ -z "$OS_VERSION" ]; then
         echo "error: $TARBALL has no rvc4-sysroot/VERSION with an 'os-release: Luxonis OS RVC4 <version>' line" >&2
         exit 1
     fi
-    TAG_FIXED="$REPOSITORY:os-$OS_VERSION-${SYSROOT_SHA256:0:12}"
+    VENDOR_REVISION=$(sed -n 's/^tool: make-public-sysroot\.py, revision \([^ ]*\)$/\1/p' <<< "$version")
+    if ! [[ "$VENDOR_REVISION" =~ ^[0-9a-f]{12}(-dirty)?$ ]]; then
+        echo "error: rvc4-sysroot/VERSION of $TARBALL has no vendor commit (line 'tool: make-public-sysroot.py, revision <12 characters>', found '${VENDOR_REVISION:-nothing}')" >&2
+        exit 1
+    fi
+    TAG_FIXED="$REPOSITORY:os-$OS_VERSION-$VENDOR_REVISION"
     TAG_FIXED_DEV="$TAG_FIXED-dev"
     TAG_OS="$REPOSITORY:os-$OS_VERSION"
     TAG_OS_DEV="$TAG_OS-dev"
@@ -126,7 +136,7 @@ build() {
         || cp "$TARBALL" "$context/sysroot/rvc4-public-sysroot.tar.xz"
     cp "$CORE_DIR/LICENSE" "$context/legal/LICENSE"
     revision=$(git -C "$CORE_DIR" rev-parse HEAD 2>/dev/null || echo unknown)
-    echo "Public sysroot: $TARBALL (Luxonis OS $OS_VERSION, sha256 $SYSROOT_SHA256)"
+    echo "Public sysroot: $TARBALL (Luxonis OS $OS_VERSION, vendor commit $VENDOR_REVISION, sha256 $SYSROOT_SHA256)"
     for target in release dev; do
         if [ "$target" = release ]; then tag="$TAG_FIXED"; else tag="$TAG_FIXED_DEV"; fi
         # shellcheck disable=SC2086 # extra arguments are split at spaces on purpose
@@ -136,6 +146,7 @@ build() {
             --build-arg RVC4_SYSROOT_SHA256="$SYSROOT_SHA256" \
             --build-arg RVC4_OS_VERSION="$OS_VERSION" \
             --build-arg RVC4_CORE_REVISION="$revision" \
+            --build-arg RVC4_VENDOR_REVISION="$VENDOR_REVISION" \
             -t "$tag" "$DOCKER_DIR"
     done
     docker tag "$TAG_FIXED" "$TAG_OS"
@@ -146,6 +157,10 @@ build() {
 
 push() {
     sysroot_info "$1"
+    if [[ "$VENDOR_REVISION" == *-dirty ]]; then
+        echo "error: $1 was made from a vendor checkout with changes ($VENDOR_REVISION): push only images of a commit" >&2
+        exit 1
+    fi
     local tag sha
     for tag in "$TAG_FIXED" "$TAG_FIXED_DEV"; do
         sha=$(docker inspect --format '{{index .Config.Labels "com.luxonis.rvc4.sysroot-sha256"}}' "$tag" 2>/dev/null || true)
@@ -154,7 +169,7 @@ push() {
             exit 1
         fi
         if docker manifest inspect "$tag" >/dev/null 2>&1; then
-            echo "error: $tag is already in the registry. A fixed tag is never moved: make a new sysroot." >&2
+            echo "error: $tag is already in the registry. A fixed tag is never moved: push a new vendor commit." >&2
             exit 1
         fi
     done

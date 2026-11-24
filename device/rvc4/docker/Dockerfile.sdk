@@ -11,9 +11,9 @@
 # This file gives two images (docker build --target <name>):
 #   release  the default image: what the build of the release firmware (target rvc4) needs
 #   dev      release plus the sanitizer libraries of the compiler (targets rvc4-tsan and rvc4-asan-ubsan)
-# Luxonis publishes both as ghcr.io/luxonis/depthai-device-sdk:os-<Luxonis OS version>-<sysroot> and the same tag with
-# -dev. The private CI of the vendor module makes the public sysroot and builds and pushes the
-# images with sdk-images.sh (in this folder) when the sysroot changes. depthai-core pins the image in
+# Luxonis publishes both as ghcr.io/luxonis/depthai-device-sdk:os-<Luxonis OS version>-<vendor commit> and the same
+# tag with -dev. The private CI of the vendor module makes the public sysroot and builds and pushes the images with
+# sdk-images.sh (in this folder) when the sysroot changes. depthai-core pins the image in
 # cmake/Depthai/DepthaiDeviceRVC4Config.cmake (DEPTHAI_DEVICE_RVC4_SDK_IMAGE). The build scripts take the image that
 # the target needs.
 #
@@ -127,11 +127,16 @@ RUN --mount=type=bind,from=legal,target=/legal-input \
     --mount=type=bind,source=sdk/write-notices.sh,target=/tmp/write-notices.sh \
     bash /tmp/write-notices.sh /usr/share/doc/depthai-device-sdk /legal-input/LICENSE
 
+# RVC4_VENDOR_REVISION: the commit of the vendor repository that made the sysroot (12 characters). The fixed tag of the
+# images is os-<RVC4_OS_VERSION>-<RVC4_VENDOR_REVISION>.
+ARG RVC4_VENDOR_REVISION=unknown
 LABEL org.opencontainers.image.title="depthai-device-sdk" \
       org.opencontainers.image.description="Public build image of the DepthAI RVC4 firmware" \
       org.opencontainers.image.source="https://github.com/luxonis/depthai-core" \
       org.opencontainers.image.revision="$RVC4_CORE_REVISION" \
+      org.opencontainers.image.version="os-$RVC4_OS_VERSION-$RVC4_VENDOR_REVISION" \
       com.luxonis.rvc4.os-version="$RVC4_OS_VERSION" \
+      com.luxonis.rvc4.vendor-revision="$RVC4_VENDOR_REVISION" \
       com.luxonis.rvc4.sysroot-sha256="$RVC4_SYSROOT_SHA256"
 
 
