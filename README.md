@@ -6,6 +6,10 @@
 
 DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C++ and offers Python bindings out of the box.
 
+<p align="center">
+  <img src="./images/oak_scan.gif" alt="OAK camera scanning an object" width="600">
+</p>
+
 >  **Important — You’re viewing the `v3.x.y` branch.**
 >
 > * For production projects that still rely on **v2**, check out the
@@ -359,6 +363,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_PROFILING                    | Enables runtime profiling of data transfer between the host and connected devices. Set to 1 to enable. Requires DEPTHAI_LEVEL=debug or lower to print.                                                                                                                                                                                                                                                                                                                                            |
 | DEPTHAI_PIPELINE_DEBUGGING           | Enables pipeline debugging with state dumps. DEPTHAI_LEVEL=trace is required to print the state dumps.                                                                                                                                                                                                                                                                                                                                                                                            |
 | DEPTHAI_AUTOCALIBRATION              | Runs recalibration of the stereo pair and, by default, flashes successful calibration to non-volatile memory (EEPROM). `CONTINUOUS`: runs check repetitively; `ON_START`: runs calibration only at the start of the pipeline; `OFF`: no recalibration. The same mode can be configured from code with `pipeline.setAutoCalibrationMode(...)`. If this environment variable is set, it overrides the pipeline-set value. AutoCalibration currently initializes only for stereo inputs at 1280x800. |
+
 
 ## Running tests
 
