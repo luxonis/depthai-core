@@ -248,6 +248,9 @@ if(TARGET regression_boot_test)
     set_tests_properties(regression_boot_test PROPERTIES TIMEOUT 180)
 endif()
 
+# Device close: repeated close, calls after close, and close after a device crash
+dai_add_test(device_close_test src/device_close_test.cpp)
+
 # Filesystem test
 dai_add_test(filesystem_test src/filesystem_test.cpp)
 dai_test_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")

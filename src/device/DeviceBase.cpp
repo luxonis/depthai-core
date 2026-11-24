@@ -333,6 +333,7 @@ class DeviceBase::Impl {
     template <typename... Args>
     auto rpcCall(std::chrono::milliseconds timeout, std::string name, Args&&... args) -> decltype(rpcClient->call(std::string(name),
                                                                                                                   std::forward<Args>(args)...)) {
+        checkRpcClient();
         ScopedRpcTimeout guard(timeout);
         return rpcClient->call(name, std::forward<Args>(args)...);
     }
@@ -343,7 +344,15 @@ class DeviceBase::Impl {
     template <typename... Args>
     auto rpcCall(std::string name, Args&&... args) -> decltype(rpcClient->call(std::string(name), std::forward<Args>(args)...)) {
         // ScopedRpcTimeout guard(std::nullopt);
+        checkRpcClient();
         return rpcClient->call(name, std::forward<Args>(args)...);
+    }
+
+    // closeImpl() releases the RPC client; throw the same error as a failed RPC instead of dereferencing it
+    void checkRpcClient() const {
+        if(!rpcClient) {
+            throw std::system_error(std::make_error_code(std::errc::io_error), "Device already closed or disconnected");
+        }
     }
 };
 
@@ -686,13 +695,19 @@ void DeviceBase::closeImpl() {
                 std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), X_LINK_ANY_STATE, false);
                 if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
                     pimpl->logger.trace("Found rebooting device in {}ns", duration_cast<nanoseconds>(steady_clock::now() - t1).count());
-                    DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
-                    if(rebootingDevice.hasCrashDump()) {
-                        auto dump = rebootingDevice.getCrashDump();
-                        logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
+                    // Reading the crash dump boots the device again, which fails if the link is
+                    // unstable. Closing must still complete, so report the failure and continue.
+                    try {
+                        DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
+                        if(rebootingDevice.hasCrashDump()) {
+                            auto dump = rebootingDevice.getCrashDump();
+                            logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
 
-                    } else {
-                        pimpl->logger.warn("Device crashed, but no crash dump could be extracted.");
+                        } else {
+                            pimpl->logger.warn("Device crashed, but no crash dump could be extracted.");
+                        }
+                    } catch(const std::exception& ex) {
+                        pimpl->logger.warn("Device crashed, but the crash dump could not be retrieved: {}", ex.what());
                     }
                     gotDump = true;
                     break;
