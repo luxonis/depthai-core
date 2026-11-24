@@ -42,6 +42,8 @@ jobs:
       - name: Checkout
         if: steps.download.outcome == 'failure'
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 11
 
       - name: Download the package of this commit from Artifact Keeper
         id: ak
@@ -68,7 +70,12 @@ jobs:
         env:
           DEPTHAI_ACCEPT_QUALCOMM_LICENSE: 'yes'
           DEPTHAI_ACCEPT_VENDOR_EULA: 'yes'
+          COLD_BUILD: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release_') || startsWith(github.ref, 'refs/tags/') }}
         run: |
+          if [ "$COLD_BUILD" = true ]; then
+            export DEPTHAI_DEVICE_BUILD_CACHE=0 DEPTHAI_DEVICE_SDK_CACHE="$RUNNER_TEMP/device-sdk-cache"
+            echo "Cold build for $GITHUB_REF: no published build cache, empty caches in $DEPTHAI_DEVICE_SDK_CACHE"
+          fi
           gb_per_compile_job=4
           memory_jobs=$(( $(awk '/^MemAvailable:/ {print int($2 / 1048576)}' /proc/meminfo) / gb_per_compile_job ))
           DEPTHAI_BUILD_JOBS=$(( memory_jobs < 1 ? 1 : (memory_jobs < $(nproc) ? memory_jobs : $(nproc)) ))

@@ -117,19 +117,9 @@ short:
   compiles them. With the published cache of the checkout commit, a first build takes about 70 s.
   `DEPTHAI_DEVICE_BUILD_CACHE=0` turns the download off.
 * **Caches on the host** that all checkouts share, in `~/.cache/depthai-device-sdk` (or `DEPTHAI_DEVICE_SDK_CACHE`):
-  `ccache`, the compiler cache (`CCACHE_MAXSIZE` sets its size limit, default 10G), `vcpkg`, the binary cache of the
-  vcpkg dependencies, and `build-cache`, the downloads above. A new clone or a new git worktree takes the object
-  files of earlier builds from them. A CI job (environment variable `CI`) keeps its caches in
-  `device/rvc4/build_docker_arm64` and does not use the published build cache.
 * **No debug data.** The target `rvc4` with the prebuilt private module compiles without debug data by default. The
   firmware package is the same, because it has the stripped binary: its machine code and data are byte-equal. Set
   `DEPTHAI_DEVICE_DEBUG_INFO=1` when you use a debugger or when you need the file and line of an address in a crash
-  report; the build is then slower (the link step takes 25 s for 9 s, the build folder is 5.9 GB for 0.5 GB) and it
-  does not use the published build cache. The sanitizer targets and a build with the sources of the private module
-  have debug data by default.
-
-A build with no change does no work, and a build after a change compiles only the changed sources and links the
-firmware again. The build time that the firmware reports is the time of the commit (`SOURCE_DATE_EPOCH`), so that two
 builds of one commit give the same binary. A compile job can use 2 GB to 5 GB of memory, so the default of
 `DEPTHAI_BUILD_JOBS` is half of the CPU cores.
 

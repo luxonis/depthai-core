@@ -33,7 +33,7 @@ done
 
 
 # Build caches. The caller can set them: docker/container-env.sh sets the caches that all checkouts share.
-# Default (CI): in the build folder.
+# Default (the caller sets none): in the build folder.
 export VCPKG_DEFAULT_BINARY_CACHE=${VCPKG_DEFAULT_BINARY_CACHE:-$BUILD_DIR/vcpkg_cache}
 export X_VCPKG_REGISTRIES_CACHE="$VCPKG_DEFAULT_BINARY_CACHE/registries"
 mkdir -p "$VCPKG_DEFAULT_BINARY_CACHE" "$X_VCPKG_REGISTRIES_CACHE"

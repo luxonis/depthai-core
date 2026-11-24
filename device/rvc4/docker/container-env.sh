@@ -17,21 +17,20 @@ VENDOR_SOURCE_DIR="${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR:-}"
 CONTAINER_ARGS=()
 
 # Caches on the host that all checkouts share: the compiler cache, the binary cache of the vcpkg dependencies and the
-# QAIRT parts in use. With them a new clone or a new worktree builds from the results of the builds before it. A CI
-# job keeps the two build caches in the build folder (docker/build.sh), where the cache of the CI system finds them.
+# QAIRT parts in use. With them a new clone or a new worktree builds from the results of the builds before it. CI jobs
+# use them too: a job on a new machine (a hosted runner) starts with empty caches and takes the published build cache
+# (below). For a cold build, set DEPTHAI_DEVICE_SDK_CACHE to a new folder and DEPTHAI_DEVICE_BUILD_CACHE=0.
 SDK_CACHE="${DEPTHAI_DEVICE_SDK_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/depthai-device-sdk}"
 mkdir -p "$SDK_CACHE"
 SDK_CACHE=$(readlink -f "$SDK_CACHE")
-if [ -z "${CI:-}" ]; then
-    mkdir -p "$SDK_CACHE/ccache" "$SDK_CACHE/vcpkg"
-    # CCACHE_COMPILERCHECK=content: the compiler is known by its content and not by its file time, so that a cache
-    # entry fits each copy of the build image (the published build cache is made in another copy).
-    CONTAINER_ARGS+=(
-        -v "$SDK_CACHE/ccache":/sdk-cache/ccache -e CCACHE_DIR=/sdk-cache/ccache -e CCACHE_MAXSIZE="${CCACHE_MAXSIZE:-10G}"
-        -e CCACHE_COMPILERCHECK=content
-        -v "$SDK_CACHE/vcpkg":/sdk-cache/vcpkg -e VCPKG_DEFAULT_BINARY_CACHE=/sdk-cache/vcpkg
-    )
-fi
+mkdir -p "$SDK_CACHE/ccache" "$SDK_CACHE/vcpkg"
+# CCACHE_COMPILERCHECK=content: the compiler is known by its content and not by its file time, so that a cache
+# entry fits each copy of the build image (the published build cache is made in another copy).
+CONTAINER_ARGS+=(
+    -v "$SDK_CACHE/ccache":/sdk-cache/ccache -e CCACHE_DIR=/sdk-cache/ccache -e CCACHE_MAXSIZE="${CCACHE_MAXSIZE:-10G}"
+    -e CCACHE_COMPILERCHECK=content
+    -v "$SDK_CACHE/vcpkg":/sdk-cache/vcpkg -e VCPKG_DEFAULT_BINARY_CACHE=/sdk-cache/vcpkg
+)
 
 # The build time that the firmware reports is the time of the commit (SOURCE_DATE_EPOCH: CMake takes it for its time
 # stamps). Two builds of one commit then have the same generated version header, and the compiler cache of one build
@@ -60,7 +59,7 @@ fi
 # ccache takes an object file only when the source and all its headers are the same. The published object files are
 # those of a build without debug data and without the sources of the private module.
 # DEPTHAI_DEVICE_BUILD_CACHE=0 turns this off.
-if [ -z "${CI:-}" ] && [ "${DEPTHAI_DEVICE_BUILD_CACHE:-1}" != 0 ] && [ "$BUILD_HAS_DEBUG_INFO" = no ] && [ -z "$VENDOR_SOURCE_DIR" ] \
+if [ "${DEPTHAI_DEVICE_BUILD_CACHE:-1}" != 0 ] && [ "$BUILD_HAS_DEBUG_INFO" = no ] && [ -z "$VENDOR_SOURCE_DIR" ] \
     && [ "${DEPTHAI_DEVICE_SDK_IMAGE_KIND:-release}" = release ]; then
     BUILD_CACHE_URL="https://artifacts.luxonis.com/artifactory/luxonis-depthai-helper-binaries/device-rvc4-build-cache"
     BUILD_CACHE_URL="${DEPTHAI_DEVICE_BUILD_CACHE_BASE_URL:-$BUILD_CACHE_URL}"
