@@ -16,7 +16,8 @@ void bind_gpustereo(pybind11::module& m, void* pCallstack) {
     callstack->pop();
     cb(m, pCallstack);
 
-    properties.def_readwrite("initialConfig", &GPUStereoProperties::initialConfig, DOC(dai, GPUStereoProperties, initialConfig));
+    properties.def_readwrite("initialConfig", &GPUStereoProperties::initialConfig, DOC(dai, GPUStereoProperties, initialConfig))
+        .def_readwrite("rectification", &GPUStereoProperties::rectification, DOC(dai, GPUStereoProperties, rectification));
 
     node.def_property_readonly(
             "left", [](const GPUStereo& n) { return &n.sync->inputs["left"]; }, py::return_value_policy::reference_internal, DOC(dai, node, GPUStereo, left))
