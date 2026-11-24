@@ -97,18 +97,20 @@ struct MonoCameraProperties : PropertiesSerializable<Properties, MonoCameraPrope
     ~MonoCameraProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(MonoCameraProperties,
-                      initialControl,
-                      boardSocket,
-                      cameraName,
-                      imageOrientation,
-                      mockIspWidth,
-                      mockIspHeight,
-                      resolution,
-                      fps,
-                      isp3aFps,
-                      numFramesPool,
-                      numFramesPoolRaw,
-                      rawPacked);
+DEPTHAI_SERIALIZE_EXT_DECL(MonoCameraProperties,
+                           initialControl,
+                           boardSocket,
+                           cameraName,
+                           imageOrientation,
+                           mockIspWidth,
+                           mockIspHeight,
+                           resolution,
+                           fps,
+                           isp3aFps,
+                           numFramesPool,
+                           numFramesPoolRaw,
+                           rawPacked);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::MonoCameraProperties>;

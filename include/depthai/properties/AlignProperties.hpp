@@ -21,6 +21,8 @@ struct AlignProperties : PropertiesSerializable<Properties, AlignProperties> {
     ~AlignProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(AlignProperties, initialConfig, numFramesPool, interpolation);
+DEPTHAI_SERIALIZE_EXT_DECL(AlignProperties, initialConfig, numFramesPool, interpolation);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::AlignProperties>;

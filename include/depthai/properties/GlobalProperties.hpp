@@ -120,21 +120,24 @@ struct DeviceProperties : PropertiesSerializable<Properties, DeviceProperties> {
 
 DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
 
-DEPTHAI_SERIALIZE_EXT(GlobalProperties, pipelineName, pipelineVersion, multiDeviceCalibration);
+DEPTHAI_SERIALIZE_EXT_DECL(GlobalProperties, pipelineName, pipelineVersion, multiDeviceCalibration);
 
 DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 
-DEPTHAI_SERIALIZE_EXT(DeviceProperties,
-                      leonCssFrequencyHz,
-                      leonMssFrequencyHz,
-                      cameraTuningBlobSize,
-                      cameraTuningBlobUri,
-                      cameraSocketTuningBlobSize,
-                      cameraSocketTuningBlobUri,
-                      calibData,
-                      eepromId,
-                      xlinkChunkSize,
-                      sippBufferSize,
-                      sippDmaBufferSize);
+DEPTHAI_SERIALIZE_EXT_DECL(DeviceProperties,
+                           leonCssFrequencyHz,
+                           leonMssFrequencyHz,
+                           cameraTuningBlobSize,
+                           cameraTuningBlobUri,
+                           cameraSocketTuningBlobSize,
+                           cameraSocketTuningBlobUri,
+                           calibData,
+                           eepromId,
+                           xlinkChunkSize,
+                           sippBufferSize,
+                           sippDmaBufferSize);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::GlobalProperties>;
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::DeviceProperties>;

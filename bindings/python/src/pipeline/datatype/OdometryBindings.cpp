@@ -9,7 +9,7 @@
 void bind_odometry(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<Odometry, Py<Odometry>, TransformData, std::shared_ptr<Odometry>> odometry(m, "Odometry", DOC(dai, Odometry));
+    py::class_<Odometry, Py<Odometry>, TransformData, py::smart_holder> odometry(m, "Odometry", DOC(dai, Odometry));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

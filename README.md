@@ -15,7 +15,11 @@ DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C
 ## Documentation
 Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/software-v3/depthai/)
 
+For platform differences when reading tensors in Script, see [NNData inside Script](docs/ScriptNNData.md).
+
 ## Examples
+For the complete model-description YAML format, see the [model zoo reference](docs/ModelZoo.md).
+
 Examples for both C++ and Python are available in the `examples` folder. To see how to build and run them see [README.md](./examples/README.md) for more information.
 To build the examples in C++ configure with the following option added:
 ```
@@ -128,6 +132,9 @@ MacOS: `brew install pcl`
 Linux: `sudo apt install libpcl-dev`
 
 ## Using Python bindings
+
+To use Python bindings already installed in a container, see the [Docker guide](docs/Docker.md).
+
 Installing the latest pre-released version of the library can be done with:
 ```
 python3 -m pip install --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-release-local/ --pre -U depthai
@@ -142,6 +149,8 @@ For more specific information about Python bindings, see [Python README](./bindi
 
 
 ## Building
+
+To use the installed SDK and build tools in a container, see the [Docker guide](docs/Docker.md).
 
 Make sure submodules are updated
 ```

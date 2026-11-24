@@ -5,7 +5,7 @@
 void bind_beta_hrnetparserconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::HRNetParserConfig, Py<beta::HRNetParserConfig>, Buffer, std::shared_ptr<beta::HRNetParserConfig>> config(
+    py::class_<beta::HRNetParserConfig, Py<beta::HRNetParserConfig>, Buffer, py::smart_holder> config(
         betaModule, "HRNetParserConfig", DOC(dai, beta, HRNetParserConfig));
 
     Callstack* callstack = (Callstack*)pCallstack;

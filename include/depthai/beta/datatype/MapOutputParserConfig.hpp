@@ -49,7 +49,7 @@ class MapOutputParserConfig : public Buffer {
         return DatatypeEnum::MapOutputParserConfig;
     }
 
-    DEPTHAI_SERIALIZE(MapOutputParserConfig, minMaxScaling);
+    DEPTHAI_SERIALIZE_DECL(MapOutputParserConfig, minMaxScaling);
 };
 
 }  // namespace beta

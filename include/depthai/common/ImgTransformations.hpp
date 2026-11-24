@@ -426,19 +426,19 @@ struct ImgTransformation {
      */
     bool isValid() const;
 
-    DEPTHAI_SERIALIZE(ImgTransformation,
-                      extrinsics,
-                      transformationMatrix,
-                      transformationMatrixInv,
-                      sourceIntrinsicMatrix,
-                      sourceIntrinsicMatrixInv,
-                      distortionModel,
-                      distortionCoefficients,
-                      srcWidth,
-                      srcHeight,
-                      width,
-                      height,
-                      srcCrops);
+    DEPTHAI_SERIALIZE_DECL(ImgTransformation,
+                           extrinsics,
+                           transformationMatrix,
+                           transformationMatrixInv,
+                           sourceIntrinsicMatrix,
+                           sourceIntrinsicMatrixInv,
+                           distortionModel,
+                           distortionCoefficients,
+                           srcWidth,
+                           srcHeight,
+                           width,
+                           height,
+                           srcCrops);
 };
 
 }  // namespace dai

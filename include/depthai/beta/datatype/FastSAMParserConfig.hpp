@@ -147,7 +147,7 @@ class FastSAMParserConfig : public Buffer {
         return DatatypeEnum::FastSAMParserConfig;
     }
 
-    DEPTHAI_SERIALIZE(FastSAMParserConfig, confidenceThreshold, iouThreshold, maskConfidence, prompt, points, pointLabel, boundingBox);
+    DEPTHAI_SERIALIZE_DECL(FastSAMParserConfig, confidenceThreshold, iouThreshold, maskConfidence, prompt, points, pointLabel, boundingBox);
 };
 
 }  // namespace beta

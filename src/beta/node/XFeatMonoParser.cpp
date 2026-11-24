@@ -18,8 +18,6 @@
 namespace dai {
 namespace beta {
 
-XFeatMonoParserProperties::~XFeatMonoParserProperties() = default;
-
 namespace node {
 
 XFeatMonoParser::XFeatMonoParser(std::unique_ptr<Properties> props)

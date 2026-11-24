@@ -8,7 +8,7 @@
   ┌───────┐     |               |                                       | Vpp |           |        |
   | Right | --> |               | --left--> ┌────────────┐              |     | --right-> └────────┘
   └───────┘     └───────────────┘           |            |              |     |
-                                            | ImageAlign | ---depth---> |     |
+                                            |   Align    | ---depth---> |     |
   ┌─────┐                                   |            |              |     |
   | ToF | -------------depth--------------> └────────────┘              └─────┘
   └─────┘
@@ -53,7 +53,7 @@ def main():
             dai.CameraBoardSocket.AUTO, dai.ToFConfig.Profile.MID_RANGE, FPS)
         tof.setOutputUndistortion(False)
 
-        align = pipeline.create(dai.node.ImageAlign)
+        align = pipeline.create(dai.node.Align)
         align.setRunOnHost(False)
         tof.tofBaseNode.depth.link(align.input)
         rect.output1.link(align.inputAlignTo)

@@ -67,7 +67,7 @@ class ImageFiltersConfig : public Buffer {
      */
     void setProfilePreset(ImageFiltersPresetMode presetMode);
 
-    DEPTHAI_SERIALIZE(ImageFiltersConfig, filterIndices, filterParams);
+    DEPTHAI_SERIALIZE_DECL(ImageFiltersConfig, filterIndices, filterParams);
 };
 
 class ToFDepthConfidenceFilterConfig : public Buffer {
@@ -90,7 +90,7 @@ class ToFDepthConfidenceFilterConfig : public Buffer {
      */
     void setProfilePreset(ImageFiltersPresetMode presetMode);
 
-    DEPTHAI_SERIALIZE(ToFDepthConfidenceFilterConfig, confidenceThreshold);
+    DEPTHAI_SERIALIZE_DECL(ToFDepthConfidenceFilterConfig, confidenceThreshold);
 };
 
 }  // namespace dai

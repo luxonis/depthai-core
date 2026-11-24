@@ -17,7 +17,7 @@
 void bind_pipelineevent(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<PipelineEvent, Py<PipelineEvent>, Buffer, std::shared_ptr<PipelineEvent>> pipelineEvent(m, "PipelineEvent", DOC(dai, PipelineEvent));
+    py::class_<PipelineEvent, Py<PipelineEvent>, Buffer, py::smart_holder> pipelineEvent(m, "PipelineEvent", DOC(dai, PipelineEvent));
     py::enum_<PipelineEvent::Type> pipelineEventType(pipelineEvent, "Type", DOC(dai, PipelineEvent, Type));
     py::enum_<PipelineEvent::Interval> pipelineEventInterval(pipelineEvent, "Interval", DOC(dai, PipelineEvent, Interval));
     py::enum_<PipelineEvent::Status> pipelineEventStatus(pipelineEvent, "Status", DOC(dai, PipelineEvent, Status));

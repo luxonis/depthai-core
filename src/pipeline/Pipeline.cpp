@@ -848,6 +848,24 @@ PipelineAutoCalibrationMode PipelineImpl::getAutoCalibrationMode() const {
     return autoCalibrationMode;
 }
 
+void PipelineImpl::setAutoCalibrationWorldConstraints(const WorldConstraints& constraints) {
+    DAI_CHECK_V(!isBuilt(), "Cannot change the auto calibration world constraints once the pipeline is built.");
+    constraints.validate();
+    if(constraints.empty()) {
+        throw std::invalid_argument("Pipeline::setAutoCalibrationWorldConstraints: at least one marker or socket distance is required");
+    }
+    autoCalibrationWorldConstraints = constraints;
+}
+
+void PipelineImpl::clearAutoCalibrationWorldConstraints() {
+    DAI_CHECK_V(!isBuilt(), "Cannot change the auto calibration world constraints once the pipeline is built.");
+    autoCalibrationWorldConstraints.reset();
+}
+
+std::optional<WorldConstraints> PipelineImpl::getAutoCalibrationWorldConstraints() const {
+    return autoCalibrationWorldConstraints;
+}
+
 BoardConfig PipelineImpl::getBoardConfig() const {
     return board;
 }
@@ -1438,6 +1456,12 @@ void PipelineImpl::build() {
             if(stereoPair.first && stereoPair.second && hasStereoPairValidCalibration(autoCalibDevice->tryGetCalibration())) {
                 auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this(), autoCalibDevice)->build(stereoPair.first, stereoPair.second);
                 Logging::getInstance().logger.info("AutoCalibration is initialized");
+                if(autoCalibrationWorldConstraints) {
+                    autoCalibrationNode->setWorldConstraints(*autoCalibrationWorldConstraints);
+                    Logging::getInstance().logger.info("AutoCalibration uses world constraints ({} marker distances, {} socket distances)",
+                                                       autoCalibrationWorldConstraints->markerDistances.size(),
+                                                       autoCalibrationWorldConstraints->socketDistances.size());
+                }
 
                 // Build-time flash safety: disable flashing when runtime calibration differs from EEPROM.
                 const auto runtimeCalibration = autoCalibDevice->tryGetCalibration();
@@ -1753,9 +1777,9 @@ void PipelineImpl::build() {
 }
 
 void PipelineImpl::start() {
-    // A stop triggered by a device loss may still be finishing on its own thread - it must
-    // complete before the pipeline is started again (it takes stateMtx itself)
-    joinDeviceLossStop();
+    // A stop triggered by a device loss or by Node::stopPipeline() may still be finishing on its
+    // own thread - it must complete before the pipeline is started again (it takes stateMtx itself)
+    joinAsyncStop();
     std::lock_guard<std::mutex> lock(stateMtx);
     // TODO(themarpe) - add mutex and set running up ahead
 
@@ -1818,6 +1842,10 @@ void PipelineImpl::start() {
                 masterDevices.push_back(d);
             } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
                 slaveDevices.push_back(d);
+            } else if(role == dai::ExternalFrameSyncRole::AUTO_DETECT) {
+                // This should not happen, but bugs on depthai-device can
+                // leak this role. treat them as independent masters
+                masterDevices.push_back(d);
             } else {
                 throw std::runtime_error("Unknown external frame sync role");
             }
@@ -2072,19 +2100,8 @@ void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
                                            : strict ? "running nodes with stopOnDeviceLoss set"
                                                     : "the last device alive");
         // Stop from a separate thread: this runs on the device's monitor thread, which
-        // stop() joins indirectly when closing the devices. The thread owns no reference to
-        // the pipeline - wait(), start() and the destructor join it - so the pipeline can
-        // never be destroyed on it.
-        std::lock_guard<std::mutex> lock(deviceLossStopMtx);
-        if(!deviceLossStopThread.joinable()) {
-            deviceLossStopThread = std::thread([this]() {
-                try {
-                    stop();
-                } catch(const std::exception& ex) {
-                    Logging::getInstance().logger.error("Failed to stop pipeline after device loss: {}", ex.what());
-                }
-            });
-        }
+        // stop() joins indirectly when closing the devices
+        stopAsync();
     }
 }
 
@@ -2110,24 +2127,41 @@ void PipelineImpl::wait() {
             node->wait();
         }
     }
-    // A stop triggered by a device loss runs on its own thread - waiting for the pipeline
-    // includes waiting for that teardown (device close) to finish
-    joinDeviceLossStop();
+    // A stop triggered by a device loss or by Node::stopPipeline() runs on its own thread -
+    // waiting for the pipeline includes waiting for that teardown (device close) to finish
+    joinAsyncStop();
 }
 
-void PipelineImpl::joinDeviceLossStop() {
+void PipelineImpl::stopAsync() {
+    // The thread owns no reference to the pipeline - wait(), start() and the destructor join it -
+    // so the pipeline can never be destroyed on it and no teardown outlives run()
+    std::lock_guard<std::mutex> lock(asyncStopMtx);
+    if(!asyncStopThread.joinable()) {
+        asyncStopThread = std::thread([this]() {
+            try {
+                stop();
+            } catch(const std::exception& ex) {
+                Logging::getInstance().logger.error("Failed to stop pipeline: {}", ex.what());
+            } catch(...) {
+                Logging::getInstance().logger.error("Failed to stop pipeline: unknown exception");
+            }
+        });
+    }
+}
+
+void PipelineImpl::joinAsyncStop() {
     std::thread thread;
     {
-        std::lock_guard<std::mutex> lock(deviceLossStopMtx);
-        if(!deviceLossStopThread.joinable()) {
+        std::lock_guard<std::mutex> lock(asyncStopMtx);
+        if(!asyncStopThread.joinable()) {
             return;
         }
-        if(deviceLossStopThread.get_id() == std::this_thread::get_id()) {
-            // Called on the loss-stop thread itself - it cannot join itself; let it run out
-            deviceLossStopThread.detach();
+        if(asyncStopThread.get_id() == std::this_thread::get_id()) {
+            // Called on the stop thread itself - it cannot join itself; let it run out
+            asyncStopThread.detach();
             return;
         }
-        thread = std::move(deviceLossStopThread);
+        thread = std::move(asyncStopThread);
     }
     thread.join();
 }
@@ -2167,10 +2201,17 @@ void PipelineImpl::stop() {
         telemetryPipelineStartedAt.reset();
     }
 
-    // Stops the pipeline execution
+    // Stops the pipeline execution. A node that fails to stop is logged and skipped: the other nodes,
+    // the queues and the devices below must still be stopped, or run() and wait() never return
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {
-            node->stop();
+            try {
+                node->stop();
+            } catch(const std::exception& ex) {
+                Logging::getInstance().logger.error("Failed to stop node {} (id {}): {}", node->getName(), node->id, ex.what());
+            } catch(...) {
+                Logging::getInstance().logger.error("Failed to stop node {} (id {}): unknown exception", node->getName(), node->id);
+            }
         }
     }
 
@@ -2214,7 +2255,7 @@ void PipelineImpl::stop() {
 }
 
 PipelineImpl::~PipelineImpl() {
-    joinDeviceLossStop();
+    joinAsyncStop();
     stop();
     wait();
 

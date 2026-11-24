@@ -21,7 +21,9 @@ struct MPPalmDetectionParserProperties : PropertiesSerializable<Properties, MPPa
     ~MPPalmDetectionParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(MPPalmDetectionParserProperties, outputLayerNames, initialConfig, scale, labelNames);
+DEPTHAI_SERIALIZE_EXT_DECL(MPPalmDetectionParserProperties, outputLayerNames, initialConfig, scale, labelNames);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::MPPalmDetectionParserProperties>;

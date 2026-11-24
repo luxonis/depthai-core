@@ -19,8 +19,6 @@
 namespace dai {
 namespace beta {
 
-SuperAnimalParserProperties::~SuperAnimalParserProperties() = default;
-
 namespace node {
 
 SuperAnimalParser::SuperAnimalParser(std::unique_ptr<Properties> props)

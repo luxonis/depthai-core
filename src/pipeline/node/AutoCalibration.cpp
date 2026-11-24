@@ -8,9 +8,11 @@
 #include <pipeline/datatype/MessageGroup.hpp>
 #include <stdexcept>
 
+#include "depthai/device/Device.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "utility/Telemetry.hpp"
+#include "utility/WorldConstraintsUtils.hpp"
 
 namespace dai {
 namespace node {
@@ -136,6 +138,15 @@ void AutoCalibration::logConfig() const {
     logger->info("Max Images/Recalib:     {}", initialConfig->maxImagesPerRecalibration);
     logger->info("Validation Set Size:    {}", initialConfig->validationSetSize);
     logger->info("Flash Calibration:      {}", initialConfig->flashCalibration ? "Yes" : "No");
+    if(const auto constraints = dynamicCalibration->getWorldConstraints()) {
+        logger->info("Marker Constraints:     {} markers, {} marker distances, {} socket distances ({})",
+                     utility::referencedMarkerIds(*constraints).size(),
+                     constraints->markerDistances.size(),
+                     constraints->socketDistances.size(),
+                     constraints->markerType == MarkerType::ARUCO ? toString(constraints->arucoDictionary) : toString(constraints->markerType));
+    } else {
+        logger->info("Marker Constraints:     none");
+    }
     logger->info("===========================================");
 }
 
@@ -321,11 +332,35 @@ void AutoCalibration::buildInternal() {
     }
 }
 
+void AutoCalibration::setWorldConstraints(const WorldConstraints& constraints) {
+    dynamicCalibration->setWorldConstraints(constraints);
+}
+
+void AutoCalibration::setWorldConstraintsFromJson(const std::string& json) {
+    dynamicCalibration->setWorldConstraintsFromJson(json);
+}
+
+void AutoCalibration::setWorldConstraintsFromFile(const std::filesystem::path& path) {
+    dynamicCalibration->setWorldConstraintsFromFile(path);
+}
+
+void AutoCalibration::clearWorldConstraints() {
+    dynamicCalibration->clearWorldConstraints();
+}
+
+std::optional<WorldConstraints> AutoCalibration::getWorldConstraints() const {
+    return dynamicCalibration->getWorldConstraints();
+}
+
 /**
 return calibration from DynamicCalibration node
 **/
 std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsigned int maxNumIteration, Report& report) {
     auto startTime = std::chrono::steady_clock::now();  // Start timer
+    // Validation consumes coverage only, so rejected marker frames can leave informational results behind.
+    // Start with an empty pair of queues before the gate can produce new calibration messages.
+    dynamicCalibrationQueue.tryGetAll<dai::DynamicCalibrationResult>();
+    coverageQueue.tryGetAll<dai::CoverageData>();
     gateControlQueue.send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
     {
         auto& state = *telemetryAggregateState;

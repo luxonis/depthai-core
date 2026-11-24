@@ -5,7 +5,7 @@
 void bind_beta_xfeatmonoparserconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::XFeatMonoParserConfig, Py<beta::XFeatMonoParserConfig>, Buffer, std::shared_ptr<beta::XFeatMonoParserConfig>> config(
+    py::class_<beta::XFeatMonoParserConfig, Py<beta::XFeatMonoParserConfig>, Buffer, py::smart_holder> config(
         betaModule, "XFeatMonoParserConfig", DOC(dai, beta, XFeatMonoParserConfig));
 
     Callstack* callstack = (Callstack*)pCallstack;

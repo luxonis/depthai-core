@@ -105,7 +105,7 @@ class ThermalConfig : public Buffer {
 
         /// Constant added to every pixel of the temperature output, in degrees Celsius.
         std::optional<float> temperatureOffset;
-        DEPTHAI_SERIALIZE(ThermalAmbientParams,
+        DEPTHAI_SERIALIZE_DECL(ThermalAmbientParams,
                           distance,
                           reflectionTemperature,
                           atmosphericTemperature,
@@ -149,7 +149,7 @@ class ThermalConfig : public Buffer {
         /// Set to true to run one Flat-Field-Correction (shutter cycle) as soon as possible, with or without autoFFC.
         std::optional<bool> triggerFFC;
 
-        DEPTHAI_SERIALIZE(ThermalFFCParams,
+        DEPTHAI_SERIALIZE_DECL(ThermalFFCParams,
                           autoFFC,
                           minFFCInterval,
                           maxFFCInterval,
@@ -189,7 +189,7 @@ class ThermalConfig : public Buffer {
 
         /// Image processing pipeline.
         std::optional<ThermalPipelineMode> pipelineMode;
-        DEPTHAI_SERIALIZE(ThermalImageParams,
+        DEPTHAI_SERIALIZE_DECL(ThermalImageParams,
                           timeNoiseFilterLevel,
                           spatialNoiseFilterLevel,
                           digitalDetailEnhanceLevel,
@@ -237,7 +237,7 @@ class ThermalConfig : public Buffer {
 
         /// Histogram region of interest, in pixels or normalized to the output size.
         std::optional<Rect> roi;
-        DEPTHAI_SERIALIZE(ThermalHistEqParams,
+        DEPTHAI_SERIALIZE_DECL(ThermalHistEqParams,
                           plateau,
                           plateauRedistributionMode,
                           gainLimit,
@@ -269,7 +269,7 @@ class ThermalConfig : public Buffer {
 
         /// Histogram equalization parameters.
         ThermalHistEqParams histEq;
-        DEPTHAI_SERIALIZE(ThermalAgcParams, mode, linearLockMode, linearMin, linearMax, histEq);
+        DEPTHAI_SERIALIZE_DECL(ThermalAgcParams, mode, linearLockMode, linearMin, linearMax, histEq);
     };
 
     /**
@@ -283,7 +283,7 @@ class ThermalConfig : public Buffer {
         /// STORE records the correction from the frames that follow: point the camera at a uniform scene, after a warm-up.
         /// It is loaded from the next pipeline start on. CLEAR deletes it. Both pause the outputs for about 2 seconds.
         std::optional<ThermalFSCAction> action;
-        DEPTHAI_SERIALIZE(ThermalFSCParams, enable, action);
+        DEPTHAI_SERIALIZE_DECL(ThermalFSCParams, enable, action);
     };
 
     /// Ambient factors that affect the temperature measurement of a Thermal sensor.
@@ -313,7 +313,7 @@ class ThermalConfig : public Buffer {
         return DatatypeEnum::ThermalConfig;
     }
 
-    DEPTHAI_SERIALIZE(ThermalConfig, ambientParams, ffcParams, imageParams, agcParams, fscParams);
+    DEPTHAI_SERIALIZE_DECL(ThermalConfig, ambientParams, ffcParams, imageParams, agcParams, fscParams);
 };
 
 }  // namespace dai
