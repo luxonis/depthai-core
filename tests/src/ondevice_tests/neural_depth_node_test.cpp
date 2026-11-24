@@ -250,3 +250,83 @@ TEST_CASE("Test NeuralDepth node live-camera models") {
     INFO("Model: " << magic_enum::enum_name(testCase.model));
     testNeuralDepthModelBasic(testCase.model, testCase.minFps);
 }
+
+TEST_CASE("NeuralDepth follows runtime calibration updates") {
+    constexpr auto kModel = dai::DeviceModelZoo::NEURAL_DEPTH_480X300;
+    constexpr float kBaselineScale = 2.0f;
+
+    dai::Pipeline pipeline;
+    auto device = pipeline.getDefaultDevice();
+    if(!isModelSupported(device, kModel)) {
+        SKIP("Model " << magic_enum::enum_name(kModel) << " is not supported on this device.");
+    }
+
+    // Scale the left -> right baseline while keeping its direction, so rectification and disparity stay the same and depth scales with the baseline
+    auto eepromData = device->getCalibration().getEepromData();
+    auto& leftExtrinsics = eepromData.cameraData.at(dai::CameraBoardSocket::CAM_B).extrinsics;
+    if(leftExtrinsics.toCameraSocket != dai::CameraBoardSocket::CAM_C) {
+        SKIP("CAM_B extrinsics are not relative to CAM_C.");
+    }
+    leftExtrinsics.translation.x *= kBaselineScale;
+    leftExtrinsics.translation.y *= kBaselineScale;
+    leftExtrinsics.translation.z *= kBaselineScale;
+    const dai::CalibrationHandler scaledCalibration(eepromData);
+
+    // Live cameras are needed, replayed frames keep their recorded calibration
+    auto leftCamera = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
+    auto rightCamera = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
+    auto neuralDepth = pipeline.create<dai::node::NeuralDepth>();
+    neuralDepth->build(*leftCamera->requestFullResolutionOutput(), *rightCamera->requestFullResolutionOutput(), kModel);
+    auto depthQueue = neuralDepth->depth.createOutputQueue(4, false);
+    auto disparityQueue = neuralDepth->disparity.createOutputQueue(4, false);
+    auto configQueue = neuralDepth->inputConfig.createInputQueue();
+
+    // depth = multiplier / disparity, so depth * disparity recovers the disparity-to-depth multiplier independently of the scene
+    auto medianDepthMultiplier = [&](size_t numFrames) {
+        std::vector<double> multipliers;
+        for(size_t i = 0; i < numFrames; ++i) {
+            auto depth = depthQueue->get<dai::ImgFrame>();
+            auto disparity = disparityQueue->get<dai::ImgFrame>();
+            while(depth->getSequenceNum() != disparity->getSequenceNum()) {
+                if(depth->getSequenceNum() < disparity->getSequenceNum()) {
+                    depth = depthQueue->get<dai::ImgFrame>();
+                } else {
+                    disparity = disparityQueue->get<dai::ImgFrame>();
+                }
+            }
+            const cv::Mat depthMat = depth->getFrame();
+            const cv::Mat disparityMat = disparity->getFrame();  // 16 subpixel levels
+            for(size_t px = 0; px < depthMat.total(); ++px) {
+                const auto depthValue = depthMat.ptr<uint16_t>()[px];
+                const auto disparityValue = disparityMat.ptr<uint16_t>()[px];
+                if(disparityValue >= 32 && depthValue > 0 && depthValue < 60000) {
+                    multipliers.push_back(static_cast<double>(depthValue) * disparityValue / 16.0);
+                }
+            }
+        }
+        REQUIRE_FALSE(multipliers.empty());
+        std::nth_element(multipliers.begin(), multipliers.begin() + multipliers.size() / 2, multipliers.end());
+        return multipliers[multipliers.size() / 2];
+    };
+
+    pipeline.start();
+    const double multiplierBefore = medianDepthMultiplier(5);
+    auto waitForRatio = [&](double expected) {
+        double ratio = 0.0;
+        for(int attempt = 0; attempt < 10 && ratio != Catch::Approx(expected).epsilon(0.05); ++attempt) {
+            ratio = medianDepthMultiplier(2) / multiplierBefore;
+        }
+        return ratio;
+    };
+
+    device->setCalibration(scaledCalibration);
+    REQUIRE(waitForRatio(kBaselineScale) == Catch::Approx(kBaselineScale).epsilon(0.05));
+
+    auto config = std::make_shared<dai::NeuralDepthConfig>(*neuralDepth->initialConfig);
+    config->setDepthUnit(dai::DepthUnit::CENTIMETER);
+    configQueue->send(config);
+    REQUIRE(waitForRatio(kBaselineScale * 0.1) == Catch::Approx(kBaselineScale * 0.1).epsilon(0.05));
+
+    pipeline.stop();
+    pipeline.wait();
+}

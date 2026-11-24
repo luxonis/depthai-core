@@ -30,6 +30,7 @@
 #include "depthai/utility/spimpl.h"
 #include "pipeline/node/DynamicCalibrationTransforms.hpp"
 #include "pipeline/node/DynamicCalibrationUtils.hpp"
+#include "pipeline/node/WorldConstraintsValidation.hpp"
 #include "utility/Telemetry.hpp"
 
 namespace dai {
@@ -285,7 +286,7 @@ void DynamicCalibration::setWorldConstraints(const WorldConstraints& constraints
     DAI_CHECK_V(!getParentPipeline().isBuilt(), "DynamicCalibration::setWorldConstraints: cannot change the world constraints once the pipeline is built");
     constraints.validate();
     if(constraints.empty()) {
-        throw std::invalid_argument("DynamicCalibration::setWorldConstraints: at least one marker or socket distance is required");
+        throw std::invalid_argument("DynamicCalibration::setWorldConstraints: at least one marker distance, socket distance or marker size is required");
     }
     properties.worldConstraints = constraints;
 }
@@ -315,6 +316,51 @@ void DynamicCalibration::warnMetricReferenceMissing(const std::string& reason) {
     } else {
         logger->debug("Marker constraints not applied: {}", reason);
     }
+}
+
+void DynamicCalibration::warnConstraintMismatch(const std::string& reason) {
+    // Once at warning level per node instance, then at debug: every calibration attempt publishes the reason in its result.
+    if(!constraintMismatchWarningIssued) {
+        logger->warn("Calibration rejected: {}", reason);
+        constraintMismatchWarningIssued = true;
+    } else {
+        logger->debug("Calibration rejected: {}", reason);
+    }
+}
+
+void DynamicCalibration::trackMissingMarkers(bool accepted) {
+    constexpr std::chrono::seconds kMarkersMissingWarnAfter{5};
+    constexpr std::chrono::seconds kMarkersMissingWarnPeriod{30};
+    const auto now = std::chrono::steady_clock::now();
+    if(accepted) {
+        if(markersMissingReportedAt) {
+            logger->info("Every configured marker is seen by two cameras again");
+        }
+        markersMissingSince.reset();
+        markersMissingReportedAt.reset();
+        return;
+    }
+    if(!markersMissingSince) {
+        markersMissingSince = now;
+    }
+    const bool due =
+        markersMissingReportedAt ? now - *markersMissingReportedAt >= kMarkersMissingWarnPeriod : now - *markersMissingSince >= kMarkersMissingWarnAfter;
+    if(!due || !lastMarkerCoverage) {
+        return;
+    }
+    markersMissingReportedAt = now;
+    std::string tooSmall;
+    for(const auto& [id, sizePx] : lastMarkerCoverage->tooSmallPx) {
+        tooSmall += fmt::format("{}{} ({:.1f} px)", tooSmall.empty() ? "" : ", ", id, sizePx);
+    }
+    const bool noneSeen = lastMarkerCoverage->seenBy.empty() && lastMarkerCoverage->tooSmallPx.empty();
+    logger->warn("No image set loaded for {} s, markers not seen by two cameras: {}{}. Calibration waits until every configured marker is visible{}",
+                 std::chrono::duration_cast<std::chrono::seconds>(now - *markersMissingSince).count(),
+                 joinIds(lastMarkerCoverage->missingMarkers),
+                 tooSmall.empty() ? "" : fmt::format(", too small (minimum {:.0f} px): {}", DclUtils::kMinMarkerSizePx, tooSmall),
+                 noneSeen ? fmt::format("; none of them has been detected, check markerType{} and the marker ids",
+                                        properties.worldConstraints && properties.worldConstraints->markerType == MarkerType::ARUCO ? " / arucoDictionary" : "")
+                          : "");
 }
 
 const DynamicCalibration::ConnectedSensor* DynamicCalibration::findConnectedSensor(CameraBoardSocket socket) const {
@@ -995,6 +1041,53 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         qualityData.sampsonErrorNew = sampsonErrorToPixels(static_cast<float>(dclResult.value.sampsonErrorNew), sampsonErrorScalePixels);
     }
 
+    if(!worldConstraints.empty()) {
+        std::string mismatch;
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+        try {
+            std::map<CameraBoardSocket, detail::ObservationCamera> cameras;
+            for(const auto& sensor : connectedSensors) {
+                cameras.emplace(sensor.socket, detail::ObservationCamera{sensor.intrinsics, sensor.distortion, sensor.distortionModel});
+            }
+            for(const auto& residual : detail::worldConstraintResiduals(
+                    *properties.worldConstraints, markerObservations, newCalibrationHandler, connectedSensors.front().socket, cameras)) {
+                logger->debug("Marker constraints: {} configured {:.4f} m, reconstructed {}",
+                              residual.what,
+                              residual.configured,
+                              residual.measured ? fmt::format("{:.4f} m", *residual.measured) : std::string("not available"));
+                if(residual.fits()) continue;
+                if(!mismatch.empty()) mismatch += "; ";
+                mismatch +=
+                    residual.measured
+                        ? fmt::format(
+                              "{} is configured as {:.3f} m but is {:.3f} m in the calibrated result", residual.what, residual.configured, *residual.measured)
+                        : fmt::format("{} could not be reconstructed from the marker observations", residual.what);
+            }
+        } catch(const std::exception& ex) {
+            mismatch = std::string("constraint validation failed: ") + ex.what();
+        }
+#else
+        // The measurements cannot be reconstructed without OpenCV; the epipolar error below is the only check left.
+        logger->debug("Marker constraints: built without OpenCV support, the measurements are not compared with the calibrated result");
+#endif
+        if(mismatch.empty() && !connectedSensors.empty()) {
+            // DCL measures the error in the observed images, so the pixel limits apply at their scale, which can differ
+            // from the calibration resolution after a crop or resize.
+            const auto& observed = connectedSensors.front().intrinsics;
+            const auto observedScalePx = 0.5f * (observed.at(0).at(0) + observed.at(1).at(1));
+            const auto currentPx = sampsonErrorToPixels(static_cast<float>(dclResult.value.sampsonErrorCurrent), observedScalePx);
+            const auto newPx = sampsonErrorToPixels(static_cast<float>(dclResult.value.sampsonErrorNew), observedScalePx);
+            if(detail::epipolarErrorContradictsConstraints(currentPx, newPx)) {
+                mismatch = fmt::format("the epipolar error of the image features changes from {:.2f} px to {:.2f} px", currentPx, newPx);
+            }
+        }
+        if(!mismatch.empty()) {
+            const auto message = "World constraints could not be validated: " + mismatch + ". Check the measured values (meters), marker ids and sockets";
+            warnConstraintMismatch(message);
+            return reportCalibrationFailure(message);
+        }
+    }
+
     std::map<const dcl::CameraSensorHandle*, CameraBoardSocket> sensorHandleToSocket;
     for(const auto& sensor : connectedSensors) {
         if(sensor.sensorDcl) {
@@ -1089,7 +1182,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
                 // Once per marker: a configured marker that is seen but too small is otherwise a silent loss of constraints.
                 if(markerSizeWarningIssued.insert(markerId).second) {
                     logger->warn(
-                        "Marker {} is only {:.0f} px across in {}, below the {:.0f} px minimum, and is ignored: move the camera closer or print it larger",
+                        "Marker {} is only {:.1f} px across in {}, below the {:.0f} px minimum, and is ignored: move the camera closer or print it larger",
                         markerId,
                         sizePx,
                         toString(connectedSensors[idx].socket),
@@ -1112,6 +1205,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
             }
         }
         lastMarkerCoverage = DclUtils::markerCoverage(*properties.worldConstraints, observations, tooSmallPx, markerObservations.size());
+        trackMissingMarkers(lastMarkerCoverage->accepted);
         if(!lastMarkerCoverage->accepted) {
             logger->trace("Image set skipped, markers not seen by two cameras: {}", joinIds(lastMarkerCoverage->missingMarkers));
             return DynamicCalibration::ErrorCode::MARKERS_NOT_VISIBLE;
@@ -1332,11 +1426,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
 
 DynamicCalibration::ErrorCode DynamicCalibration::initializeAuxiliarySensors(const EepromData& eepromData) {
     const auto& constraints = *properties.worldConstraints;
+    // A configuration that cannot work on this device stops the pipeline (the node thread rethrows as a runtime
+    // error): a node that only logs and idles leaves every loadImage / result read waiting forever.
     try {
         constraints.validate();
     } catch(const std::exception& ex) {
-        logger->error("Invalid marker constraints: {}", ex.what());
-        return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
+        throw std::runtime_error(std::string("DynamicCalibration: invalid world constraints: ") + ex.what());
     }
     for(const auto socket : utility::referencedSockets(constraints)) {
         if(findConnectedSensor(socket) != nullptr) {
@@ -1344,8 +1439,14 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializeAuxiliarySensors(con
         }
         const auto cameraIt = eepromData.cameraData.find(socket);
         if(cameraIt == eepromData.cameraData.end() || std::find(socketsInHandler.begin(), socketsInHandler.end(), socket) == socketsInHandler.end()) {
-            logger->error("Marker constraints refer to socket {} which has no calibration on this device", toString(socket));
-            return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
+            std::string calibrated;
+            for(const auto calibratedSocket : socketsInHandler) {
+                calibrated += (calibrated.empty() ? "" : ", ") + toString(calibratedSocket);
+            }
+            throw std::runtime_error(
+                fmt::format("DynamicCalibration: world constraints refer to socket {}, which has no calibration on this device (calibrated sockets: {})",
+                            toString(socket),
+                            calibrated.empty() ? "none" : calibrated));
         }
         const auto& info = cameraIt->second;
         ConnectedSensor sensor{socket,
@@ -1459,6 +1560,9 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
             pimplDCL->telemetryAggregateState->stopCalibrationCommands += 1;
         }
         startCalibrationCommand.reset();
+        // The time until the next start is not time spent waiting for markers.
+        markersMissingSince.reset();
+        markersMissingReportedAt.reset();
         return ErrorCode::OK;
     }
     // Reset/remove accumulated data
