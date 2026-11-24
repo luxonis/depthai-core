@@ -586,6 +586,8 @@ dai_set_test_labels(message_queue_test onhost ci)
 dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_test.cpp)
 # The allocator test uses XLink's private headers, including platform compatibility headers.
 target_include_directories(stream_message_parser_test PRIVATE "$<TARGET_PROPERTY:XLink,INCLUDE_DIRECTORIES>")
+# It also calls XLinkPlatformAllocateData. A shared libdepthai-core does not export the XLink symbols.
+target_link_libraries(stream_message_parser_test PRIVATE XLink)
 dai_set_test_labels(stream_message_parser_test onhost ci)
 
 # Datatype hierarchy completeness

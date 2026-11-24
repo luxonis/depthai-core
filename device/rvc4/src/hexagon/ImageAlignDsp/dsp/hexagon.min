@@ -1,0 +1,56 @@
+######## Configuration flags ########
+# Repository roots (passed by CMake; the defaults assume the in-tree layout)
+DEPTHAI_DEVICE_ROOT ?= $(abspath $(CURDIR)/../../../..)
+DEPTHAI_CORE_ROOT ?= $(DEPTHAI_DEVICE_ROOT)/../..
+V_ARCH_EXTN=CPP
+TARGET_DIR = $(HEXAGON_LIB_DIR)/$(V_ARCH)/G0/pic
+INCDIRS+=inc
+
+INCDIRS += \
+      -I $(DEPTHAI_DEVICE_ROOT)/src/hexagon/ImageAlignDsp/dsp/src \
+      -I $(DEPTHAI_DEVICE_ROOT)/src/hexagon/ImageAlignDsp/shared \
+      -I $(DEPTHAI_CORE_ROOT)/include \
+      -I $(DEPTHAI_CORE_ROOT)/include/depthai/pipeline/datatype/ \
+
+CXX_FLAGS += -std=c++14 -fvectorize -O3 -mhvx -mhvx-length=128b -ffast-math
+CXX_FLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-error
+
+######## Build Libraries ########
+BUILD_DLLS += libImageAlignDsp_skel
+
+######## Compile libImageAlignDsp_skel ########
+libImageAlignDsp_skel_QAICIDLS += ../inc/ImageAlignDsp
+libImageAlignDsp_skel_C_SRCS += $(OBJ_DIR)/ImageAlignDsp_skel
+libImageAlignDsp_skel.CPP_SRCS += src/ImageAlignDsp.cpp
+
+#Link c++ libraries into shared object
+libImageAlignDsp_skel_DLLS += $(TARGET_DIR)/libc++
+libImageAlignDsp_skel_DLLS += $(TARGET_DIR)/libc++abi
+ifneq (1,$(filter 1,$(V_toolv83)$(V_toolv82)$(V_toolv81)))
+# Toolchain 8.4 and newer: link the whole weak_refs archive of the SDK, so that the skeleton loads on a DSP image that does not export every SDK symbol it references.
+libImageAlignDsp_skel_LD_FLAGS +=--start-group --whole-archive $(HEXAGON_SDK_ROOT)/libs/weak_refs/ship/hexagon_toolv84/weak_refs.a --no-whole-archive --end-group
+endif
+
+BUILD_QEXES += ImageAlignDsp_q
+ImageAlignDsp_q_DLLS += rpcmem libImageAlignDsp_skel
+
+# Copy needed libraries to local build directory
+$(V)/libImageAlignDsp_skel.so: $(V)/libc++.so.1 $(V)/libc++abi.so.1
+
+# Copy both versions of the library to the local build directory
+# The loader will select one version at link time
+$(V)/libc++.so.1:  $(V)/libc++abi.so.1
+	$(call cp_af,$(TARGET_DIR)/libc++.so.1 $(V))
+	$(call cp_af,$(TARGET_DIR)/libc++.so.1.0 $(V))
+
+$(V)/libc++abi.so.1:
+	$(call mkdir_p,$(V))
+	$(call cp_af,$(TARGET_DIR)/libc++abi.so.1 $(V))
+	$(call cp_af,$(TARGET_DIR)/libc++abi.so.1.0 $(V))
+
+## copy final build products to the ship directory
+BUILD_COPIES += \
+   $(DLLS) \
+   $(EXES) \
+   $(LIBS) \
+   $(SHIP_DIR)/ ;

@@ -71,12 +71,22 @@ on:
         required: true
 
 jobs:
+ rvc4-fwp:
+    uses: ./.github/workflows/rvc4_fwp.yml
+    with:
+      # The asan-ubsan toolchain sets DEPTHAI_SANITIZE. tests/Dockerfile uses no toolchain for tsan.
+      target: ${{ inputs.flavor == 'asan-ubsan' && 'rvc4-asan-ubsan' || 'rvc4' }}
+
  build_docker_container:
+    needs: rvc4-fwp
     runs-on: ['self-hosted', 'hil-test-v3']
     outputs:
         tag: ${{ steps.build_and_push.outputs.tag }}
     steps:
     - uses: actions/checkout@v7
+    - uses: ./.github/actions/rvc4-fwp
+      with:
+        artifact: ${{ needs.rvc4-fwp.outputs.artifact }}
     - name: Build and push
       id: build_and_push
       env:

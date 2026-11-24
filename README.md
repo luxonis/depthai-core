@@ -278,6 +278,30 @@ In your non-CMake project (new Visual Studio project, ...)
 > ℹ️ Check `build/depthai-core-integration.txt` or `build/depthai-opencv-integration.txt` for up to date define options.
 The generated integration file also specifies include paths without requiring installation. -->
 
+## RVC4 device firmware
+
+The device-side firmware of RVC4 devices is part of this repository: see [device/rvc4](device/rvc4/README.md). It
+compiles the node definitions and message types of the same commit as the host library. The firmware package that a
+host build embeds is one of:
+
+* by default, a build of `device/rvc4` of this checkout: each build of the library builds the firmware in its build
+  container, so the build needs bash and Docker ([device/rvc4](device/rvc4/README.md), Building);
+* with `-D DEPTHAI_DEVICE_RVC4_VERSION=<version>`, the package of that version, downloaded from the artifact server
+  (`cmake/Depthai/DepthaiDeviceRVC4Config.cmake` sets no version);
+* with `-D DEPTHAI_DEVICE_RVC4_FWP_PATH=<path>/depthai-device-rvc4-fwp.tar.xz`, a package that you have.
+
+In the default case, each configure step of the library also configures the firmware build in its build container:
+an error of the firmware configuration stops the configure step and not the build
+(`-D DEPTHAI_DEVICE_RVC4_FWP_CONFIGURE=OFF` leaves it to the build). The license agreements of the firmware build
+([device/rvc4](device/rvc4/README.md), Building) are the environment variables or the CMake cache entries
+`DEPTHAI_ACCEPT_VENDOR_EULA` and `DEPTHAI_ACCEPT_QUALCOMM_LICENSE`. The cache entries `DEPTHAI_DEVICE_SDK_IMAGE`,
+`DEPTHAI_DEVICE_RVC4_VENDOR` and `DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR` also go to the firmware build as these
+environment variables, for example from your own preset in `CMakeUserPresets.json` (not committed), which can inherit
+the presets of `CMakePresets.json`. The configure preset `dev-rvc4-fw` of
+`CMakePresets.json` (for example in the CMake Tools extension of VS Code) builds the library, its tests, examples and
+Python bindings in `build/` with this firmware. It sets `DEPTHAI_ACCEPT_VENDOR_EULA=yes`: select it only after you
+read and accept the Luxonis DepthAI Vendor Module End User License Agreement.
+
 ## CMake options
 Many features of the library can be disabled or enabled using CMake options.
 One common option when building the library tests and examples is `DEPTHAI_VCPKG_INTERNAL_ONLY=OFF` which installs a predictable version of OpenCV, PCL and other optional dependencies we also use on the libraries interface.
@@ -310,7 +334,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_DEVICE_ID_LIST               | Alias to MXID list. Lists filter results in an "AND" manner and not "OR"                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | DEPTHAI_DEVICE_NAME_LIST             | Restricts default search to the specified NAMEs. Accepts comma separated list of NAMEs. Lists filter results in an "AND" manner and not "OR". It also looks for NAMEs outside of the host's subnet in case of tcpip.                                                                                                                                                                                                                                                                              |
 | DEPTHAI_DEVICE_BINARY                | Overrides device Firmware binary. Mostly for internal debugging purposes.                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| DEPTHAI_DEVICE_RVC4_FWP              | Overrides device RVC4 Firmware binary. Mostly for internal debugging purposes.                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| DEPTHAI_DEVICE_RVC4_FWP              | Overrides device RVC4 Firmware binary at run time with the firmware package at this path. See also the CMake option `DEPTHAI_DEVICE_RVC4_FWP_PATH`.                                                                                                                                                                                                                                                                                                                                               |
 | DEPTHAI_BOOTLOADER_BINARY_USB        | Overrides device USB Bootloader binary. Mostly for internal debugging purposes.                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | DEPTHAI_BOOTLOADER_BINARY_ETH        | Overrides device Network Bootloader binary. Mostly for internal debugging purposes.                                                                                                                                                                                                                                                                                                                                                                                                               |
 | DEPTHAI_ALLOW_FACTORY_FLASHING       | Internal use only                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
