@@ -124,7 +124,7 @@ void remapPlanarRgb(const std::shared_ptr<ImgFrame>& input,
                                                  output->fb.p3Offset > output->fb.p2Offset ? output->fb.p3Offset : output->fb.p1Offset + 2 * outputPlaneSize};
 
     for(size_t plane = 0; plane < 3; ++plane) {
-        auto inputPlane = planeView(*input, inputOffsets[plane], input->getHeight(), input->getWidth(), CV_8UC1, input->getStride());
+        const auto inputPlane = planeView(*input, inputOffsets[plane], input->getHeight(), input->getWidth(), CV_8UC1, input->getStride());
         auto outputPlane = planeView(*output, outputOffsets[plane], output->getHeight(), output->getWidth(), CV_8UC1, output->getStride());
         cv::remap(inputPlane, outputPlane, mapX, mapY, interpolation, cv::BORDER_CONSTANT, cv::Scalar(borderColor[plane]));
     }

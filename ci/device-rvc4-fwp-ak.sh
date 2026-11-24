@@ -14,6 +14,7 @@
 set -euo pipefail
 
 AK_REPO="luxonis-rvc4-snapshot-local"
+AK_CLI_VERSION="v1.12.0"
 BASE_URL="${DEPTHAI_DEVICE_RVC4_FWP_BASE_URL:-https://artifacts.luxonis.com/artifactory}"
 NAME="depthai-device-rvc4-fwp"
 EXTENSIONS=(".tar.xz" "-LICENSE" ".spdx.json" ".cdx.json")
@@ -87,7 +88,10 @@ cmd_upload() {
     done
 
     if ! command -v ak >/dev/null 2>&1; then
-        curl -fsSL https://raw.githubusercontent.com/artifact-keeper/artifact-keeper-cli/main/install.sh | sh
+        # A pinned release: without one, the installer asks the GitHub API for the newest release, and runners often
+        # get 403 (rate limit) there
+        curl -fsSL "https://raw.githubusercontent.com/artifact-keeper/artifact-keeper-cli/$AK_CLI_VERSION/install.sh" |
+            sh -s -- --version "$AK_CLI_VERSION"
     fi
     export AK_NO_INPUT="${AK_NO_INPUT:-true}"
     local instance="${AK_INSTANCE:-ci}"

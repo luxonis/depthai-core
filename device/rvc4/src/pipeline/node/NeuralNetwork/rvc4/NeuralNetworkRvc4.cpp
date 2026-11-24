@@ -6,6 +6,7 @@
 // std
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -676,28 +677,38 @@ std::optional<dai::span<uint8_t>> NeuralNetwork::prepareImgFrameForNN(const std:
                 logger->error("Error while casting the user buffer encoding to TF16.");
                 return std::nullopt;
             }
-            auto stepExactly0 = userBufferEncodingTf16->getStepExactly0();
-            auto quantizedStepSize = userBufferEncodingTf16->getQuantizedStepSize();
+            const auto stepExactly0 = userBufferEncodingTf16->getStepExactly0();
+            const auto quantizedStepSize = userBufferEncodingTf16->getQuantizedStepSize();
+            if(!std::isfinite(quantizedStepSize) || quantizedStepSize <= 0) {
+                logger->error("TF16 quantizedStepSize must be finite and positive.");
+                return std::nullopt;
+            }
 
-            bool stepExactly0CloseEnough = stepExactly0 <= 1;
-            bool quantizedStepSizeCloseEnough = (quantizedStepSize >= (253 / 65535.0f)) && (quantizedStepSize <= (257 / 65535.0f));
+            const bool stepExactly0CloseEnough = stepExactly0 <= 1;
+            const bool quantizedStepSizeCloseEnough = (quantizedStepSize >= (253 / 65535.0f)) && (quantizedStepSize <= (257 / 65535.0f));
             if(!stepExactly0CloseEnough || !quantizedStepSizeCloseEnough) {
                 logger->warn("Custom TF16 encoding is not yet supported. DAI expects stepExactly0 to be 0 and quantizedStepSize to be 1.");
                 logger->warn("stepExactly0: {}, quantizedStepSize: {}", stepExactly0, quantizedStepSize);
             }
 
-            auto dataSpan = input->getData();
-            auto tBeforeConversion = std::chrono::steady_clock::now();
+            const auto dataSpan = input->getData();
+            const auto tBeforeConversion = std::chrono::steady_clock::now();
             conversionBuffer.resize(dataSpan.size() * sizeof(uint16_t));
-            auto conversionPtr = reinterpret_cast<uint16_t*>(conversionBuffer.data());
-            auto numPixels = input->getData().size();
-            for(size_t i = 0; i < numPixels; i++) {
-                conversionPtr[i] = static_cast<uint16_t>(std::round((static_cast<float>(dataSpan[i]) / quantizedStepSize) + stepExactly0));
+            // The conversion buffer stores native-endian TF16 words for SNPE, as in the other conversion paths.
+            auto* const conversionPtr = reinterpret_cast<uint16_t*>(conversionBuffer.data());
+            if(stepExactly0 == 0 && quantizedStepSize == 255 / 65535.0f) {
+                // For the standard encoding, each byte maps exactly to byte * 257.
+                for(size_t i = 0; i < dataSpan.size(); ++i) {
+                    conversionPtr[i] = static_cast<uint16_t>(dataSpan[i] * 257u);
+                }
+            } else {
+                for(size_t i = 0; i < dataSpan.size(); ++i) {
+                    conversionPtr[i] = static_cast<uint16_t>(std::round((static_cast<float>(dataSpan[i]) / quantizedStepSize) + stepExactly0));
+                }
             }
-            auto tAfterConversion = std::chrono::steady_clock::now();
+            const auto tAfterConversion = std::chrono::steady_clock::now();
             logger->debug("Converting the image to uint16 took: {} ms",
-                          std::chrono::duration_cast<std::chrono::microseconds>(tAfterConversion - tBeforeConversion).count()
-                              / 1000.0); //TODO (aljazkonec): a 640x640 image takes around 4-7ms to convert to uint16
+                          std::chrono::duration_cast<std::chrono::microseconds>(tAfterConversion - tBeforeConversion).count() / 1000.0);
             return conversionBuffer;
         }
         case ElementType::FLOAT16: {

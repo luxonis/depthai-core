@@ -159,7 +159,7 @@ Mean Sampson error current    = 0.38 px
 }
 ```
 
-Any of the three lists may be left out. `markerSizes` needs no tape measure in the scene: the printed size of a
+Unknown or misspelled keys, malformed values, marker ids outside the dictionary and duplicate measurements raise an error. Names match regardless of case. Existing aliases (`dictionary`, dictionary names without `DICT_`, socket letters or numbers, numeric enums and `markerA` / `markerB`) remain accepted; conflicting aliases raise an error. When depthai is built with OpenCV support, the calibration checks reconstructed measurements against the final assembled camera poses and rejects measurements it cannot reconstruct; without OpenCV it only checks that the epipolar error does not grow. Any of the three lists may be left out. `markerSizes` needs no tape measure in the scene: the printed size of a
 marker tells each camera how far away the marker is. The size of an ArUco marker is the length of a side of its
 black square, the size of a Luxonis Marker is the outer diameter of its ring.
 

@@ -1,5 +1,4 @@
 #include "ToF.hpp"
-#include "BleedingFilter.hpp"
 
 #include <chrono>
 #include <cstring>
@@ -9,18 +8,20 @@
 #include <optional>
 #include <vector>
 
+#include "../ImgTransformationUtils.hpp"
+#include "BleedingFilter.hpp"
+#include "camera/HalBufferMemory.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
-#include "depthai/utility/matrixOps.hpp"
-#include "pipeline/NodeTiming.hpp"
-#include "camera/HalBufferMemory.hpp"
 #include "depthai/utility/OffsetMemory.hpp"
+#include "depthai/utility/VectorMemory.hpp"
+#include "depthai/utility/matrixOps.hpp"
+#include "pipeline/MultiDeviceCalibrationStore.hpp"
+#include "pipeline/NodeTiming.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/node/Camera/Camera.hpp"
-#include "../ImgTransformationUtils.hpp"
-#include "pipeline/MultiDeviceCalibrationStore.hpp"
 #include "utilities/ErrorMacros.hpp"
 #include "utilities/OSUtils.hpp"
 
@@ -161,10 +162,11 @@ void ToFBase::run() {
             auto undistortOutput = [&](const std::shared_ptr<ImgFrame>& frame) {
                 if(undistortMapX.empty()) return;
                 const int cvType = frame->getType() == ImgFrame::Type::RAW16 ? CV_16UC1 : CV_8UC1;
-                cv::Mat image(outH, outW, cvType, frame->getData().data());
-                cv::Mat remapped;
+                const cv::Mat image(outH, outW, cvType, frame->getData().data());
+                auto remappedMemory = std::make_shared<VectorMemory>(std::vector<uint8_t>(frame->getData().size()));
+                cv::Mat remapped(outH, outW, cvType, remappedMemory->getData().data());
                 cv::remap(image, remapped, undistortMapX, undistortMapY, cv::INTER_NEAREST, cv::BORDER_CONSTANT, 0);
-                remapped.copyTo(image);
+                frame->data = std::move(remappedMemory);
             };
             auto makeOutputFrame = [&](size_t size, ImgFrame::Type type) {
                 auto frame = std::make_shared<ImgFrame>(size);

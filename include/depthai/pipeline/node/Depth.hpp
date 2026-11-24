@@ -34,6 +34,7 @@ namespace node {
  * connected, otherwise StereoDepth.
  *
  * Use build() to pin algorithm, FPS, or resolution before the first output access or hasRectifiedOutputs() call.
+ * Use setStereoPair() to select another pair reported by the device before wiring.
  * Use setAlignTo() to align depth to another camera output.
  */
 class Depth : public DeviceNodeGroup {
@@ -186,6 +187,7 @@ class Depth : public DeviceNodeGroup {
     /**
      * Get the algorithm AUTO would select without FPS, size, config, or existing camera overrides.
      * Uses the device's native stereo resolution and a target of 30 FPS.
+     * This is a device-level query: it always considers the device's first stereo pair, not a pair chosen with setStereoPair().
      * Can be called before creating a pipeline or Depth node.
      * @param device Device to query; must not be null.
      * @return The concrete default algorithm (never AUTO).
@@ -198,6 +200,27 @@ class Depth : public DeviceNodeGroup {
      * @param algorithm Backend to use; AUTO re-enables auto-selection
      */
     std::shared_ptr<Depth> setAlgorithm(Algorithm algorithm);
+
+    /**
+     * Select the stereo camera pair before wiring.
+     * Only the left/right sockets are used; the pair must be reported by Device::getStereoPairs(),
+     * otherwise wiring throws. The selected pair is used for AUTO selection and every stereo-based backend,
+     * including the rectified outputs. Has no effect when the resolved algorithm is TOF.
+     * Must be called before first output access or hasRectifiedOutputs() call.
+     * @param stereoPair Pair to use, or std::nullopt to use the device's first stereo pair
+     * @throws std::runtime_error If the sockets are AUTO or identical, or the node is already wired.
+     */
+    std::shared_ptr<Depth> setStereoPair(std::optional<StereoPair> stereoPair);
+
+    /**
+     * Get the requested pair, or std::nullopt when using the device's first pair.
+     */
+    [[nodiscard]] std::optional<StereoPair> getRequestedStereoPair() const;
+
+    /**
+     * Get the wired pair with device metadata, or std::nullopt before wiring or for ToF.
+     */
+    [[nodiscard]] std::optional<StereoPair> getResolvedStereoPair() const;
 
     /**
      * Get the requested config override, if any.
@@ -248,6 +271,8 @@ class Depth : public DeviceNodeGroup {
 
     void requireNotBuilt(const char* method) const;
 
+    static StereoPair selectStereoPair(const std::vector<StereoPair>& pairs, const std::optional<StereoPair>& requested);
+
     static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height);
 
     static Selection selectBackend(Platform platform,
@@ -272,6 +297,8 @@ class Depth : public DeviceNodeGroup {
     std::optional<float> stereoOutputFps_{};
     std::optional<std::pair<uint32_t, uint32_t>> sizeOverride_{};
     std::optional<Config> configOverride_{};
+    std::optional<StereoPair> stereoPairOverride_{};
+    std::optional<StereoPair> resolvedStereoPair_{};
     Node::Output* alignToOutput_{nullptr};
 
     Node::Output* depthOut_{nullptr};
