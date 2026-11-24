@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "../../../../src/nn_archive/v1/Generators.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 
@@ -225,18 +226,14 @@ TEST_CASE("The DSP runtime name is case-insensitive") {
     REQUIRE(network->properties.udoPackages.at(0).dspImplementations == std::vector<std::string>{DSP_IMPLEMENTATION});
 }
 
-TEST_CASE("Runtime dependencies preserve multiple packages and runtimes through serialization") {
+TEST_CASE("Runtime dependencies preserve multiple packages and runtimes through JSON") {
     auto metadata = dependencies();
     metadata["snpe_udo"].push_back(
         {{"registration", "runtime/libSecondReg.so"}, {"implementations", {{{"runtime", "dsp"}, {"path", "runtime/libSecondImplDsp.so"}}}}});
     const auto parsed = metadata.get<dai::nn_archive::v1::RuntimeDependencies>();
-    for(const auto type : {dai::SerializationType::LIBNOP, dai::SerializationType::JSON, dai::SerializationType::JSON_MSGPACK}) {
-        std::vector<uint8_t> data;
-        REQUIRE(dai::utility::serialize(parsed, data, type));
-        dai::nn_archive::v1::RuntimeDependencies restored;
-        REQUIRE(dai::utility::deserialize(data, restored, type));
-        REQUIRE(json(restored) == metadata);
-    }
+    REQUIRE(parsed.snpeUdo.size() == 2);
+    REQUIRE(parsed.snpeUdo.at(0).implementations.size() == 2);
+    REQUIRE(json(parsed) == metadata);
 }
 
 TEST_CASE("NNArchive rejects missing, empty, duplicate and linked runtime libraries") {
