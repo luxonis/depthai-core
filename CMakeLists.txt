@@ -47,8 +47,19 @@ else()
     message(STATUS "DEPTHAI_BOOTSTRAP_VCPKG is OFF")
 endif()
 
-# Minimal supported macOS SDK version for both arm64 and x86_64
-set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0)
+# Minimal supported macOS version. Default: the major version of the macOS that builds, at least 11.0, as Homebrew
+# builds its libraries: a build that links libraries of the system (for example OpenCV of Homebrew) runs only on that
+# macOS anyway. The Python wheels set 11.0 (setup.py). For binaries for older macOS: -D CMAKE_OSX_DEPLOYMENT_TARGET=11.0
+# or the environment variable MACOSX_DEPLOYMENT_TARGET.
+if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET AND "$ENV{MACOSX_DEPLOYMENT_TARGET}" STREQUAL "")
+    execute_process(COMMAND sw_vers -productVersion OUTPUT_VARIABLE _macos_version OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    string(REGEX MATCH "^[0-9]+" _macos_major "${_macos_version}")
+    set(_deployment_target 11.0)
+    if(_macos_major GREATER 11)
+        set(_deployment_target "${_macos_major}.0")
+    endif()
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "${_deployment_target}" CACHE STRING "Minimum macOS version of the build")
+endif()
 
 # Set type to canonicalize relative paths for user-provided toolchain
 set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")

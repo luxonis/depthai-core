@@ -65,7 +65,9 @@ if [ -z "${CI:-}" ] && [ "${DEPTHAI_DEVICE_BUILD_CACHE:-1}" != 0 ] && [ "$BUILD_
     BUILD_CACHE_URL="https://artifacts.luxonis.com/artifactory/luxonis-depthai-helper-binaries/device-rvc4-build-cache"
     BUILD_CACHE_URL="${DEPTHAI_DEVICE_BUILD_CACHE_BASE_URL:-$BUILD_CACHE_URL}"
     BUILD_CACHE_DIR="$SDK_CACHE/build-cache"
-    mapfile -t BUILD_CACHE_COMMITS < <(git -C "$CORE_DIR" rev-list --first-parent -n 11 HEAD 2>/dev/null)
+    # No mapfile: the bash of macOS (3.2) does not have it
+    # shellcheck disable=SC2207 # commit hashes have no spaces
+    BUILD_CACHE_COMMITS=($(git -C "$CORE_DIR" rev-list --first-parent -n 11 HEAD 2>/dev/null))
     # No container start when the disk has the answer: the cache of the newest commit, with a note for each newer
     # commit that the server has none (the note is good for one day).
     BUILD_CACHE_COMMIT=""

@@ -9,6 +9,7 @@
 #
 # DepthaiDeviceRvc4FirmwareBuild(<output folder> <version var> <resource list var> <target var>)
 #   out: package version, files to embed, target that builds the package
+
 function(DepthaiDeviceRvc4FirmwareBuild output_dir version_var resource_list_var target_var)
     set(_source_dir "${CMAKE_SOURCE_DIR}/device/rvc4")
     if(DEPTHAI_SANITIZE AND SANITIZE_THREAD)
@@ -21,14 +22,28 @@ function(DepthaiDeviceRvc4FirmwareBuild output_dir version_var resource_list_var
 
     find_program(DEPTHAI_DEVICE_RVC4_BASH bash)
     find_program(DEPTHAI_DEVICE_RVC4_DOCKER docker)
+    string(CONCAT _alternatives
+           "  * download a firmware package: -D DEPTHAI_DEVICE_RVC4_VERSION=<version>, or\n"
+           "  * embed a package that you have: -D DEPTHAI_DEVICE_RVC4_FWP_PATH=<path>, or\n"
+           "  * build without the RVC4 firmware: -D DEPTHAI_ENABLE_DEVICE_RVC4_FW=OFF.")
     if(NOT EXISTS "${_source_dir}/create_deployment_artifacts.sh" OR NOT DEPTHAI_DEVICE_RVC4_BASH OR NOT DEPTHAI_DEVICE_RVC4_DOCKER)
         message(FATAL_ERROR "No DEPTHAI_DEVICE_RVC4_VERSION is set, so the build builds the RVC4 firmware from device/rvc4, "
                             "and that needs bash and Docker (found bash: '${DEPTHAI_DEVICE_RVC4_BASH}', docker: "
                             "'${DEPTHAI_DEVICE_RVC4_DOCKER}'). Either\n"
                             "  * install them (device/rvc4/README.md, Building), or\n"
-                            "  * download a firmware package: -D DEPTHAI_DEVICE_RVC4_VERSION=<version>, or\n"
-                            "  * embed a package that you have: -D DEPTHAI_DEVICE_RVC4_FWP_PATH=<path>, or\n"
-                            "  * build without the RVC4 firmware: -D DEPTHAI_ENABLE_DEVICE_RVC4_FW=OFF.")
+                            "${_alternatives}")
+    endif()
+    # The docker command is only the client (for example the docker formula of Homebrew): the build also needs a running
+    # Docker engine
+    execute_process(COMMAND "${DEPTHAI_DEVICE_RVC4_DOCKER}" info --format "{{.ServerVersion}}"
+                    RESULT_VARIABLE _docker_result OUTPUT_QUIET ERROR_VARIABLE _docker_error
+                    ERROR_STRIP_TRAILING_WHITESPACE TIMEOUT 60)
+    if(NOT _docker_result EQUAL 0)
+        message(FATAL_ERROR "No DEPTHAI_DEVICE_RVC4_VERSION is set, so the build builds the RVC4 firmware from device/rvc4 "
+                            "in a Docker container, and the Docker engine does not answer: '${DEPTHAI_DEVICE_RVC4_DOCKER} "
+                            "info' failed (${_docker_result}): ${_docker_error}. Either\n"
+                            "  * start the Docker engine (device/rvc4/README.md, Building), or\n"
+                            "${_alternatives}")
     endif()
 
     file(STRINGS "${_source_dir}/version.txt" _firmware_version LIMIT_COUNT 1)
@@ -83,7 +98,6 @@ function(DepthaiDeviceRvc4FirmwareBuild output_dir version_var resource_list_var
     set(_package_dir "${_source_dir}/build_docker_arm64_${_target}/RelWithDebInfo")
     set(_embedded_fwp "${output_dir}/depthai-device-rvc4-fwp-${_version}.tar.xz")
     set(_embedded_license "${output_dir}/depthai-device-rvc4-fwp-${_version}-LICENSE")
-    set(_sbom_stem "${output_dir}/depthai-device-rvc4-fwp-${_version}")
     set(_committed_notice "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../notices/depthai-device-RVC4-LICENSE")
     add_custom_target(depthai-device-rvc4-fwp ALL
         COMMAND "${CMAKE_COMMAND}" -E env --unset=DEPTHAI_DEVICE_CONFIGURE_ONLY ${_script_env}
@@ -93,10 +107,7 @@ function(DepthaiDeviceRvc4FirmwareBuild output_dir version_var resource_list_var
                 -D "EXPECTED=${_committed_notice}" -D ORIGIN=Built -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/VerifyLicense.cmake"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_package_dir}/depthai-device-rvc4-fwp.tar.xz" "${_embedded_fwp}"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_package_dir}/depthai-device-rvc4-fwp-LICENSE" "${_embedded_license}"
-        # The firmware SBOMs, for scripts/generate_sbom.py, as the download of a version does. Not embedded.
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_package_dir}/depthai-device-rvc4-fwp.spdx.json" "${_sbom_stem}.spdx.json"
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_package_dir}/depthai-device-rvc4-fwp.cdx.json" "${_sbom_stem}.cdx.json"
-        BYPRODUCTS "${_embedded_fwp}" "${_embedded_license}" "${_sbom_stem}.spdx.json" "${_sbom_stem}.cdx.json"
+        BYPRODUCTS "${_embedded_fwp}" "${_embedded_license}"
         WORKING_DIRECTORY "${_source_dir}"
         COMMENT "Building the RVC4 firmware package from device/rvc4 (target ${_target})"
         USES_TERMINAL
