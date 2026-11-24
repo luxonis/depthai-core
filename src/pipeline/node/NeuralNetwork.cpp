@@ -323,8 +323,12 @@ void NeuralNetwork::setOtherModelFormat(std::vector<uint8_t> otherModel) {
 }
 
 void NeuralNetwork::setOtherModelFormat(const std::filesystem::path& path) {
-    // Check the file first, so a bad path keeps the current model.
-    DAI_CHECK_V(std::ifstream(path, std::ios::binary).is_open(), "Cannot load model, file at path {} doesn't exist.", path);
+    // Check the file first, so a bad path keeps the current model. A directory
+    // opens as a stream on POSIX, so the stream check alone does not reject it.
+    std::error_code error;
+    DAI_CHECK_V(std::filesystem::is_regular_file(path, error) && std::ifstream(path, std::ios::binary).is_open(),
+                "Cannot load model, file at path {} doesn't exist or is not a readable file.",
+                path);
     clearModel(assetManager, properties);
     auto modelAsset = assetManager.setLazy("__model", path);
     properties.modelUri = modelAsset->getRelativeUri();

@@ -147,6 +147,11 @@ TEST_CASE("NNArchive sends the registration and DSP libraries as pipeline assets
         checkConfigured();
         REQUIRE(network->getNNArchive().has_value());
     }
+    SECTION("A directory as the model path keeps the current model") {
+        REQUIRE_THROWS_WITH(network->setOtherModelFormat(std::filesystem::temp_directory_path()), ContainsSubstring("is not a readable file"));
+        checkConfigured();
+        REQUIRE(network->getNNArchive().has_value());
+    }
     SECTION("A raw model replaces the archive libraries") {
         network->setOtherModelFormat(std::vector<uint8_t>{1, 2, 3});
         REQUIRE(network->properties.udoPackages.empty());
