@@ -1138,7 +1138,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
 
     dai_add_test(image_manip_optimization_test src/ondevice_tests/pipeline/node/image_manip_optimization_test.cpp)
     target_compile_definitions(image_manip_optimization_test PRIVATE LENNA_PATH="${lenna_png}")
-    dai_set_test_labels(image_manip_optimization_test ondevice rvc4 rvc4ffc rvc4rgb ci)
+    dai_set_test_labels(image_manip_optimization_test ondevice rvc4 rvc4rgb ci)
 endif()
 
 # Benchmark tests
@@ -1155,7 +1155,7 @@ dai_set_test_labels(manual_focus_test rvc2_all rvc4 rvc4ffc rvc4rgb ci noreplayc
 
 # IMU tests
 dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
-dai_set_test_labels(imu_test ondevice rvc4 rvc4ffc rvc4rgb ci noreplayci) # Many RVC2 devices do not have an IMU which supports the whole test suite; replayed IMU data skips the runtime calibration
+dai_set_test_labels(imu_test ondevice rvc4 rvc4rgb ci noreplayci) # Many RVC2 devices do not have an IMU which supports the whole test suite; replayed IMU data skips the runtime calibration
 
 # ObjectTracker tests
 if(DEPTHAI_HAVE_OPENCV_SUPPORT)
@@ -1211,7 +1211,7 @@ if(DEPTHAI_ENABLE_PROTOBUF AND DEPTHAI_OPENCV_SUPPORT)
 endif()
 
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
-dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 rvc4ffc ci_nightly noreplayci)
+dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci_nightly noreplayci)
 set_property(TEST camera_fps_config_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
 # VideoEncoder test
