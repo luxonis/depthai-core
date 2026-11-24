@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./images/oak_scan.gif" alt="OAK camera scanning an object" width="600">
+</p>
+
 # DepthAI Library
 
 [![Forum](https://img.shields.io/badge/Forum-discuss-orange)](https://discuss.luxonis.com/)
