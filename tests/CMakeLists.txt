@@ -586,6 +586,8 @@ dai_set_test_labels(message_queue_test onhost ci)
 dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_test.cpp)
 # The allocator test uses XLink's private headers, including platform compatibility headers.
 target_include_directories(stream_message_parser_test PRIVATE "$<TARGET_PROPERTY:XLink,INCLUDE_DIRECTORIES>")
+# It also calls XLinkPlatformAllocateData. A shared libdepthai-core does not export the XLink symbols.
+target_link_libraries(stream_message_parser_test PRIVATE XLink)
 dai_set_test_labels(stream_message_parser_test onhost ci)
 
 # Datatype hierarchy completeness
@@ -779,6 +781,16 @@ endif()
 # Vpp node tests
 dai_add_test(vpp_test src/ondevice_tests/vpp_test.cpp)
 dai_set_test_labels(vpp_test ondevice rvc4 ci)
+
+# VIO regression tests. No CI job selects the `vio` label (CI runs `ci` and `ci_nightly`).
+# Run them by hand: ctest -L vio
+if(DEPTHAI_HAVE_BASALT_SUPPORT AND DEPTHAI_HAVE_RTABMAP_SUPPORT)
+    dai_add_test(vio_regression_test src/ondevice_tests/pipeline/node/vio_regression_test.cpp)
+    if(NOT DEPTHAI_MERGED_TARGET)
+        target_link_libraries(vio_regression_test PRIVATE ${PROJECT_NAME}::${TARGET_BASALT_ALIAS} ${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS})
+    endif()
+    dai_set_test_labels(vio_regression_test ondevice rvc2 rvc4 vio)
+endif()
 
 # GPUStereo node (device execution) test
 dai_add_test(gpu_stereo_device_test src/ondevice_tests/gpu_stereo_node_test.cpp)
