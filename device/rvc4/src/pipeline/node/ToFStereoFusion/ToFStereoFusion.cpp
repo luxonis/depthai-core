@@ -244,11 +244,12 @@ void ToFStereoFusion::alignNeural(const ImgFrame& tofImage, const ImgFrame& dept
                     shiftedConfidence.at<uint8_t>(y, xx) = rectifiedConfidence.at<uint8_t>(y, x);
                 }
         }
-    cv::Mat outputDepth, outputConfidence;
+    alignedNeuralDepth.resize(static_cast<size_t>(tofHeight) * tofWidth);
+    alignedNeuralConfidence.resize(static_cast<size_t>(tofHeight) * tofWidth);
+    cv::Mat outputDepth(tofHeight, tofWidth, CV_16UC1, alignedNeuralDepth.data());
+    cv::Mat outputConfidence(tofHeight, tofWidth, CV_8UC1, alignedNeuralConfidence.data());
     cv::remap(shiftedDepth, outputDepth, tofRectificationMapX, tofRectificationMapY, cv::INTER_NEAREST, cv::BORDER_CONSTANT, 0);
     cv::remap(shiftedConfidence, outputConfidence, tofRectificationMapX, tofRectificationMapY, cv::INTER_NEAREST, cv::BORDER_CONSTANT, 0);
-    alignedNeuralDepth.assign(reinterpret_cast<uint16_t*>(outputDepth.data), reinterpret_cast<uint16_t*>(outputDepth.data) + outputDepth.total());
-    alignedNeuralConfidence.assign(outputConfidence.data, outputConfidence.data + outputConfidence.total());
 }
 
 ToFStereoFusion::FusionOutputs ToFStereoFusion::alphaNetwork(MessageGroup& group, bool confidenceConnected) {

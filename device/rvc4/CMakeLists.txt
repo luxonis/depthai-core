@@ -517,6 +517,7 @@ set(DEPTHAI_PLATFORM_SOURCES
     src/pipeline/node/PointCloud/PointCloudGpu.cpp
     src/pipeline/node/SystemLogger.cpp
     src/pipeline/node/Measurements.cpp
+    src/pipeline/node/SystemResourceCounters.cpp
     src/pipeline/node/Warp/Warp.cpp
     src/pipeline/node/PipelineEventAggregation.cpp
     src/pipeline/node/Vpp/Vpp.cpp

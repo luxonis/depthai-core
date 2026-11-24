@@ -40,11 +40,6 @@ void RTABMapVIO::buildInternal() {
     rect.setMaxSize(1);
     depth.setBlocking(false);
     depth.setMaxSize(1);
-    if(useFeatures) {
-        features.setBlocking(false);
-        features.setMaxSize(1);
-        inputs[featuresInputName] = features;
-    }
     inSync.setMaxSize(1);
     inSync.setBlocking(false);
     imu.addCallback(std::bind(&RTABMapVIO::imuCB, this, std::placeholders::_1));
@@ -155,6 +150,8 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
 
             pose = pimplRtabmap->localTransform * pose * pimplRtabmap->localTransform.inverse();
             auto out = rtabmapToOdometry(pose, velocity);
+            out->setTimestamp(imgFrame->getTimestamp(dai::CameraExposureOffset::MIDDLE));
+            out->setTimestampDevice(imgFrame->getTimestampDevice(dai::CameraExposureOffset::MIDDLE));
             transform.send(out);
             passthroughRect.send(imgFrame);
             passthroughDepth.send(depthFrame);

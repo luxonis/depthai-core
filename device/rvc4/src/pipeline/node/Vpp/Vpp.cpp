@@ -1,5 +1,7 @@
 #include "Vpp.hpp"
 
+#include "utility/ImgFrameView.hpp"
+
 // std
 #include <algorithm>
 #include <chrono>
@@ -168,8 +170,8 @@ bool Vpp::loadData(cv::Mat& leftImg,
 
     leftImg = prepareGrayOutputFrame(leftOutFrame, leftIn);
     rightImg = prepareGrayOutputFrame(rightOutFrame, rightIn);
-    copyFrameToGray(leftImg, leftIn->getCvFrame());
-    copyFrameToGray(rightImg, rightIn->getCvFrame());
+    copyFrameToGray(leftImg, utility::getCvFrameView(*leftIn));
+    copyFrameToGray(rightImg, utility::getCvFrameView(*rightIn));
 
     // Verify image size consistency
     CV_Assert(leftImg.size() == rightImg.size());
@@ -178,9 +180,9 @@ bool Vpp::loadData(cv::Mat& leftImg,
             throw std::invalid_argument("VPP depth must be RAW16 millimetres aligned to the full rectified left image");
         }
         const auto intrinsics = leftIn->getTransformation().getIntrinsicMatrix();
-        disparityCv = buildDisparityPrior(depthIn->getCvFrame(), intrinsics.at(0).at(0), resolveBaselineMm(leftIn, rightIn));
+        disparityCv = buildDisparityPrior(depthIn->getFrame(), intrinsics.at(0).at(0), resolveBaselineMm(leftIn, rightIn));
     } else {
-        disparityCv = convertUintMatToFloat(disparityIn->getCvFrame());
+        disparityCv = convertUintMatToFloat(utility::getCvFrameView(*disparityIn));
     }
     if(leftImg.cols < disparityCv.cols || leftImg.rows < disparityCv.rows) {
         throw std::runtime_error(
@@ -193,7 +195,7 @@ bool Vpp::loadData(cv::Mat& leftImg,
     if(!confidenceIn) {
         confidenceCv = cv::Mat();
     } else {
-        confidenceCv = convertUintMatToFloat(confidenceIn->getCvFrame());
+        confidenceCv = convertUintMatToFloat(utility::getCvFrameView(*confidenceIn));
         CV_Assert(disparityCv.size() == confidenceCv.size());
     }
     return true;

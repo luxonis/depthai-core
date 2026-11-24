@@ -133,6 +133,7 @@
   "dai::WorldConstraints::MarkerSocketDistance::DEPTHAI_SERIALIZE_DECL(MarkerSocketDistance,marker,socket,distance)": "Serialization macro; the struct and its fields are bound.",
   "dai::WorldConstraints::fromJson(constnlohmann::json&)": "nlohmann::json has no Python counterpart; Python uses WorldConstraints.fromJson(str) = fromJsonString.",
   "dai::arucoDictionaryFromString(conststd::string&)": "Python has the ArucoDictionary enum itself; string conversion is C++/JSON-only.",
+  "dai::StreamMessageParser::parseMessage(std::vector<uint8_t>)": "Internal XLink packet reassembly; transfers ownership of serialized transport bytes. Python receives parsed messages through queues and does not expose StreamMessageParser.",
   "dai::beta::LocalCalibrationOrigin": "Internal host/firmware local-origin validation contract for multi-device calibration; Python gets the same check through Pipeline.setMultiDeviceCalibration.",
   "dai::beta::LocalCalibrationOrigin::available": "Internal host/firmware local-origin validation contract for multi-device calibration; Python gets the same check through Pipeline.setMultiDeviceCalibration.",
   "dai::beta::LocalCalibrationOrigin::hasSocket": "Internal host/firmware local-origin validation contract for multi-device calibration; Python gets the same check through Pipeline.setMultiDeviceCalibration.",

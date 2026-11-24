@@ -11,6 +11,7 @@
 #include <sstream>
 #include <string>
 
+#include "SystemResourceCounters.hpp"
 #include "utilities/OSUtils.hpp"
 
 Measurements::Measurements(std::shared_ptr<spdlog::logger> pLogger) {
@@ -217,7 +218,6 @@ dai::ChipTemperatureRVC4 Measurements::getChipTemperature() {
     // Regular expression to match thermal_zone directories
     std::regex thermalZoneRegex("thermal_zone\\d+");
     for(const auto& entry : std::filesystem::directory_iterator("/sys/class/thermal")) {
-
         if(!entry.is_directory()) {
             continue;
         }
@@ -299,4 +299,14 @@ void Measurements::readSystemInformation(dai::SystemInformationRVC4& pSysInfo,
     pSysInfo.ddrMemoryUsage = getMemoryInfo();
     pSysInfo.processMemoryUsage = getProcessMemoryInfo();
     pSysInfo.chipTemperature = getChipTemperature();
+
+    const auto resourceCounters = system_resource_counters::Collector{}.read();
+    pSysInfo.gpuUtilizationPercent = resourceCounters.gpuUtilizationPercent;
+    pSysInfo.dspHvxActivityPercent = resourceCounters.dspHvxActivityPercent;
+    pSysInfo.dspHmxActivityPercent = resourceCounters.dspHmxActivityPercent;
+    pSysInfo.dspQ6LoadKcps = resourceCounters.dspQ6LoadKcps;
+    pSysInfo.powerSystemWatts = resourceCounters.powerSystemWatts;
+    pSysInfo.powerProcessorWatts = resourceCounters.powerProcessorWatts;
+    pSysInfo.powerPoeWatts = resourceCounters.powerPoeWatts;
+    pSysInfo.powerTofWatts = resourceCounters.powerTofWatts;
 }

@@ -453,6 +453,27 @@ class DeviceBase {
     int getXLinkChunkSize();
 
     /**
+     * Gets the current Ethernet link speed in Mbps.
+     *
+     * @returns Ethernet link speed in Mbps
+     */
+    int getEthernetLinkSpeed();
+
+    /**
+     * Gets whether the current Ethernet link is full duplex.
+     *
+     * @returns 1 for full duplex, 0 otherwise
+     */
+    int getEthernetLinkDuplex();
+
+    /**
+     * Get the physical eMMC capacity in bytes on RVC2.
+     * Enable eMMC with Config::board.emmc before opening the device.
+     * @returns Capacity in bytes, or 0 if eMMC is unavailable or not initialized.
+     */
+    int64_t getEmmcMemorySize();
+
+    /**
      * Sets the size of the SIPP buffer on the device.
      *
      * @param sizeBytes SIPP buffer size in bytes. Device default is 18 * 1024 bytes
