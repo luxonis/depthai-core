@@ -1831,26 +1831,67 @@ void PipelineImpl::start() {
         DAI_CHECK_V(!devices.empty(), "No devices are assigned to device nodes");
         DAI_CHECK_V(slaveDevices.size() + masterDevices.size() == devices.size(),
                     "Number of devices assigned to device nodes does not match the number of master and slave devices");
-        // A multi-device pipeline starts the cameras of all its devices at one time (RVC4 with the UDP timesync) and
-        // aligns their frames in PTP time: cameras left at AUTO get TIME_PTP when PTP runs on all their devices (the
-        // OS's or depthai's own, see PtpGroup)
+        // A multi-device pipeline starts the cameras of all its devices at one time and aligns their frames on one time
+        // base. Cameras left at AUTO get TIME_PTP when every device with cameras is an RVC4 the host reaches over
+        // Ethernet, none is set to TIME_DAI and PTP runs on all of them (the OS's or depthai's own, see PtpGroup);
+        // otherwise TIME_DAI, the host-synced clock that every platform and link has. PTP runs on the devices' Ethernet
+        // ports, which a device on USB may not have on the others' network. The two align to different clocks, so the
+        // AUTO cameras never mix them.
         if(devices.size() > 1) {
-            std::vector<const void*> ptpDevices;
+            using Mode = CameraControl::FrameSyncMode;
+            std::vector<const void*> autoPtpDevices, explicitPtpDevices;
             std::vector<std::shared_ptr<dai::node::Camera>> autoCameras;
+            bool allRvc4 = true, noUsb = true;
+            size_t explicitPtp = 0, explicitDai = 0;
+            const auto addDevice = [](std::vector<const void*>& list, const void* owner) {
+                if(std::find(list.begin(), list.end(), owner) == list.end()) list.push_back(owner);
+            };
             for(const auto& node : getAllNodes()) {
                 auto camera = std::dynamic_pointer_cast<dai::node::Camera>(node);
                 const auto d = camera ? getAssignedDevice(node) : nullptr;
-                if(!d || d->getPlatform() != dai::Platform::RVC4) continue;
-                const auto mode = camera->initialControl.frameSyncMode;
-                if(mode != CameraControl::FrameSyncMode::AUTO && mode != CameraControl::FrameSyncMode::TIME_PTP) continue;
-                if(mode == CameraControl::FrameSyncMode::AUTO) autoCameras.push_back(camera);
+                if(!d) continue;
+                const bool rvc4 = d->getPlatform() == dai::Platform::RVC4;
+                const auto protocol = d->getDeviceInfo().protocol;
+                const bool usb = protocol == X_LINK_USB_VSC || protocol == X_LINK_USB_CDC || protocol == X_LINK_USB_EP;
                 const void* owner = static_cast<const DeviceBase*>(d.get());
-                if(std::find(ptpDevices.begin(), ptpDevices.end(), owner) == ptpDevices.end()) ptpDevices.push_back(owner);
+                allRvc4 = allRvc4 && rvc4;
+                noUsb = noUsb && !usb;
+                const auto mode = camera->initialControl.frameSyncMode;
+                if(mode == Mode::AUTO) {
+                    autoCameras.push_back(camera);
+                    if(rvc4 && !usb) addDevice(autoPtpDevices, owner);
+                } else if(mode == Mode::TIME_PTP) {
+                    ++explicitPtp;
+                    if(rvc4) {
+                        addDevice(autoPtpDevices, owner);
+                        addDevice(explicitPtpDevices, owner);
+                    }
+                } else if(mode == Mode::TIME_DAI) {
+                    ++explicitDai;
+                }
             }
+            // PTP for the AUTO cameras only if it covers every device with cameras; cameras set to TIME_PTP get it anyway
+            const bool autoPtp = !autoCameras.empty() && allRvc4 && noUsb && explicitDai == 0;
+            const auto& ptpDevices = autoPtp ? autoPtpDevices : explicitPtpDevices;
             PtpGroup::Setup ptp;
             if(ptpDevices.size() > 1) ptp = PtpGroup::setUp(ptpDevices);
-            if(ptp.ok) {
-                for(const auto& camera : autoCameras) camera->initialControl.setFrameSyncMode(CameraControl::FrameSyncMode::TIME_PTP);
+            const Mode autoMode = autoPtp && ptp.ok ? Mode::TIME_PTP : Mode::TIME_DAI;
+            for(const auto& camera : autoCameras) camera->initialControl.setFrameSyncMode(autoMode);
+            if(!autoCameras.empty()) {
+                const char* why = autoMode == Mode::TIME_PTP ? "PTP runs on every device"
+                                  : !allRvc4                ? "not every device is an RVC4"
+                                  : !noUsb                  ? "a device is connected over USB"
+                                  : explicitDai > 0         ? "other cameras are set to TIME_DAI"
+                                                            : "PTP does not run on every device";
+                logger::info("Frame sync: {} camera(s) left at AUTO use {} ({})",
+                             autoCameras.size(),
+                             autoMode == Mode::TIME_PTP ? "TIME_PTP" : "TIME_DAI",
+                             why);
+            }
+            const size_t onPtp = explicitPtp + (autoMode == Mode::TIME_PTP ? autoCameras.size() : 0);
+            const size_t onDai = explicitDai + (autoMode == Mode::TIME_DAI ? autoCameras.size() : 0);
+            if(onPtp > 0 && onDai > 0) {
+                logger::warn("Frame sync: {} camera(s) on TIME_PTP and {} on TIME_DAI align to different clocks", onPtp, onDai);
             }
             std::vector<std::pair<const void*, uint16_t>> cameras;
             for(const auto& d : devices) {
