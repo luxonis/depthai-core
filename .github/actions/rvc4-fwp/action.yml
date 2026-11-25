@@ -1,0 +1,24 @@
+name: RVC4 firmware package of this run
+description: >
+  Downloads the RVC4 firmware package that .github/workflows/rvc4_fwp.yml made in this workflow run to rvc4-fwp/ and
+  sets DEPTHAI_DEVICE_RVC4_FWP_PATH, so that each later CMake configure of depthai-core embeds it. The job must need
+  the job that calls rvc4_fwp.yml. Use it after the checkout step: the checkout cleans the workspace.
+
+inputs:
+  artifact:
+    description: Name of the artifact, the output artifact of rvc4_fwp.yml
+    default: depthai-device-rvc4-fwp
+
+runs:
+  using: composite
+  steps:
+    - name: Download the RVC4 firmware package
+      uses: actions/download-artifact@v8
+      with:
+        name: ${{ inputs.artifact }}
+        path: rvc4-fwp
+    - name: Set DEPTHAI_DEVICE_RVC4_FWP_PATH
+      shell: bash
+      # $GITHUB_WORKSPACE and not the github.workspace expression: in a container job the expression gives the path on
+      # the host
+      run: echo "DEPTHAI_DEVICE_RVC4_FWP_PATH=$GITHUB_WORKSPACE/rvc4-fwp/depthai-device-rvc4-fwp.tar.xz" >> "$GITHUB_ENV"
