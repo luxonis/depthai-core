@@ -397,12 +397,8 @@ std::pair<std::string, std::string> DynamicCalibration::getProductAndBoardName()
 }
 
 Platform DynamicCalibration::getPlatform() const {
-#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    // Inside the firmware there is no host device handle, the node runs on the RVC4 device.
-    return Platform::RVC4;
-#else
-    return device->getPlatform();
-#endif
+    // Inside the RVC4 firmware there is no host device handle.
+    return device ? device->getPlatform() : Platform::RVC4;
 }
 
 void DynamicCalibration::applyCalibration(const CalibrationHandler& handler, bool flash) {
@@ -1715,7 +1711,6 @@ void DynamicCalibration::run() {
     auto& telemetryState = *pimplDCL->telemetryAggregateState;
     {
         std::lock_guard<std::mutex> lock(telemetryState.mutex);
-        // Inside the firmware there is no host device handle: no per-device telemetry aggregates.
         telemetryState.telemetryDeviceId = device ? device->getTemporaryTelemetryDeviceId() : std::string{};
     }
 
