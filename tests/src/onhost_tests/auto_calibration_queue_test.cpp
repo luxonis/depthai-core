@@ -48,14 +48,6 @@ struct AutoCalibrationTestAccess {
         return node.getProperties();
     }
 
-    static void setGateFps(AutoCalibration& node, int fps) {
-        node.gate->initialConfig->fps = fps;
-    }
-
-    static void buildStage1(AutoCalibration& node) {
-        node.buildStage1();
-    }
-
     static bool dynamicCalibrationRunsOnHost(AutoCalibration& node) {
         return node.dynamicCalibration->runOnHost();
     }
@@ -165,7 +157,7 @@ TEST_CASE("AutoCalibration starts recalibration with fresh result and coverage m
 
 // The RVC4 firmware constructs the node from these properties and starts from their config; the construction itself
 // needs the firmware build (no subnodes) and is covered by the on-device auto_calibration_test.
-TEST_CASE("AutoCalibration serializes its current config and gate rate in the properties", "[AutoCalibration]") {
+TEST_CASE("AutoCalibration serializes its current config in the properties", "[AutoCalibration]") {
     const auto type = GENERATE(dai::SerializationType::LIBNOP, dai::SerializationType::JSON, dai::SerializationType::JSON_MSGPACK);
     CAPTURE(static_cast<int>(type));
 
@@ -175,7 +167,6 @@ TEST_CASE("AutoCalibration serializes its current config and gate rate in the pr
     // edit it once more through the pointer.
     node->initialConfig = std::make_shared<dai::AutoCalibrationConfig>(dai::AutoCalibrationConfig::CONTINUOUS, 7, 0.8, 0.6, 3, 4, 2, false);
     node->initialConfig->maxIterations = 9;
-    Access::setGateFps(*node, 3);
 
     std::vector<std::uint8_t> data;
     Access::properties(*node).serialize(data, type);
@@ -191,7 +182,6 @@ TEST_CASE("AutoCalibration serializes its current config and gate rate in the pr
     REQUIRE(config.maxImagesPerRecalibration == 4);
     REQUIRE(config.validationSetSize == 2);
     REQUIRE_FALSE(config.flashCalibration);
-    REQUIRE(decoded.gateFps == 3);
 }
 
 TEST_CASE("AutoCalibration keeps the lens dependent threshold unresolved until it runs", "[AutoCalibration]") {
@@ -207,17 +197,14 @@ TEST_CASE("AutoCalibration runs on the host by default and its DynamicCalibratio
     dai::Pipeline pipeline{false};
     auto node = pipeline.create<dai::node::AutoCalibration>();
     REQUIRE(node->runOnHost());
-    Access::buildStage1(*node);
     REQUIRE(Access::dynamicCalibrationRunsOnHost(*node));
 
     // Without a device the platform is checked when the pipeline is built.
     node->setRunOnHost(false);
     REQUIRE_FALSE(node->runOnHost());
-    Access::buildStage1(*node);
     REQUIRE_FALSE(Access::dynamicCalibrationRunsOnHost(*node));
 
     node->setRunOnHost(true);
-    Access::buildStage1(*node);
     REQUIRE(node->runOnHost());
     REQUIRE(Access::dynamicCalibrationRunsOnHost(*node));
 }

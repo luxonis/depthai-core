@@ -397,12 +397,8 @@ std::pair<std::string, std::string> DynamicCalibration::getProductAndBoardName()
 }
 
 Platform DynamicCalibration::getPlatform() const {
-#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    // Inside the firmware there is no host device handle, the node runs on the RVC4 device.
-    return Platform::RVC4;
-#else
-    return device->getPlatform();
-#endif
+    // Inside the RVC4 firmware there is no host device handle.
+    return device ? device->getPlatform() : Platform::RVC4;
 }
 
 void DynamicCalibration::applyCalibration(const CalibrationHandler& handler, bool flash) {
@@ -1621,9 +1617,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
         }
         markerObservations.clear();
         lastMarkerCoverage.reset();
-        // Frames queued before the reset belong to the data that was just dropped. An AutoCalibration running on the
-        // device cannot reach this queue, so without this a pair that passed its gate before the last pause would be
-        // the first one loaded in the next cycle.
+        // Frames queued before the reset belong to the dropped data; an AutoCalibration on the device cannot reach this queue.
         syncInput.tryGetAll<dai::MessageGroup>();
         return ErrorCode::OK;
     }
@@ -1719,7 +1713,6 @@ void DynamicCalibration::run() {
     auto& telemetryState = *pimplDCL->telemetryAggregateState;
     {
         std::lock_guard<std::mutex> lock(telemetryState.mutex);
-        // Inside the firmware there is no host device handle: no per-device telemetry aggregates.
         telemetryState.telemetryDeviceId = device ? device->getTemporaryTelemetryDeviceId() : std::string{};
     }
 

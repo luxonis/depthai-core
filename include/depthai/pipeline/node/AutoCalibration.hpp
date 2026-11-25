@@ -48,23 +48,18 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     std::shared_ptr<AutoCalibration> build(const std::shared_ptr<Camera>& cameraLeft, const std::shared_ptr<Camera>& cameraRight);
 
     constexpr static const char* NAME = "AutoCalibration";
-
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     ~AutoCalibration() override;
 
-    /**
-     * Initial config of the node. The RVC4 firmware constructs the node from the serialized properties, so the
-     * config starts from the properties there; getProperties() writes host-side edits back before serialization.
-     */
+    // Starts from the properties: the RVC4 firmware constructs the node from them.
     std::shared_ptr<AutoCalibrationConfig> initialConfig = std::make_shared<AutoCalibrationConfig>(properties.initialConfig);
 
     void run() override;
 
     /**
      * Specify whether to run on host or device.
-     * By default, the node runs on the host. Running on the device is supported only on RVC4. The DynamicCalibration
-     * subnode follows the placement of the node, the Sync and Gate subnodes always run on the device.
+     * By default, the node runs on the host. Running on the device is supported only on RVC4.
      */
     void setRunOnHost(bool runOnHost);
 
@@ -94,12 +89,6 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
    protected:
     Properties& getProperties() override;
-
-    /**
-     * Calibration access used by the node. The host implementation goes through the dai::Device handle; the
-     * RVC4 firmware overrides it to use the device pipeline directly.
-     */
-    virtual CalibrationHandler readCurrentCalibration();
 
    private:
     struct TelemetryAggregateState;
@@ -133,8 +122,6 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     InputMap& syncedInput = sync->inputs;
 #endif
 
-    void buildStage1() override;
-
     void postBuildStage() override;
 
     bool validateIncomingData();
@@ -155,9 +142,7 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     void loadData(unsigned int numImages);
     void discardQueuedFrames();
-    /// Gate rate: the gate subnode config on the host, the value serialized in the properties inside the firmware.
-    int gateFps() const;
-    std::shared_ptr<Device> requireDevice() const;
+    CalibrationHandler readCurrentCalibration();
 
     std::shared_ptr<dai::CalibrationMetrics> getMetrics(const std::shared_ptr<dai::CalibrationHandler>& calibration);
 

@@ -21,6 +21,9 @@ std::shared_ptr<GPUStereo> GPUStereo::build(Output& leftInput, Output& rightInpu
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     leftInput.link(left);
     rightInput.link(right);
+#else
+    (void)leftInput;
+    (void)rightInput;
 #endif
     return std::static_pointer_cast<GPUStereo>(shared_from_this());
 }

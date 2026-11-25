@@ -71,7 +71,7 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
      */
     void setParams(const std::map<std::string, std::string>& params);
     /**
-     * Whether to use input features or calculate them internally.
+     * Whether to use input features or calculate them internally. False by default.
      */
     void setUseFeatures(bool use);
 
@@ -96,7 +96,7 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
     std::mutex imuMtx;
     float alphaScaling = -1.0;
     bool initialized = false;
-    bool useFeatures = true;
+    bool useFeatures = false;
 };
 }  // namespace node
 }  // namespace dai

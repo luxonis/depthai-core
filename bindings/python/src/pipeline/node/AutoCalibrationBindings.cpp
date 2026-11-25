@@ -28,7 +28,6 @@ void bind_auto_calibration(pybind11::module& m, void* pCallstack) {
 
     AutoCalibrationProperties.def_readwrite(
         "initialConfig", &dai::AutoCalibrationProperties::initialConfig, DOC(dai, AutoCalibrationProperties, initialConfig));
-    AutoCalibrationProperties.def_readwrite("gateFps", &dai::AutoCalibrationProperties::gateFps, DOC(dai, AutoCalibrationProperties, gateFps));
 
     // Actual bindings
     ///////////////////////////////////////////////////////////////////////

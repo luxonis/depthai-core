@@ -198,7 +198,8 @@ def read_cmake_cache(build_dir: Path) -> Cache:
 
 
 def read_cmake_set(path: Path, var: str) -> str | None:
-    match = re.search(rf'^\s*set\({var}\s+"([^"]*)"\)', path.read_text(encoding="utf-8"), re.M)
+    # set(VAR "value") or set(VAR "value" CACHE <type> "<doc>")
+    match = re.search(rf'^\s*set\({var}\s+"([^"]*)"', path.read_text(encoding="utf-8"), re.M)
     return match.group(1) if match else None
 
 
@@ -658,7 +659,7 @@ def add_artifacts(repo: Path, build_dir: Path | None, cache: Cache | None, inven
     for name, kind, config, version_var, maturity_var, license_expression, license_file, scope, enabled_by, option in ARTIFACTS:
         if cache is not None and not on(cache, option):
             continue
-        version = read_cmake_set(config_dir / config, version_var)
+        version = read_cmake_set(config_dir / config, version_var) or None
         relation = "contains" if cache is not None or scope == "required" else "optional"
         entry = component(f"luxonis-{name}", name, relation, type=kind, version=version, supplier="Luxonis",
                           license=license_expression, download="https://artifacts.luxonis.com/artifactory")
@@ -670,9 +671,17 @@ def add_artifacts(repo: Path, build_dir: Path | None, cache: Cache | None, inven
             files = inventory["license_files"].setdefault(license_expression, [])
             if license_file not in files:
                 files.append(license_file)
+        if name == "depthai-device-rvc4" and version is None:
+            # No version: the host build builds the firmware from device/rvc4 (cmake/DepthaiDeviceRvc4FirmwareBuild.cmake)
+            entry["properties"]["depthai:source"] = "device/rvc4 of this tree"
         if name == "depthai-device-rvc4" and build_dir is not None:
+            # The package that the library embeds: the pinned version with its sanitizer variant, or a local package
+            embedded = cache.get("DEPTHAI_DEVICE_RVC4_EMBEDDED_VERSION")
+            if embedded:
+                version = embedded
+                entry["version"] = version
             # CMakeLists.txt appends the sanitizer variant to the firmware version
-            if version and on(cache, "DEPTHAI_SANITIZE"):
+            elif version and on(cache, "DEPTHAI_SANITIZE"):
                 version += "-tsan" if on(cache, "SANITIZE_THREAD") else "-asan-ubsan"
                 entry["version"] = version
             link_firmware_sbom(build_dir, version, entry, inventory, output_dir)

@@ -1,0 +1,15 @@
+
+#include "AEEStdDef.idl"
+#include "remote.idl"
+
+/// Enabling stub-skel mismatch check feature in the auto-gen files.
+/// Please refer to the IDL documentation for more details on the feature.
+/// It is fully supported only on Kailua and later targets.
+const string IDL_VERSION = "1.2.3";
+
+interface StereoDepthDsp : remote_handle64 {
+   AEEResult disparityToDepth(in sequence<uint8> disparityFrame, in sequence<uint8> config, rout sequence<uint8> depthFrame);
+   AEEResult leftRightCheck(in sequence<uint8> disparityFrameLR, in sequence<uint8> disparityFrameRL, in sequence<uint8> config, rout sequence<uint8> outDisparityFrame);
+   AEEResult confidenceInvalidation(in sequence<uint8> disparityFrame, in sequence<uint8> confidenceFrame, in sequence<uint8> config, rout sequence<uint8> outDisparityFrame);
+   AEEResult combineDisparityMaps(in sequence<uint8> disparityFrame, in sequence<uint8> disparityFrameDs, in sequence<uint8> config, rout sequence<uint8> outDisparityFrame);
+};
