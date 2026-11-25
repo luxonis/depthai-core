@@ -33,7 +33,11 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     Subnode<node::Gate> gate{*this, "gate"};
 
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    // The firmware instantiates the Sync subnode as a separate pipeline node, so the input map only
+    // exists on the host side of the node.
     InputMap& inputs = sync->inputs;
+#endif
 
     std::string leftInputName = "left";
     std::string rightInputName = "right";
@@ -48,12 +52,20 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     ~AutoCalibration() override;
 
-    std::shared_ptr<AutoCalibrationConfig> initialConfig = std::make_shared<AutoCalibrationConfig>();
+    // Starts from the properties: the RVC4 firmware constructs the node from them.
+    std::shared_ptr<AutoCalibrationConfig> initialConfig = std::make_shared<AutoCalibrationConfig>(properties.initialConfig);
 
     void run() override;
 
+    /**
+     * Specify whether to run on host or device.
+     * By default, the node runs on the host. Running on the device is supported only on RVC4.
+     */
     void setRunOnHost(bool runOnHost);
 
+    /**
+     * Check if the node is set to run on host
+     */
     bool runOnHost() const override;
 
     void buildInternal() override;
@@ -129,6 +141,8 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     std::shared_ptr<dai::CalibrationHandler> getNewCalibration(unsigned int maxNumIteration, Report& report);
 
     void loadData(unsigned int numImages);
+    void discardQueuedFrames();
+    CalibrationHandler readCurrentCalibration();
 
     std::shared_ptr<dai::CalibrationMetrics> getMetrics(const std::shared_ptr<dai::CalibrationHandler>& calibration);
 
@@ -136,13 +150,15 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     void recordAggregateCycle(double elapsedSeconds);
 
+    void recordAggregateRecalibrationTriggered();
+
+    void recordAggregateOutput(bool calibrationUpdated);
+
     void recordAggregateRecalibration(bool passed, double elapsedSeconds);
 
     void recordAggregateValidationMetrics(double dataConfidence, double calibrationConfidence);
 
     void recordAggregateRotationDifference(const std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, std::vector<float>>& pairwiseRotationDifference);
-
-    AutoCalibrationProperties properties;
 
     // internal queues
     Output gateControlQueue{*this, {"gateControlQueue", DEFAULT_GROUP, {{{DatatypeEnum::GateControl, false}}}}};

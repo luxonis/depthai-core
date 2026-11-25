@@ -127,7 +127,8 @@ class DynamicCalibrationControl : public Buffer {
         };
 
         /**
-         * @brief Command to reset accumulated calibration and quality data.
+         * @brief Command to reset accumulated calibration and quality data. Synced frames that are still queued at
+         * the node input are dropped as well, so the next loaded image is newer than the reset.
          */
         struct ResetData {
             DEPTHAI_SERIALIZE_EMPTY(ResetData);

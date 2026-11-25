@@ -1617,6 +1617,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
         }
         markerObservations.clear();
         lastMarkerCoverage.reset();
+        // Frames queued before the reset belong to the dropped data; an AutoCalibration on the device cannot reach this queue.
+        syncInput.tryGetAll<dai::MessageGroup>();
         return ErrorCode::OK;
     }
     // Set performance mode
