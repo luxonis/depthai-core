@@ -50,15 +50,6 @@ std::array<std::array<float, 3>, 3> getUndistortBaseIntrinsics(const ImgTransfor
     return matrix::cvMatToMatrix3x3(newCameraMatrix);
 }
 
-// ImageManip reports its crops in pixels of its input frame, ImgTransformation keeps crops in pixels of the source sensor.
-// The two differ whenever the input frame is not at the sensor resolution, e.g. a binned or ISP-scaled camera output.
-std::vector<RotatedRect> toSourceCrops(std::vector<RotatedRect> crops, const ImgTransformation& sourceToInput) {
-    for(auto& crop : crops) {
-        crop = sourceToInput.invTransformRect(crop);
-    }
-    return crops;
-}
-
 uint32_t getNumPlanes(ImgFrame::Type imgType) {
     switch(imgType) {
         case ImgFrame::Type::RGB888i:
@@ -527,9 +518,8 @@ void setDstMetadata(const impl::ImageManipOperations<DmaHeapMemory, ColorChangeQ
         const auto undistortBaseIntrinsics =
             getUndistortBaseIntrinsics(srcFrame.transformation, srcFrame.getWidth(), srcFrame.getHeight(), manip.getUndistortAlpha());
         const auto undistortMatrix = impl::matmul(undistortBaseIntrinsics, srcFrame.transformation.getSourceIntrinsicMatrixInv());
-        const auto totalMatrix = impl::matmul(manip.getMatrix(), undistortMatrix);
 
-        // Rebuild from source metadata so the full source->output transform can be applied directly.
+        // Rebuild from source metadata: the undistorted frame maps from the source sensor without distortion
         dstFrame.transformation = ImgTransformation(sourceSize.first,
                                                     sourceSize.second,
                                                     srcFrame.transformation.getSourceIntrinsicMatrix(),
@@ -537,16 +527,13 @@ void setDstMetadata(const impl::ImageManipOperations<DmaHeapMemory, ColorChangeQ
                                                     {},
                                                     srcFrame.transformation.getExtrinsics());
         dstFrame.transformation.addSrcCrops(srcFrame.transformation.getSrcCrops());
-        // The manip crops are in pixels of the undistorted input frame
-        ImgTransformation sourceToInput(sourceSize.first, sourceSize.second);
-        sourceToInput.addTransformation(undistortMatrix);
-        dstFrame.transformation.addSrcCrops(toSourceCrops(manip.getSrcCrops(), sourceToInput));
-        dstFrame.transformation.addTransformation(totalMatrix);
+        dstFrame.transformation.addTransformation(undistortMatrix);
     } else {
         dstFrame.transformation = srcFrame.transformation;
-        dstFrame.transformation.addTransformation(manip.getMatrix());
-        dstFrame.transformation.addSrcCrops(toSourceCrops(manip.getSrcCrops(), srcFrame.transformation));
     }
+    // dstFrame.transformation now describes the manip input frame
+    dstFrame.transformation.addSrcCrops(manip.getSrcCrops(dstFrame.transformation));
+    dstFrame.transformation.addTransformation(manip.getMatrix());
     dstFrame.transformation.setSize(dstSpecs.width, dstSpecs.height);
 }
 
