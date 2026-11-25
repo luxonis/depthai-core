@@ -592,6 +592,11 @@ void CameraSensor::build(dai::CameraSensorType type) {
     }
     if(hasRaw + outputSpecs.size() > 3) {
         throw std::runtime_error("rvc4 currently supports max. 3 outputs per Camera sensor. Add an ImageManip node or contact support if you need more.");
+    } else if(hasRaw && outputSpecs.size() > 1 && !isToFSensor) {
+        // The camera HAL has no use case for raw plus two processed streams, so such a session starts but never delivers a frame
+        throw std::runtime_error(
+            "rvc4 currently supports only one output next to the raw output per Camera sensor. Request one output and add ImageManip nodes for the "
+            "others, or don't use the raw output.");
     } else if(!hasRaw && outputSpecs.empty()) {
         throw std::runtime_error("CameraSensor must have at least one output. Use requestOutput() or create a link from raw output.");
     }
