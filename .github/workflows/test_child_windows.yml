@@ -28,7 +28,12 @@ on:
         required: true
 
 jobs:
+  # RVC4 firmware package that the build embeds: since #2224 there is no pinned package
+  rvc4-fwp:
+    uses: ./.github/workflows/rvc4_fwp.yml
+
   build_windows_tests:
+    needs: rvc4-fwp
     runs-on: windows-2025
     outputs:
         artifact_id: ${{ steps.reuse.outputs.artifact_id || steps.artifact-upload-step.outputs.artifact-id }}
@@ -85,6 +90,12 @@ jobs:
       if: steps.reuse.outputs.skip_build != 'true'
       with:
         submodules: recursive
+
+    # Sets DEPTHAI_DEVICE_RVC4_FWP_PATH for the configure step below
+    - uses: ./.github/actions/rvc4-fwp
+      if: steps.reuse.outputs.skip_build != 'true'
+      with:
+        artifact: ${{ needs.rvc4-fwp.outputs.artifact }}
 
     - name: Ensure build dir
       shell: powershell

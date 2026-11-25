@@ -42,8 +42,16 @@ jobs:
 #         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ inputs.flavor }}"
 #         exec hil_runner --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc2"
 
+ # RVC4 firmware package that the build on the Mac embeds: since #2224 there is no pinned package
+ rvc4-fwp:
+    uses: ./.github/workflows/rvc4_fwp.yml
+    with:
+      # The asan-ubsan toolchain sets DEPTHAI_SANITIZE (scripts/hil/run_hil_tests_mac.sh)
+      target: ${{ inputs.flavor == 'asan-ubsan' && 'rvc4-asan-ubsan' || 'rvc4' }}
+
   # Testing
  mac_rvc4_test:
+      needs: rvc4-fwp
       strategy:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test) }}
@@ -54,6 +62,10 @@ jobs:
         with:
             submodules: recursive
             fetch-depth: 0
+      # Downloads the package to rvc4-fwp/: --sync-workspace copies it to the Mac, and run_hil_tests_mac.sh embeds it
+      - uses: ./.github/actions/rvc4-fwp
+        with:
+          artifact: ${{ needs.rvc4-fwp.outputs.artifact }}
 
       - name: Run RVC4 tests
         run: |
@@ -76,6 +88,7 @@ jobs:
           if-no-files-found: warn
 
  mac_rvc4_test_usb:
+      needs: rvc4-fwp
       strategy:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_usb) }}
@@ -86,6 +99,10 @@ jobs:
         with:
             submodules: recursive
             fetch-depth: 0
+      # Downloads the package to rvc4-fwp/: --sync-workspace copies it to the Mac, and run_hil_tests_mac.sh embeds it
+      - uses: ./.github/actions/rvc4-fwp
+        with:
+          artifact: ${{ needs.rvc4-fwp.outputs.artifact }}
 
       - name: Run RVC4 tests
         run: |

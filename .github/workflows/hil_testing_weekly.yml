@@ -98,7 +98,7 @@ jobs:
       CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
 
   run_windows_tests:
-    needs: select_tests
+    needs: [select_tests, rvc4-fwp]
     if: inputs.test_os || needs.select_tests.outputs.test_all == 'true'
     uses: ./.github/workflows/test_child_windows.yml
     with:
@@ -135,7 +135,7 @@ jobs:
       CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
 
   run_vanilla_mac_tests:
-    needs: select_tests
+    needs: [select_tests, rvc4-fwp]
     if: inputs.test_os || needs.select_tests.outputs.test_all == 'true'
     uses: ./.github/workflows/test_child_mac.yml
     with:
