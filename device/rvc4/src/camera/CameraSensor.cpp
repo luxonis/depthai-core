@@ -1065,6 +1065,7 @@ void CameraSensor::stop() {
 enum sensor_register_control_command {
     HDR_EXPOSURE_RATIO_COMMAND = 1,
     HDR_LOCAL_TONE_WEIGHT_COMMAND,
+    HIGH_CONVERSION_GAIN_COMMAND,
 };
 
 // Map DAI camera attribute value to GStreamer plugin attributes
@@ -1495,6 +1496,16 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
             float v = std::stof(value);
             sensor_register_control[0] = HDR_LOCAL_TONE_WEIGHT_COMMAND;
             sensor_register_control[1] = static_cast<int32_t>((v * 65536));
+        } else if(name == "high-conversion-gain") {
+            // Same control as on RVC2: "1"/"true" enables high conversion gain, "0"/"false" disables it.
+            // Only sensor drivers that implement HIGH_CONVERSION_GAIN_COMMAND act on it, the others ignore it.
+            const bool enable = value == "1" || value == "true" || value == "on";
+            if(!enable && value != "0" && value != "false" && value != "off") {
+                std::cout << "Invalid value for high-conversion-gain: " << value << " (expected 0 or 1)" << std::endl << std::flush;
+                break;
+            }
+            sensor_register_control[0] = HIGH_CONVERSION_GAIN_COMMAND;
+            sensor_register_control[1] = enable ? 1 : 0;
         } else {
             std::cout << "Unknown misc control command: " << name << std::endl << std::flush;
             break;
