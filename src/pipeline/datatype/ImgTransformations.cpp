@@ -145,21 +145,12 @@ void ImgTransformation::calcCrops() {
         sourceMaxX = std::min(sourceMaxX, std::ceil(maxx));
         sourceMaxY = std::min(sourceMaxY, std::ceil(maxy));
     }
-    if(!(sourceMinX < sourceMaxX && sourceMinY < sourceMaxY)) {
-        // The crops do not overlap inside the source (e.g. a crop that covers only padding): no pixel is valid.
-        // A zero-size rectangle outside of the image never contains a pixel.
-        srcCrop.center = {-1.0f, -1.0f};
-        srcCrop.size = {0.0f, 0.0f};
-        srcCrop.angle = 0.0f;
-        dstCrop = srcCrop;
-        cropsValid = true;
-        return;
-    }
-    srcCrop.center = {(sourceMinX + sourceMaxX) / 2.0f, (sourceMinY + sourceMaxY) / 2.0f};
-    srcCrop.size = {sourceMaxX - sourceMinX, sourceMaxY - sourceMinY};
-    srcCrop.angle = 0.0f;
-    // Calculate the destination crop from the source region of interest
-    dstCrop = transformRect(srcCrop);
+    // The crops do not overlap inside the source (e.g. a crop that covers only padding): an empty crop, no pixel is valid
+    const bool empty = !(sourceMinX < sourceMaxX && sourceMinY < sourceMaxY);
+    srcCrop = empty
+                  ? RotatedRect{}
+                  : RotatedRect{{(sourceMinX + sourceMaxX) / 2.0f, (sourceMinY + sourceMaxY) / 2.0f}, {sourceMaxX - sourceMinX, sourceMaxY - sourceMinY}, 0.0f};
+    dstCrop = empty ? srcCrop : transformRect(srcCrop);
     cropsValid = true;
 }
 
@@ -297,11 +288,12 @@ std::vector<dai::RotatedRect> ImgTransformation::getSrcCrops() const {
 }
 bool ImgTransformation::getSrcMaskPt(size_t x, size_t y) {
     calcCrops();
-    return isPointInRotatedRectangle({(float)x, (float)y}, srcCrop);
+    // A non-empty crop is at least one pixel wide; the empty crop has no size but would still contain its center
+    return srcCrop.size.width > 0 && isPointInRotatedRectangle({(float)x, (float)y}, srcCrop);
 };
 bool ImgTransformation::getDstMaskPt(size_t x, size_t y) {
     calcCrops();
-    return isPointInRotatedRectangle({(float)x, (float)y}, dstCrop);
+    return srcCrop.size.width > 0 && isPointInRotatedRectangle({(float)x, (float)y}, dstCrop);
 };
 
 ImgTransformation& ImgTransformation::addTransformation(const std::array<std::array<float, 3>, 3>& matrix) {
