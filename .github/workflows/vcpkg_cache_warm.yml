@@ -7,7 +7,8 @@ name: Warm vcpkg binary caches
 # the main scope. The jobs run the configure step of the real jobs on the given ref (default: develop),
 # which builds the missing ports; the save action then prunes unused archives and saves only on change.
 # The configure commands, and the CMake on PATH (vcpkg uses it), must match the real jobs in main.workflow.yml,
-# python-main.yml, test_child_windows.yml and bindings/python/setup.py.
+# python-main.yml, test_child_windows.yml and bindings/python/setup.py. The local actions (vcpkg-cache, rvc4-fwp)
+# come from the checkout of WARM_REF.
 
 on:
   schedule:
@@ -46,9 +47,58 @@ env:
     print(f"cmake {have} from the build requirements: {cmake}")
 
 jobs:
+  # RVC4 firmware package for the configure steps below. A ref without a pinned package (develop since #2224) builds the
+  # firmware from device/rvc4 in Docker at configure time (cmake/DepthaiDeviceRvc4FirmwareBuild.cmake), which these
+  # jobs cannot do. The real jobs embed the package of their rvc4-fwp job through .github/actions/rvc4-fwp; the jobs
+  # here use that action with a package from Artifact Keeper (the nightly develop build publishes one for each commit
+  # that it builds). The package has no effect on the vcpkg ABI hashes, so when the newest commit of WARM_REF has no
+  # package yet, the package of an older commit is used. A ref without ci/device-rvc4-fwp-ak.sh has a pinned package.
+  rvc4-fwp:
+    runs-on: ubuntu-24.04
+    outputs:
+      available: ${{ steps.download.outputs.available }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.WARM_REF }}
+          fetch-depth: 20
+
+      - name: Download an RVC4 firmware package from Artifact Keeper
+        id: download
+        run: |
+          if [ ! -f ci/device-rvc4-fwp-ak.sh ]; then
+            echo "$WARM_REF has no ci/device-rvc4-fwp-ak.sh: its configure step downloads its pinned package"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          for commit in $(git rev-list --first-parent HEAD); do
+            # The version that `ci/device-rvc4-fwp-ak.sh version` gives for that commit
+            base=$(git show "$commit:device/rvc4/version.txt" 2>/dev/null | sed -n 1p) || break
+            version="${base//[[:space:]]/}+$commit"
+            status=0
+            ci/device-rvc4-fwp-ak.sh download "$version" rvc4 "$RUNNER_TEMP/rvc4-fwp" || status=$?
+            if [ "$status" = 0 ]; then
+              echo "available=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            [ "$status" = 2 ] || exit "$status"
+            echo "Not on Artifact Keeper: $version"
+          done
+          echo "::error::Artifact Keeper has no RVC4 firmware package for $WARM_REF and its fetched first-parent commits"
+          exit 1
+
+      - name: Upload the RVC4 firmware package
+        if: steps.download.outputs.available == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: depthai-device-rvc4-fwp
+          path: ${{ runner.temp }}/rvc4-fwp/
+          if-no-files-found: error
+
   # main.workflow.yml: family 'core-tests' (build job) and 'core' (integration, tidy, minimal-build,
   # device-manager-build).
   core:
+    needs: rvc4-fwp
     strategy:
       fail-fast: false
       matrix:
@@ -60,6 +110,10 @@ jobs:
         with:
           ref: ${{ env.WARM_REF }}
           submodules: 'recursive'
+
+      - name: Use the RVC4 firmware package of job rvc4-fwp
+        if: needs.rvc4-fwp.outputs.available == 'true'
+        uses: ./.github/actions/rvc4-fwp
 
       - name: Setup cmake
         uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
@@ -104,6 +158,7 @@ jobs:
   # weekly run uses this family, and GitHub deletes a cache entry that is not used for 7 days, so the weekly
   # build found no entry and built all ports from source. Same job env, CMake and configure as that job.
   hil-windows:
+    needs: rvc4-fwp
     runs-on: windows-2025
     env:
       BUILD_TYPE: Release
@@ -119,6 +174,10 @@ jobs:
         with:
           ref: ${{ env.WARM_REF }}
           submodules: 'recursive'
+
+      - name: Use the RVC4 firmware package of job rvc4-fwp
+        if: needs.rvc4-fwp.outputs.available == 'true'
+        uses: ./.github/actions/rvc4-fwp
 
       - name: Copy the source to C:\depthai-core
         shell: powershell
@@ -169,6 +228,7 @@ jobs:
 
   # python-main.yml: build-docstrings, pytest, build-windows-x86_64 and build-macos.
   python:
+    needs: rvc4-fwp
     strategy:
       fail-fast: false
       matrix:
@@ -193,6 +253,10 @@ jobs:
         with:
           ref: ${{ env.WARM_REF }}
           submodules: 'recursive'
+
+      - name: Use the RVC4 firmware package of job rvc4-fwp
+        if: needs.rvc4-fwp.outputs.available == 'true'
+        uses: ./.github/actions/rvc4-fwp
 
       - name: Setup cmake
         uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
@@ -276,6 +340,7 @@ jobs:
 
   # python-main.yml: build-linux-x86_64 and build-linux-arm64 (manylinux containers).
   manylinux:
+    needs: rvc4-fwp
     strategy:
       fail-fast: false
       matrix:
@@ -300,6 +365,10 @@ jobs:
         with:
           ref: ${{ env.WARM_REF }}
           submodules: 'recursive'
+
+      - name: Use the RVC4 firmware package of job rvc4-fwp
+        if: needs.rvc4-fwp.outputs.available == 'true'
+        uses: ./.github/actions/rvc4-fwp
 
       - name: Use system binaries for vcpkg (arm64, as build-linux-arm64)
         if: matrix.family == 'wheel-manylinux-arm64'
