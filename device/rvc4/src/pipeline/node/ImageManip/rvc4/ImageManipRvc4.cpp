@@ -50,6 +50,15 @@ std::array<std::array<float, 3>, 3> getUndistortBaseIntrinsics(const ImgTransfor
     return matrix::cvMatToMatrix3x3(newCameraMatrix);
 }
 
+// ImageManip reports its crops in pixels of its input frame, ImgTransformation keeps crops in pixels of the source sensor.
+// The two differ whenever the input frame is not at the sensor resolution, e.g. a binned or ISP-scaled camera output.
+std::vector<RotatedRect> toSourceCrops(std::vector<RotatedRect> crops, const ImgTransformation& sourceToInput) {
+    for(auto& crop : crops) {
+        crop = sourceToInput.invTransformRect(crop);
+    }
+    return crops;
+}
+
 uint32_t getNumPlanes(ImgFrame::Type imgType) {
     switch(imgType) {
         case ImgFrame::Type::RGB888i:
@@ -528,12 +537,15 @@ void setDstMetadata(const impl::ImageManipOperations<DmaHeapMemory, ColorChangeQ
                                                     {},
                                                     srcFrame.transformation.getExtrinsics());
         dstFrame.transformation.addSrcCrops(srcFrame.transformation.getSrcCrops());
-        dstFrame.transformation.addSrcCrops(manip.getSrcCrops());
+        // The manip crops are in pixels of the undistorted input frame
+        ImgTransformation sourceToInput(sourceSize.first, sourceSize.second);
+        sourceToInput.addTransformation(undistortMatrix);
+        dstFrame.transformation.addSrcCrops(toSourceCrops(manip.getSrcCrops(), sourceToInput));
         dstFrame.transformation.addTransformation(totalMatrix);
     } else {
         dstFrame.transformation = srcFrame.transformation;
         dstFrame.transformation.addTransformation(manip.getMatrix());
-        dstFrame.transformation.addSrcCrops(manip.getSrcCrops());
+        dstFrame.transformation.addSrcCrops(toSourceCrops(manip.getSrcCrops(), srcFrame.transformation));
     }
     dstFrame.transformation.setSize(dstSpecs.width, dstSpecs.height);
 }
