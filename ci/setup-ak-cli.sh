@@ -1,12 +1,5 @@
 #!/bin/bash
 # Installs the Artifact Keeper CLI (ak) when it is not on PATH yet.
-#
-# The release is pinned. Without --version, the installer asks the GitHub API for the latest release, without a token.
-# The API allows 60 requests per hour for each IP address without a token, GitHub-hosted runners share IP addresses, and
-# so the request often gets 403 on a runner. With --version, the installer downloads only from raw.githubusercontent.com
-# and from the release assets on github.com, which do not count against the API limit.
-#
-# Usage: ci/setup-ak-cli.sh
 set -euo pipefail
 
 AK_CLI_VERSION="v1.12.0"
