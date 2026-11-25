@@ -35,7 +35,7 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
     using ApplyCalibration = DCC::Commands::ApplyCalibration;
     using ResetData = DCC::Commands::ResetData;
     using SetPerformanceMode = DCC::Commands::SetPerformanceMode;
-    using ComputeCalibrationMetrics = DCC::Commands::ComputeCalibrationMetrics;
+    using ComputeCalibrationMetrics = dai::DynamicCalibrationControl::Commands::ComputeCalibrationMetrics;
 
     // ---- Commands nested inside DynamicCalibrationControl ----
     py::class_<Calibrate, std::shared_ptr<Calibrate>>(cmds, "Calibrate")
