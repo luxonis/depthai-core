@@ -2,7 +2,8 @@
 import depthai as dai
 import asyncio
 import json
-import websockets
+import pytest
+websockets = pytest.importorskip("websockets")
 import struct
 import numpy as np
 

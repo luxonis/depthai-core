@@ -32,6 +32,8 @@ struct SPIInProperties : PropertiesSerializable<Properties, SPIInProperties> {
     ~SPIInProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(SPIInProperties, streamName, busId, maxDataSize, numFrames);
+DEPTHAI_SERIALIZE_EXT_DECL(SPIInProperties, streamName, busId, maxDataSize, numFrames);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::SPIInProperties>;

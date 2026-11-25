@@ -2,7 +2,7 @@ name: Depthai Python CI/CD
 
 # Controls when the action will run. Triggers the workflow on push
 concurrency:
-  group: depthai-python-${{ github.event.pull_request.number || github.ref }}-${{ inputs.concurrency_suffix || 'default' }}
+  group: depthai-python-${{ github.event.pull_request.number || github.ref }}-${{ inputs.concurrency_suffix || 'default' }}-${{ github.run_attempt > 1 && format('rerun-{0}-{1}', github.run_id, github.run_attempt) || 'initial' }}
   cancel-in-progress: true
 
 on:
@@ -12,6 +12,11 @@ on:
         required: false
         type: string
         default: ""
+      dispatch_bom:
+        description: Start the BOM tests when all wheels are uploaded, also if the Python tests fail (the nightly develop build)
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
   push:
     branches:
@@ -49,35 +54,28 @@ jobs:
       id: check
       env:
         CHECK_EVENT_NAME: ${{ github.event_name }}
+        CHECK_TEST_REQUESTED: ${{ github.event.action == 'labeled' && github.event.label.name == 'testable' }}
         CHECK_GITHUB_REF: ${{ github.ref }}
-        CHECK_ACTION: ${{ github.event.action }}
       run: |
         EVENT_NAME="$CHECK_EVENT_NAME"
         GITHUB_REF="$CHECK_GITHUB_REF"
 
-        RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
-        if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
-          LABELS="[]"
-        else
-          LABELS="$RAW_LABELS"
-        fi
-
         SHOULD_RUN="true"
-        WHEEL_PYTHON_VERSIONS='["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]'
-        WHEEL_PYTHON_SETS='["cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313", "cp314-cp314", "cp315-cp315"]'
-        WHEEL_MACOS_RUNNERS='["macos-14"]'
+        WHEEL_PYTHON_VERSIONS='["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.15", "3.15t"]'
+        WHEEL_PYTHON_SETS='["cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313", "cp314-cp314", "cp315-cp315", "cp315-cp315t"]'
+        # macOS 14 runners retired on 2026-11-02. Feature branches and PRs use arm64 macOS 15.
+        WHEEL_MACOS_RUNNERS='["macos-15"]'
 
+        # Published branch/tag builds cover both Intel and Apple Silicon.
         if [[ "$GITHUB_REF" == "refs/heads/main" || "$GITHUB_REF" == "refs/heads/develop" || "$GITHUB_REF" == refs/heads/release* || "$GITHUB_REF" == refs/tags/v* ]]; then
-          WHEEL_MACOS_RUNNERS='["macos-15-intel", "macos-14"]'
+          WHEEL_MACOS_RUNNERS='["macos-15-intel", "macos-15"]'
         fi
 
         if [[ "$EVENT_NAME" == "pull_request" ]]; then
           WHEEL_PYTHON_VERSIONS='["3.14"]'
           WHEEL_PYTHON_SETS='["cp314-cp314"]'
-          if [[ "$CHECK_ACTION" != "labeled" ]]; then
-            # Run the binding precheck on edits; retain the existing full-build triggers.
-            SHOULD_RUN="false"
-          elif ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+          # PR tests require adding testable or explicitly rerunning the workflow.
+          if [[ "$GITHUB_RUN_ATTEMPT" -eq 1 && "$CHECK_TEST_REQUESTED" != "true" ]]; then
             SHOULD_RUN="false"
           fi
         fi
@@ -109,6 +107,12 @@ jobs:
           BINDING_BASE=HEAD^
         fi
         python ci/check_python_bindings.py --base "$BINDING_BASE"
+
+  rvc4-fwp:
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
+    uses: ./.github/workflows/rvc4_fwp.yml
+    secrets: inherit
 
   # Job which builds docstrings for the rest of the wheel builds
   build-docstrings:
@@ -146,6 +150,7 @@ jobs:
             -DVCPKG_OVERLAY_TRIPLETS="$PWD/cmake/triplets/release" \
             -DDEPTHAI_BUILD_PYTHON=ON \
             -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON \
+            -DDEPTHAI_ENABLE_DEVICE_RVC4_FW=OFF \
             -DDEPTHAI_BASALT_SUPPORT=ON \
             -DDEPTHAI_PCL_SUPPORT=ON \
             -DDEPTHAI_RTABMAP_SUPPORT=ON \
@@ -170,10 +175,10 @@ jobs:
 
   # Build and test bindings
   pytest:
-    needs: build-docstrings
+    needs: [build-docstrings, rvc4-fwp]
     strategy:
       matrix:
-        # os: [ubuntu-24.04, windows-2025, macos-latest]
+        # os: [ubuntu-24.04, windows-2025, macos-15]
         os: [ubuntu-24.04] # TODO(Morato) - re-enable windows & macos
     runs-on: ${{ matrix.os }}
     steps:
@@ -185,6 +190,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
+      - uses: ./.github/actions/rvc4-fwp
 
       - name: Restore vcpkg binary cache
         uses: ./.github/actions/vcpkg-cache/restore
@@ -211,13 +217,13 @@ jobs:
           sudo apt install libusb-1.0-0-dev pkg-config bison autoconf libtool libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev automake libltdl-dev
 
       - name: Install dependencies (MacOS)
-        if: matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-15'
         run: |
           python -m pip install --upgrade pip
           brew install libusb
 
       - name: Setup cmake
-        if: matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-15'
         uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
           useCloudCache: false
@@ -254,7 +260,7 @@ jobs:
 
   # This job builds wheels for Windows x86_64 arch
   build-windows-x86_64:
-    needs: [precheck, build-docstrings]
+    needs: [precheck, build-docstrings, rvc4-fwp]
     runs-on: windows-2025
     strategy:
       matrix:
@@ -277,6 +283,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
+      - uses: ./.github/actions/rvc4-fwp
       - name: Restore vcpkg binary cache
         uses: ./.github/actions/vcpkg-cache/restore
         with:
@@ -351,7 +358,7 @@ jobs:
 
   # This job builds wheels for macOS arch
   build-macos:
-    needs: [precheck, build-docstrings]
+    needs: [precheck, build-docstrings, rvc4-fwp]
     strategy:
       matrix:
         python-version: ${{ fromJson(needs.precheck.outputs.wheel_python_versions) }}
@@ -372,6 +379,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
+      - uses: ./.github/actions/rvc4-fwp
       - name: Restore vcpkg binary cache
         uses: ./.github/actions/vcpkg-cache/restore
         with:
@@ -437,7 +445,9 @@ jobs:
       - name: Download audited wheels
         uses: actions/download-artifact@v8
         with:
-          pattern: audited-wheels-macos-${{ matrix.os }}-*
+          # The Python version follows the runner name. A plain '*' also matches the artifacts of
+          # a runner whose name starts with this one (macos-15 also matches macos-15-intel).
+          pattern: audited-wheels-macos-${{ matrix.os }}-[0-9]*
           path: bindings/python/wheelhouse/audited/
           merge-multiple: true
       - name: Combine wheels
@@ -473,7 +483,7 @@ jobs:
 
   # This job builds wheels for x86_64 arch
   build-linux-x86_64:
-    needs: [precheck, build-docstrings]
+    needs: [precheck, build-docstrings, rvc4-fwp]
     runs-on: ubuntu-24.04
     container:
       image: quay.io/pypa/manylinux_2_28_x86_64:2026.11.01-2
@@ -491,6 +501,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
+      - uses: ./.github/actions/rvc4-fwp
       - name: Restore vcpkg binary cache
         uses: ./.github/actions/vcpkg-cache/restore
         with:
@@ -595,7 +606,7 @@ jobs:
 
   # This job builds wheels for ARM64 arch
   build-linux-arm64:
-    needs: [precheck, build-docstrings]
+    needs: [precheck, build-docstrings, rvc4-fwp]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 1440  # Set timeout to 24 hours
     container:
@@ -616,6 +627,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
+      - uses: ./.github/actions/rvc4-fwp
       - name: Restore vcpkg binary cache
         uses: ./.github/actions/vcpkg-cache/restore
         with:
@@ -773,8 +785,8 @@ jobs:
           python bindings/python/ci/smoke_depthai.py
 
   required_python_ci_report:
-    name: ${{ (needs.precheck.result != 'success' || needs.precheck.outputs.should_run == 'true') && 'Required Python CI report' || 'Python CI report (not applicable)' }}
-    needs: [precheck, pytest, combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
+    name: ${{ (needs.precheck.result != 'success' || needs.precheck.outputs.should_run == 'true') && 'Required Python CI report' || 'Run Python tests (open Details)' }}
+    needs: [precheck, rvc4-fwp, pytest, combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
     if: always()
     runs-on: ubuntu-24.04
     steps:
@@ -784,7 +796,11 @@ jobs:
         RESULTS: ${{ join(needs.*.result, ' ') }}
       run: |
         if [[ "$SHOULD_RUN" != "true" && "$RESULTS" != *failure* && "$RESULTS" != *cancelled* ]]; then
-          echo "Python CI is not required for this event."
+          echo "Open this workflow run and select Re-run all jobs to run Python tests, or add the testable label to the PR."
+          printf '%s\n' \
+            '**Python tests have not run.**' '' \
+            "[Open this workflow run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID) and select **Re-run all jobs**." '' \
+            'Alternatively, add the `testable` label to the PR to start the C++, Python, and HIL suites.' >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
         if [[ "$RESULTS" == *failure* || "$RESULTS" == *cancelled* || "$RESULTS" == *skipped* ]]; then
@@ -905,11 +921,12 @@ jobs:
           AK_URL: ${{ secrets.AK_URL }}
           AK_TOKEN: ${{ secrets.AK_TOKEN }}
 
-  # BOM tests for pushes to main, release branches and tags; they install the wheels that this run uploaded.
-  # The job only dispatches the BOM run and links it. develop is not built on push: hil_testing_nightly.yml
-  # starts the BOM tests of the nightly build at the same time as its HIL tests.
+  # BOM tests; they install the wheels that this run uploaded. The job only dispatches the BOM run and links it.
+  #   - Pushes to main, release branches and tags.
+  #   - The nightly develop build (hil_testing_nightly.yml calls this workflow with dispatch_bom; develop is not
+  #     built on push). The only condition is that all wheels are uploaded: the Python tests can fail.
   dispatch-bom-tests:
-    if: github.event_name == 'push' && !failure() && !cancelled()
+    if: ${{ (github.event_name == 'push' && !failure() && !cancelled()) || (inputs.dispatch_bom && !cancelled() && needs.upload-wheels-to-ak.result == 'success') }}
     needs: [required_python_ci_report, upload-wheels-to-ak, deploy]
     uses: ./.github/workflows/bom_dispatch.yml
     secrets: inherit

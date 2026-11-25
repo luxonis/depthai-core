@@ -36,6 +36,8 @@ struct SyncProperties : PropertiesSerializable<Properties, SyncProperties> {
     ~SyncProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(SyncProperties, syncThresholdNs, syncAttempts, processor, timestampSource);
+DEPTHAI_SERIALIZE_EXT_DECL(SyncProperties, syncThresholdNs, syncAttempts, processor, timestampSource);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::SyncProperties>;

@@ -110,28 +110,30 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     ~CameraProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(CameraProperties,
-                      initialControl,
-                      boardSocket,
-                      sensorType,
-                      cameraName,
-                      imageOrientation,
-                      resolutionWidth,
-                      resolutionHeight,
-                      mockIspWidth,
-                      mockIspHeight,
-                      mockIspFps,
-                      fps,
-                      isp3aFps,
-                      numFramesPoolRaw,
-                      maxSizePoolRaw,
-                      numFramesPoolIsp,
-                      maxSizePoolIsp,
-                      numFramesPoolVideo,
-                      numFramesPoolPreview,
-                      numFramesPoolStill,
-                      numFramesPoolOutputs,
-                      maxSizePoolOutputs,
-                      outputRequests);
+DEPTHAI_SERIALIZE_EXT_DECL(CameraProperties,
+                           initialControl,
+                           boardSocket,
+                           sensorType,
+                           cameraName,
+                           imageOrientation,
+                           resolutionWidth,
+                           resolutionHeight,
+                           mockIspWidth,
+                           mockIspHeight,
+                           mockIspFps,
+                           fps,
+                           isp3aFps,
+                           numFramesPoolRaw,
+                           maxSizePoolRaw,
+                           numFramesPoolIsp,
+                           maxSizePoolIsp,
+                           numFramesPoolVideo,
+                           numFramesPoolPreview,
+                           numFramesPoolStill,
+                           numFramesPoolOutputs,
+                           maxSizePoolOutputs,
+                           outputRequests);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::CameraProperties>;

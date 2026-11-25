@@ -24,7 +24,7 @@ struct SpatialLocationCalculatorConfigThresholds {
      */
     uint32_t upperThreshold = MAX_UPPER_THRESHOLD;
 };
-DEPTHAI_SERIALIZE_EXT(SpatialLocationCalculatorConfigThresholds, lowerThreshold, upperThreshold);
+DEPTHAI_SERIALIZE_EXT_DECL(SpatialLocationCalculatorConfigThresholds, lowerThreshold, upperThreshold);
 
 /**
  * SpatialLocationCalculatorAlgorithm configuration modes
@@ -63,7 +63,7 @@ struct SpatialLocationCalculatorConfigData {
      */
     std::int32_t stepSize = AUTO;
 };
-DEPTHAI_SERIALIZE_EXT(SpatialLocationCalculatorConfigData, roi, depthThresholds, calculationAlgorithm, stepSize);
+DEPTHAI_SERIALIZE_EXT_DECL(SpatialLocationCalculatorConfigData, roi, depthThresholds, calculationAlgorithm, stepSize);
 
 /**
  * Configuration for SpatialLocationCalculator.
@@ -235,21 +235,21 @@ class SpatialLocationCalculatorConfig : public Buffer {
         return DatatypeEnum::SpatialLocationCalculatorConfig;
     }
 
-    DEPTHAI_SERIALIZE(SpatialLocationCalculatorConfig,
-                      Buffer::sequenceNum,
-                      Buffer::ts,
-                      Buffer::tsDevice,
-                      Buffer::tsSystem,
-                      globalStepSize,
-                      globalLowerThreshold,
-                      globalUpperThreshold,
-                      globalCalculationAlgorithm,
-                      globalKeypointRadius,
-                      calculateSpatialKeypoints,
-                      useSegmentation,
-                      segmentationPassthrough,
-                      bBoxScaleFactor,
-                      config);
+    DEPTHAI_SERIALIZE_DECL(SpatialLocationCalculatorConfig,
+                           Buffer::sequenceNum,
+                           Buffer::ts,
+                           Buffer::tsDevice,
+                           Buffer::tsSystem,
+                           globalStepSize,
+                           globalLowerThreshold,
+                           globalUpperThreshold,
+                           globalCalculationAlgorithm,
+                           globalKeypointRadius,
+                           calculateSpatialKeypoints,
+                           useSegmentation,
+                           segmentationPassthrough,
+                           bBoxScaleFactor,
+                           config);
 };
 
 }  // namespace dai

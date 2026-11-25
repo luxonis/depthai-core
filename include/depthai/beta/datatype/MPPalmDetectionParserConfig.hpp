@@ -77,7 +77,7 @@ class MPPalmDetectionParserConfig : public Buffer {
         return DatatypeEnum::MPPalmDetectionParserConfig;
     }
 
-    DEPTHAI_SERIALIZE(MPPalmDetectionParserConfig, confidenceThreshold, iouThreshold, maxDetections);
+    DEPTHAI_SERIALIZE_DECL(MPPalmDetectionParserConfig, confidenceThreshold, iouThreshold, maxDetections);
 };
 
 }  // namespace beta

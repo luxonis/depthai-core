@@ -8,7 +8,7 @@ struct Transform {
     std::array<std::array<double, 4>, 4> matrix;
 };
 
-DEPTHAI_SERIALIZE_EXT(Transform, matrix);
+DEPTHAI_SERIALIZE_EXT_DECL(Transform, matrix);
 
 /**
  * TransformData message. Carries transform in x,y,z,qx,qy,qz,qw format.
@@ -39,7 +39,7 @@ class TransformData : public Buffer {
     Point3d getRotationEuler() const;
     Quaterniond getQuaternion() const;
 
-    DEPTHAI_SERIALIZE(TransformData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, transform);
+    DEPTHAI_SERIALIZE_DECL(TransformData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, transform);
 };
 
 }  // namespace dai

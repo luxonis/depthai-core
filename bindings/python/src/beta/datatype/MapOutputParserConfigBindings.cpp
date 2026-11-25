@@ -5,7 +5,7 @@
 void bind_beta_mapoutputparserconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::MapOutputParserConfig, Py<beta::MapOutputParserConfig>, Buffer, std::shared_ptr<beta::MapOutputParserConfig>> config(
+    py::class_<beta::MapOutputParserConfig, Py<beta::MapOutputParserConfig>, Buffer, py::smart_holder> config(
         betaModule, "MapOutputParserConfig", DOC(dai, beta, MapOutputParserConfig));
 
     Callstack* callstack = (Callstack*)pCallstack;

@@ -24,7 +24,7 @@ void bind_beta_classifications(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::Classifications, Py<beta::Classifications>, Buffer, Transformable, std::shared_ptr<beta::Classifications>> classifications(
+    py::class_<beta::Classifications, Py<beta::Classifications>, Buffer, Transformable, py::smart_holder> classifications(
         betaModule, "Classifications", DOC(dai, beta, Classifications));
 
     ///////////////////////////////////////////////////////////////////////

@@ -6,6 +6,10 @@
 
 DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C++ and offers Python bindings out of the box.
 
+<p align="center">
+  <img src="./images/oak_scan.gif" alt="OAK camera scanning an object" width="600">
+</p>
+
 >  **Important — You’re viewing the `v3.x.y` branch.**
 >
 > * For production projects that still rely on **v2**, check out the
@@ -15,7 +19,11 @@ DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C
 ## Documentation
 Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/software-v3/depthai/)
 
+For platform differences when reading tensors in Script, see [NNData inside Script](docs/ScriptNNData.md).
+
 ## Examples
+For the complete model-description YAML format, see the [model zoo reference](docs/ModelZoo.md).
+
 Examples for both C++ and Python are available in the `examples` folder. To see how to build and run them see [README.md](./examples/README.md) for more information.
 To build the examples in C++ configure with the following option added:
 ```
@@ -128,6 +136,9 @@ MacOS: `brew install pcl`
 Linux: `sudo apt install libpcl-dev`
 
 ## Using Python bindings
+
+To use Python bindings already installed in a container, see the [Docker guide](docs/Docker.md).
+
 Installing the latest pre-released version of the library can be done with:
 ```
 python3 -m pip install --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-release-local/ --pre -U depthai
@@ -142,6 +153,8 @@ For more specific information about Python bindings, see [Python README](./bindi
 
 
 ## Building
+
+To use the installed SDK and build tools in a container, see the [Docker guide](docs/Docker.md).
 
 Make sure submodules are updated
 ```
@@ -269,6 +282,30 @@ In your non-CMake project (new Visual Studio project, ...)
 > ℹ️ Check `build/depthai-core-integration.txt` or `build/depthai-opencv-integration.txt` for up to date define options.
 The generated integration file also specifies include paths without requiring installation. -->
 
+## RVC4 device firmware
+
+The device-side firmware of RVC4 devices is part of this repository: see [device/rvc4](device/rvc4/README.md). It
+compiles the node definitions and message types of the same commit as the host library. The firmware package that a
+host build embeds is one of:
+
+* by default, a build of `device/rvc4` of this checkout: each build of the library builds the firmware in its build
+  container, so the build needs bash and Docker ([device/rvc4](device/rvc4/README.md), Building);
+* with `-D DEPTHAI_DEVICE_RVC4_VERSION=<version>`, the package of that version, downloaded from the artifact server
+  (`cmake/Depthai/DepthaiDeviceRVC4Config.cmake` sets no version);
+* with `-D DEPTHAI_DEVICE_RVC4_FWP_PATH=<path>/depthai-device-rvc4-fwp.tar.xz`, a package that you have.
+
+In the default case, each configure step of the library also configures the firmware build in its build container:
+an error of the firmware configuration stops the configure step and not the build
+(`-D DEPTHAI_DEVICE_RVC4_FWP_CONFIGURE=OFF` leaves it to the build). The license agreements of the firmware build
+([device/rvc4](device/rvc4/README.md), Building) are the environment variables or the CMake cache entries
+`DEPTHAI_ACCEPT_VENDOR_EULA` and `DEPTHAI_ACCEPT_QUALCOMM_LICENSE`. The cache entries `DEPTHAI_DEVICE_SDK_IMAGE`,
+`DEPTHAI_DEVICE_RVC4_VENDOR` and `DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR` also go to the firmware build as these
+environment variables, for example from your own preset in `CMakeUserPresets.json` (not committed), which can inherit
+the presets of `CMakePresets.json`. The configure preset `dev-rvc4-fw` of
+`CMakePresets.json` (for example in the CMake Tools extension of VS Code) builds the library, its tests, examples and
+Python bindings in `build/` with this firmware. It sets `DEPTHAI_ACCEPT_VENDOR_EULA=yes`: select it only after you
+read and accept the Luxonis DepthAI Vendor Module End User License Agreement.
+
 ## CMake options
 Many features of the library can be disabled or enabled using CMake options.
 One common option when building the library tests and examples is `DEPTHAI_VCPKG_INTERNAL_ONLY=OFF` which installs a predictable version of OpenCV, PCL and other optional dependencies we also use on the libraries interface.
@@ -301,7 +338,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_DEVICE_ID_LIST               | Alias to MXID list. Lists filter results in an "AND" manner and not "OR"                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | DEPTHAI_DEVICE_NAME_LIST             | Restricts default search to the specified NAMEs. Accepts comma separated list of NAMEs. Lists filter results in an "AND" manner and not "OR". It also looks for NAMEs outside of the host's subnet in case of tcpip.                                                                                                                                                                                                                                                                              |
 | DEPTHAI_DEVICE_BINARY                | Overrides device Firmware binary. Mostly for internal debugging purposes.                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| DEPTHAI_DEVICE_RVC4_FWP              | Overrides device RVC4 Firmware binary. Mostly for internal debugging purposes.                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| DEPTHAI_DEVICE_RVC4_FWP              | Overrides device RVC4 Firmware binary at run time with the firmware package at this path. See also the CMake option `DEPTHAI_DEVICE_RVC4_FWP_PATH`.                                                                                                                                                                                                                                                                                                                                               |
 | DEPTHAI_BOOTLOADER_BINARY_USB        | Overrides device USB Bootloader binary. Mostly for internal debugging purposes.                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | DEPTHAI_BOOTLOADER_BINARY_ETH        | Overrides device Network Bootloader binary. Mostly for internal debugging purposes.                                                                                                                                                                                                                                                                                                                                                                                                               |
 | DEPTHAI_ALLOW_FACTORY_FLASHING       | Internal use only                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -327,7 +364,25 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_PIPELINE_DEBUGGING           | Enables pipeline debugging with state dumps. DEPTHAI_LEVEL=trace is required to print the state dumps.                                                                                                                                                                                                                                                                                                                                                                                            |
 | DEPTHAI_AUTOCALIBRATION              | Runs recalibration of the stereo pair and, by default, flashes successful calibration to non-volatile memory (EEPROM). `CONTINUOUS`: runs check repetitively; `ON_START`: runs calibration only at the start of the pipeline; `OFF`: no recalibration. The same mode can be configured from code with `pipeline.setAutoCalibrationMode(...)`. If this environment variable is set, it overrides the pipeline-set value. AutoCalibration currently initializes only for stereo inputs at 1280x800. |
 
+
 ## Running tests
+
+For pull requests targeting `main` or `develop`, expand the successful checks
+in the PR merge panel and open **Details** beside **Run C++ tests** or
+**Run Python tests**. The check summary links to its
+workflow run; select **Re-run all jobs** there to run the full suite.
+You can also open the latest workflow run directly from GitHub Actions.
+No `testable` label is needed for a manual rerun of these suites.
+HIL tests do not run when a PR is opened. Adding the `testable` label runs them,
+and each later push runs them again while the label is on the PR. A new push
+cancels a HIL run that is still in progress. Without the label, open
+**Details** beside **Run HIL tests** after a push and select **Re-run all jobs**
+to run them on the new commit. To rerun failed HIL tests, select
+**Re-run all jobs** in that run.
+Adding the `testable` label also starts the full C++ and Python suites. PR
+updates and approvals do not start them, even while the label remains on the PR.
+After pushing new commits, select the new run; rerunning an older run tests
+its original commit. Lightweight style and binding checks still run on PR updates.
 
 To run the tests build the library with the following options
 ```

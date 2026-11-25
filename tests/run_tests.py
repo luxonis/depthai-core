@@ -159,6 +159,12 @@ if __name__ == "__main__":
     )
     
     parser.add_argument(
+        "--rvc4ffc",
+        action="store_true",
+        required=False,
+    )
+
+    parser.add_argument(
         "--rvc4usb",
         action="store_true",
         required=False,
@@ -240,6 +246,15 @@ if __name__ == "__main__":
             "labels": ["rvc4rgb"],
         },
         {
+            "name": "RVC4 - FFC",
+            "env": {
+                "DEPTHAI_PLATFORM": "rvc4",
+                "DEPTHAI_PROTOCOL": "tcpip",
+                "DEPTHAI_AUTOCALIBRATION": "OFF",
+            },
+            "labels": ["rvc4ffc"],
+        },
+        {
             "name": "RVC2 - USB",
             "env": {"DEPTHAI_PLATFORM": "rvc2", "DEPTHAI_PROTOCOL": "usb"},
             "labels": ["rvc2", "usb"],
@@ -273,6 +288,8 @@ if __name__ == "__main__":
         test_configs = [config for config in all_configs if "rvc2" in config.get("labels", []) or "onhost" in config.get("labels", [])]
     elif args.rvc4rgb:
         test_configs = [config for config in all_configs if "rvc4rgb" in config.get("labels", [])]
+    elif args.rvc4ffc:
+        test_configs = [config for config in all_configs if "rvc4ffc" in config.get("labels", [])]
     elif args.fsync:
         enableUARTonAllDevices(False)
         atexit.register(enableUARTonAllDevices, True)

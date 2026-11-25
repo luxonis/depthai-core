@@ -77,7 +77,7 @@ class RFDETRParserConfig : public Buffer {
         return DatatypeEnum::RFDETRParserConfig;
     }
 
-    DEPTHAI_SERIALIZE(RFDETRParserConfig, confidenceThreshold, maxDetections, maskConfidence);
+    DEPTHAI_SERIALIZE_DECL(RFDETRParserConfig, confidenceThreshold, maxDetections, maskConfidence);
 };
 
 }  // namespace beta

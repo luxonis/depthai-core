@@ -125,19 +125,19 @@ class StereoDepthConfig : public Buffer {
          */
         std::int32_t numInvalidateEdgePixels = 0;
 
-        DEPTHAI_SERIALIZE(AlgorithmControl,
-                          depthAlign,
-                          depthUnit,
-                          customDepthUnitMultiplier,
-                          enableLeftRightCheck,
-                          enableSwLeftRightCheck,
-                          enableExtended,
-                          enableSubpixel,
-                          leftRightCheckThreshold,
-                          subpixelFractionalBits,
-                          disparityShift,
-                          centerAlignmentShiftFactor,
-                          numInvalidateEdgePixels);
+        DEPTHAI_SERIALIZE_DECL(AlgorithmControl,
+                               depthAlign,
+                               depthUnit,
+                               customDepthUnitMultiplier,
+                               enableLeftRightCheck,
+                               enableSwLeftRightCheck,
+                               enableExtended,
+                               enableSubpixel,
+                               leftRightCheckThreshold,
+                               subpixelFractionalBits,
+                               disparityShift,
+                               centerAlignmentShiftFactor,
+                               numInvalidateEdgePixels);
     };
 
     /**
@@ -175,13 +175,13 @@ class StereoDepthConfig : public Buffer {
          */
         bool flatnessOverride = false;
 
-        DEPTHAI_SERIALIZE(ConfidenceMetrics,
-                          occlusionConfidenceWeight,
-                          motionVectorConfidenceWeight,
-                          motionVectorConfidenceThreshold,
-                          flatnessConfidenceWeight,
-                          flatnessConfidenceThreshold,
-                          flatnessOverride);
+        DEPTHAI_SERIALIZE_DECL(ConfidenceMetrics,
+                               occlusionConfidenceWeight,
+                               motionVectorConfidenceWeight,
+                               motionVectorConfidenceThreshold,
+                               flatnessConfidenceWeight,
+                               flatnessConfidenceThreshold,
+                               flatnessOverride);
     };
 
     /**
@@ -247,7 +247,7 @@ class StereoDepthConfig : public Buffer {
              */
             std::int32_t maxBrightness = 256;
 
-            DEPTHAI_SERIALIZE(BrightnessFilter, minBrightness, maxBrightness);
+            DEPTHAI_SERIALIZE_DECL(BrightnessFilter, minBrightness, maxBrightness);
         };
 
         /**
@@ -290,7 +290,7 @@ class StereoDepthConfig : public Buffer {
              */
             DecimationMode decimationMode = DecimationMode::PIXEL_SKIPPING;
 
-            DEPTHAI_SERIALIZE(DecimationFilter, decimationFactor, decimationMode);
+            DEPTHAI_SERIALIZE_DECL(DecimationFilter, decimationFactor, decimationMode);
         };
 
         /**
@@ -333,7 +333,7 @@ class StereoDepthConfig : public Buffer {
              */
             bool invalidateDisparities = true;
 
-            DEPTHAI_SERIALIZE(HoleFilling, enable, highConfidenceThreshold, fillConfidenceThreshold, minValidDisparity, invalidateDisparities);
+            DEPTHAI_SERIALIZE_DECL(HoleFilling, enable, highConfidenceThreshold, fillConfidenceThreshold, minValidDisparity, invalidateDisparities);
         };
 
         /**
@@ -357,7 +357,7 @@ class StereoDepthConfig : public Buffer {
              */
             uint8_t confidenceThreshold = 200;
 
-            DEPTHAI_SERIALIZE(AdaptiveMedianFilter, enable, confidenceThreshold);
+            DEPTHAI_SERIALIZE_DECL(AdaptiveMedianFilter, enable, confidenceThreshold);
         };
 
         /**
@@ -365,18 +365,18 @@ class StereoDepthConfig : public Buffer {
          */
         AdaptiveMedianFilter adaptiveMedianFilter;
 
-        DEPTHAI_SERIALIZE(PostProcessing,
-                          filteringOrder,
-                          median,
-                          bilateralSigmaValue,
-                          spatialFilter,
-                          temporalFilter,
-                          thresholdFilter,
-                          brightnessFilter,
-                          speckleFilter,
-                          decimationFilter,
-                          holeFilling,
-                          adaptiveMedianFilter);
+        DEPTHAI_SERIALIZE_DECL(PostProcessing,
+                               filteringOrder,
+                               median,
+                               bilateralSigmaValue,
+                               spatialFilter,
+                               temporalFilter,
+                               thresholdFilter,
+                               brightnessFilter,
+                               speckleFilter,
+                               decimationFilter,
+                               holeFilling,
+                               adaptiveMedianFilter);
     };
 
     /**
@@ -448,7 +448,7 @@ class StereoDepthConfig : public Buffer {
          */
         int8_t noiseThresholdScale = 1;
 
-        DEPTHAI_SERIALIZE(CensusTransform, kernelSize, kernelMask, enableMeanMode, threshold, noiseThresholdOffset, noiseThresholdScale);
+        DEPTHAI_SERIALIZE_DECL(CensusTransform, kernelSize, kernelMask, enableMeanMode, threshold, noiseThresholdOffset, noiseThresholdScale);
     };
 
     /**
@@ -510,7 +510,7 @@ class StereoDepthConfig : public Buffer {
             uint8_t beta = 2;
             uint8_t threshold = 127;
 
-            DEPTHAI_SERIALIZE(LinearEquationParameters, alpha, beta, threshold);
+            DEPTHAI_SERIALIZE_DECL(LinearEquationParameters, alpha, beta, threshold);
         };
 
         /**
@@ -519,13 +519,13 @@ class StereoDepthConfig : public Buffer {
          */
         LinearEquationParameters linearEquationParameters;
 
-        DEPTHAI_SERIALIZE(CostMatching,
-                          disparityWidth,
-                          enableCompanding,
-                          invalidDisparityValue,
-                          confidenceThreshold,
-                          enableSwConfidenceThresholding,
-                          linearEquationParameters);
+        DEPTHAI_SERIALIZE_DECL(CostMatching,
+                               disparityWidth,
+                               enableCompanding,
+                               invalidDisparityValue,
+                               confidenceThreshold,
+                               enableSwConfidenceThresholding,
+                               linearEquationParameters);
     };
 
     /**
@@ -611,7 +611,7 @@ class StereoDepthConfig : public Buffer {
              */
             uint8_t smoothThreshold = 5;
 
-            DEPTHAI_SERIALIZE(P1Config, enableAdaptive, defaultValue, edgeValue, smoothValue, edgeThreshold, smoothThreshold);
+            DEPTHAI_SERIALIZE_DECL(P1Config, enableAdaptive, defaultValue, edgeValue, smoothValue, edgeThreshold, smoothThreshold);
         };
 
         /**
@@ -649,7 +649,7 @@ class StereoDepthConfig : public Buffer {
              */
             uint8_t smoothValue = 63;
 
-            DEPTHAI_SERIALIZE(P2Config, enableAdaptive, defaultValue, edgeValue, smoothValue);
+            DEPTHAI_SERIALIZE_DECL(P2Config, enableAdaptive, defaultValue, edgeValue, smoothValue);
         };
 
         /**
@@ -657,14 +657,14 @@ class StereoDepthConfig : public Buffer {
          */
         P2Config p2Config;
 
-        DEPTHAI_SERIALIZE(CostAggregation,
-                          divisionFactor,
-                          horizontalPenaltyCostP1,
-                          horizontalPenaltyCostP2,
-                          verticalPenaltyCostP1,
-                          verticalPenaltyCostP2,
-                          p1Config,
-                          p2Config);
+        DEPTHAI_SERIALIZE_DECL(CostAggregation,
+                               divisionFactor,
+                               horizontalPenaltyCostP1,
+                               horizontalPenaltyCostP2,
+                               verticalPenaltyCostP1,
+                               verticalPenaltyCostP2,
+                               p1Config,
+                               p2Config);
     };
 
     /**
@@ -857,7 +857,8 @@ class StereoDepthConfig : public Buffer {
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::StereoDepthConfig;
     }
-    DEPTHAI_SERIALIZE(StereoDepthConfig, algorithmControl, postProcessing, censusTransform, costMatching, costAggregation, confidenceMetrics, filtersBackend);
+    DEPTHAI_SERIALIZE_DECL(
+        StereoDepthConfig, algorithmControl, postProcessing, censusTransform, costMatching, costAggregation, confidenceMetrics, filtersBackend);
 };
 
 }  // namespace dai

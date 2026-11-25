@@ -18,7 +18,7 @@ void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack) {
 
     // py::class_<RawFeatureTrackerConfig, RawBuffer, std::shared_ptr<RawFeatureTrackerConfig>> rawFeatureTrackerConfig(m, "RawFeatureTrackerConfig", DOC(dai,
     // RawFeatureTrackerConfig));
-    py::class_<FeatureTrackerConfig, Py<FeatureTrackerConfig>, Buffer, std::shared_ptr<FeatureTrackerConfig>> featureTrackerConfig(
+    py::class_<FeatureTrackerConfig, Py<FeatureTrackerConfig>, Buffer, py::smart_holder> featureTrackerConfig(
         m, "FeatureTrackerConfig", DOC(dai, FeatureTrackerConfig));
     py::class_<FeatureTrackerConfig::CornerDetector> cornerDetector(featureTrackerConfig, "CornerDetector", DOC(dai, FeatureTrackerConfig, CornerDetector));
     py::enum_<FeatureTrackerConfig::CornerDetector::Type> cornerDetectorType(cornerDetector, "Type", DOC(dai, FeatureTrackerConfig, CornerDetector, Type));

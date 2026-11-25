@@ -8,6 +8,7 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
 #include "depthai/common/CameraSensorType.hpp"
+#include "depthai/common/EepromData.hpp"
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/common/optional.hpp"
@@ -41,6 +42,9 @@ struct BoardConfig {
         /// Sets the `TCP_NODELAY` option for XLink TCP sockets (disable Nagle's algorithm),
         /// reducing latency at the expense of a small hit for max throughput. Default is `true`
         bool xlinkTcpNoDelay = true;
+        /// Initialize Ethernet hardware while the device communicates over USB.
+        /// Used by production tests to inspect the physical link.
+        bool forceEnable = false;
     };
 
     Network network;
@@ -154,34 +158,39 @@ struct BoardConfig {
     };
     std::optional<UVC> uvc;
     std::unordered_map<std::string, Extrinsics> defaultImuExtr;
+
+    /// Override EEPROM data in memory before RVC2 board and camera initialization.
+    /// Does not write to the physical EEPROM.
+    std::optional<EepromData> eepromData;
 };
 
-DEPTHAI_SERIALIZE_EXT(BoardConfig::USB, vid, pid, flashBootedVid, flashBootedPid, maxSpeed, productName, manufacturer);
-DEPTHAI_SERIALIZE_EXT(BoardConfig::Network, mtu, xlinkTcpNoDelay);
-DEPTHAI_SERIALIZE_EXT(BoardConfig::GPIO, mode, direction, level, pull, drive, schmitt, slewFast);
-DEPTHAI_SERIALIZE_EXT(BoardConfig::UART, tmp);
-DEPTHAI_SERIALIZE_EXT(BoardConfig::Camera, name, sensorType, orientation);
-DEPTHAI_SERIALIZE_EXT(BoardConfig::IMU, bus, interrupt, wake, csGpio, boot, reset);
-DEPTHAI_SERIALIZE_EXT(BoardConfig::UVC, cameraName, width, height, frameType, enable);
-DEPTHAI_SERIALIZE_EXT(BoardConfig,
-                      usb,
-                      network,
-                      sysctl,
-                      watchdogTimeoutMs,
-                      watchdogInitialDelayMs,
-                      gpio,
-                      uart,
-                      pcieInternalClock,
-                      usb3PhyInternalClock,
-                      emmc,
-                      logPath,
-                      logSizeMax,
-                      logVerbosity,
-                      logDevicePrints,
-                      nonExclusiveMode,
-                      camera,
-                      imu,
-                      uvc,
-                      defaultImuExtr);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::USB, vid, pid, flashBootedVid, flashBootedPid, maxSpeed, productName, manufacturer);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::Network, mtu, xlinkTcpNoDelay, forceEnable);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::GPIO, mode, direction, level, pull, drive, schmitt, slewFast);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::UART, tmp);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::Camera, name, sensorType, orientation);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::IMU, bus, interrupt, wake, csGpio, boot, reset);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::UVC, cameraName, width, height, frameType, enable);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig,
+                           usb,
+                           network,
+                           sysctl,
+                           watchdogTimeoutMs,
+                           watchdogInitialDelayMs,
+                           gpio,
+                           uart,
+                           pcieInternalClock,
+                           usb3PhyInternalClock,
+                           emmc,
+                           logPath,
+                           logSizeMax,
+                           logVerbosity,
+                           logDevicePrints,
+                           nonExclusiveMode,
+                           camera,
+                           imu,
+                           uvc,
+                           defaultImuExtr,
+                           eepromData);
 
 }  // namespace dai

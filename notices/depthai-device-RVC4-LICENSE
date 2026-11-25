@@ -1,6 +1,6 @@
 Luxonis Firmware Package License
 
-Copyright (c) Luxonis LLC
+Copyright (c) Luxonis Holding Corporation
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of Luxonis device-side firmware packages and associated files (the "Firmware"),
@@ -8,12 +8,27 @@ to use, copy, publish, distribute, and otherwise deal in the Firmware, subject
 to the following conditions:
 
 The Firmware may be run only on Luxonis hardware. "Luxonis hardware" means
-hardware products manufactured, sold, or expressly authorized by Luxonis.
+hardware products manufactured, sold, or expressly authorized by Luxonis
+Holding Corporation ("Luxonis").
+
+Vendor module. The Firmware contains the Luxonis DepthAI vendor module
+(depthai-device-rvc4-vendor): proprietary software of Luxonis and its
+licensors, in object code. The Luxonis DepthAI Vendor Module End User License
+Agreement covers the vendor module. Its text is in the Firmware
+(legal/DEPTHAI-EULA.txt) and in the license bundle of the Firmware. That
+agreement applies to the vendor module in addition to this license, and where
+the two conflict for the vendor module, that agreement prevails. In
+particular, you may copy, publish, and distribute the vendor module in the
+Firmware only as part of the Firmware, unmodified and not separated from it,
+together with this license and that agreement, and you may not modify,
+decompile, or reverse engineer it. This paragraph does not limit the other
+parts of the Firmware.
 
 Third-party components. The Firmware contains third-party components. Each
-component is licensed under its own terms, which are listed after this
-license. Those terms apply to that component in addition to this license. In
-particular, the STMicroelectronics VD55H1 IPP library is licensed under
+component is licensed under its own terms, which are listed in the license
+bundle of the Firmware, after this license. Those terms apply to that
+component in addition to this license. In particular, the STMicroelectronics
+VD55H1 IPP library (part of the vendor module) is licensed under
 STMicroelectronics license SLA0106: it may be used only in conjunction with
 STMicroelectronics sensors, and it may not be reverse engineered, decompiled,
 disassembled, or used to create a product that competes with it.
@@ -33,9 +48,19 @@ copies or substantial portions of the Firmware.
 THE FIRMWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL
-LUXONIS LLC BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN
-AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN
-CONNECTION WITH THE FIRMWARE OR THE USE OR OTHER DEALINGS IN THE FIRMWARE.
+LUXONIS HOLDING CORPORATION BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM,
+OUT OF, OR IN CONNECTION WITH THE FIRMWARE OR THE USE OR OTHER DEALINGS IN THE
+FIRMWARE.
+
+---
+
+The public part of the source code of this firmware (directory device/rvc4 of the depthai-core repository)
+is available under the MIT License (see LICENSE in that repository). The license above and the
+third-party terms below apply to this binary firmware package.
+
+For each third-party dependency, "Source" is the upstream source and "Recipe" is the vcpkg port that built
+it: the build script and the patches that the build applied to that source.
 
 ---
 
@@ -53,6 +78,7 @@ apriltag
 License: BSD-2-Clause
 Version: 3.4.3
 Source: https://april.eecs.umich.edu/software/apriltag
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/apriltag
 
 BSD 2-Clause License
 
@@ -90,6 +116,7 @@ backward-cpp
 License: MIT
 Version: 2023-11-24#1
 Source: https://github.com/bombela/backward-cpp
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/backward-cpp
 
 Copyright 2013 Google Inc. All Rights Reserved.
 
@@ -119,6 +146,7 @@ brotli
 License: MIT
 Version: 1.1.0#1
 Source: https://github.com/google/brotli
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/brotli
 
 Copyright (c) 2009, 2010, 2013-2016 by the Brotli Authors.
 
@@ -146,6 +174,7 @@ bzip2
 License: bzip2-1.0.6
 Version: 1.0.8#6
 Source: https://sourceware.org/bzip2/
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/bzip2
 
 --------------------------------------------------------------------------
 
@@ -195,6 +224,7 @@ cpp-httplib
 License: MIT
 Version: 0.20.1
 Source: https://github.com/yhirose/cpp-httplib
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/cpp-httplib
 
 The MIT License (MIT)
 
@@ -218,12 +248,40 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+eigen3
+~~~~~~
+
+License: MPL-2.0
+Version: 3.4.0#5
+Source: http://eigen.tuxfamily.org
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/eigen3
+
+Eigen is primarily MPL2 licensed. See COPYING.MPL2 and these links:
+  http://www.mozilla.org/MPL/2.0/
+  http://www.mozilla.org/MPL/2.0/FAQ.html
+
+Some files contain third-party code under BSD or LGPL licenses, whence the other
+COPYING.* files here.
+
+All the LGPL code is either LGPL 2.1-only, or LGPL 2.1-or-later.
+For this reason, the COPYING.LGPL file contains the LGPL 2.1 text.
+
+If you want to guarantee that the Eigen code that you are #including is licensed
+under the MPL2 and possibly more permissive licenses (like BSD), #define this
+preprocessor symbol:
+  EIGEN_MPL2_ONLY
+For example, with most compilers, you could add this to your project CXXFLAGS:
+  -DEIGEN_MPL2_ONLY
+This will cause a compilation error to be generated if you #include any code that is
+LGPL licensed.
+
 fmt
 ~~~
 
 License: MIT
 Version: 11.0.2#1
 Source: https://github.com/fmtlib/fmt
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/fmt
 
 Copyright (c) 2012 - present, Victor Zverovich and {fmt} contributors
 
@@ -259,6 +317,7 @@ fp16
 License: MIT
 Version: 2021-02-21#2
 Source: https://github.com/Maratyszcza/FP16
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/fp16
 
 The MIT License (MIT)
 
@@ -278,6 +337,7 @@ libarchive
 License: BSD-2-Clause AND BSD-3-Clause AND (CC0-1.0 OR OpenSSL OR Apache-2.0)
 Version: 3.7.7#1
 Source: https://www.libarchive.org
+Recipe: https://github.com/luxonis/depthai-core, folder cmake/ports/libarchive (in the depthai-core commit of this firmware)
 
 The libarchive distribution as a whole is Copyright by Tim Kientzle
 and is subject to the copyright notice reproduced at the bottom of
@@ -351,6 +411,7 @@ libjpeg-turbo
 License: BSD-3-Clause
 Version: 3.1.0#1
 Source: https://github.com/libjpeg-turbo/libjpeg-turbo
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/libjpeg-turbo
 
 libjpeg-turbo Licenses
 ======================
@@ -494,6 +555,7 @@ liblzma
 License: 0BSD
 Version: 5.8.1
 Source: https://tukaani.org/xz/
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/liblzma
 
 XZ Utils Licensing
 ==================
@@ -570,6 +632,9 @@ libnop
 License: Apache-2.0
 Version: 1.0-ec8f75a
 Source: https://github.com/luxonis/libnop/tree/00938ba06ad513e4e0a12f9f2ec41cecad7e40d1
+Recipe: https://github.com/luxonis/depthai-core, folder cmake/ports/libnop (in the depthai-core commit of this firmware)
+
+LICENSE:
 
 Copyright 2017 The Native Object Protocols Authors
 
@@ -585,12 +650,219 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
+
+LICENSE-Apache-2.0:
+
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
 libpng
 ~~~~~~
 
 License: libpng-2.0
 Version: 1.6.47
 Source: https://github.com/pnggroup/libpng
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/libpng
 
 COPYRIGHT NOTICE, DISCLAIMER, and LICENSE
 =========================================
@@ -733,6 +1005,7 @@ lz4
 License: BSD-2-Clause
 Version: 1.10.0
 Source: https://github.com/lz4/lz4
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/lz4
 
 LZ4 Library
 Copyright (c) 2011-2020, Yann Collet
@@ -765,6 +1038,7 @@ magic-enum
 License: MIT
 Version: 0.9.7#1
 Source: https://github.com/Neargye/magic_enum
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/magic-enum
 
 MIT License
 
@@ -794,6 +1068,7 @@ mp4v2
 License: MPL-1.1
 Version: 2.1.3
 Source: https://github.com/luxonis/mp4v2/tree/1dc9f4d24645ea43405582e5c813dec3eaa8fd3e
+Recipe: https://github.com/luxonis/depthai-core, folder cmake/ports/mp4v2 (in the depthai-core commit of this firmware)
 
 MOZILLA PUBLIC LICENSE
                                 Version 1.1
@@ -1260,6 +1535,7 @@ neargye-semver
 License: MIT
 Version: 0.3.1
 Source: https://github.com/Neargye/semver
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/neargye-semver
 
 MIT License
 
@@ -1290,6 +1566,7 @@ nlohmann-json
 License: MIT
 Version: 3.9.1
 Source: https://github.com/nlohmann/json
+Recipe: https://github.com/microsoft/vcpkg, port nlohmann-json 3.9.1, git tree 3b9a6d5f3d94db5699d4448f717ff32e4ea5722b
 
 MIT License 
 
@@ -1319,6 +1596,7 @@ psimd
 License: MIT
 Version: 2021-02-21#2
 Source: https://github.com/Maratyszcza/psimd
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/psimd
 
 The MIT License (MIT)
 
@@ -1338,6 +1616,7 @@ pthreads
 License: Apache-2.0
 Version: 3.0.0#14
 Source: https://sourceforge.net/projects/pthreads4w/
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/pthreads
 
 No license text was found by the collector.
 
@@ -1345,8 +1624,9 @@ pybind11
 ~~~~~~~~
 
 License: BSD-3-Clause
-Version: luxonis-smart-holder
-Source: https://github.com/luxonis/pybind11/tree/f760e2b984b66be2cfa202c93da9d341a557fb5d
+Version: 3.2.0-dev-218a429500#1
+Source: https://github.com/pybind/pybind11/tree/218a429500971f5030eda1855c870637a62aabdb
+Recipe: https://github.com/luxonis/depthai-core, folder cmake/ports/pybind11 (in the depthai-core commit of this firmware)
 
 Copyright (c) 2016 Wenzel Jakob <wenzel.jakob@epfl.ch>, All rights reserved.
 
@@ -1384,6 +1664,7 @@ spdlog
 License: MIT
 Version: 1.12.0
 Source: https://github.com/gabime/spdlog
+Recipe: https://github.com/microsoft/vcpkg, port spdlog 1.12.0, git tree 41cf31aa350a44644863d7777489501d240f248c
 
 The MIT License (MIT)
 
@@ -1417,6 +1698,7 @@ tiff
 License: libtiff
 Version: 4.7.0
 Source: https://libtiff.gitlab.io/libtiff/
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/tiff
 
 # LibTIFF license
 
@@ -1448,6 +1730,7 @@ xlink
 License: Apache-2.0
 Version: luxonis-develop-server
 Source: https://github.com/luxonis/XLink/tree/7f5633ab542df632acaf4ccaf5e98d30f984e6e4
+Recipe: https://github.com/luxonis/depthai-core, folder cmake/ports/xlink (in the depthai-core commit of this firmware)
 
 Apache License
                            Version 2.0, January 2004
@@ -1657,6 +1940,7 @@ xtensor
 License: BSD-3-Clause
 Version: 0.26.0
 Source: https://github.com/xtensor-stack/xtensor
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/xtensor
 
 Copyright (c) 2016, Johan Mabille, Sylvain Corlay and Wolf Vollprecht
 Copyright (c) 2016, QuantStack
@@ -1693,6 +1977,7 @@ xtl
 License: BSD-3-Clause
 Version: 0.8.0
 Source: https://github.com/xtensor-stack/xtl
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/xtl
 
 BSD 3-Clause License
 
@@ -1731,6 +2016,7 @@ yaml-cpp
 License: MIT
 Version: 0.8.0#3
 Source: https://github.com/jbeder/yaml-cpp
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/yaml-cpp
 
 Copyright (c) 2008-2015 Jesse Beder.
 
@@ -1758,6 +2044,7 @@ zlib
 License: Zlib
 Version: 1.3.1
 Source: https://www.zlib.net/
+Recipe: https://github.com/microsoft/vcpkg/tree/a9eee3b18df395dbb8be71a31bd78ea441056e42/ports/zlib
 
 Copyright notice:
 
@@ -1785,35 +2072,592 @@ Copyright notice:
 Vendored Components
 -------------------
 
-VD55H1 IPP Library
-~~~~~~~~~~~~~~~~~~
+cpp-subprocess
+~~~~~~~~~~~~~~
 
-License: LicenseRef-ST-SLA0106
-Version: 3.0.10
+License: MIT
+Version: c72b234cae060f03fc723accc4c6361925faa6e5
+Source: https://github.com/luxonis/cpp-subprocess.git
 
-/**
- ******************************************************************************
- * @file    ItofPhaseOffsetXtalkComp.cpp
- * @brief   Code for vd55h1 IPP Libraries
- ******************************************************************************
- * @attention
- *
- * Copyright (c) 2023-2025 STMicroelectronics - All rights reserved
- *
- * This software component is part of the VD55H1 IPP Library and is licensed
- * by ST under 'STMicroelectronics Proprietary license SLA0106', the "License";
- * You may not use this file except in compliance with the License.
- * You may obtain a copy of the License at: 
- *     https://www.st.com/resource/en/license_agreement/dm01158080.pdf
- *
- ******************************************************************************
- *
- * STMicroelectronics confidential
- * Reproduction and Communication of this document is strictly prohibited unless
- * specifically authorized in writing by STMicroelectronics.
- *
- ******************************************************************************
- */
+The library is licensed under the MIT License 
+<http://opensource.org/licenses/MIT>:
+
+Copyright (c) 2016-2018 Arun Muralidharan
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Proprietary components: depthai-device-rvc4-vendor
+==================================================
+
+NOTICE.txt
+----------
+
+This notice applies to the vendor module of the Luxonis DepthAI RVC4 firmware
+(depthai-device-rvc4-vendor): the prebuilt archive depthai-device-rvc4-vendor-<version>.tar.xz and
+the same code in the DepthAI RVC4 firmware packages (depthai-device-rvc4-fwp). The module contains
+proprietary software of Luxonis and its licensors, in object code, for Luxonis OAK4 devices.
+
+The module is licensed to you under the Luxonis DepthAI Vendor Module End User License Agreement
+in legal/DEPTHAI-EULA.txt. That agreement covers only the module. Its text is also published next
+to each prebuilt archive (depthai-device-rvc4-vendor-<version>-EULA.txt), and each firmware
+package contains it (legal/DEPTHAI-EULA.txt). In a firmware package, the Luxonis Firmware Package
+License (LICENSE.fwp, in the package and at the start of its license bundle) covers the package,
+and the agreement covers the module in it. Where the two conflict for the module, the agreement
+prevails.
+
+Under the agreement you may run the module only on Luxonis devices that you own or lawfully
+control, and you may link it, unmodified, into firmware that you build from the public DepthAI
+device sources, only to make firmware for Luxonis devices. You may distribute the module only as
+part of an unmodified firmware package or of firmware that you build, together with its license
+bundle; you may not publish or distribute this archive, or any file in it, on its own. You may not
+modify, decompile or reverse engineer the module. Where the module contains the STMicroelectronics
+VD55H1 time-of-flight library (STMicroelectronics licence SLA0106,
+legal/licenses/vd55h1-ipp-adreno-LICENSE.txt), you may use that library only in conjunction with
+STMicroelectronics sensors, and you may not reverse engineer, decompile or disassemble it, or use
+it to create a product that competes with it.
+
+The copyright and licence notices for each part of the module are listed in legal/NOTICE.md, and
+the licence texts are in legal/licenses/.
+
+legal/DEPTHAI-EULA.txt
+----------------------
+
+LUXONIS DEPTHAI VENDOR MODULE END USER LICENSE AGREEMENT
+Version 1.0, last updated 20 November 2026
+
+This End User License Agreement ("Agreement") is between Luxonis Holding Corporation, a Colorado corporation ("Luxonis"), and you, the person or organisation that downloads, installs, builds with or uses the Vendor Module ("you"). If you accept on behalf of an organisation, you confirm that you have authority to bind it.
+
+READ THIS AGREEMENT BEFORE YOU DOWNLOAD, INSTALL, BUILD WITH OR USE THE VENDOR MODULE. YOU ACCEPT IT BY SELECTING "I AGREE", BY CONFIRMING YOUR ACCEPTANCE IN A LUXONIS TOOL OR BUILD SCRIPT THAT ASKS FOR IT, OR BY DOWNLOADING, INSTALLING, BUILDING WITH OR USING THE VENDOR MODULE, INCLUDING AS PART OF A FIRMWARE PACKAGE THAT DEPTHAI HOST SOFTWARE INSTALLS ON A DEVICE. IF YOU DO NOT AGREE, DO NOT DOWNLOAD, INSTALL, BUILD WITH OR USE THE VENDOR MODULE.
+
+1. DEFINITIONS
+1.1 "Vendor Module" means the Luxonis DepthAI RVC4 vendor module (depthai-device-rvc4-vendor) in object code: the proprietary software of Luxonis and its Licensors that the DepthAI device firmware uses through its vendor interface, and the DSP libraries and DSP skeletons that Luxonis builds for that firmware with the Hexagon SDK. It includes every form in which Luxonis supplies it: the prebuilt archive depthai-device-rvc4-vendor-<version>.tar.xz and the files in it, and the same code as linked into or packaged with a Firmware Package, together with its documentation and notice files and any update that Luxonis provides for it.
+1.2 "Device" means a hardware product manufactured, sold or expressly authorised by Luxonis, on which Luxonis supports the Vendor Module.
+1.3 "Open-Source Components" means the parts of the Vendor Module that are licensed under an open-source licence listed in its notice files (legal/NOTICE.md).
+1.4 "Proprietary Components" means all parts of the Vendor Module that are not Open-Source Components, including components that Luxonis licenses from third parties.
+1.5 "Licensors" means the third parties from whom Luxonis licenses Proprietary Components.
+1.6 "Public Sources" means the source code and the build scripts of the DepthAI device firmware that Luxonis publishes under an open-source licence.
+1.7 "Firmware Package" means a DepthAI firmware package for Devices that Luxonis publishes (depthai-device-rvc4-fwp) and that contains the Vendor Module.
+1.8 "Firmware Package Licence" means the Luxonis Firmware Package License (LICENSE.fwp) in each Firmware Package and at the start of its licence bundle.
+1.9 "Built Firmware" means firmware for Devices that you build from the Public Sources, with or without your changes to them, and that contains the unmodified Vendor Module.
+1.10 "DepthAI Host Software" means the Luxonis DepthAI libraries and tools that run on a host computer and operate Devices, including depthai-core, its language bindings and its packages, both as Luxonis publishes them and as you or others build them from their sources.
+1.11 "ST Components" means the STMicroelectronics VD55H1 time-of-flight image processing library and its documentation, where they are part of the Vendor Module, which STMicroelectronics International N.V. ("ST") licenses to Luxonis under ST licence SLA0106.
+
+2. LICENCE AND SCOPE
+2.1 Subject to this Agreement, Luxonis grants you a limited, non-exclusive, non-transferable licence, which ends only as clause 12 says:
+(a) to install and run the Vendor Module, as part of a Firmware Package or of Built Firmware, only on Devices that you own or lawfully control, and only to operate those Devices;
+(b) to copy and store the Vendor Module on host computers and build systems that you or your organisation control, including containers, virtual machines and build caches, but only as necessary to obtain, store, build, install and send to Devices firmware that contains it under this clause 2.1;
+(c) to link the unmodified Vendor Module into Built Firmware, only to make firmware for Devices; and
+(d) to distribute the Vendor Module only as clause 11 allows.
+2.2 The Vendor Module is licensed, not sold. Luxonis and its Licensors keep all rights not expressly granted. No right is granted by implication or estoppel, and no right is granted under any patent or trademark.
+2.3 Scope. This Agreement covers only the Vendor Module. It does not cover, and does not limit: (a) the Public Sources and your changes to them; (b) the parts of a Firmware Package other than the Vendor Module, which the Firmware Package Licence covers; (c) the parts of Built Firmware other than the Vendor Module; (d) DepthAI Host Software; (e) your own software; or (f) Luxonis OS, the operating system of Devices, which its own end user licence agreement covers. Where this Agreement refers to firmware or a Device that contains the Vendor Module, it limits only what you do with the Vendor Module in it.
+2.4 Firmware Package Licence. The Firmware Package Licence covers each Firmware Package as a whole. This Agreement applies to the Vendor Module in a Firmware Package in addition to the Firmware Package Licence. Where the two conflict for the Vendor Module, this Agreement prevails.
+
+3. OPEN-SOURCE COMPONENTS
+3.1 Each Open-Source Component is licensed to you under its own licence, as listed in the notice files. Nothing in this Agreement limits any right that such a licence gives you, and where this Agreement conflicts with such a licence for that component, that licence prevails.
+3.2 Clauses 4 to 6 apply to the Proprietary Components and to the Vendor Module as a whole, but not to an Open-Source Component to the extent that its licence forbids them.
+
+4. RESTRICTIONS
+4.1 Except as this Agreement, the licence of an Open-Source Component or mandatory law expressly allows, you must not, and must not allow or help anyone else to:
+(a) install, run or use the Vendor Module, or any part of it, on any hardware other than a Device, including emulators, virtual machines and other boards that use the same chipset. Copies and builds under clauses 2.1(b) and 2.1(c) may be on other hardware, but no code of the Vendor Module may run there;
+(b) extract, copy or separate any Proprietary Component, except as clauses 2.1 and 11 allow, and except for one backup copy for your own use;
+(c) publish, host, distribute, sell, rent, lease, lend, sublicense or otherwise make available the Vendor Module, or any part of it, on a standalone basis. In particular, you must not publish, host or distribute the prebuilt archive, or any file in it, except as part of Built Firmware as clause 11.4 allows;
+(d) decompile, disassemble, decrypt, reverse engineer or otherwise try to derive source code, algorithms or internal structure from any Proprietary Component, or modify it or create derivative works of it, except that you may link the unmodified Vendor Module into Built Firmware under clause 2.1(c);
+(e) remove, alter or obscure any copyright notice, licence text, attribution, product identification or other proprietary notice in or on the Vendor Module, including the notice files;
+(f) bypass, disable or interfere with any signature check, secure-boot, licence-key or other technical protection in the Vendor Module or the Device; or
+(g) combine or distribute any Proprietary Component with other software in a way that would require that component to be disclosed in source form, licensed for making derivative works, or redistributed free of charge.
+4.2 ST Components. The ST Components are licensed to Luxonis under ST licence SLA0106, whose text is in the notice files. The terms of SLA0106 that limit the use of the ST Components apply to you as part of this Agreement. In particular, you may use the ST Components only in conjunction with STMicroelectronics sensors, and you must not reverse engineer, decompile or disassemble them, or use them to create a product that competes with them.
+
+5. PROHIBITED AND HIGH-RISK USES
+5.1 Prohibited uses. You must not use the Vendor Module, or firmware or a Device that runs it, for any of the following: (a) unfair, manipulative or deceptive practices; (b) exploiting people's vulnerabilities due to age, disability, or social or economic situation; (c) predictive policing; (d) social scoring; (e) recognising the emotions of people at work or in education; (f) real-time remote biometric identification in publicly accessible spaces for law-enforcement purposes; (g) categorising people by biometric data to infer sensitive characteristics; or (h) building facial-recognition databases by untargeted scraping of images from the internet or from video surveillance footage.
+5.2 High-risk uses. The Vendor Module is not designed or intended for, and Luxonis and its Licensors advise against its use in: biometric identification not prohibited by clause 5.1; critical infrastructure; education or vocational training; employment and worker management; access to essential private or public services and benefits; law enforcement; migration, asylum or border control; recommender systems of social-media platforms; administration of justice or democratic processes; or any other system in which the Vendor Module makes, or is a substantial factor in making, a decision with legal or similarly significant effects on a person.
+5.3 Safety-critical use. The Vendor Module is not designed, tested or certified for fail-safe, fault-tolerant or functional-safety performance (for example under IEC 61508, ISO 13849 or ISO 10218), or for any use in which its failure could lead to death, personal injury, or severe physical, property or environmental damage. This includes service robots, humanoid robots, autonomous mobile robots and other safety-critical robotic systems, and unmanned aircraft.
+5.4 If you use the Vendor Module in a way described in clause 5.2 or 5.3, or outside the intended use stated in Luxonis documentation, you do so at your own risk. You are solely responsible for system design, integration, validation, testing, redundancy and compliance with all safety laws, standards and aviation rules that apply, and clause 9 applies.
+5.5 You are solely responsible for your use of the Vendor Module and for any data, model, input or output you process with it, including whether that use is lawful, respects privacy and the rights of others, is secure, and is fit for your purpose.
+
+6. NOTICES AND ATTRIBUTION
+The Vendor Module contains copyright notices, licence texts and third-party notice files, including this Agreement. You must keep them intact, and pass them on with every copy of the Vendor Module that you transfer or distribute under clause 11, including the copies in Firmware Packages and in Built Firmware.
+
+7. OWNERSHIP AND LICENSORS
+7.1 Luxonis and its Licensors own the Proprietary Components and all intellectual property in them. The Open-Source Components belong to their authors.
+7.2 Luxonis's Licensors are intended third-party beneficiaries of clauses 4, 5, 8, 9, 10 and 12 and may enforce them directly against you.
+7.3 This Agreement does not give Luxonis any rights in your changes to the Public Sources or in your own software.
+
+8. EXPORT CONTROL, SANCTIONS AND END USE
+8.1 The Vendor Module, and firmware and Devices that contain it, are subject to the export-control and sanctions laws of the European Union and its Member States, the United Kingdom, the United States and other countries ("Trade Laws"). You must comply with all Trade Laws and obtain any licence or authorisation they require.
+8.2 You must not export, re-export, transfer or release the Vendor Module, firmware or a Device that contains it, or any direct product of them, directly or indirectly: (a) to any country or territory subject to comprehensive sanctions, or to Belarus, Cuba, Iran, North Korea, the Russian Federation, or the regions of Ukraine controlled by the Russian Federation, or to any government, entity or resident of those places; or (b) to any person or entity on a restricted-party or sanctions list of the EU, its Member States, the UK, the US or another applicable authority, or owned 50% or more, or controlled, by such a person or entity, unless the Trade Laws allow it under a government authorisation you hold.
+8.3 You must not use the Vendor Module, or firmware or a Device that contains it, or supply them to anyone, for an end use or end user that Trade Laws prohibit without authorisation, including weapons of mass destruction (nuclear, chemical or biological), missiles or prohibited unmanned aerial vehicles, prohibited military end uses or military end users, and prohibited supercomputer or advanced semiconductor manufacturing end uses.
+8.4 You confirm that you are not a person described in clause 8.2(b), and are not located, organised or resident in a place described in clause 8.2(a). If you are located in Belarus, Burma (Myanmar), Cambodia, China, Nicaragua, the Russian Federation or Venezuela, you also confirm that you are not a military end user under US export rules. Your licence depends on these statements remaining true, and you must tell Luxonis promptly if any of them stops being true.
+8.5 You must comply with all other laws that apply to your possession and use of the Vendor Module.
+
+9. DISCLAIMER OF WARRANTIES
+9.1 TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE VENDOR MODULE, INCLUDING ALL PROPRIETARY AND OPEN-SOURCE COMPONENTS AND ALL COMPONENTS SUPPLIED BY LICENSORS, IS PROVIDED "AS IS" AND "AS AVAILABLE". LUXONIS AND ITS LICENSORS AND SUPPLIERS GIVE NO WARRANTY OR CONDITION OF ANY KIND, EXPRESS, IMPLIED OR STATUTORY, INCLUDING ANY WARRANTY OF MERCHANTABILITY, SATISFACTORY QUALITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE OR NON-INFRINGEMENT, OR ANY WARRANTY ARISING FROM COURSE OF DEALING, PERFORMANCE OR TRADE USAGE.
+9.2 LUXONIS AND ITS LICENSORS GIVE NO WARRANTY ABOUT THE USE, FUNCTION, PERFORMANCE OR SAFETY OF THE VENDOR MODULE IN ANY USE OUTSIDE ITS INTENDED USE, INCLUDING THE USES IN CLAUSES 5.2 AND 5.3. SUCH USE MAY REDUCE THE PERFORMANCE, DURABILITY, QUALITY OR SAFETY OF THE VENDOR MODULE OR THE DEVICE, AND YOU BEAR ALL RISK OF IT.
+9.3 NOTHING IN THIS AGREEMENT IS A WARRANTY THAT ANY PATENT OR OTHER INTELLECTUAL-PROPERTY RIGHT IS VALID OR HAS A PARTICULAR SCOPE, OR THAT USE OF THE VENDOR MODULE WILL NOT INFRINGE THIRD-PARTY RIGHTS. YOU ARE RESPONSIBLE FOR OBTAINING ANY THIRD-PARTY LICENCE YOUR USE REQUIRES.
+9.4 Any warranty for the Device hardware is given only in Luxonis's terms of sale or limited hardware warranty and is not extended by this clause. Nothing in this Agreement excludes or limits any right you have as a consumer that cannot lawfully be excluded or limited.
+9.5 Luxonis does not test or support Built Firmware. You are solely responsible for Built Firmware, for any change that you make to the Public Sources, and for the effects of Built Firmware on a Device.
+
+10. LIMITATION OF LIABILITY
+10.1 TO THE MAXIMUM EXTENT PERMITTED BY LAW, NEITHER LUXONIS NOR ANY LICENSOR OR SUPPLIER IS LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL OR CONSEQUENTIAL DAMAGES, OR FOR LOST PROFITS, SAVINGS, DATA OR BUSINESS, ARISING FROM THE VENDOR MODULE OR THIS AGREEMENT, EVEN IF ADVISED OF THEIR POSSIBILITY.
+10.2 LUXONIS'S TOTAL LIABILITY UNDER THIS AGREEMENT IS LIMITED TO THE GREATER OF THE AMOUNT YOU PAID TO LUXONIS FOR THE DEVICE ON WHICH THE VENDOR MODULE IS INSTALLED AND ONE HUNDRED US DOLLARS (USD 100). LUXONIS'S LICENSORS HAVE NO LIABILITY TO YOU OF ANY KIND IN CONNECTION WITH THE VENDOR MODULE.
+10.3 Nothing in this Agreement limits liability for death or personal injury caused by negligence, for fraud, or for any other liability that cannot be limited by law.
+10.4 You will indemnify and hold harmless Luxonis and its Licensors against claims, losses and costs (including reasonable legal fees) arising from your breach of clauses 4, 5, 8 or 11, from any use described in clauses 5.2 or 5.3, or from your changes to the Public Sources and your own software that you combine with the Vendor Module.
+
+11. TRANSFER AND DISTRIBUTION
+11.1 Your recipients. Each person who receives the Vendor Module from you, directly or through others, receives its licence directly from Luxonis under this Agreement. You must not grant any right to the Vendor Module, and any terms that you give a recipient for it must be at least as protective of Luxonis and its Licensors as this Agreement.
+11.2 Devices. You may transfer a Device with the Vendor Module installed on it, only together with that Device.
+11.3 Firmware Packages. You may copy and distribute Firmware Packages, and DepthAI Host Software packages, software, container images and systems that contain Firmware Packages, as the Firmware Package Licence allows, only if: (a) the Vendor Module in them is unmodified and not separated from the Firmware Package; (b) you keep in each Firmware Package its copies of the Firmware Package Licence and of this Agreement, and keep its licence bundle and notice files with it; and (c) they are for use with Devices.
+11.4 Built Firmware. You may distribute Built Firmware only for use on Devices, and only if you keep in it the copies of the Firmware Package Licence and of this Agreement that the build scripts of the Public Sources put in it, and keep with it the licence bundle that they write. You must not distribute the prebuilt archive, or any file in it, except as part of Built Firmware.
+11.5 Products. If you build a Device into a product or system that you supply to others, you must make sure that each recipient is bound, before it uses the Vendor Module, by this Agreement or by written terms at least as protective of Luxonis and its Licensors as clauses 2, 4, 5, 6, 8, 9, 10 and 11, and you must enforce those terms. You remain responsible to Luxonis for any breach by those recipients.
+11.6 Information. On Luxonis's reasonable request, you will give Luxonis the names and contact details that you hold of the businesses to which you supplied the Vendor Module under clauses 11.3 to 11.5, and confirm in writing that they are bound as this clause 11 requires.
+
+12. TERM, TERMINATION AND ENFORCEMENT
+12.1 This Agreement lasts until terminated.
+12.2 Your licence ends automatically, without notice, if you breach clause 4, 5 or 8. Luxonis may terminate this Agreement by notice if you breach any other term and do not cure the breach within 30 days after notice.
+12.3 Luxonis may end your licence to a part of the Vendor Module by notice if a Licensor ends or limits Luxonis's right to license that part. Luxonis may give this notice with an update of the Vendor Module or on its website.
+12.4 When this Agreement or your licence ends, or your licence to a part of the Vendor Module ends under clause 12.3, you must stop using the Vendor Module (or that part) and delete or destroy every copy of it in your possession or control, including the copies in Firmware Packages and in Built Firmware and the copies on your Devices.
+12.5 Clauses 3, 4, 7, 8, 9, 10, 12 and 13 survive termination.
+12.6 A breach of clauses 4, 5 or 8 would cause Luxonis and its Licensors harm that money cannot adequately remedy. Luxonis may seek an injunction or other equitable relief in any court of competent jurisdiction, without posting a bond where the law allows.
+12.7 You will tell Luxonis promptly about any unauthorised use or distribution of the Vendor Module you become aware of, and cooperate reasonably with Luxonis to stop it. On reasonable notice, you will give Luxonis written confirmation of your compliance with clauses 4 and 8.
+
+13. GENERAL
+13.1 Updates. This Agreement applies to every update of the Vendor Module that Luxonis provides. Luxonis may supply a revised Agreement with an update. The revised Agreement applies to that update once you accept it as described in it.
+13.2 Governing law and venue. This Agreement is governed by the laws of the State of Colorado, United States, without regard to its conflict-of-laws rules. The state and federal courts located in the State of Colorado have exclusive jurisdiction over any dispute under this Agreement, and you consent to their jurisdiction, except that Luxonis may seek relief under clause 12.6 in any competent court. The UN Convention on Contracts for the International Sale of Goods does not apply. If you are a consumer, this clause does not remove the protection that the mandatory law of your country of residence gives you.
+13.3 Entire agreement. This Agreement, including the terms of SLA0106 that clause 4.2 makes part of it, the open-source licences under clause 3 and the Luxonis terms of sale form the entire agreement about the Vendor Module. The Firmware Package Licence covers the other parts of Firmware Packages, as clause 2.4 says. Luxonis OS is licensed under its own end user licence agreement, which this Agreement does not change. If this Agreement conflicts with the terms of sale on the Vendor Module, this Agreement prevails.
+13.4 Severability. If a court holds any provision unenforceable, it is enforced to the maximum extent allowed and the rest of the Agreement stays in force.
+13.5 No waiver. A failure to enforce any term is not a waiver of it.
+13.6 Assignment. You may not assign this Agreement. Clause 11 says how others receive a licence when you pass on the Vendor Module. Luxonis may assign this Agreement to an affiliate or to a successor of its business.
+13.7 Contact. Questions and notices about this Agreement go to support@luxonis.com.
+13.8 U.S. Government end users. The Vendor Module is a "commercial product" as defined in 48 C.F.R. 2.101, and consists of "commercial computer software" and "commercial computer software documentation" as those terms are used in 48 C.F.R. 12.212 and 48 C.F.R. 227.7202. In accordance with 48 C.F.R. 12.212 and 48 C.F.R. 227.7202-1 to 227.7202-4, U.S. Government end users acquire the Vendor Module only with the rights set out in this Agreement, which are the rights that all other end users receive. A provision of federal procurement law that requires other rights applies only to the extent that it is mandatory.
+
+legal/NOTICE.md
+---------------
+
+# Notices for depthai-device-rvc4-vendor
+
+This package is the vendor module of the Luxonis DepthAI RVC4 firmware. It is covered by the Luxonis DepthAI Vendor Module End User License Agreement in `legal/DEPTHAI-EULA.txt`, also in a firmware package, where the Luxonis Firmware Package License (LICENSE.fwp) covers the package. The table lists each part of the vendor module, the files of the prebuilt archive and of the firmware package that contain it, where it comes from, and the copyright and licence notices that apply to it. The texts are in `legal/licenses/`. A part under an open-source licence is licensed to you under that licence. *measured*: the origin or the licence is shown by the source files of the part. *inferred*: it follows from the name of the component or of the tool that built the part.
+
+| Part | Prebuilt archive | Firmware package | Origin | Licence or notice | Label |
+|---|---|---|---|---|---|
+| Vendor module | `lib/libdepthai-device-rvc4-vendor.a` | `depthai-device-rvc4` | Luxonis (src/), compiled against the device OS SDK | - | measured |
+| Sensor client | `lib/libdepthai-device-rvc4-vendor.a` | `depthai-device-rvc4` | BSP sensors direct channel client, modified by Luxonis (src/imu/qualcomm/) | `licenses/Qualcomm-Technologies-Inc.-Proprietary`, `licenses/ssc-direct-channel-NOTICE.txt` | measured |
+| Vision accelerator sample code | `lib/libdepthai-device-rvc4-vendor.a` (types only, no code) | `depthai-device-rvc4` (types only, no code) | BSP EVA sample code (src/accel/evaScodeUtils.hpp) | `licenses/Qualcomm-Technologies-Inc.-Proprietary`, `licenses/eva-NOTICE` | measured |
+| DSP offload | `dsp/lib/` (2 libraries, 2 DSP skeletons) | `libImageAlignDsp_skel.so`, `libStereoDepthDsp_skel.so` | Luxonis, built from device/rvc4/src/hexagon of depthai-core with the Hexagon SDK; the SDK runtime parts are linked into the skeletons | `licenses/depthai-core-LICENSE`, `licenses/Qualcomm-Technologies-Inc.-Proprietary` | inferred |
+| ToF processing | `tof/lib/libdepthai-device-rvc4-vendor-tof.a` | `depthai-device-rvc4` | Luxonis (src/tof/) | - | measured |
+| Depth-map wrapper | `tof/lib/libdepthai-device-rvc4-vendor-tof.a` | `depthai-device-rvc4` | depthmapwrapper-vd55h1, received from STMicroelectronics with the VD55H1 IPP library (depthmapwrapper-vd55h1/depthmapwrapper-lib/) | `licenses/Qualcomm-Technologies-Inc.-Proprietary` | measured |
+| VD55H1 IPP library 3.0.10 | `tof/lib/libdepthai-device-rvc4-vendor-tof.a` | `depthai-device-rvc4` | STMicroelectronics vd55h1-ipp-adreno 3.0.10, modified by Luxonis (depthmapwrapper-vd55h1/vd55h1-ipp-adreno/) | `licenses/vd55h1-ipp-adreno-LICENSE.txt` | measured |
+| glog 0.8.0 | `tof/lib/libdepthai-device-rvc4-vendor-tof.a` | `depthai-device-rvc4` | github.com/google/glog 0.8.0 (depthmapwrapper-vd55h1/glog/), used by the VD55H1 IPP library | `licenses/glog-53d58e45-LICENSE.md` | measured |
+
+## Copyright notices of the VD55H1 IPP library
+
+The ToF processing contains the VD55H1 IPP library of STMicroelectronics in compiled form: its C++ code as object code, and its OpenCL kernels as a program binary for the GPU. The source files of the library have these notices:
+
+    Copyright (c) 2023-2025 STMicroelectronics - All rights reserved
+
+The library is licensed by ST under 'STMicroelectronics Proprietary license SLA0106' (`licenses/vd55h1-ipp-adreno-LICENSE.txt`).
+
+| File | Origin |
+|---|---|
+| `legal/licenses/Qualcomm-Technologies-Inc.-Proprietary` | BSP file apps_proc/poky/meta-qti-bsp-prop/files/qcom-licenses/Qualcomm-Technologies-Inc.-Proprietary at BSP commit b1e327350e |
+| `legal/licenses/depthai-core-LICENSE` | LICENSE of the depthai-core repository (MIT) |
+| `legal/licenses/eva-NOTICE` | BSP file LE.PRODUCT.2.1.r1/apps_proc/poky/meta-qti-eva-prop/recipes/eva-noship/NOTICE at BSP commit b1e327350e |
+| `legal/licenses/glog-53d58e45-LICENSE.md` | github.com/google/glog LICENSE.md, copy in depthmapwrapper-vd55h1/glog; the same bytes as glog-53d58e45-LICENSE.md of the Luxonis OS camera package |
+| `legal/licenses/ssc-direct-channel-NOTICE.txt` | BSP file adsp_proc/ssc/framework/direct_channel_client_manager/inc/NOTICE.txt at BSP commit b1e327350e |
+| `legal/licenses/vd55h1-ipp-adreno-LICENSE.txt` | LICENSE.txt (SLA0106) of the STMicroelectronics VD55H1 IPP library, copy in depthmapwrapper-vd55h1/vd55h1-ipp-adreno |
+
+legal/licenses/Qualcomm-Technologies-Inc.-Proprietary
+-----------------------------------------------------
+
+Copyright (c) 2012 Qualcomm Technologies, Inc.  All Rights Reserved.
+Qualcomm Technologies Proprietary and Confidential.
+
+legal/licenses/depthai-core-LICENSE
+-----------------------------------
+
+MIT License
+
+Copyright (c) 2020 Luxonis LLC
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+legal/licenses/eva-NOTICE
+-------------------------
+
+This NOTICE file contains certain notices of software components included
+with the software that Qualcomm Technologies, Inc. ("Qualcomm Technologies") is required to
+provide you. Notwithstanding anything in the notices in this file, your use
+of these software components together with the Qualcomm Technologies software (Qualcomm Technologies
+software hereinafter referred to as "Software") is subject to the terms of
+your license from Qualcomm Technologies. Compliance with all copyright laws and software
+license agreements included in the notice section of this file are the
+responsibility of the user. Except as may be granted by separate express
+written agreement, this file provides no license to any patents,
+trademarks, copyrights, or other intellectual property.
+
+Copyright (c) 2022 Qualcomm Technologies, Inc. All rights reserved.
+Qualcomm is a registered trademark and registered service mark of
+QUALCOMM Incorporated. All other trademarks and service marks are the
+property of their respective owners.
+________________________________________
+NOTICES
+________________________________________
+
+Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ 
+Redistribution and use in source and binary forms, with or without
+modification, are permitted (subject to the limitations in the
+disclaimer below) provided that the following conditions are met:
+ 
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+ 
+    * Redistributions in binary form must reproduce the above
+      copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+ 
+    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
+ 
+NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  ________________________________________
+
+legal/licenses/glog-53d58e45-LICENSE.md
+---------------------------------------
+
+Copyright © 2024, Google Inc.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+* Redistributions in binary form must reproduce the above copyright notice, this
+  list of conditions and the following disclaimer in the documentation and/or
+  other materials provided with the distribution.
+* Neither the name of Google Inc. nor the names of its contributors may be used
+  to endorse or promote products derived from this software without specific
+  prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+legal/licenses/ssc-direct-channel-NOTICE.txt
+--------------------------------------------
+
+=====================================================================================
+
+This file contains certain notices of software components included with the software 
+that Qualcomm Technologies, Inc. ("QTI") and/or its subsidiaries are required to 
+provide you. Except where prohibited by the open source license, the content of 
+this file is provided solely to satisfy QTI's and/or its subsidiaries’ attribution 
+and notice requirements, and your use of these software components together with 
+the software of QTI and/or its subsidiaries ("Software") is subject to the terms 
+of your license from QTI and/or its subsidiaries, as the case may be. Compliance 
+with all copyright laws and software license agreements included in the notice 
+section of this file are the responsibility of the user. Except as may be granted 
+by separate express written agreement, this file provides no license to any patents, 
+trademarks, copyrights, or other intellectual property of Qualcomm Incorporated or 
+any of its subsidiaries.
+
+Software provided with this notice is NOT A CONTRIBUTION to any open source project. 
+If alternative licensing is available for any of the components with licenses or 
+attributions provided below, a license choice is made for receiving such code by 
+QTI and/or its subsidiaries, as the case may be.
+
+Copyright (c) 2022 of Qualcomm Technologies, Inc.  All rights reserved.
+
+Qualcomm is a trademark of Qualcomm Incorporated, registered in the United States 
+and other countries. All Qualcomm Incorporated trademarks are used with permission. 
+Other products and brand names may be trademarks or registered trademarks of their 
+respective owners.
+
+This software may be subject to U.S. and international export, re-export or transfer 
+(export) laws.  Diversion contrary to U.S. and international law is strictly prohibited.
+
+===================================================================
+NOTICES
+===================================================================
+
+Copyright (C) 2012 The Android Open Source Project
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+===================================================================
+
+
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+legal/licenses/vd55h1-ipp-adreno-LICENSE.txt
+--------------------------------------------
 
                                     SLA0106
                            Software license agreement
@@ -2228,94 +3072,3 @@ connection with this PLLA shall be finally settled by the competent courts of
 Geneva, Switzerland. Notwithstanding the aforesaid, nothing in this PLLA shall
 prevent ST from seeking any interim or final injunctive or equitable relief by
 a court of competent jurisdiction.
-
-cpp-subprocess
-~~~~~~~~~~~~~~
-
-License: MIT
-Version: c72b234cae060f03fc723accc4c6361925faa6e5
-Source: https://github.com/luxonis/cpp-subprocess.git
-
-The library is licensed under the MIT License 
-<http://opensource.org/licenses/MIT>:
-
-Copyright (c) 2016-2018 Arun Muralidharan
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-of the Software, and to permit persons to whom the Software is furnished to do
-so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-eigen
-~~~~~
-
-License: MPL-2.0
-Version: 3147391d946bb4b6c68edd901f2add6ac1f31f8c
-Source: https://eigen.googlesource.com/mirror
-
-Eigen is primarily MPL2 licensed. See COPYING.MPL2 and these links:
-  http://www.mozilla.org/MPL/2.0/
-  http://www.mozilla.org/MPL/2.0/FAQ.html
-
-Some files contain third-party code under BSD or LGPL licenses, whence the other
-COPYING.* files here.
-
-All the LGPL code is either LGPL 2.1-only, or LGPL 2.1-or-later.
-For this reason, the COPYING.LGPL file contains the LGPL 2.1 text.
-
-If you want to guarantee that the Eigen code that you are #including is licensed
-under the MPL2 and possibly more permissive licenses (like BSD), #define this
-preprocessor symbol:
-  EIGEN_MPL2_ONLY
-For example, with most compilers, you could add this to your project CXXFLAGS:
-  -DEIGEN_MPL2_ONLY
-This will cause a compilation error to be generated if you #include any code that is
-LGPL licensed.
-
-glog
-~~~~
-
-License: BSD-3-Clause
-Version: 53d58e4531c7c90f71ddab503d915e027432447a
-Source: https://github.com/google/glog.git
-
-Copyright © 2024, Google Inc.
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
-
-* Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-* Redistributions in binary form must reproduce the above copyright notice, this
-  list of conditions and the following disclaimer in the documentation and/or
-  other materials provided with the distribution.
-* Neither the name of Google Inc. nor the names of its contributors may be used
-  to endorse or promote products derived from this software without specific
-  prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

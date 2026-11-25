@@ -56,6 +56,39 @@
         "VCPKG_INSTALL_OPTIONS": "--clean-buildtrees-after-build;--clean-packages-after-build",
         "DEPTHAI_BUILD_DEVICE_MANAGER": "ON"
       }
+    },
+    {
+      "name": "dev",
+      "displayName": "Developer build with tests, examples and Python bindings",
+      "description": "RelWithDebInfo with a shared core library. With a static library, each of the about 300 test and example executables gets its own copy of the library debug info, and the build needs about 80 GB of disk.",
+      "binaryDir": "${sourceDir}/build-dev",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "BUILD_SHARED_LIBS": "ON",
+        "DEPTHAI_BUILD_TESTS": "ON",
+        "DEPTHAI_BUILD_EXAMPLES": "ON",
+        "DEPTHAI_BUILD_PYTHON": "ON"
+      }
+    },
+    {
+      "name": "dev-rvc4-fw",
+      "displayName": "Developer build with the RVC4 firmware from device/rvc4 (accepts the Luxonis DepthAI Vendor Module EULA)",
+      "description": "RelWithDebInfo with a shared core library, tests, examples (also as tests) and Python bindings with docstrings and tests. Each configure step and each build also configure and build the RVC4 firmware from device/rvc4 in its build container (Docker). With this preset you accept the Luxonis DepthAI Vendor Module End User License Agreement of the prebuilt vendor archive (DEPTHAI_ACCEPT_VENDOR_EULA=yes): read it first (device/rvc4/README.md, Building).",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "BUILD_SHARED_LIBS": "ON",
+        "DEPTHAI_BUILD_TESTS": "ON",
+        "DEPTHAI_BUILD_EXAMPLES": "ON",
+        "DEPTHAI_TEST_EXAMPLES": "ON",
+        "DEPTHAI_BUILD_PYTHON": "ON",
+        "DEPTHAI_PYTHON_FORCE_DOCSTRINGS": "ON",
+        "DEPTHAI_PYTHON_ENABLE_TESTS": "ON",
+        "DEPTHAI_DEVICE_RVC4_VERSION": "",
+        "DEPTHAI_DEVICE_RVC4_FWP_CONFIGURE": "ON",
+        "DEPTHAI_ACCEPT_VENDOR_EULA": "yes"
+      }
     }
   ],
   "buildPresets": [
@@ -73,6 +106,14 @@
         "depthai-device-manager"
       ],
       "jobs": 4
+    },
+    {
+      "name": "dev",
+      "configurePreset": "dev"
+    },
+    {
+      "name": "dev-rvc4-fw",
+      "configurePreset": "dev-rvc4-fw"
     }
   ]
 }

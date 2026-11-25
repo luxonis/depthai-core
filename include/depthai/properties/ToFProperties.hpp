@@ -64,7 +64,9 @@ struct ToFProperties : PropertiesSerializable<Properties, ToFProperties> {
     ~ToFProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(
+DEPTHAI_SERIALIZE_EXT_DECL(
     ToFProperties, initialConfig, numFramesPool, numShaves, warpHwIds, enableUndistortion, boardSocket, cameraName, imageOrientation, fps, numFramesPoolRaw);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::ToFProperties>;

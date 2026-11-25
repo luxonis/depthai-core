@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <stdexcept>
 
+#include "depthai/device/Device.hpp"
+
 namespace dai {
 namespace node {
 
@@ -19,6 +21,9 @@ std::shared_ptr<GPUStereo> GPUStereo::build(Output& leftInput, Output& rightInpu
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     leftInput.link(left);
     rightInput.link(right);
+#else
+    (void)leftInput;
+    (void)rightInput;
 #endif
     return std::static_pointer_cast<GPUStereo>(shared_from_this());
 }
@@ -36,6 +41,9 @@ void GPUStereo::buildInternal() {
         auto platform = device->getPlatform();
         if(platform != Platform::RVC4) {
             throw std::runtime_error("GPUStereo node is only supported on RVC4 devices.");
+        }
+        if(!device->isGpuStereoSupported()) {
+            throw std::runtime_error("GPUStereo node requires an RVC4 device with a GPU.");
         }
     }
 

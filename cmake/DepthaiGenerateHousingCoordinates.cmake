@@ -46,8 +46,9 @@ function(DepthaiGenerateHousingCoordinates)
         endif()
     endforeach()
 
-    # Write the final file contents
-    file(WRITE ${OUTPUT_FILE}
+    # Write the final file contents. configure_file changes the output only when the content changed,
+    # so a reconfigure does not compile it again.
+    file(WRITE ${OUTPUT_FILE}.tmp
 "// depthai
 #include \"depthai/common/HousingCoordinateSystem.hpp\"
 
@@ -62,4 +63,5 @@ const std::unordered_map<std::string, std::unordered_map<dai::HousingCoordinateS
 
 } // namespace dai
 ")
+    configure_file(${OUTPUT_FILE}.tmp ${OUTPUT_FILE} COPYONLY)
 endfunction()

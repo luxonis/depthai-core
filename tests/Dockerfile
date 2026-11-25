@@ -1,3 +1,6 @@
+# (scripts/hil/build_and_push.sh)
+FROM scratch AS rvc4-fwp
+
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -18,7 +21,7 @@ ENV VCPKG_BINARY_SOURCES="clear;files,/opt/vcpkg-bincache,readwrite"
 # every image build compiles the whole tree again (scripts/hil/build_and_push.sh keeps the mounts).
 ENV CCACHE_DIR=/opt/ccache
 ENV CCACHE_MAXSIZE=10G
-ENV CCACHE_SLOPPINESS=include_file_mtime,include_file_ctime
+ENV CCACHE_SLOPPINESS=include_file_mtime,include_file_ctime,pch_defines,time_macros
 
 # Update and install all required packages in one go
 RUN apt-get update && \
@@ -107,6 +110,9 @@ RUN --mount=type=cache,target=/opt/vcpkg-downloads \
       https://mirrors.kernel.org/gnu/gperf/gperf-3.1.tar.gz \
       -o /opt/vcpkg-downloads/gperf-3.1.tar.gz
 
+COPY --from=rvc4-fwp / /rvc4-fwp/
+ARG DEPTHAI_DEVICE_RVC4_FWP_PATH=""
+
 RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     --mount=type=cache,target=/opt/vcpkg-bincache \
     --mount=type=cache,target=/opt/ccache \
@@ -144,4 +150,4 @@ RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     ccache --zero-stats && \
     cmake --build build --parallel $PARALLEL_JOBS --config Release && \
     ccache --show-stats && \
-    find build -name '*.o' -delete
+    find build \( -name '*.o' -o -name '*.gch' -o -name '*.pch' \) -delete

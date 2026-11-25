@@ -21,7 +21,7 @@ struct Prediction {
      */
     float prediction = 0.0f;
 
-    DEPTHAI_SERIALIZE(Prediction, prediction);
+    DEPTHAI_SERIALIZE_DECL(Prediction, prediction);
 };
 
 /**
@@ -89,7 +89,7 @@ class Predictions : public Buffer, public TransformableCRTP<Predictions> {
         return DatatypeEnum::Predictions;
     }
 
-    DEPTHAI_SERIALIZE(Predictions, sequenceNum, ts, tsDevice, tsSystem, transformation, predictions);
+    DEPTHAI_SERIALIZE_DECL(Predictions, sequenceNum, ts, tsDevice, tsSystem, transformation, predictions);
 };
 
 }  // namespace beta
