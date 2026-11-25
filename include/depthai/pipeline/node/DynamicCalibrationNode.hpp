@@ -233,8 +233,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     class Impl;
     spimpl::impl_ptr<Impl> pimplDCL;
-    /// Hands properties.threadPolicy to the library; logs and keeps going when the library rejects it.
-    void applyThreadPolicy();
     enum ErrorCode : int {
         OK = 0,
         QUALITY_CHECK_FAILED = 1,

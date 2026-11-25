@@ -956,6 +956,7 @@ for pid in filter(str.isdigit, os.listdir('/proc')):
             if open(base + 'comm').read().strip() != 'dcl-worker':
                 continue
             cpus = [l.split(':')[1].strip() for l in open(base + 'status') if l.startswith('Cpus_allowed_list')][0]
+            # /proc stat field 19 is nice; after the ')' of the comm field, fields start at 3, so index 16
             stat = open(base + 'stat').read()
             nice = int(stat[stat.rfind(')') + 2:].split()[16])
         except (OSError, IndexError, ValueError):

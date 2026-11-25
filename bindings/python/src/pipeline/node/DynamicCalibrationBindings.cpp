@@ -30,21 +30,6 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
     // Actual bindings
     ///////////////////////////////////////////////////////////////////////
     dynamicCalibrationThreadPolicy.def(py::init<>())
-        .def(py::init([](std::optional<int32_t> schedulerThreads,
-                         std::optional<int32_t> openCvThreads,
-                         std::optional<int32_t> niceness,
-                         std::optional<std::vector<uint32_t>> cpuAffinity) {
-                 DynamicCalibrationThreadPolicy policy;
-                 policy.schedulerThreads = schedulerThreads;
-                 policy.openCvThreads = openCvThreads;
-                 policy.niceness = niceness;
-                 policy.cpuAffinity = std::move(cpuAffinity);
-                 return policy;
-             }),
-             py::arg("schedulerThreads") = std::nullopt,
-             py::arg("openCvThreads") = std::nullopt,
-             py::arg("niceness") = std::nullopt,
-             py::arg("cpuAffinity") = std::nullopt)
         .def_readwrite("schedulerThreads", &DynamicCalibrationThreadPolicy::schedulerThreads, DOC(dai, DynamicCalibrationThreadPolicy, schedulerThreads))
         .def_readwrite("openCvThreads", &DynamicCalibrationThreadPolicy::openCvThreads, DOC(dai, DynamicCalibrationThreadPolicy, openCvThreads))
         .def_readwrite("niceness", &DynamicCalibrationThreadPolicy::niceness, DOC(dai, DynamicCalibrationThreadPolicy, niceness))
