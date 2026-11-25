@@ -15,12 +15,11 @@
 #include <utility>
 
 #include "depthai/utility/OffsetMemory.hpp"
-#include "utilities/DmaBufMemory.hpp"
 
 namespace dai {
 namespace gate {
 
-class DmaHeapMemory : public OffsetMemory, public DmaBufMemory {
+class DmaHeapMemory : public OffsetMemory {
    public:
     static constexpr const char* kDefaultHeapPath = "/dev/dma_heap/qcom,system";
 
@@ -123,10 +122,6 @@ class DmaHeapMemory : public OffsetMemory, public DmaBufMemory {
 
     int fd() const {
         return allocation->dmaBufFd;
-    }
-
-    int dmaBufFd() const override {
-        return fd();
     }
 
     /** Returns an ownership token shared by all views of this DMA allocation. */

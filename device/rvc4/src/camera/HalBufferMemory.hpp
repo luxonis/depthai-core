@@ -11,14 +11,13 @@
 // project
 #include "camera/CameraPool.hpp"
 #include "depthai/utility/Memory.hpp"
-#include "utilities/DmaBufMemory.hpp"
 #include "utilities/ErrorMacros.hpp"
 
 namespace dai {
 namespace gate {
 
 // memory as interface
-class HalBufferMemory : public Memory, public DmaBufMemory {
+class HalBufferMemory : public Memory {
    public:
     uint64_t size{0};
     uint8_t* data{nullptr};
@@ -66,9 +65,6 @@ class HalBufferMemory : public Memory, public DmaBufMemory {
     }
     void setSize(std::size_t newSize) override {
         fprintf(stderr, "Set size not implemented for HalBufferMemory, ignoring call!!!\n");
-    }
-    int dmaBufFd() const override {
-        return privHnd != nullptr ? privHnd->fd : -1;
     }
 };
 

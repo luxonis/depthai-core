@@ -10,7 +10,6 @@
 #include "depthai/utility/Memory.hpp"
 #include "depthai/utility/SharedMemory.hpp"
 #include "gst/allocators/gstfdmemory.h"
-#include "utilities/DmaBufMemory.hpp"
 
 // libraries
 #include <gstreamer-1.0/gst/allocators/gstdmabuf.h>
@@ -20,7 +19,7 @@ namespace dai {
 namespace gate {
 
 // memory as interface
-class GstBufferMemory : public Memory, public DmaBufMemory {
+class GstBufferMemory : public Memory {
    public:
     GstBuffer* buf = nullptr;
     GstMapInfo map;
@@ -68,10 +67,6 @@ class GstBufferMemory : public Memory, public DmaBufMemory {
     }
     void setSize(std::size_t size) override {
         map.size = size;
-    }
-    // -1 when the mapped memory is not fd memory
-    int dmaBufFd() const override {
-        return map.memory != nullptr ? gst_fd_memory_get_fd(map.memory) : -1;
     }
 };
 
