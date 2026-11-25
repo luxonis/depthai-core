@@ -275,7 +275,7 @@ void ImageAlign::run() {
         calibrationSet = true;
     };
 
-    auto remapNv12 = [&](cv::Mat& inputNV12, cv::Mat& outputNV12, cv::Mat& map_x, cv::Mat& map_y) {
+    auto remapNv12 = [&](const cv::Mat& inputNV12, cv::Mat& outputNV12, const cv::Mat& map_x, const cv::Mat& map_y) {
         cv::Mat bgrFrame;
         cv::cvtColor(inputNV12, bgrFrame, cv::COLOR_YUV2BGR_NV12);
 
@@ -285,7 +285,7 @@ void ImageAlign::run() {
         cv::cvtColor(remappedBGR, outputNV12, cv::COLOR_BGR2YUV_YV12);
     };
 
-    auto remapYuv420 = [&](cv::Mat& inputYUV420, cv::Mat& outputYUV420, cv::Mat& map_x, cv::Mat& map_y) {
+    auto remapYuv420 = [&](const cv::Mat& inputYUV420, cv::Mat& outputYUV420, const cv::Mat& map_x, const cv::Mat& map_y) {
         cv::Mat bgrFrame;
         cv::cvtColor(inputYUV420, bgrFrame, cv::COLOR_YUV2BGR_IYUV);
 
@@ -443,7 +443,7 @@ void ImageAlign::run() {
         }
 
         // warp1
-        auto inputFrame = inputImg->getFrame();
+        const auto inputFrame = inputImg->getFrame();
 
         const bool fusedDepth = inputIsDepth && staticDepthPlane == 0;
         if(fusedDepth) {

@@ -62,6 +62,11 @@ if [ "${PULL_REQUEST}" = "false" ]; then
   CACHE_TO=(--cache-to "type=local,dest=${CACHE_DIR}")
 fi
 
+RVC4_FWP=()
+if [ -f rvc4-fwp/depthai-device-rvc4-fwp.tar.xz ]; then
+  RVC4_FWP=(--build-context rvc4-fwp=rvc4-fwp --build-arg DEPTHAI_DEVICE_RVC4_FWP_PATH=/rvc4-fwp/depthai-device-rvc4-fwp.tar.xz)
+fi
+
 # Check if image exists locally
 if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^${IMAGE_NAME}$"; then
   echo "✅ Local image ${IMAGE_NAME} already exists. Skipping build."
@@ -77,6 +82,7 @@ else
   --build-arg PULL_REQUEST="${PULL_REQUEST}" \
   "${CACHE_FROM[@]}" \
   "${CACHE_TO[@]}" \
+  "${RVC4_FWP[@]}" \
   --load
 fi
 

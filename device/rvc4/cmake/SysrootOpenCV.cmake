@@ -1,0 +1,43 @@
+# Some Yocto SDK sysroots ship an OpenCV CMake export whose imported 3rd-party targets
+# ("correspondence", "multiview", "numeric", used by opencv_sfm) reference archives that are
+# not installed, which makes find_package(OpenCV) fail. Instead of patching the sysroot
+# (which needs root), build a mirror of the OpenCV CMake directory and point OpenCV_DIR at
+# it: symlinks into the sysroot for include/, the OpenCV libraries and the 3rd-party
+# archives, plus copies of the OpenCV*.cmake files. The import blocks of the 3rd-party
+# targets are removed only when their archives are really missing.
+function(depthai_device_fix_sysroot_opencv SYSROOT OUT_DIR)
+    set(src "${SYSROOT}/usr/lib/cmake/opencv4")
+    if(NOT EXISTS "${src}/OpenCVModules-release.cmake")
+        return()
+    endif()
+    file(READ "${src}/OpenCVModules-release.cmake" modules_release)
+    string(FIND "${modules_release}" "Import target \"correspondence\"" pos)
+    if(pos EQUAL -1)
+        return()
+    endif()
+    set(mirror "${OUT_DIR}/usr")
+    file(MAKE_DIRECTORY "${mirror}/lib/cmake/opencv4")
+    if(NOT EXISTS "${mirror}/include")
+        file(CREATE_LINK "${SYSROOT}/usr/include" "${mirror}/include" SYMBOLIC)
+    endif()
+    file(GLOB opencv_libs "${SYSROOT}/usr/lib/libopencv_*")
+    foreach(lib IN LISTS opencv_libs)
+        get_filename_component(name "${lib}" NAME)
+        if(NOT EXISTS "${mirror}/lib/${name}")
+            file(CREATE_LINK "${lib}" "${mirror}/lib/${name}" SYMBOLIC)
+        endif()
+    endforeach()
+    if(EXISTS "${SYSROOT}/usr/lib/opencv4" AND NOT EXISTS "${mirror}/lib/opencv4")
+        file(CREATE_LINK "${SYSROOT}/usr/lib/opencv4" "${mirror}/lib/opencv4" SYMBOLIC)
+    endif()
+    if(NOT EXISTS "${SYSROOT}/usr/lib/opencv4/3rdparty/libcorrespondence.a")
+        string(REGEX REPLACE "# Import target \"correspondence\" for configuration \"Release\".*# Import target \"opencv_stitching\"" "# Import target \"opencv_stitching\"" modules_release "${modules_release}")
+        message(STATUS "OpenCV: the sysroot export references missing 3rd-party archives; their import blocks are removed in the mirror")
+    endif()
+    file(WRITE "${mirror}/lib/cmake/opencv4/OpenCVModules-release.cmake" "${modules_release}")
+    foreach(f OpenCVConfig.cmake OpenCVConfig-version.cmake OpenCVModules.cmake)
+        configure_file("${src}/${f}" "${mirror}/lib/cmake/opencv4/${f}" COPYONLY)
+    endforeach()
+    set(OpenCV_DIR "${mirror}/lib/cmake/opencv4" CACHE PATH "OpenCV CMake directory (patched mirror of the SDK sysroot export)" FORCE)
+    message(STATUS "OpenCV: using the sysroot export mirror at ${OpenCV_DIR}")
+endfunction()

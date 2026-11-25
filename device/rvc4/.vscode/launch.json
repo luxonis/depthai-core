@@ -1,0 +1,84 @@
+{
+    "configurations": [
+        {
+            "name": "Remote debugging (CMake launch target)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": true,
+            "MIMode": "gdb",
+            "miDebuggerServerAddress": "${input:boardIP}:1234",
+            "miDebuggerPath": "${env:GDB}",
+            "miDebuggerArgs": "-symbols ${command:cmake.launchTargetPath}.debug",
+            "targetArchitecture": "arm",
+            "useExtendedRemote": true,
+            "preLaunchTask": "var-deploy-gdb-rvc4",
+            "envFile": "${workspaceFolder}/docker/boardIP",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": false
+                },
+                {
+                    "description": "Set root",
+                    "text": "set sysroot ${env:OECORE_TARGET_SYSROOT}",
+                    "ignoreFailures": false
+                },
+                {
+                    "description": "Set exec file",
+                    "text": "set remote exec-file /home/root/debug_fw/depthai-device",
+                    "ignoreFailures": false
+                }
+            ]
+        },
+        {
+            "name": "Debugging a core dump RVC4",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build_docker_arm64_rvc4/RelWithDebInfo/depthai-device-rvc4",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": true,
+            "MIMode": "gdb",
+            "miDebuggerPath": "${env:GDB}",
+            "miDebuggerArgs": "-symbols ${workspaceFolder}/build_docker_arm64_rvc4/RelWithDebInfo/depthai-device-rvc4.debug",
+            "targetArchitecture": "arm",
+            "coreDumpPath": "${input:coreDumpPath}",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": false
+                },
+                {
+                    "description": "Set root",
+                    "text": "set sysroot ${env:OECORE_TARGET_SYSROOT}",
+                    "ignoreFailures": false
+                },
+            ]
+        },
+    ],
+    "inputs": [
+        {
+            "id": "boardIP",
+            "type": "command",
+            "command": "extension.commandvariable.file.content",
+            "args": {
+                "fileName": "${workspaceFolder}/docker/boardIP",
+                "key": "BOARD_IP"
+            }
+        },
+        {
+            "id": "coreDumpPath",
+            "type": "promptString",
+            "description": "Please enter the path to the core dump."
+        }
+    ]
+}
