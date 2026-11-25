@@ -280,7 +280,6 @@ material and cannot be published:
 * the units of the hardware accelerator (downscale, image pyramid, stereo, warp, feature tracker stages)
 * the direct channel of the sensor hub (IMU and other sensors)
 * the hardware offline JPEG encoder
-* the names of the vendor tags of the camera HAL
 * ST ToF support: the VD55H1 IPP library and the depthmapwrapper
 
 It also has the calibration overrides of some devices (`src/vendor/dai_device_calibration.h`).

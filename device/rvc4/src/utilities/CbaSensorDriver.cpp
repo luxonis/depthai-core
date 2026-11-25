@@ -9,7 +9,7 @@ namespace gate {
 
 namespace {
 
-// Camera board code to camera HAL sensor driver name. The codes are the "C<nn>" fields of the board config in the
+// Camera board code to CamX sensor driver name. The codes are the "C<nn>" fields of the board config in the
 // "OAK EEPROM content" sheet (Board tab) and in depthai-boards-private batch/eeprom/SL0271_P0D1_oak_ffc_v2_*.json.
 constexpr std::array<std::pair<std::string_view, std::string_view>, 8> CBA_SENSOR_DRIVERS{{
     {"C53", "og05b10"},  // OG05B20 colour, OAK-FFC-V2-OG05-C*

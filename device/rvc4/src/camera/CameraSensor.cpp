@@ -539,8 +539,7 @@ void CameraSensor::build(dai::CameraSensorType type) {
             logger->info("Could not get the FSYNC pin for socket " + std::to_string(cameraId) + ". OS probably does not support dynamic fsync pin assignment.");
             logger->info("Falling back to hardcoded FSYNC pin.");
         } else {
-            logger->error("Could not get the FSYNC pin for socket " + std::to_string(cameraId)
-                          + ". Check the camera device tree and the camera HAL configuration.");
+            logger->error("Could not get the FSYNC pin for socket " + std::to_string(cameraId) + ". Check camera device tree and camx camera configuration.");
             logger->warn("Falling back to hardcoded FSYNC pin.");
         }
     }
@@ -866,9 +865,8 @@ void CameraSensor::run() {
     }
     onlyOnce = false;
     // Resolve the ISP route against the whole fleet: manual routes pass
-    // through verbatim, automatic ones get dedicated image front ends, a shared
-    // pool slot, or the Bayer processing stage. The IspAlloc line is stable and
-    // parsed by tests.
+    // through verbatim, automatic ones get dedicated IFEs, a shared pool
+    // slot, or BPS. The IspAlloc line is stable and parsed by tests.
     {
         const auto decision = IspRouteAllocator::getInstance().resolve(static_cast<int>(cameraDescription.camera.socket));
         DAI_CHECK_V(decision.error.empty(),
@@ -991,39 +989,37 @@ void CameraSensor::run() {
     // config.streams = reinterpret_cast<camera3_stream_t**>(mixedStreams);
     config->streams = curStreamsPtrs.data();
     // logger->trace("config->streams[0] = %p\n", config->streams[0]);
-    // The session's frame rate, in every session. The camera HAL runs AF/AE/AWB on one frame in
-    // (session max fps / batch / 30); without this range it takes the sensor mode's max fps instead, e.g. 480 for the
-    // IMX586's 1280x720, so at 120 fps AF ran on one frame in 16. HFR streams also need it, as the override of the
-    // sensor frame duration (DAI_CAMERA_TAG_OVERRIDE_SENSOR_FRAME_DURATION) seems to get ignored there.
+    // The session's frame rate, in every session. CHI runs AF/AE/AWB on one frame in (session max fps / batch / 30);
+    // without this range it takes the sensor mode's max fps instead, e.g. 480 for the IMX586's 1280x720, so at 120 fps
+    // AF ran on one frame in 16. HFR streams also need it, as
+    // org.quic.camera.manualExposure.overrideSensorFrameDuration seems to get ignored there.
     int32_t fpsRange[2] = {static_cast<int32_t>(std::lround(curFps)), static_cast<int32_t>(std::lround(curFps))};
     res = sessionParameters.update(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, fpsRange, 2);
     DAI_CHECK_IN(res == 0);
-    // Without an explicit route, use the normal realtime path through a full
-    // image front end and let the camera stack select the physical one. Shared
-    // front end paths and paths through the Bayer processing stage are opt-in
-    // through CameraProperties.
+    // Without an explicit route, use the normal realtime full-IFE path and let
+    // the camera stack select the physical full IFE. Shared IFE/BPS paths are
+    // opt-in through CameraProperties.
     const auto socket = cameraDescription.camera.socket;
     const bool useRealtimeBPS = explicitIspRoute.has_value() && dai::ispRouteUsesBps(*explicitIspRoute);
     const bool useOfflineIFE =
         explicitIspRoute.has_value() && !useRealtimeBPS && !dai::ispRouteHasDedicatedFullIfe(*explicitIspRoute);
-    // An explicit route value describes either dedicated full image front ends
-    // or the ingress and shared processors used by an offline path or by a path
-    // through the Bayer processing stage.
+    // An explicit route value describes either dedicated full IFEs or the
+    // ingress and shared processors used by an offline/BPS path.
     int32_t enableOfflineIFE{explicitIspRoute.value_or(useOfflineIFE ? 1 : 0)};
     if(explicitIspRoute.has_value()) {
-        logger->info("Explicit ISP route for socket {}: 0x{:08x}, offline {}, Bayer processing {}",
+        logger->info("Explicit ISP route for socket {}: 0x{:08x}, offline {}, BPS {}",
                      static_cast<int>(socket),
                      static_cast<uint32_t>(*explicitIspRoute),
                      useOfflineIFE,
                      useRealtimeBPS);
     }
-    res = sessionParameters.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_OFFLINE_FRONT_END), &enableOfflineIFE, 1);
+    res = sessionParameters.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.sessionParameters.EnableOfflineIFE"), &enableOfflineIFE, 1);
     DAI_CHECK_IN(res == 0);
-    // The camera HAL tag is TYPE_BYTE with sizeof(BOOL) bytes. It both selects
-    // the realtime use case of the Bayer processing stage and enables the stats
-    // and image processing behavior of that stage.
+    // The CHI tag is TYPE_BYTE with sizeof(BOOL) bytes. It both selects the
+    // realtime BPS use case and enables BPS-specific stats/IPE behavior.
     uint8_t cameraRunningOnBPS[sizeof(int32_t)] = {static_cast<uint8_t>(useRealtimeBPS)};
-    res = sessionParameters.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_REALTIME_BAYER_PROCESSING), cameraRunningOnBPS, sizeof(cameraRunningOnBPS));
+    res = sessionParameters.update(
+        HalUtil::getVendorTag("com.qti.chi.bpsrealtimecam.cameraRunningOnBPS"), cameraRunningOnBPS, sizeof(cameraRunningOnBPS));
     DAI_CHECK_IN(res == 0);
     config->session_parameters = sessionParameters.getAndLock();
     res = mDevice->ops->configure_streams(mDevice, config);
@@ -1033,12 +1029,12 @@ void CameraSensor::run() {
     curRequest.frame_number = 0;
     curSettings = rawRequest;
     int64_t frameDuration = std::lround(1.0 / curFps * 1.0e9);
-    // Note this seems to get ignored in HFR streams by the camera HAL, so need to be handled by driver explicitly
+    // Note this seems to get ignored in HFR streams by camx, so need to be handled by driver explicitly
     // or it will get rounded to nearest integer by ANDROID_CONTROL_AE_TARGET_FPS_RANGE above
-    res = curSettings.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_OVERRIDE_SENSOR_FRAME_DURATION), &frameDuration, 1);
+    res = curSettings.update(HalUtil::getVendorTag("org.quic.camera.manualExposure.overrideSensorFrameDuration"), &frameDuration, 1);
     DAI_CHECK_IN(res == 0);
     uint8_t disable{1};
-    res = curSettings.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_DISABLE_FPS_LIMITS), &disable, 1);
+    res = curSettings.update(HalUtil::getVendorTag("org.quic.camera.manualExposure.disableFPSLimits"), &disable, 1);
     DAI_CHECK_IN(res == 0);
     // Disable chroma and luma denoise by default as it causes artifacts
     if(isStereoSensor) {
@@ -1046,7 +1042,7 @@ void CameraSensor::run() {
         auto res = curSettings.update(ANDROID_NOISE_REDUCTION_MODE, &mode, 1);
         DAI_CHECK_IN(res == 0);
         int32_t sharpness = 1;
-        res = curSettings.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_SHARPNESS), &sharpness, 1);
+        res = curSettings.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.sharpness.strength"), &sharpness, 1);
         DAI_CHECK_IN(res == 0);
     }
     applyCameraControl(initialControl);
@@ -1070,7 +1066,7 @@ enum sensor_register_control_command {
 // Map DAI camera attribute value to GStreamer plugin attributes
 #define MAP_VALUE(x, in_min, in_max, out_min, out_max) ((((x) - (in_min)) * ((out_max) - (out_min)) / ((in_max) - (in_min))) + (out_min))
 
-// The camera HAL reads ANDROID_CONTROL_AF_REGIONS and ANDROID_CONTROL_AE_REGIONS in active-array pixels: the full sensor, which is
+// CamX reads ANDROID_CONTROL_AF_REGIONS and ANDROID_CONTROL_AE_REGIONS in active-array pixels: the full sensor, which is
 // also the source of the frames' transformations (ImgTransformation::getSourceSize()). CameraControl regions are given in
 // those pixels, whatever the selected sensor mode, and passed on as they are.
 std::optional<std::pair<int32_t, int32_t>> CameraSensor::readActiveArraySize() const {
@@ -1106,7 +1102,7 @@ uint32_t CameraSensor::readHfrBatchSize(uint32_t width, uint32_t height) const {
 
 // [xmin, ymin, xmax, ymax, weight] for ANDROID_CONTROL_AF_REGIONS or ANDROID_CONTROL_AE_REGIONS, clamped to the active array.
 // `name` is AutoFocus or AutoExposure, as in the CameraControl setter.
-std::array<int32_t, 5> CameraSensor::toHalRegion(const dai::CameraControl::RegionParams& region, const char* name) const {
+std::array<int32_t, 5> CameraSensor::toCamxRegion(const dai::CameraControl::RegionParams& region, const char* name) const {
     constexpr int32_t weight = 1000;  // Max priority; CameraControl does not expose the region priority.
     const int32_t right = region.x + region.width, bottom = region.y + region.height;
     if(!activeArraySize) {
@@ -1163,13 +1159,13 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                         auto res = curSettingsNext.update(ANDROID_CONTROL_AE_MODE, &aeMode, 1);
                         DAI_CHECK_IN(res == 0);
                         const int32_t priority = 0;
-                        res = curSettingsNext.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_ISO_EXPOSURE_PRIORITY_SELECT), &priority, 1);
+                        res = curSettingsNext.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.iso_exp_priority.select_priority"), &priority, 1);
                         DAI_CHECK_IN(res == 0);
                         const int32_t isoValue = control.expManual.sensitivityIso;
-                        res = curSettingsNext.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_ISO_VALUE), &isoValue, 1);
+                        res = curSettingsNext.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.iso_exp_priority.use_iso_value"), &isoValue, 1);
                         DAI_CHECK_IN(res == 0);
                         const int64_t isoMode{8};  // manual iso mode
-                        res = curSettingsNext.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_ISO_EXPOSURE_PRIORITY), &isoMode, 1);
+                        res = curSettingsNext.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.iso_exp_priority.use_iso_exp_priority"), &isoMode, 1);
                         DAI_CHECK_IN(res == 0);
                         const int64_t exposureTime = control.expManual.exposureTimeUs * 1000ull;
                         res = curSettingsNext.update(ANDROID_SENSOR_EXPOSURE_TIME, &exposureTime, 1);
@@ -1180,10 +1176,10 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                         auto res = curSettingsNext.update(ANDROID_CONTROL_AE_MODE, &aeMode, 1);
                         DAI_CHECK_IN(res == 0);
                         const int32_t priority = 0;
-                        res = curSettingsNext.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_ISO_EXPOSURE_PRIORITY_SELECT), &priority, 1);
+                        res = curSettingsNext.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.iso_exp_priority.select_priority"), &priority, 1);
                         DAI_CHECK_IN(res == 0);
                         const int64_t isoMode{0};  // auto iso mode
-                        res = curSettingsNext.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_ISO_EXPOSURE_PRIORITY), &isoMode, 1);
+                        res = curSettingsNext.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.iso_exp_priority.use_iso_exp_priority"), &isoMode, 1);
                         DAI_CHECK_IN(res == 0);
                     } break;
                     case dai::CameraControl::Command::AE_LOCK: {
@@ -1194,9 +1190,10 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                     case dai::CameraControl::Command::AE_REGION: {
                         // (2): spot - The camera exposure metering is calculated from a chosen spot
                         int32_t exposureMeteringMode{2};
-                        auto res = curSettingsNext.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_EXPOSURE_METERING_MODE), &exposureMeteringMode, 1);
+                        auto res = curSettingsNext.update(
+                            HalUtil::getVendorTag("org.codeaurora.qcamera3.exposure_metering.exposure_metering_mode"), &exposureMeteringMode, 1);
 
-                        const auto controlAeRegions = toHalRegion(control.aeRegion, "AutoExposure");
+                        const auto controlAeRegions = toCamxRegion(control.aeRegion, "AutoExposure");
                         auto status = curSettingsNext.update(ANDROID_CONTROL_AE_REGIONS, controlAeRegions.data(), controlAeRegions.size());
                         if(status != 0) {
                             logger->error("Camera[{}] could not set ANDROID_CONTROL_AE_REGIONS", cameraId);
@@ -1228,11 +1225,11 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                         // Manual white balance mode of the camera HAL: 0: disable, 1: CCT, 2: gains.
                         // The camera HAL applies it as a partial override of the auto white balance.
                         int32_t awbMode = 1;
-                        curSettingsNext.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_MANUAL_WB_MODE), &awbMode, 1);
+                        curSettingsNext.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.manualWB.partial_mwb_mode"), &awbMode, 1);
                         uint8_t awbOff = ANDROID_CONTROL_AWB_MODE_OFF;
                         curSettingsNext.update(ANDROID_CONTROL_AWB_MODE, &awbOff, 1);
                         const int32_t correlatedColorTemperature = control.wbColorTemp;
-                        curSettingsNext.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_MANUAL_WB_COLOR_TEMPERATURE), &correlatedColorTemperature, 1);
+                        curSettingsNext.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.manualWB.color_temperature"), &correlatedColorTemperature, 1);
                     } break;
                     case dai::CameraControl::Command::AWB_MODE: {
                         static const std::vector<uint8_t> whiteBalanceModes = {
@@ -1249,7 +1246,7 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                         int idx = (int)control.awbMode;
                         DAI_CHECK(idx >= 0 && idx < whiteBalanceModes.size(), "Wrong AWB_MODE");
                         int32_t awbMode = 0;
-                        curSettingsNext.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_MANUAL_WB_MODE), &awbMode, 1);
+                        curSettingsNext.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.manualWB.partial_mwb_mode"), &awbMode, 1);
                         uint8_t mode = whiteBalanceModes[idx];
                         auto res = curSettingsNext.update(ANDROID_CONTROL_AWB_MODE, &mode, 1);
                         DAI_CHECK_IN(res == 0);
@@ -1293,7 +1290,7 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                     case dai::CameraControl::Command::CONTRAST: {
                         // Range: 1 - 10 Default: 5
                         const int32_t contrast = MAP_VALUE(control.contrast, -10, 10, 1, 10);
-                        auto res = curSettingsNext.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_CONTRAST), &contrast, 1);
+                        auto res = curSettingsNext.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.contrast.level"), &contrast, 1);
                         DAI_CHECK_IN(res == 0);
                     } break;
                     case dai::CameraControl::Command::AF_TRIGGER: {
@@ -1305,7 +1302,7 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                     case dai::CameraControl::Command::AF_REGION: {
                         // Do not touch AF MODE. It is applicable to all modes except when set to OFF
 
-                        const auto controlAfRegions = toHalRegion(control.afRegion, "AutoFocus");
+                        const auto controlAfRegions = toCamxRegion(control.afRegion, "AutoFocus");
                         auto res = curSettingsNext.update(ANDROID_CONTROL_AF_REGIONS, controlAfRegions.data(), controlAfRegions.size());
                         DAI_CHECK_IN(res == 0);
                     } break;
@@ -1356,14 +1353,14 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                     case dai::CameraControl::Command::SHARPNESS: {
                         // Range: 0 - 6 Default: 2
                         int32_t sharpness = MAP_VALUE(control.sharpness, 0, 4, 0, 6);
-                        auto res = curSettingsNext.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_SHARPNESS), &sharpness, 1);
+                        auto res = curSettingsNext.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.sharpness.strength"), &sharpness, 1);
                         DAI_CHECK_IN(res == 0);
                     } break;
 
                     case dai::CameraControl::Command::SATURATION: {
                         // Range: 0 - 10 Default: 5
                         int32_t saturation = MAP_VALUE(control.saturation, -10, 10, 0, 10);
-                        auto res = curSettingsNext.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_SATURATION), &saturation, 1);
+                        auto res = curSettingsNext.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.saturation.use_saturation"), &saturation, 1);
                         DAI_CHECK_IN(res == 0);
                     } break;
 
@@ -1440,13 +1437,15 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
 
                     case dai::CameraControl::Command::AE_TARGET_FPS_RANGE: {
                         int64_t exposureTimeLimit = control.aeMaxExposureTimeUs * 1000;
-                        auto res = curSettingsNext.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_EXPOSURE_TIME_LIMIT), &exposureTimeLimit, 1);
+                        auto res = curSettingsNext.update(
+                            HalUtil::getVendorTag("org.codeaurora.qcamera3.exposureEVSimulation.previewExposureTimeLimit"), &exposureTimeLimit, 1);
                         DAI_CHECK_IN(res == 0);
                     } break;
                     
                     case dai::CameraControl::Command::AE_MAX_ISO: {
                         int32_t previewISOLimit[2] = {0, control.aeMaxISO};
-                        auto res = curSettingsNext.update(HalUtil::getCameraTag(DAI_CAMERA_TAG_ISO_LIMIT), previewISOLimit, 2);
+                        auto res = curSettingsNext.update(
+                            HalUtil::getVendorTag("org.codeaurora.qcamera3.exposureEVSimulation.previewISOLimit"), previewISOLimit, 2);
                         DAI_CHECK_IN(res == 0);
                     } break;
 
@@ -1587,24 +1586,27 @@ void CameraSensor::processCaptureResult(const camera3_capture_result_t* result) 
                 }
             }
             int32_t correlatedColorTemperature{0};
-            if(!HalUtil::getMetaInt32(result->result, HalUtil::getCameraTag(DAI_CAMERA_TAG_AWB_COLOR_TEMPERATURE), correlatedColorTemperature)) {
+            if(!HalUtil::getMetaInt32(result->result, HalUtil::getVendorTag("org.quic.camera2.statsconfigs.AWBFrameControlCCT"), correlatedColorTemperature)) {
                 correlatedColorTemperature = static_cast<int32_t>(std::round(NEUTRAL_KELVINS));
                 if(warnMissing) {
                     logger->trace(
-                        "seqNum: {}, Couldn't find the AWB color temperature meta on frame meta. "
+                        "seqNum: {}, Couldn't find org.quic.camera2.statsconfigs.AWBFrameControlCCT meta on frame meta. "
                         "Setting correlatedColorTemperature to {}.",
                         result->frame_number,
                         correlatedColorTemperature);
                 }
             }
             std::optional<float> sensorTemperatureC = std::nullopt;
-            static const auto sensorTemperatureTag = HalUtil::tryGetCameraTag(DAI_CAMERA_TAG_SENSOR_READOUT);
+            static const auto sensorTemperatureTag =
+                HalUtil::tryGetVendorTag("org.codeaurora.qcamera3.sensorreadoutput.SensorReadOutput");
             if(sensorTemperatureTag.has_value()) {
                 float sensorTemperature = 0.0f;
                 if(HalUtil::getMetaSensorTemperature(result->result, *sensorTemperatureTag, sensorTemperature)) {
                     sensorTemperatureC = sensorTemperature;
                 } else if(warnMissing) {
-                    logger->trace("seqNum: {}, Couldn't find the sensor readout meta on frame meta.", result->frame_number);
+                    logger->trace(
+                        "seqNum: {}, Couldn't find org.codeaurora.qcamera3.sensorreadoutput.SensorReadOutput meta on frame meta.",
+                        result->frame_number);
                 }
             }
 #ifndef DEBUG_DISABLE_META
