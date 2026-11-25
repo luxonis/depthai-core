@@ -108,7 +108,7 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
      * Nonzero pixels identify each source's seam region, or the pixels retained after direct copying in input order.
      * Linked outputs emit once when the composition is prepared, and again after it is reset. Available on the host
      * in PANORAMA mode with input calibration. Link to ImgDetectionsFilter.inputSourceMasks using the detection key
-     * for the corresponding camera. Multiband blending can mix sources near seams beyond these regions.
+     * for the corresponding camera. Blending can mix sources in a narrow band around the seams, beyond these regions.
      */
     OutputMap outSourceMasks{*this, "outSourceMasks", {DEFAULT_NAME, DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
@@ -216,8 +216,8 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
      * is ignored, so all camera centers are treated as coincident. Cylindrical panoramas use the normalized mean input
      * camera Y axis as the cylinder axis. When enabled, panorama composition starts from the first synchronized group
      * without feature matching or bundle adjustment. With `SeamFinder::NONE`, warped inputs are copied in order and
-     * later inputs replace earlier ones in overlapping regions. Other seam finders enable seam estimation, exposure
-     * compensation, and multiband blending. The prepared composition is reused for subsequent groups. Only undistorted
+     * later inputs replace earlier ones in overlapping regions. Other seam finders enable seam estimation, per-channel
+     * exposure gains, and feathered blending across the seams. The prepared composition is reused for subsequent groups. Only undistorted
      * inputs are accepted. Only used in `Mode::PANORAMA`.
      */
     void setUseInputCalibration(bool useInputCalibration);
@@ -267,7 +267,7 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
 
     /**
      * Set the panorama seam finder. In calibrated panorama mode, `NONE` selects direct composition; other values also
-     * enable exposure compensation and multiband blending.
+     * enable per-channel exposure gains and feathered blending across the seams.
      */
     void setSeamFinder(SeamFinder finder);
     SeamFinder getSeamFinder() const;

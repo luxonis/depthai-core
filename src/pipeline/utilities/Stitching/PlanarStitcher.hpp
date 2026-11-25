@@ -2,10 +2,10 @@
 
 #include <cstdint>
 #include <opencv2/core.hpp>
-#include <opencv2/stitching/detail/exposure_compensate.hpp>
 #include <optional>
 #include <vector>
 
+#include "FixedBlender.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/node/Stitching.hpp"
 
@@ -88,13 +88,11 @@ class PlanarStitcher {
     struct Source {
         /// Index of the input among all the inputs `prepare()` was called with.
         size_t index = 0;
-        /// Fixed point maps of `roi`, sampling the input image, as produced by cv::convertMaps.
+        /// Fixed point maps of `roi`, sampling the input image, as produced by cv::convertMaps; handed to the blender.
         cv::Mat map1;
         cv::Mat map2;
         /// Pixels of `roi` this input contributes to.
         cv::Mat mask;
-        /// Pixels of `roi` left to this input after seam estimation.
-        cv::Mat seamMask;
         /// Region of the rendered image the input covers.
         cv::Rect roi;
         /// Size of the input image the maps were built for.
@@ -110,7 +108,7 @@ class PlanarStitcher {
     /// Compute a view covering the intersections of all the fields of view with the plane.
     Stitching::VirtualCamera computeView(const std::vector<ImgTransformation>& transformations, const std::vector<SourcePose>& poses) const;
 
-    /// Estimate the exposure gains and the seams, once, from the first group.
+    /// Estimate the exposure gains, the seams and the blending weights, once, from the first group, and hand the maps to the blender.
     void prepareCompositing(const std::vector<cv::Mat>& warped);
 
     Config config;
@@ -126,7 +124,7 @@ class PlanarStitcher {
     cv::Vec3d planePoint;
     cv::Vec3d planeNormal;
     std::vector<Source> sources;
-    cv::Ptr<cv::detail::ExposureCompensator> compensator;
+    FixedBlender blender;
 };
 
 }  // namespace utilities
