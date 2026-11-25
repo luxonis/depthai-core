@@ -233,6 +233,16 @@ The library (and a Python wheel that you build from it) then contains your firmw
 variable. The version of the embedded firmware is `<version>+local.<hash of the package>`. A new package changes
 the version and the host library is compiled again, so use the environment variable while you iterate.
 
+## Experimental B-spline stereo rectification
+
+`StereoDepth.setRectificationModel(BSPLINE)` rectifies with a cubic B-spline lens model instead of the OpenCV model.
+The factory fits the model on the host (production-tools, mrcal) and the firmware stores it in
+`/data/calibration/bspline-{user,factory}.cbor`, separately from the EEPROM calibration. `StereoDepth::initCalib()`
+builds the rectification mesh from it once, at startup and on calibration updates, and reuses it for every frame.
+`LEGACY` (also the `AUTO` default) keeps the OpenCV calibration, even when a B-spline calibration is stored.
+Initial support: native 1280x800 horizontal stereo, rectified-left/right alignment. Missing or invalid B-spline data
+fails with an error.
+
 ## Testing
 
 The on-device tests of `depthai-core` (`tests/` at the repository root, label `rvc4`) run against a firmware

@@ -362,7 +362,8 @@ std::function<std::tuple<bool, std::string>(std::optional<std::vector<dai::Multi
 std::function<std::tuple<bool, std::string>(dai::EepromData, bool, bool, dai::CameraBoardSocket)> storeToEeprom =
     [](dai::EepromData localEepromData, bool factoryPermissions, bool protectedPermissions, dai::CameraBoardSocket skt) -> std::tuple<bool, std::string> {
     pipelineBuilder.getSystemLogger()->info("Store to EEPROM");
-    eeprom_status res = eeprom_store_config(localEepromData, EEPROM_AREA_USER, factoryPermissions, protectedPermissions, skt);
+    std::string storageError;
+    eeprom_status res = eeprom_store_config(localEepromData, EEPROM_AREA_USER, factoryPermissions, protectedPermissions, skt, &storageError);
     if(res == EEPROM_NO_PROTECTED_PERMISSIONS) {
         return {false, "No PROTECTED permissions to override protected EEPROM fields"};
     }
@@ -379,7 +380,9 @@ std::function<std::tuple<bool, std::string>(dai::EepromData, bool, bool, dai::Ca
         return {true, ""};
     } else {
         pipelineBuilder.getSystemLogger()->warn("Setting EEPROM data unsuccesfull, return code: {}", eeprom_status_to_str(res));
-        return {false, "Error flashing calibration to USER area, error: " + std::string(eeprom_status_to_str(res))};
+        return {
+            false,
+            "Error flashing calibration to USER area, error: " + std::string(eeprom_status_to_str(res)) + (storageError.empty() ? "" : ": " + storageError)};
     }
 };
 
@@ -387,7 +390,8 @@ std::function<std::tuple<bool, std::string>(dai::EepromData, bool, bool, dai::Ca
     [](dai::EepromData localEepromData, bool factoryPermissions, bool protectedPermissions, dai::CameraBoardSocket skt) -> std::tuple<bool, std::string> {
     pipelineBuilder.getSystemLogger()->info("Storing factory eeprom data");
 
-    eeprom_status res = eeprom_store_config(localEepromData, EEPROM_AREA_FACTORY, factoryPermissions, protectedPermissions, skt);
+    std::string storageError;
+    eeprom_status res = eeprom_store_config(localEepromData, EEPROM_AREA_FACTORY, factoryPermissions, protectedPermissions, skt, &storageError);
     if(res == EEPROM_OK) {
         return {true, ""};
     } else if(res == EEPROM_NO_PROTECTED_PERMISSIONS) {
@@ -395,7 +399,9 @@ std::function<std::tuple<bool, std::string>(dai::EepromData, bool, bool, dai::Ca
     } else if(res == EEPROM_NO_FACTORY_PERMISSIONS) {
         return {false, "No FACTORY permissions to flash FACTORY area"};
     } else {
-        return {false, "Error flashing calibration to FACTORY area, error: " + std::string(eeprom_status_to_str(res))};
+        return {
+            false,
+            "Error flashing calibration to FACTORY area, error: " + std::string(eeprom_status_to_str(res)) + (storageError.empty() ? "" : ": " + storageError)};
     }
 };
 

@@ -207,7 +207,8 @@ eeprom_status eeprom_store_config(dai::EepromData& board_data_config,
                                   eeprom_area area,
                                   bool factory_permissions,
                                   bool protected_permissions,
-                                  dai::CameraBoardSocket camSocket = dai::CameraBoardSocket::AUTO);
+                                  dai::CameraBoardSocket camSocket = dai::CameraBoardSocket::AUTO,
+                                  std::string* errorDetail = nullptr);
 eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area area, dai::CameraBoardSocket camSocket = dai::CameraBoardSocket::AUTO);
 std::tuple<bool, std::string> eeprom_factory_reset(dai::CameraBoardSocket camSocket = dai::CameraBoardSocket::AUTO);
 const char* eeprom_status_to_str(eeprom_status status);

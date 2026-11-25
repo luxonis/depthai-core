@@ -99,7 +99,7 @@ class StereoDepth : public dai::node::StereoDepth {
 
     void initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, const std::shared_ptr<const dai::ImgFrame>& rightIn);
     void setFixedNumerator(dai::ImgTransformation& alignedTransformation, dai::ImgTransformation& nonAlignedTransformation);
-    void setRectifiedTransformations(dai::ImgTransformation& transformation, const cv::Mat& cv_R, const cv::Mat& cv_KRect) const;
+    void setRectifiedTransformations(dai::ImgTransformation& transformation, const cv::Mat& cv_R, const cv::Mat& cv_KRect, dai::CameraBoardSocket socket) const;
 
     std::vector<double> leftRawGridX, leftRawGridY;
     std::vector<double> rightRawGridX, rightRawGridY;
@@ -150,6 +150,7 @@ class StereoDepth : public dai::node::StereoDepth {
     dai::LockingQueue<DescriptorOut> descriptorOut;
     dai::LockingQueue<StereoOut> stereoOut;
 
+    std::optional<dai::BsplineStereoCalibration> activeSplineCalibration;
     template <typename T>
     void combineLevels(T* reference, T* downScaled, T* out, uint32_t referenceWidth, uint32_t numDisparities = 64);
     void combineDispMaps(std::shared_ptr<dai::ImgFrame>& disparityFrame,

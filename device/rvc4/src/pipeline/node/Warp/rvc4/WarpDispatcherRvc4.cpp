@@ -1,5 +1,7 @@
 #include "pipeline/node/Warp/rvc4/WarpDispatcherRvc4.hpp"
 
+#include <cstring>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -108,19 +110,32 @@ void WarpDispatcher::SetWarpMesh(cv::Mat mesh_x, cv::Mat mesh_y, size_t inputInd
 }
 
 void WarpDispatcher::ParseMeshResourceData(std::vector<uint8_t>& data, int width, int height, std::vector<double>& rawGridX, std::vector<double>& rawGridY) {
-    // Align stride to 16B
-    constexpr auto ALIGNMENT = 16;
-    size_t meshStride = ((size_t)((sizeof(float) * 2 * width)) + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1);
+    if(width <= 0 || height <= 0) {
+        throw std::runtime_error("Mesh dimensions must be positive");
+    }
+    // Rows of (y, x) float pairs: tightly packed (StereoDepth mesh files) or padded to 16 bytes (Warp::setWarpMesh)
+    constexpr size_t ALIGNMENT = 16;
+    const size_t packedStride = static_cast<size_t>(width) * sizeof(float) * 2;
+    const size_t alignedStride = (packedStride + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1);
+    if(static_cast<size_t>(height) > std::numeric_limits<size_t>::max() / alignedStride) {
+        throw std::runtime_error("Mesh dimensions overflow the resource size");
+    }
+    size_t meshStride = 0;
+    if(data.size() == packedStride * static_cast<size_t>(height)) {
+        meshStride = packedStride;
+    } else if(data.size() == alignedStride * static_cast<size_t>(height)) {
+        meshStride = alignedStride;
+    } else {
+        throw std::runtime_error("Mesh resource size does not match its dimensions");
+    }
 
     for(int i = 0; i < height; i++) {
         for(int j = 0; j < width; j++) {
-            // get output offset
-            size_t outputMeshOffset = (meshStride * i) + (j * sizeof(float) * 2);
-            auto& point = reinterpret_cast<std::pair<float, float>&>(data.data()[outputMeshOffset]);
-
+            float point[2];
+            std::memcpy(point, data.data() + meshStride * i + j * sizeof(point), sizeof(point));
             // these are reversed
-            rawGridX.push_back(point.second);
-            rawGridY.push_back(point.first);
+            rawGridX.push_back(point[1]);
+            rawGridY.push_back(point[0]);
         }
     }
 }
