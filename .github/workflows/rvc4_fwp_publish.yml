@@ -1,0 +1,37 @@
+name: RVC4 firmware package publish
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+      - main
+      - 'release*'
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  rvc4:
+    uses: ./.github/workflows/rvc4_fwp.yml
+    secrets: inherit
+
+  rvc4-asan-ubsan:
+    uses: ./.github/workflows/rvc4_fwp.yml
+    with:
+      target: rvc4-asan-ubsan
+    secrets: inherit
+
+  check:
+    needs: [rvc4, rvc4-asan-ubsan]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check that Artifact Keeper has both packages of this commit
+        run: |
+          version=$(ci/device-rvc4-fwp-ak.sh version .)
+          for target in rvc4 rvc4-asan-ubsan; do
+            ci/device-rvc4-fwp-ak.sh download "$version" "$target" "$RUNNER_TEMP/$target"
+          done

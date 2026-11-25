@@ -1,0 +1,9 @@
+[
+  {
+    "name": "rvc4",
+    "environmentSetupScript": "",
+    "environmentVariables": {
+      "TEST_VAR": "rvc4"
+    }
+  }
+]

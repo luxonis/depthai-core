@@ -1,0 +1,9 @@
+# Development image: the Luxonis OS RVC4 SDK image plus the build tools that docker/build.sh installs.
+#
+# DEPTHAI_DEVICE_SDK_IMAGE: the Luxonis OS SDK image. The public build images cannot run this dev container yet:
+# they have no sudo, no SDK environment script and no debugger. docker-compose.yml passes the value from .env
+# (written by createEnv.sh).
+ARG DEPTHAI_DEVICE_SDK_IMAGE
+FROM ${DEPTHAI_DEVICE_SDK_IMAGE}
+
+RUN sudo apt update && sudo apt install -y ninja-build ccache curl zip unzip tar

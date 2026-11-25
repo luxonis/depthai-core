@@ -125,5 +125,29 @@ void bind_systeminformationRVC4(pybind11::module& m, void* pCallstack) {
         .def_property(
             "chipTemperature",
             [](SystemInformationRVC4& i) -> ChipTemperatureRVC4& { return i.chipTemperature; },
-            [](SystemInformationRVC4& i, ChipTemperatureRVC4 val) { i.chipTemperature = val; });
+            [](SystemInformationRVC4& i, ChipTemperatureRVC4 val) { i.chipTemperature = val; })
+        .def_readwrite("gpuUtilizationPercent",
+                       &SystemInformationRVC4::gpuUtilizationPercent,
+                       "Whole-GPU utilization percentage from the vendor sampling window; -1 when unavailable.")
+        .def_readwrite("dspHvxActivityPercent",
+                       &SystemInformationRVC4::dspHvxActivityPercent,
+                       "DSP HVX activity percentage from the vendor sampling window; it is not awake residency or total NPU utilization; -1 when unavailable.")
+        .def_readwrite("dspHmxActivityPercent",
+                       &SystemInformationRVC4::dspHmxActivityPercent,
+                       "DSP HMX activity percentage from the vendor sampling window; it is not awake residency or total NPU utilization; -1 when unavailable.")
+        .def_readwrite("dspQ6LoadKcps",
+                       &SystemInformationRVC4::dspQ6LoadKcps,
+                       "DSP Q6 load in KCPS from the vendor sampling window; it is not awake residency or total NPU utilization; -1 when unavailable.")
+        .def_readwrite("powerSystemWatts",
+                       &SystemInformationRVC4::powerSystemWatts,
+                       "vdd_5v0 system rail in watts, converted from microwatts. Rails are independent readings, not additive; -1 when unavailable.")
+        .def_readwrite("powerProcessorWatts",
+                       &SystemInformationRVC4::powerProcessorWatts,
+                       "vdd_3v9 processor rail in watts, converted from microwatts. Rails are independent readings, not additive; -1 when unavailable.")
+        .def_readwrite("powerPoeWatts",
+                       &SystemInformationRVC4::powerPoeWatts,
+                       "PoE power rail in watts, converted from microwatts. Rails are independent readings, not additive; -1 when unavailable.")
+        .def_readwrite("powerTofWatts",
+                       &SystemInformationRVC4::powerTofWatts,
+                       "ToF power rail in watts, converted from microwatts. Rails are independent readings, not additive; -1 when unavailable.");
 }
