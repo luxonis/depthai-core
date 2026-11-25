@@ -199,7 +199,7 @@ TEST_CASE("AutoCalibration runs on the host by default and its DynamicCalibratio
     REQUIRE(node->runOnHost());
     REQUIRE(Access::dynamicCalibrationRunsOnHost(*node));
 
-    // Without a device the platform is checked when the pipeline is built.
+    // Without a device the DynamicCalibration subnode checks the platform when the pipeline is built.
     node->setRunOnHost(false);
     REQUIRE_FALSE(node->runOnHost());
     REQUIRE_FALSE(Access::dynamicCalibrationRunsOnHost(*node));

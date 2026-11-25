@@ -357,7 +357,8 @@ void AutoCalibration::postBuildStage() {
 }
 
 void AutoCalibration::discardQueuedFrames() {
-    // Drop frames that passed the gate before it closed. Inside the firmware DynamicCalibration does this on ResetData.
+    // Drop frames that passed the gate before it closed. Inside the firmware the next ResetData does this, so after
+    // loadData() one frame can carry over into the recalibration that follows.
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
 #endif

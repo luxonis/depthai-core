@@ -47,6 +47,8 @@ namespace node {
  * when the node is used internally by AutoCalibration.
  */
 class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration, DynamicCalibrationProperties>, public HostRunnable {
+    friend struct DynamicCalibrationTestAccess;
+
    public:
     constexpr static const char* NAME = "DynamicCalibration";
 
