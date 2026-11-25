@@ -56,9 +56,9 @@ class BsplineCalibrationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             dai.CalibrationHandler().setBsplineCameraCalibration(dai.CameraBoardSocket.CAM_B, lens)
 
-    def test_auto_retains_legacy_semantics(self):
+    def test_legacy_is_the_default(self):
         models = dai.node.StereoDepth.RectificationModel
-        self.assertEqual(models.AUTO, models.LEGACY)
+        self.assertEqual(dai.StereoDepthProperties().rectificationModel, models.LEGACY)
         self.assertNotEqual(models.BSPLINE, models.LEGACY)
 
 

@@ -30,7 +30,6 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     py::enum_<StereoDepth::RectificationModel>(stereoDepth, "RectificationModel")
-        .value("AUTO", StereoDepth::RectificationModel::AUTO)
         .value("LEGACY", StereoDepth::RectificationModel::LEGACY)
         .value("BSPLINE", StereoDepth::RectificationModel::BSPLINE);
     // Properties
@@ -42,7 +41,8 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
         .def_readwrite("stepWidth", &StereoDepthProperties::RectificationMesh::stepWidth, DOC(dai, StereoDepthProperties, RectificationMesh, stepWidth))
         .def_readwrite("stepHeight", &StereoDepthProperties::RectificationMesh::stepHeight, DOC(dai, StereoDepthProperties, RectificationMesh, stepHeight));
 
-    stereoDepthProperties.def(py::init<>()).def_readwrite("rectificationModel", &StereoDepthProperties::rectificationModel);
+    stereoDepthProperties.def(py::init<>())
+        .def_readwrite("rectificationModel", &StereoDepthProperties::rectificationModel, DOC(dai, StereoDepthProperties, rectificationModel));
 
     stereoDepthProperties.def_readwrite("enableFrameSync", &dai::StereoDepthProperties::enableFrameSync, DOC(dai, StereoDepthProperties, enableFrameSync))
         .def_readwrite("initialConfig", &StereoDepthProperties::initialConfig, DOC(dai, StereoDepthProperties, initialConfig))

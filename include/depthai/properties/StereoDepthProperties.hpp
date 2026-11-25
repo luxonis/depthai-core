@@ -195,11 +195,11 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      */
     std::optional<float> alphaScaling;
 
+    enum class RectificationModel { LEGACY = 0, BSPLINE = 1 };
     /**
-     * Lens model used for rectification. AUTO keeps legacy rectification, even when a B-spline calibration is stored.
+     * Lens model used for rectification. LEGACY keeps legacy rectification, even when a B-spline calibration is stored.
      */
-    enum class RectificationModel { AUTO = 0, LEGACY = AUTO, BSPLINE = 1 };
-    RectificationModel rectificationModel = RectificationModel::AUTO;
+    RectificationModel rectificationModel = RectificationModel::LEGACY;
 
     ~StereoDepthProperties() override;
 };

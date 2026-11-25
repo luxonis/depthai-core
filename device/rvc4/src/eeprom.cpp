@@ -316,9 +316,7 @@ void storeBsplineCalibration(eeprom_area area, const dai::device::BsplineCalibra
     if(!ok) throw std::runtime_error(message);
     dai::device::BsplineCalibrationStore{}.store(area == EEPROM_AREA_FACTORY, legacy, lenses, dai::gate::getSerialNumber());
 }
-}  // namespace
 
-namespace {
 // A write must stay within one page, otherwise it wraps to the start of that page
 constexpr size_t I2C_EEPROM_PAGE_SIZE = 32;
 // The CCI I2C bridge carries at most 11 bytes per write: the 2-byte memory address plus 9 data bytes
@@ -538,33 +536,6 @@ eeprom_status eeprom_store_config(dai::EepromData& board_data_config,
         }
     }
 
-    if(camSocket == dai::CameraBoardSocket::AUTO) {
-        dai::EepromData previous;
-        if(eeprom_load_config(previous, area, camSocket) == EEPROM_OK
-           && (!board_data_config.bsplineCameraData.empty() || !previous.bsplineCameraData.empty())) {
-            auto legacyFields = [](const dai::EepromData& data) {
-                nlohmann::json value = data;
-                value.erase("bsplineCameraData");
-                // Noise parameters are supplied by the detected IMU model,
-                // not stored in the legacy area. Camera map order is immaterial.
-                value["imuCalibrationParams"]["noise"] = nullptr;
-                auto& cameras = value["cameraData"];
-                std::sort(cameras.begin(), cameras.end(), [](const auto& a, const auto& b) { return a[0] < b[0]; });
-                return value;
-            };
-            // Only the B-spline calibration changed: keep the EEPROM as it is
-            if(legacyFields(previous) == legacyFields(board_data_config)) {
-                try {
-                    storeBsplineCalibration(area, board_data_config.bsplineCameraData);
-                    return EEPROM_OK;
-                } catch(const std::exception& ex) {
-                    if(errorDetail) *errorDetail = ex.what();
-                    return EEPROM_ERROR;
-                }
-            }
-        }
-    }
-
     auto matrix_to_1D = [](std::vector<std::vector<float>>& src, void* dest_unaligned) {
         float dest[3 * 3];
         for(int j = 0; j < 3; j++) {
@@ -754,14 +725,12 @@ eeprom_status eeprom_store_config(dai::EepromData& board_data_config,
                            area,
                            camSocket);
         if(ret != EEPROM_OK) {
-            if(errorDetail) *errorDetail = std::string("Legacy camera data write: ") + std::strerror(errno);
             return ret;
         }
 
         // Store the IMU calibration data
         ret = eeprom_store(&board_data.imu, sizeof(board_data.imu.params), offsetof(gen2_eeprom_data, imu), area, camSocket);
         if(ret != EEPROM_OK) {
-            if(errorDetail) *errorDetail = std::string("Legacy IMU data write: ") + std::strerror(errno);
             return ret;
         }
 
@@ -769,7 +738,6 @@ eeprom_status eeprom_store_config(dai::EepromData& board_data_config,
         if(version == EEPROM_VERSION_V7) {
             ret = eeprom_store(&ex_data, sizeof(ex_data), sizeof(board_data), area, camSocket);
             if(ret != 0) {
-                if(errorDetail) *errorDetail = std::string("Legacy board data write: ") + std::strerror(errno);
                 return ret;
             }
         }
@@ -1203,7 +1171,7 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
     if(camSocket == dai::CameraBoardSocket::AUTO) {
         try {
             auto [ok, message, legacy] = eeprom_read_raw(area, camSocket);
-            if(!ok) return EEPROM_ERROR;
+            if(!ok) throw std::runtime_error(message);
             board_data_config.bsplineCameraData =
                 dai::device::BsplineCalibrationStore{}.load(area == EEPROM_AREA_FACTORY, legacy, dai::gate::getSerialNumber());
         } catch(const std::exception& ex) {

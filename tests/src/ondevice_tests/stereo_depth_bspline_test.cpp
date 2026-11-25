@@ -6,6 +6,7 @@
  * squares at known disparities and check depth, position and size of each square. The calibration exists only
  * in the pipeline: nothing is written to the device. Run with the Catch2 filter [bspline] on an RVC4 device.
  */
+#include <algorithm>
 #include <array>
 #include <catch2/catch_all.hpp>
 #include <chrono>
@@ -30,6 +31,7 @@ constexpr float BASELINE_CM = 7.5f;
 constexpr int NX = 20, NY = 12;
 constexpr double FOV_X_DEG = 106.0;
 constexpr int BACKGROUND_DISPARITY = 8;
+constexpr double PI = 3.14159265358979323846;
 
 struct Square {
     int x, y, side, disparity;
@@ -54,7 +56,7 @@ dai::CalibrationHandler pinholeCalibration() {
 
 /** Least-squares spline whose projection equals the pinhole camera: linear in the control points for a fixed core. */
 dai::BsplineCameraCalibration pinholeSpline() {
-    const double density = (NX - 3) / (4 * std::tan(FOV_X_DEG * M_PI / 720));
+    const double density = (NX - 3) / (4 * std::tan(FOV_X_DEG * PI / 720));
     cv::Mat normal = cv::Mat::eye(NX * NY, NX * NY, CV_64F) * 1e-6, rhsX = cv::Mat::zeros(NX * NY, 1, CV_64F), rhsY = rhsX.clone();
     for(int py = 0; py < HEIGHT; py += 10) {
         for(int px = 0; px < WIDTH; px += 10) {
@@ -157,11 +159,16 @@ void checkSquares(const dai::ImgFrame& depth) {
     }
 }
 
-void runStereo(dai::StereoDepthProperties::RectificationModel model) {
+/** Depth of the synthetic pair, or nullptr if the device gives none. */
+std::shared_ptr<dai::ImgFrame> runStereo(dai::StereoDepthProperties::RectificationModel model, bool withLensModels = true) {
     dai::Pipeline pipeline;
-    if(pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC4) SKIP("B-spline rectification is RVC4 only");
+    // shortcut: the pinned RVC2 firmware predates rectificationModel; drop this once its pin is bumped
+    if(pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC4) SKIP("Needs RVC2 firmware with B-spline rectification");
     auto calibration = pinholeCalibration();
-    for(const auto socket : {dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C}) calibration.setBsplineCameraCalibration(socket, pinholeSpline());
+    if(withLensModels) {
+        for(const auto socket : {dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C})
+            calibration.setBsplineCameraCalibration(socket, pinholeSpline());
+    }
     pipeline.setCalibrationData(calibration);  // pipeline-local only, never the device's storage
 
     auto stereo = pipeline.create<dai::node::StereoDepth>();
@@ -174,16 +181,19 @@ void runStereo(dai::StereoDepthProperties::RectificationModel model) {
     auto leftQueue = stereo->left.createInputQueue();
     auto rightQueue = stereo->right.createInputQueue();
     auto output = stereo->depth.createOutputQueue();
-    pipeline.start();
-    const auto images = stereoImages();
-    leftQueue->send(frame(dai::CameraBoardSocket::CAM_B, images[0]));
-    rightQueue->send(frame(dai::CameraBoardSocket::CAM_C, images[1]));
-    bool timedOut = false;
-    auto depth = output->get<dai::ImgFrame>(std::chrono::seconds(15), timedOut);
-    REQUIRE_FALSE(timedOut);
-    REQUIRE(depth != nullptr);
-    checkSquares(*depth);
+    std::shared_ptr<dai::ImgFrame> depth;
+    try {
+        pipeline.start();
+        const auto images = stereoImages();
+        leftQueue->send(frame(dai::CameraBoardSocket::CAM_B, images[0]));
+        rightQueue->send(frame(dai::CameraBoardSocket::CAM_C, images[1]));
+        bool timedOut = false;
+        depth = output->get<dai::ImgFrame>(std::chrono::seconds(15), timedOut);
+    } catch(const std::exception&) {
+        if(withLensModels) throw;
+    }
     pipeline.stop();
+    return depth;
 }
 }  // namespace
 
@@ -205,5 +215,11 @@ TEST_CASE("StereoDepth gives the same synthetic depth with LEGACY and BSPLINE re
     using Model = dai::StereoDepthProperties::RectificationModel;
     const auto model = GENERATE(Model::LEGACY, Model::BSPLINE);
     CAPTURE(static_cast<int>(model));
-    runStereo(model);
+    const auto depth = runStereo(model);
+    REQUIRE(depth != nullptr);
+    checkSquares(*depth);
+}
+
+TEST_CASE("BSPLINE without lens models gives no depth instead of falling back to LEGACY", "[bspline]") {
+    REQUIRE(runStereo(dai::StereoDepthProperties::RectificationModel::BSPLINE, false) == nullptr);
 }

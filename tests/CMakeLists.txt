@@ -1131,9 +1131,11 @@ dai_add_test(bspline_calibration_test src/onhost_tests/bspline_calibration_test.
 dai_set_test_labels(bspline_calibration_test onhost ci)
 
 # RVC4 firmware B-spline calibration store (header-only, POSIX), on a temporary directory.
-dai_add_test(bspline_calibration_store_test src/onhost_tests/bspline_calibration_store_test.cpp)
-target_include_directories(bspline_calibration_store_test PRIVATE ${PROJECT_SOURCE_DIR}/device/rvc4/src)
-dai_set_test_labels(bspline_calibration_store_test onhost ci nowindows)
+if(NOT WIN32)
+    dai_add_test(bspline_calibration_store_test src/onhost_tests/bspline_calibration_store_test.cpp)
+    target_include_directories(bspline_calibration_store_test PRIVATE ${PROJECT_SOURCE_DIR}/device/rvc4/src)
+    dai_set_test_labels(bspline_calibration_store_test onhost ci nowindows)
+endif()
 
 # B-spline rectification: a spline fitted to pinhole cameras must give the same synthetic depth as LEGACY.
 dai_add_test(stereo_depth_bspline_test src/ondevice_tests/stereo_depth_bspline_test.cpp)

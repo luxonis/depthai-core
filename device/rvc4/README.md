@@ -239,8 +239,8 @@ the version and the host library is compiled again, so use the environment varia
 The factory fits the model on the host (production-tools, mrcal) and the firmware stores it in
 `/persist/calibration/bspline-{user,factory}.cbor`, separately from the EEPROM calibration. `/persist` survives OS updates and factory resets; `/data` does not. `StereoDepth::initCalib()`
 builds the rectification mesh from it once, at startup and on calibration updates, and reuses it for every frame.
-`LEGACY` (also the `AUTO` default) keeps the OpenCV calibration, even when a B-spline calibration is stored.
-Initial support: native 1280x800 horizontal stereo, rectified-left/right alignment. Missing or invalid B-spline data
+`LEGACY` (the default) keeps the OpenCV calibration, even when a B-spline calibration is stored.
+Initial support: horizontal stereo at the native resolution of the lens models, rectified-left/right alignment. Missing or invalid B-spline data
 fails with an error.
 
 ## Testing

@@ -77,20 +77,23 @@ std::array<double, 3> BsplineCameraCalibration::unproject(const std::array<doubl
         if(!(std::abs(det) > 0)) break;
         const double dx = (j[3] * ex - j[1] * ey) / det, dy = (-j[2] * ex + j[0] * ey) / det;
         double step = 1;
-        for(int halving = 0; halving < 30; ++halving, step /= 2) {
+        bool improved = false;
+        for(int halving = 0; halving < 30 && !improved; ++halving, step /= 2) {
             std::array<double, 4> jNext;
             const auto next = pixelOf(*this, ux - step * dx, uy - step * dy, &jNext);
-            const double rx = next[0] - pixel[0], ry = next[1] - pixel[1];
-            if(rx * rx + ry * ry < error) {
+            const double nextEx = next[0] - pixel[0], nextEy = next[1] - pixel[1];
+            const double nextError = nextEx * nextEx + nextEy * nextEy;
+            if(nextError < error) {
                 ux -= step * dx;
                 uy -= step * dy;
-                ex = rx;
-                ey = ry;
-                error = rx * rx + ry * ry;
+                ex = nextEx;
+                ey = nextEy;
+                error = nextError;
                 j = jNext;
-                break;
+                improved = true;
             }
         }
+        if(!improved) break;
     }
     if(error >= 1e-12) throw std::runtime_error("B-spline unprojection did not converge");
     // Inverse stereographic projection to a unit ray

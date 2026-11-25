@@ -1,5 +1,4 @@
 #pragma once
-#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -11,7 +10,6 @@
 #include "depthai/common/ImuParameters.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/StereoRectification.hpp"
-#include "depthai/common/optional.hpp"
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {

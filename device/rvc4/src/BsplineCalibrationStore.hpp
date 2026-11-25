@@ -37,6 +37,13 @@ class BsplineCalibrationStore {
     std::filesystem::path path(bool factory) const {
         return directory / (factory ? "bspline-factory.cbor" : "bspline-user.cbor");
     }
+    void syncDirectory() const {
+        const int fd = ::open(directory.c_str(), O_RDONLY | O_DIRECTORY);
+        if(fd < 0) throw std::runtime_error("Cannot open calibration directory");
+        const int result = ::fsync(fd);
+        ::close(fd);
+        if(result != 0) throw std::runtime_error("Cannot sync calibration directory");
+    }
 
    public:
     explicit BsplineCalibrationStore(std::filesystem::path root = "/persist/calibration") : directory(std::move(root)) {}
@@ -66,13 +73,7 @@ class BsplineCalibrationStore {
         const auto file = path(factory);
         if(lenses.empty()) {
             if(::unlink(file.c_str()) != 0 && errno != ENOENT) throw std::runtime_error("Cannot remove spline calibration extension");
-            if(std::filesystem::exists(directory)) {
-                const int fd = ::open(directory.c_str(), O_RDONLY | O_DIRECTORY);
-                if(fd < 0) throw std::runtime_error("Cannot open calibration directory");
-                const int result = ::fsync(fd);
-                ::close(fd);
-                if(result != 0) throw std::runtime_error("Cannot sync calibration directory");
-            }
+            if(std::filesystem::exists(directory)) syncDirectory();
             return;
         }
         for(const auto& [socket, lens] : lenses) lens.validate();
@@ -100,11 +101,7 @@ class BsplineCalibrationStore {
             closed = true;
             if(closeResult != 0) throw std::runtime_error("Cannot close spline calibration extension");
             if(::rename(name.data(), file.c_str()) != 0) throw std::runtime_error("Cannot replace spline calibration extension");
-            const int dirFd = ::open(directory.c_str(), O_RDONLY | O_DIRECTORY);
-            if(dirFd < 0) throw std::runtime_error("Cannot open calibration directory");
-            const int result = ::fsync(dirFd);
-            ::close(dirFd);
-            if(result != 0) throw std::runtime_error("Cannot sync calibration directory");
+            syncDirectory();
         } catch(...) {
             if(!closed) ::close(fd);
             ::unlink(name.data());
