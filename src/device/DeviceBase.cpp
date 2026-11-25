@@ -628,6 +628,21 @@ tl::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) 
     return saveFileToTemporaryDirectory(data, mxId + "-depthai_crash_dump.json", crashDumpPathStr);
 }
 
+void DeviceBase::onLinkLost(const char* source, const std::exception& ex) {
+    // A failed read or write on a device link stream means the link to the device is gone.
+    // Only the connection close releases the XLink reads that are blocked on the data queues:
+    // when the device stays enumerated but stops answering (eg. after a USB reset) nothing else
+    // fails, the watchdog keeps the device alive and every queue get() blocks forever.
+    // During close() the streams fail as well; by then the connection is already closed.
+    if(connection->isClosed()) {
+        pimpl->logger.debug("{} thread exception caught: {}", source, ex.what());
+        return;
+    }
+    pimpl->logger.warn("{} thread (device: {} [{}]) - link lost: {}. Closing the device connection", source, deviceInfo.mxid, deviceInfo.name, ex.what());
+    watchdogRunning = false;
+    connection->close();
+}
+
 void DeviceBase::closeImpl() {
     using namespace std::chrono;
     auto t1 = steady_clock::now();
@@ -980,8 +995,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                     std::this_thread::sleep_for(watchdogTimeout / 2);
                 }
             } catch(const std::exception& ex) {
-                // ignore
-                pimpl->logger.debug("Watchdog thread exception caught: {}", ex.what());
+                onLinkLost("Watchdog", ex);
             }
 
             // Watchdog ended. Useful for checking disconnects
@@ -1046,8 +1060,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                     stream.write(&timestamp, sizeof(timestamp));
                 }
             } catch(const std::exception& ex) {
-                // ignore
-                pimpl->logger.debug("Timesync thread exception caught: {}", ex.what());
+                onLinkLost("Timesync", ex);
             }
 
             timesyncRunning = false;
@@ -1092,8 +1105,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                     }
                 }
             } catch(const std::exception& ex) {
-                // ignore exception from logging
-                pimpl->logger.debug("Log thread exception caught: {}", ex.what());
+                onLinkLost("Log", ex);
             }
 
             loggingRunning = false;

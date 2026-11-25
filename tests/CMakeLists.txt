@@ -251,6 +251,12 @@ endif()
 # Device close: repeated close, calls after close, and close after a device crash
 dai_add_test(device_close_test src/device_close_test.cpp)
 
+# USB link loss while a queue read is blocked (Linux: resets the USB port of the device)
+dai_add_test(usb_link_loss_test src/usb_link_loss_test.cpp CXX_STANDARD 17 USB_ONLY)
+if(TARGET usb_link_loss_test)
+    set_tests_properties(usb_link_loss_test PROPERTIES TIMEOUT 180)
+endif()
+
 # Filesystem test
 dai_add_test(filesystem_test src/filesystem_test.cpp)
 dai_test_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")

@@ -1013,6 +1013,11 @@ class DeviceBase {
     std::mutex lastWatchdogPingTimeMtx;
     std::chrono::steady_clock::time_point lastWatchdogPingTime;
 
+    // Called by the device link threads (watchdog, timesync, log) when their stream fails while
+    // the device is not being closed: the link is lost, so close the connection and release
+    // every blocked queue read
+    void onLinkLost(const char* source, const std::exception& ex);
+
     // closed
     mutable std::mutex closedMtx;
     bool closed{false};
