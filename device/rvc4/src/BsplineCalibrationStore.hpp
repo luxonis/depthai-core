@@ -34,7 +34,7 @@ class BsplineCalibrationStore {
     }
 
    public:
-    explicit BsplineCalibrationStore(std::filesystem::path root = "/data/calibration") : directory(std::move(root)) {}
+    explicit BsplineCalibrationStore(std::filesystem::path root = "/persist/calibration") : directory(std::move(root)) {}
 
     std::optional<BsplineStereoCalibration> load(bool factory, const std::vector<uint8_t>& legacy, const std::string& deviceId) const {
         const auto file = path(factory);

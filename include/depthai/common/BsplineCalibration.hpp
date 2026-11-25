@@ -35,7 +35,7 @@ struct BsplineCameraCalibration {
 
 /**
  * B-spline stereo calibration at the native sensor resolution, horizontal stereo only. On RVC4 it is stored in
- * /data, not in the EEPROM. Rotations are row-major 3x3: rotationLeft/rotationRight map raw camera rays to the
+ * /persist, not in the EEPROM. Rotations are row-major 3x3: rotationLeft/rotationRight map raw camera rays to the
  * rectified camera, whose intrinsics are virtualIntrinsics (fx, fy, cx, cy). The stereo geometry belongs to this
  * model and is independent of the OpenCV calibration.
  */
