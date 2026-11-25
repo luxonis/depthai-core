@@ -92,16 +92,20 @@ From the depthai-core repository root:
 ```sh
 git submodule update --init --recursive
 # RVC4 firmware package to embed: the package that CI built for this commit
-ci/device-rvc4-fwp-ak.sh download "$(ci/device-rvc4-fwp-ak.sh version .)" rvc4 /tmp/rvc4-fwp
+rm -rf /tmp/rvc4-fwp
+ci/device-rvc4-fwp-ak.sh download "$(ci/device-rvc4-fwp-ak.sh version .)" rvc4 /tmp/rvc4-fwp &&
 docker build -f ci/Dockerfile -t depthai-library:local \
   --build-context rvc4-fwp=/tmp/rvc4-fwp \
   --build-arg DEPTHAI_DEVICE_RVC4_FWP_PATH=/rvc4-fwp/depthai-device-rvc4-fwp.tar.xz .
 ```
 
-Artifact Keeper has a firmware package for each commit that CI built (the nightly
-develop build, `main` and the release tags). For another commit, download the
-package of such a commit (`<first line of device/rvc4/version.txt>+<commit>`),
-or build one from `device/rvc4` (see `device/rvc4/README.md`) and give its folder.
+CI puts a firmware package on Artifact Keeper for each push to `develop`, `main`,
+a `release*` branch or a `v*` tag (`rvc4_fwp_publish.yml`). For another commit,
+`download` exits with 2. Then use the package of a commit with the same
+`device/rvc4` and shared headers, for example the merge base
+(`<first line of device/rvc4/version.txt>+<commit>`), or build one from
+`device/rvc4` (see `device/rvc4/README.md`) and give its folder. The firmware
+package does not contain your local changes in `device/rvc4`.
 
 This performs a complete native build, so it takes longer than starting a
 published image and needs network access to download dependencies and firmware.
