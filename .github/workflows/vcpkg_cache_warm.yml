@@ -49,12 +49,14 @@ env:
 jobs:
   # RVC4 firmware package for the configure steps below. A ref without a pinned package (develop since #2224) builds the
   # firmware from device/rvc4 in Docker at configure time (cmake/DepthaiDeviceRvc4FirmwareBuild.cmake), which these
-  # jobs cannot do. The real jobs embed the package of their rvc4-fwp job through .github/actions/rvc4-fwp; the jobs
-  # here use that action with a package from Artifact Keeper (the nightly develop build publishes one for each commit
-  # that it builds). The package has no effect on the vcpkg ABI hashes, so when the newest commit of WARM_REF has no
-  # package yet, the package of an older commit is used. A ref without ci/device-rvc4-fwp-ak.sh has a pinned package.
+  # jobs cannot do. The real build jobs embed the package of their rvc4-fwp job through .github/actions/rvc4-fwp; the
+  # jobs here use that action with a package from Artifact Keeper (rvc4_fwp_publish.yml publishes one for each push to
+  # develop). The package has no effect on the vcpkg ABI hashes, so when the newest commit of WARM_REF has no package
+  # (its publish run did not finish), the package of an older commit is used. A ref without ci/device-rvc4-fwp-ak.sh has
+  # a pinned package.
   rvc4-fwp:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     outputs:
       available: ${{ steps.download.outputs.available }}
     steps:
@@ -65,6 +67,8 @@ jobs:
 
       - name: Download an RVC4 firmware package from Artifact Keeper
         id: download
+        # bash with pipefail: a commit without device/rvc4/version.txt stops the loop
+        shell: bash
         run: |
           if [ ! -f ci/device-rvc4-fwp-ak.sh ]; then
             echo "$WARM_REF has no ci/device-rvc4-fwp-ak.sh: its configure step downloads its pinned package"
@@ -94,6 +98,8 @@ jobs:
           name: depthai-device-rvc4-fwp
           path: ${{ runner.temp }}/rvc4-fwp/
           if-no-files-found: error
+          overwrite: true
+          retention-days: 1
 
   # main.workflow.yml: family 'core-tests' (build job) and 'core' (integration, tidy, minimal-build,
   # device-manager-build).
