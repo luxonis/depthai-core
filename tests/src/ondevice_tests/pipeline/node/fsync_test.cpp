@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
@@ -18,12 +19,24 @@
 struct Thresholds {
     std::chrono::steady_clock::duration leftRight;
     std::chrono::steady_clock::duration all;
+    // The limit for all cameras is the larger of 'all' and this share of the frame period.
+    double allFramePeriodShare = 0.0;
+    // The largest change of the CAM_A to CAM_B offset during the test. The default: no check.
+    std::chrono::steady_clock::duration offsetSpread = std::chrono::steady_clock::duration::max();
 };
 
 constexpr Thresholds RVC2_THRESHOLDS{std::chrono::microseconds(50), std::chrono::milliseconds(5)};
-constexpr Thresholds RVC4_THRESHOLDS{std::chrono::microseconds(5), std::chrono::milliseconds(1)};
+// On RVC4 (OAK4-D, OAK4-LITE), CAM_A is earlier than the CAM_B/CAM_C pair by about 1.08 % of the frame period minus
+// 60-100 us: 0.98-1.03 ms at 10 fps, as the OS version changes the constant. The offset is the same in each frame
+// (+-6 us) and does not change with the exposure time. 1.5 % keeps 0.4 ms of margin at 10 fps.
+constexpr Thresholds RVC4_THRESHOLDS{std::chrono::microseconds(5), std::chrono::milliseconds(1), 0.015, std::chrono::microseconds(100)};
 
 namespace {
+
+std::chrono::steady_clock::duration allCamerasThreshold(const Thresholds& thresholds, float fps) {
+    const auto shareOfFramePeriod = std::chrono::duration<double>(thresholds.allFramePeriodShare / fps);
+    return std::max(thresholds.all, std::chrono::duration_cast<std::chrono::steady_clock::duration>(shareOfFramePeriod));
+}
 
 struct CameraRequest {
     dai::CameraBoardSocket socket;
@@ -81,6 +94,7 @@ std::map<dai::CameraBoardSocket, std::shared_ptr<dai::ImgFrame>> collectOneFrame
     std::map<dai::CameraBoardSocket, std::shared_ptr<dai::MessageQueue>> queues;
     std::shared_ptr<dai::node::Sync> sync = nullptr;
     std::shared_ptr<dai::MessageQueue> syncQueue = nullptr;
+    auto allSlavesThreshold = RVC4_THRESHOLDS.all;
     if(expectedSlaveSockets.size() >= 2) {
         sync = pipeline.create<dai::node::Sync>();
         std::optional<float> expectedSlaveFps;
@@ -93,6 +107,7 @@ std::map<dai::CameraBoardSocket, std::shared_ptr<dai::ImgFrame>> collectOneFrame
         REQUIRE(expectedSlaveFps.has_value());
         const auto syncThreshold = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(0.5 / expectedSlaveFps.value()));
         sync->setSyncThreshold(syncThreshold);
+        allSlavesThreshold = allCamerasThreshold(RVC4_THRESHOLDS, expectedSlaveFps.value());
     }
 
     for(const auto& request : requests) {
@@ -129,7 +144,7 @@ std::map<dai::CameraBoardSocket, std::shared_ptr<dai::ImgFrame>> collectOneFrame
             }
 
             const auto [minIt, maxIt] = std::minmax_element(slaveTimestamps.begin(), slaveTimestamps.end());
-            auto threshold = RVC4_THRESHOLDS.all;
+            auto threshold = allSlavesThreshold;
             const bool expectedPairIsStereo = std::find_if(stereoPairs.begin(),
                                                            stereoPairs.end(),
                                                            [&](const auto& pair) {
@@ -234,6 +249,10 @@ void testFsync(float fps, Thresholds thresholds, std::shared_ptr<dai::Device> de
     auto syncQueue = sync->out.createOutputQueue(10, false);
     p.start();
 
+    const auto allThreshold = allCamerasThreshold(thresholds, fps);
+    // Synchronized cameras keep the same CAM_A to CAM_B offset, free-running cameras can drift.
+    auto minRgbOffset = std::chrono::steady_clock::duration::max();
+    auto maxRgbOffset = std::chrono::steady_clock::duration::min();
     for(int i = 0; i < 100; i++) {
         CAPTURE(i);
         bool timedOut = false;
@@ -262,10 +281,15 @@ void testFsync(float fps, Thresholds thresholds, std::shared_ptr<dai::Device> de
 
         // Verify that the differences are within the expected thresholds.
         // 'thresholds.leftRight' applies to the left/right pair, while
-        // 'thresholds.all' applies to the overall synchronization among all frames.
+        // 'allThreshold' applies to the overall synchronization among all frames.
         REQUIRE(diffLeftRight <= thresholds.leftRight);
-        REQUIRE(diffAll <= thresholds.all);
+        REQUIRE(diffAll <= allThreshold);
+
+        const auto rgbOffset = rgbTimestamp - leftTimestamp;
+        minRgbOffset = std::min(minRgbOffset, rgbOffset);
+        maxRgbOffset = std::max(maxRgbOffset, rgbOffset);
     }
+    REQUIRE(maxRgbOffset - minRgbOffset <= thresholds.offsetSpread);
 
     for(int i = 0; i < 4; i++) {
         CAPTURE(i);
