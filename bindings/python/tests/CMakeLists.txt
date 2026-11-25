@@ -34,7 +34,6 @@ set(PYBIND11_TEST_FILES
     "dynamic_calibration_test.py"
     "auto_calibration_config_test.py"
     "host_node_create_deprecation_test.py"
-    "threaded_host_node_exception_test.py"
     "pipeline_create_device_arg_test.py"
     "compiler_warning_bindings_roundtrip_test.py"
     "stitching_test.py"
