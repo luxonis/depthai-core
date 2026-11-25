@@ -14,6 +14,7 @@
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/Odometry.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "tbb/concurrent_queue.h"
 #include "tbb/global_control.h"
 namespace dai {
@@ -40,6 +41,7 @@ class BasaltVIO::Impl {
     std::vector<int64_t> vioTNSec;
     std::shared_ptr<basalt::PoseState<double>::SE3> localTransform;
     std::atomic<bool> imuStarted{false};
+    int64_t lastImuTNs = 0;
 };
 
 BasaltVIO::BasaltVIO() {}
@@ -152,6 +154,12 @@ void BasaltVIO::imuCB(std::shared_ptr<ADatatype> imuData) {
         data = std::make_shared<basalt::ImuData<double>>();
         auto t = imuPacket.acceleroMeter.getTimestamp();
         int64_t t_ns = std::chrono::time_point_cast<std::chrono::nanoseconds>(t).time_since_epoch().count();
+        // Basalt aborts the process on IMU samples that are not strictly increasing in time.
+        if(t_ns <= pimpl->lastImuTNs) {
+            ThreadedNode::pimpl->logger->warn("Dropping IMU sample that is {} us older than the previous one", (pimpl->lastImuTNs - t_ns) / 1000);
+            continue;
+        }
+        pimpl->lastImuTNs = t_ns;
 
         data->t_ns = t_ns;
         data->accel = Eigen::Vector3d(imuPacket.acceleroMeter.x, imuPacket.acceleroMeter.y, imuPacket.acceleroMeter.z);
