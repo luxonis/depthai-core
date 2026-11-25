@@ -1051,9 +1051,11 @@ if(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR)
     list(APPEND DEPTHAI_DEVICE_LICENSE_PRIVATE_MODULE_ARGS --private-module-root "${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}")
 endif()
 # The firmware package itself contains its license (LICENSE.fwp) and the Luxonis DepthAI Vendor Module EULA of the
-# vendor module that it links (legal/DEPTHAI-EULA.txt of the legal files of the module). The full license bundle, with
+# vendor module that it links (legal/DEPTHAI-EULA.txt of the legal files of the module), and the license of the
+# dynamic calibration library that it ships (legal/dynamic_calibration-LICENSE). The full license bundle, with
 # the third-party notices, stays next to the package.
-set(DEPTHAI_DEVICE_FWP_LEGAL_FILES "${DEPTHAI_DEVICE_BINARY_DIR}/LICENSE.fwp" "${DEPTHAI_DEVICE_BINARY_DIR}/legal/DEPTHAI-EULA.txt")
+set(DEPTHAI_DEVICE_FWP_LEGAL_FILES "${DEPTHAI_DEVICE_BINARY_DIR}/LICENSE.fwp" "${DEPTHAI_DEVICE_BINARY_DIR}/legal/DEPTHAI-EULA.txt"
+    "${DEPTHAI_DEVICE_BINARY_DIR}/legal/dynamic_calibration-LICENSE")
 add_custom_command(TARGET ${TARGET_DEVICE_EXECUTABLE} POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} --only-keep-debug "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>" "$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/$<TARGET_FILE_BASE_NAME:${TARGET_DEVICE_EXECUTABLE}>.debug"
     COMMAND ${CMAKE_STRIP} --strip-unneeded "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>"
@@ -1064,6 +1066,7 @@ add_custom_command(TARGET ${TARGET_DEVICE_EXECUTABLE} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy "${DEPTHAI_DEVICE_SOURCE_DIR}/LICENSE.fwp" "${DEPTHAI_DEVICE_BINARY_DIR}/LICENSE.fwp"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${DEPTHAI_DEVICE_BINARY_DIR}/legal"
     COMMAND ${CMAKE_COMMAND} -E copy "${DEPTHAI_DEVICE_RVC4_VENDOR_LEGAL_DIR}/legal/DEPTHAI-EULA.txt" "${DEPTHAI_DEVICE_BINARY_DIR}/legal/DEPTHAI-EULA.txt"
+    COMMAND ${CMAKE_COMMAND} -E copy "${DEPTHAI_DEVICE_KB_CORE_PATH}/notices/dynamic_calibration-LICENSE" "${DEPTHAI_DEVICE_BINARY_DIR}/legal/dynamic_calibration-LICENSE"
     COMMAND ${CMAKE_COMMAND} -E tar cfJ "$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/depthai-device-rvc4-fwp.tar.xz"
         "${DEPTHAI_DEVICE_BINARY_DIR}/$<TARGET_FILE_NAME:${TARGET_DEVICE_EXECUTABLE}>"
         ${DEPTHAI_DEVICE_DSP_SKELS_IN_FWP}
