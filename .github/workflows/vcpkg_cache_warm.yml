@@ -7,8 +7,7 @@ name: Warm vcpkg binary caches
 # the main scope. The jobs run the configure step of the real jobs on the given ref (default: develop),
 # which builds the missing ports; the save action then prunes unused archives and saves only on change.
 # The configure commands, and the CMake on PATH (vcpkg uses it), must match the real jobs in main.workflow.yml,
-# python-main.yml, test_child_windows.yml and bindings/python/setup.py. The local actions (vcpkg-cache, rvc4-fwp)
-# come from the checkout of WARM_REF.
+# python-main.yml, test_child_windows.yml and bindings/python/setup.py.
 
 on:
   schedule:
@@ -47,13 +46,6 @@ env:
     print(f"cmake {have} from the build requirements: {cmake}")
 
 jobs:
-  # RVC4 firmware package for the configure steps below. A ref without a pinned package (develop since #2224) builds the
-  # firmware from device/rvc4 in Docker at configure time (cmake/DepthaiDeviceRvc4FirmwareBuild.cmake), which these
-  # jobs cannot do. The real build jobs embed the package of their rvc4-fwp job through .github/actions/rvc4-fwp; the
-  # jobs here use that action with a package from Artifact Keeper (rvc4_fwp_publish.yml publishes one for each push to
-  # develop). The package has no effect on the vcpkg ABI hashes, so when the newest commit of WARM_REF has no package
-  # (its publish run did not finish), the package of an older commit is used. A ref without ci/device-rvc4-fwp-ak.sh has
-  # a pinned package.
   rvc4-fwp:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -67,7 +59,6 @@ jobs:
 
       - name: Download an RVC4 firmware package from Artifact Keeper
         id: download
-        # bash with pipefail: a commit without device/rvc4/version.txt stops the loop
         shell: bash
         run: |
           if [ ! -f ci/device-rvc4-fwp-ak.sh ]; then
@@ -76,7 +67,6 @@ jobs:
             exit 0
           fi
           for commit in $(git rev-list --first-parent HEAD); do
-            # The version that `ci/device-rvc4-fwp-ak.sh version` gives for that commit
             base=$(git show "$commit:device/rvc4/version.txt" 2>/dev/null | sed -n 1p) || break
             version="${base//[[:space:]]/}+$commit"
             status=0
