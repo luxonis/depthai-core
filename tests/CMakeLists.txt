@@ -586,6 +586,8 @@ dai_set_test_labels(message_queue_test onhost ci)
 dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_test.cpp)
 # The allocator test uses XLink's private headers, including platform compatibility headers.
 target_include_directories(stream_message_parser_test PRIVATE "$<TARGET_PROPERTY:XLink,INCLUDE_DIRECTORIES>")
+# It also calls XLinkPlatformAllocateData. A shared libdepthai-core does not export the XLink symbols.
+target_link_libraries(stream_message_parser_test PRIVATE XLink)
 dai_set_test_labels(stream_message_parser_test onhost ci)
 
 # Datatype hierarchy completeness
@@ -780,6 +782,16 @@ endif()
 dai_add_test(vpp_test src/ondevice_tests/vpp_test.cpp)
 dai_set_test_labels(vpp_test ondevice rvc4 ci)
 
+# VIO regression tests. No CI job selects the `vio` label (CI runs `ci` and `ci_nightly`).
+# Run them by hand: ctest -L vio
+if(DEPTHAI_HAVE_BASALT_SUPPORT AND DEPTHAI_HAVE_RTABMAP_SUPPORT)
+    dai_add_test(vio_regression_test src/ondevice_tests/pipeline/node/vio_regression_test.cpp)
+    if(NOT DEPTHAI_MERGED_TARGET)
+        target_link_libraries(vio_regression_test PRIVATE ${PROJECT_NAME}::${TARGET_BASALT_ALIAS} ${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS})
+    endif()
+    dai_set_test_labels(vio_regression_test ondevice rvc2 rvc4 vio)
+endif()
+
 # GPUStereo node (device execution) test
 dai_add_test(gpu_stereo_device_test src/ondevice_tests/gpu_stereo_node_test.cpp)
 dai_set_test_labels(gpu_stereo_device_test ondevice rvc4 ci)
@@ -804,7 +816,16 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
 
     dai_add_test(world_constraints_test src/onhost_tests/world_constraints_test.cpp)
     target_link_libraries(world_constraints_test PRIVATE dynamic_calibration_imported)
+    # The reconstruction is compiled into depthai::core only when OpenCV is part of it, the same condition as in the main CMakeLists.
+    if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
+        target_compile_definitions(world_constraints_test PRIVATE DEPTHAI_TEST_WORLD_CONSTRAINTS_RECONSTRUCTION)
+    endif()
     dai_set_test_labels(world_constraints_test onhost ci)
+
+    # Synthetic stereo images through the pinned calibration library: a pose that puts the scene behind the cameras is refused.
+    dai_add_test(dynamic_calibration_cheirality_test src/onhost_tests/dynamic_calibration_cheirality_test.cpp)
+    target_link_libraries(dynamic_calibration_cheirality_test PRIVATE dynamic_calibration_imported)
+    dai_set_test_labels(dynamic_calibration_cheirality_test onhost ci)
 endif()
 
 dai_add_test(flash_eeprom_fields_test src/ondevice_tests/flash_eeprom_fields_test.cpp)
@@ -892,6 +913,13 @@ dai_set_test_labels(input_output_naming_test ondevice rvc2_all rvc4 rvc4ffc rvc4
 # Resolutions test
 dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
 dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runnable in CI
+
+# Production network config test
+dai_add_test(production_network_config_test src/ondevice_tests/production_network_config_test.cpp)
+dai_set_test_labels(production_network_config_test ondevice rvc2 poe ci noreplayci nousb)
+
+dai_add_test(board_config_serialization_test src/onhost_tests/board_config_serialization_test.cpp)
+dai_set_test_labels(board_config_serialization_test onhost ci)
 
 # Serialization test
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
@@ -1110,7 +1138,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
 
     dai_add_test(image_manip_optimization_test src/ondevice_tests/pipeline/node/image_manip_optimization_test.cpp)
     target_compile_definitions(image_manip_optimization_test PRIVATE LENNA_PATH="${lenna_png}")
-    dai_set_test_labels(image_manip_optimization_test ondevice rvc4 rvc4ffc rvc4rgb ci)
+    dai_set_test_labels(image_manip_optimization_test ondevice rvc4 rvc4rgb ci)
 endif()
 
 # Benchmark tests
@@ -1127,7 +1155,7 @@ dai_set_test_labels(manual_focus_test rvc2_all rvc4 rvc4ffc rvc4rgb ci noreplayc
 
 # IMU tests
 dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
-dai_set_test_labels(imu_test ondevice rvc4 rvc4ffc rvc4rgb ci noreplayci) # Many RVC2 devices do not have an IMU which supports the whole test suite; replayed IMU data skips the runtime calibration
+dai_set_test_labels(imu_test ondevice rvc4 rvc4rgb ci noreplayci) # Many RVC2 devices do not have an IMU which supports the whole test suite; replayed IMU data skips the runtime calibration
 
 # ObjectTracker tests
 if(DEPTHAI_HAVE_OPENCV_SUPPORT)
@@ -1162,8 +1190,28 @@ dai_set_test_labels(camera_test ondevice rvc2_all rvc4 rvc4ffc ci noreplayci)
 dai_add_test(camera_test_rvc4 src/ondevice_tests/pipeline/node/camera_test_rvc4.cpp)
 dai_set_test_labels(camera_test_rvc4 ondevice rvc4 ci noreplayci)
 
+dai_add_test(camera_sensor_geometry_test src/ondevice_tests/pipeline/node/camera_sensor_geometry_test.cpp)
+dai_set_test_labels(camera_sensor_geometry_test ondevice rvc2_all ci noreplayci)
+set_property(TEST camera_sensor_geometry_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
+
+# Extended sensor coverage is a nightly opt-in, sharing the same executable.
+add_test(NAME camera_sensor_geometry_extended_test COMMAND camera_sensor_geometry_test)
+dai_set_test_labels(camera_sensor_geometry_extended_test ondevice rvc2_all ci_nightly noreplayci)
+set_tests_properties(camera_sensor_geometry_extended_test PROPERTIES
+    ENVIRONMENT "${test_env};DEPTHAI_AUTOCALIBRATION=OFF;DEPTHAI_GEOMETRY_EXTENDED=1"
+    SKIP_RETURN_CODE 4)
+
+
+if(DEPTHAI_ENABLE_PROTOBUF AND DEPTHAI_OPENCV_SUPPORT)
+    dai_add_test(camera_replay_geometry_test src/ondevice_tests/pipeline/node/camera_replay_geometry_test.cpp)
+    dai_set_test_labels(camera_replay_geometry_test ondevice rvc2_all ci noreplayci)
+    target_include_directories(camera_replay_geometry_test PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include/depthai)
+    target_link_libraries(camera_replay_geometry_test PRIVATE messages)
+    set_property(TEST camera_replay_geometry_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
+endif()
+
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
-dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 rvc4ffc ci_nightly noreplayci)
+dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci_nightly noreplayci)
 set_property(TEST camera_fps_config_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
 # VideoEncoder test
