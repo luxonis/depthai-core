@@ -122,7 +122,7 @@ struct SensorSample {
 /**
  * Reads the variable-length events of a GENERIC channel out of its circular shared buffer.
  *
- * The reader owns only the read position; the caller owns the loop and decides when to wait
+ * The reader owns the read position and the timestamp of the last sample; the caller owns the loop and decides when to wait
  * (Status::NO_EVENT) and when to stop.
  */
 class SensorEventReader {
@@ -145,6 +145,7 @@ class SensorEventReader {
     const char* buffer;
     size_t size;
     size_t offset = 0;
+    uint64_t lastTimestamp = 0;
 };
 
 }  // namespace gate

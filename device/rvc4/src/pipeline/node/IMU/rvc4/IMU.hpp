@@ -65,8 +65,8 @@ class IMU : public dai::node::IMU {
 
     std::vector<ImuSensorConfig> initialReports;
 
-    void readMuxedDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, uint32_t sampleRateHz, bool shouldSignal = false);
-    void readGenericDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, uint32_t sampleRateHz, bool shouldSignal = false);
+    void readMuxedDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, uint32_t sampleRateHz);
+    void readGenericDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, uint32_t sampleRateHz);
 };
 
 }  // namespace gate
