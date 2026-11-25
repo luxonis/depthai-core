@@ -1126,6 +1126,10 @@ dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
 dai_add_test(stereo_depth_alignment_test src/ondevice_tests/stereo_depth_alignment_test.cpp)
 dai_set_test_labels(stereo_depth_alignment_test ondevice rvc2_all rvc4 ci)
 
+# B-spline rectification: a spline fitted to pinhole cameras must give the same synthetic depth as LEGACY.
+dai_add_test(stereo_depth_bspline_test src/ondevice_tests/stereo_depth_bspline_test.cpp)
+dai_set_test_labels(stereo_depth_bspline_test ondevice rvc4 ci)
+
 # Shared color-conversion implementation, including RVC4's CPU fallback.
 dai_add_test(image_manip_mono_color_test src/onhost_tests/image_manip_mono_color_test.cpp)
 dai_set_test_labels(image_manip_mono_color_test onhost ci)
