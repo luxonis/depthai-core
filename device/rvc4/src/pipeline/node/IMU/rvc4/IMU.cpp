@@ -608,6 +608,13 @@ void IMU::run() {
     bool gyroscopeEnabled = false;
     bool magnetometerEnabled = false;
     bool rotationVectorEnabled = false;
+    /*
+     * Qualcomm rounds a non-native rate up (e.g. 100 Hz -> ~116 Hz on OAK4), so cap the output to the
+     * slowest requested rate. Each emit advances the deadline by one period, which keeps the mean rate
+     * at the request; a packet is accepted slightly early (10% of a period) to tolerate timestamp jitter
+     * when the native rate already matches. Gaps longer than a period reset the deadline (no catch-up).
+     */
+    nanoseconds outputPeriod{0};
 
     if(!mockInEnabled) {
         err = Probe();
@@ -679,6 +686,9 @@ void IMU::run() {
 
         /* Configure requested sensors */
         for(auto i = 0; i < initialReports.size(); i++) {
+            if(initialReports.at(i).streamConfig.sampleRateHz == 0) {
+                throw std::runtime_error(fmt::format("IMU report rate for sensor {} must be above 0 Hz.", initialReports.at(i).streamConfig.sensorDataType));
+            }
             int ret = initialReports.at(i).sensorDirectChannel.queryAttributes(initialReports.at(i).streamConfig);
             if(ret) {
                 logger->warn("Failed to get sensor {} attributes", initialReports.at(i).streamConfig.sensorDataType);
@@ -704,6 +714,11 @@ void IMU::run() {
                 }
             }
         }
+
+        const auto slowestReport = std::min_element(initialReports.begin(), initialReports.end(), [](const auto& a, const auto& b) {
+            return a.streamConfig.sampleRateHz < b.streamConfig.sampleRateHz;
+        });
+        outputPeriod = nanoseconds(1000000000ULL / slowestReport->streamConfig.sampleRateHz);
 
         /* Start streaming */
         for(auto i = 0; i < initialReports.size(); i++) {
@@ -733,17 +748,6 @@ void IMU::run() {
         }
     }
 
-    /*
-     * Qualcomm rounds a non-native rate up (e.g. 100 Hz -> ~116 Hz on OAK4), so cap the output to the
-     * slowest requested rate. Each emit advances the deadline by one period, which keeps the mean rate
-     * at the request; a packet is accepted slightly early (10% of a period) to tolerate timestamp jitter
-     * when the native rate already matches. Gaps longer than a period reset the deadline (no catch-up).
-     */
-    const auto slowestReport = std::min_element(
-        initialReports.begin(), initialReports.end(), [](const auto& a, const auto& b) { return a.streamConfig.sampleRateHz < b.streamConfig.sampleRateHz; });
-    // No reports with mock input, which bypasses the decimation
-    const nanoseconds outputPeriod =
-        slowestReport == initialReports.end() ? nanoseconds(0) : nanoseconds(1000000000ULL / slowestReport->streamConfig.sampleRateHz);
     steady_clock::time_point nextOutputTs{};
 
     dai::IMUPacket lastEmittedPacket;
