@@ -1565,6 +1565,15 @@ TEST_CASE("getHousingCalibration - all cameras with specTranslation", "[housingD
     }
 }
 
+TEST_CASE("getHousingCalibration throws when the calibration has no housing extrinsics", "[getHousingCalibration]") {
+    auto eepromData = loadHandlerWithHousing().getEepromData();
+    eepromData.housingExtrinsics = {};
+    CalibrationHandler handler(eepromData);
+
+    REQUIRE_THROWS_WITH(handler.getHousingCalibration(CameraBoardSocket::CAM_A, HousingCoordinateSystem::FRONT_CAM_A, true),
+                        Catch::Matchers::ContainsSubstring("missing or invalid housing extrinsics"));
+}
+
 TEST_CASE("getHousingCalibration - database with non-identity housing rotation", "[housingDatabase]") {
     auto handler = loadHandlerWithHousingRotationAndDB();
 

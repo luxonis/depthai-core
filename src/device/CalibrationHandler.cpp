@@ -631,7 +631,7 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOriginExt
     const Extrinsics& housingExtrinsics = eepromData.housingExtrinsics;
     // Devices calibrated before housing data was stored (e.g. OAK4 before DepthAI 3.2.0) have an empty rotation matrix.
     if(!housingExtrinsics.hasValidRotationMatrix()) {
-        throw std::runtime_error("Device calibration has no housing extrinsics; housing calibration is not available for this device");
+        throw std::runtime_error("Device calibration has missing or invalid housing extrinsics; housing calibration is not available for this device");
     }
 
     originSocket = housingExtrinsics.toCameraSocket;
