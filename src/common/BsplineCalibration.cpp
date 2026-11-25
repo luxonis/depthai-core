@@ -80,13 +80,13 @@ std::array<double, 3> BsplineCameraCalibration::unproject(const std::array<doubl
         for(int halving = 0; halving < 30; ++halving, step /= 2) {
             std::array<double, 4> jNext;
             const auto next = pixelOf(*this, ux - step * dx, uy - step * dy, &jNext);
-            const double nx = next[0] - pixel[0], ny = next[1] - pixel[1];
-            if(nx * nx + ny * ny < error) {
+            const double rx = next[0] - pixel[0], ry = next[1] - pixel[1];
+            if(rx * rx + ry * ry < error) {
                 ux -= step * dx;
                 uy -= step * dy;
-                ex = nx;
-                ey = ny;
-                error = nx * nx + ny * ny;
+                ex = rx;
+                ey = ry;
+                error = rx * rx + ry * ry;
                 j = jNext;
                 break;
             }

@@ -221,8 +221,8 @@ void splineMeshGrid(const dai::BsplineCameraCalibration& lens,
     }
 }
 
-/** B-spline rectification needs the camera's lens model, at the resolution of the input, with no upstream crop or scale. */
-void requireNativeBsplineInput(const dai::CalibrationHandler& calib, dai::CameraBoardSocket socket, const dai::ImgFrame& input, int width, int height) {
+/** The camera's B-spline lens model, checked to match the input: same resolution, no upstream crop or scale. */
+dai::BsplineCameraCalibration nativeBsplineLens(const dai::CalibrationHandler& calib, dai::CameraBoardSocket socket, const dai::ImgFrame& input, int width, int height) {
     const auto lens = calib.getBsplineCameraCalibration(socket);
     if(!lens) throw std::runtime_error(fmt::format("BSPLINE rectification selected but camera {} has no B-spline lens model", static_cast<int>(socket)));
     lens->validate();
@@ -235,9 +235,9 @@ void requireNativeBsplineInput(const dai::CalibrationHandler& calib, dai::Camera
         const auto inputK = input.transformation.getIntrinsicMatrix();
         for(int i = 0; i < 3; ++i)
             for(int j = 0; j < 3; ++j)
-                if(std::abs(inputK[i][j] - nativeK[i][j]) > 0.01)
-                    throw std::runtime_error("B-spline rectification does not support cropped or scaled inputs yet");
+                if(std::abs(inputK[i][j] - nativeK[i][j]) > 0.01) throw std::runtime_error("B-spline rectification does not support cropped or scaled inputs yet");
     }
+    return *lens;
 }
 
 template <typename T>
@@ -1825,27 +1825,8 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
             if(splineRectification) {
                 // Same rectification as legacy; only the lens model maps each rectified ray to a raw pixel
                 const auto started = steady_clock::now();
-                for(const auto& [socket, input] : {std::pair{leftSocket, leftIn}, std::pair{rightSocket, rightIn}}) {
-                    requireNativeBsplineInput(calib, socket, *input, inWarpWidth, inWarpHeight);
-                }
-                splineMeshGrid(*calib.getBsplineCameraCalibration(leftSocket),
-                               cv_R1,
-                               cv_targetCamMatrix,
-                               stepWidth,
-                               stepHeight,
-                               meshWidth,
-                               meshHeight,
-                               leftRawGridX,
-                               leftRawGridY);
-                splineMeshGrid(*calib.getBsplineCameraCalibration(rightSocket),
-                               cv_R2,
-                               cv_targetCamMatrix,
-                               stepWidth,
-                               stepHeight,
-                               meshWidth,
-                               meshHeight,
-                               rightRawGridX,
-                               rightRawGridY);
+                splineMeshGrid(nativeBsplineLens(calib, leftSocket, *leftIn, inWarpWidth, inWarpHeight), cv_R1, cv_targetCamMatrix, stepWidth, stepHeight, meshWidth, meshHeight, leftRawGridX, leftRawGridY);
+                splineMeshGrid(nativeBsplineLens(calib, rightSocket, *rightIn, inWarpWidth, inWarpHeight), cv_R2, cv_targetCamMatrix, stepWidth, stepHeight, meshWidth, meshHeight, rightRawGridX, rightRawGridY);
                 logger->info("B-spline rectification mesh {}x{} built in {} ms",
                              meshWidth,
                              meshHeight,

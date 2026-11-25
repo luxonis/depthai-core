@@ -471,9 +471,10 @@ class CalibrationHandler {
     dai::ImuCalibrationParams getImuParameters() const;
 
     /**
-     * Set the B-spline lens model of a camera (RVC4, experimental). It replaces the OpenCV distortion model of that camera
-     * where B-spline rectification is selected; the intrinsic matrix and extrinsics of the camera stay in use.
-     * flashCalibration stores it next to the EEPROM data.
+     * Set the B-spline lens model of a camera (experimental). Where B-spline rectification is selected, it maps rectified
+     * rays to raw pixels instead of the OpenCV distortion model; the intrinsic matrix, distortion and extrinsics of the
+     * camera still define the rectified camera. flashCalibration stores lens models on RVC4 only (next to the EEPROM
+     * data); on RVC2 pass them with Pipeline::setCalibrationData.
      *
      * @param cameraId Camera the lens model belongs to
      * @param calibration Validated before it is set

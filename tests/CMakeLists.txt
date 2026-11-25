@@ -1126,6 +1126,10 @@ dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
 dai_add_test(stereo_depth_alignment_test src/ondevice_tests/stereo_depth_alignment_test.cpp)
 dai_set_test_labels(stereo_depth_alignment_test ondevice rvc2_all rvc4 ci)
 
+# B-spline lens model against mrcal golden values
+dai_add_test(bspline_calibration_test src/onhost_tests/bspline_calibration_test.cpp)
+dai_set_test_labels(bspline_calibration_test onhost ci)
+
 # RVC4 firmware B-spline calibration store (header-only, POSIX), on a temporary directory.
 dai_add_test(bspline_calibration_store_test src/onhost_tests/bspline_calibration_store_test.cpp)
 target_include_directories(bspline_calibration_store_test PRIVATE ${PROJECT_SOURCE_DIR}/device/rvc4/src)

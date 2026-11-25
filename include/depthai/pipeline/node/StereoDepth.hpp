@@ -253,9 +253,10 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     /**
      * Lens model for rectification: LEGACY (also the AUTO default) or BSPLINE, which uses the B-spline lens models of
      * the stereo cameras in the calibration (see CalibrationHandler::setBsplineCameraCalibration). The rectification
-     * itself is the same as LEGACY, from the calibration's extrinsics. A stored B-spline model never changes the
-     * default. BSPLINE needs rectification enabled and the native resolution of the lens models. The device builds
-     * the mesh once, and again when the calibration changes.
+     * itself is the same as LEGACY: rotations and the rectified camera come from the calibration's intrinsics,
+     * distortion and extrinsics; only raw pixels come from the lens models. A stored B-spline model never changes the
+     * default. BSPLINE needs rectification enabled, horizontal stereo and the native resolution of the lens models.
+     * The device builds the mesh once, and again when the calibration changes.
      */
     void setRectificationModel(RectificationModel model);
 
