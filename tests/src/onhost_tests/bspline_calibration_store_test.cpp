@@ -7,25 +7,15 @@
 #include "BsplineCalibrationStore.hpp"
 
 namespace {
-dai::BsplineStereoCalibration model() {
-    dai::BsplineCameraCalibration camera;
-    camera.nx = camera.ny = 4;
-    camera.fovXDegrees = 80;
-    camera.intrinsics = std::vector<double>(36, 0.0);
-    camera.intrinsics[0] = camera.intrinsics[1] = 400;
-    dai::BsplineStereoCalibration result;
-    result.deviceId = "device";
-    result.calibrationId = "id";
-    result.leftSocket = dai::CameraBoardSocket::CAM_B;
-    result.rightSocket = dai::CameraBoardSocket::CAM_C;
-    result.width = 1280;
-    result.height = 800;
-    result.left = result.right = camera;
-    result.rotationLeft = result.rotationRight = result.leftToRightRotation = {1, 0, 0, 0, 1, 0, 0, 0, 1};
-    result.leftToRightTranslationCm = {-7.5, 0, 0};
-    result.baselineCm = 7.5;
-    result.virtualIntrinsics = {400, 400, 640, 400};
-    return result;
+dai::device::BsplineCalibrationStore::Lenses lenses() {
+    dai::BsplineCameraCalibration lens;
+    lens.width = 1280;
+    lens.height = 800;
+    lens.nx = lens.ny = 4;
+    lens.fovXDegrees = 80;
+    lens.intrinsics = std::vector<double>(36, 0.0);
+    lens.intrinsics[0] = lens.intrinsics[1] = 400;
+    return {{dai::CameraBoardSocket::CAM_B, lens}, {dai::CameraBoardSocket::CAM_C, lens}};
 }
 }  // namespace
 
@@ -35,17 +25,16 @@ TEST_CASE("B-spline calibration store keeps the model bound to its EEPROM data a
     const dai::device::BsplineCalibrationStore store(directory);
     const std::vector<uint8_t> legacy(512, 7), otherLegacy(512, 8);
 
-    REQUIRE_FALSE(store.load(false, legacy, "device").has_value());
-    store.store(false, legacy, model(), "device");
+    REQUIRE(store.load(false, legacy, "device").empty());
+    store.store(false, legacy, lenses(), "device");
     const auto loaded = store.load(false, legacy, "device");
-    REQUIRE(loaded.has_value());
-    CHECK(loaded->baselineCm == 7.5);
-    CHECK(loaded->left.intrinsics == model().left.intrinsics);
-    CHECK_FALSE(store.load(true, legacy, "device").has_value());  // user and factory areas are separate files
+    REQUIRE(loaded.size() == 2);
+    CHECK(loaded.at(dai::CameraBoardSocket::CAM_C).intrinsics == lenses().at(dai::CameraBoardSocket::CAM_C).intrinsics);
+    CHECK(loaded.at(dai::CameraBoardSocket::CAM_B).width == 1280);
+    CHECK(store.load(true, legacy, "device").empty());  // user and factory areas are separate files
 
     CHECK_THROWS(store.load(false, otherLegacy, "device"));  // the EEPROM changed after the model was stored
     CHECK_THROWS(store.load(false, legacy, "other-device"));
-    CHECK_THROWS(store.store(false, legacy, model(), "other-device"));
 
     SECTION("A corrupted file is rejected") {
         const auto file = directory / "bspline-user.cbor";
@@ -59,10 +48,10 @@ TEST_CASE("B-spline calibration store keeps the model bound to its EEPROM data a
         CHECK_THROWS(store.load(false, legacy, "device"));
     }
     SECTION("Removing the model deletes the file, also twice") {
-        store.store(false, legacy, std::nullopt, "device");
-        store.store(false, legacy, std::nullopt, "device");
+        store.store(false, legacy, {}, "device");
+        store.store(false, legacy, {}, "device");
         CHECK_FALSE(std::filesystem::exists(directory / "bspline-user.cbor"));
-        CHECK_FALSE(store.load(false, legacy, "device").has_value());
+        CHECK(store.load(false, legacy, "device").empty());
     }
     std::filesystem::remove_all(directory.parent_path());
 }

@@ -67,12 +67,19 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
                     py::arg("validateExtrinsics") = std::nullopt,
                     DOC(dai, CalibrationHandler, fromJson))
 
-        .def("setBsplineStereoCalibration",
-             &CalibrationHandler::setBsplineStereoCalibration,
+        .def("setBsplineCameraCalibration",
+             &CalibrationHandler::setBsplineCameraCalibration,
+             py::arg("cameraId"),
              py::arg("calibration"),
-             DOC(dai, CalibrationHandler, setBsplineStereoCalibration))
-        .def("getBsplineStereoCalibration", &CalibrationHandler::getBsplineStereoCalibration, DOC(dai, CalibrationHandler, getBsplineStereoCalibration))
-        .def("clearBsplineStereoCalibration", &CalibrationHandler::clearBsplineStereoCalibration, DOC(dai, CalibrationHandler, clearBsplineStereoCalibration))
+             DOC(dai, CalibrationHandler, setBsplineCameraCalibration))
+        .def("getBsplineCameraCalibration",
+             &CalibrationHandler::getBsplineCameraCalibration,
+             py::arg("cameraId"),
+             DOC(dai, CalibrationHandler, getBsplineCameraCalibration))
+        .def("clearBsplineCameraCalibration",
+             &CalibrationHandler::clearBsplineCameraCalibration,
+             py::arg("cameraId"),
+             DOC(dai, CalibrationHandler, clearBsplineCameraCalibration))
         .def("getEepromData", &CalibrationHandler::getEepromData, DOC(dai, CalibrationHandler, getEepromData))
         .def("hasCalibrationData", &CalibrationHandler::hasCalibrationData, DOC(dai, CalibrationHandler, hasCalibrationData))
         .def("hasCameraCalibration", &CalibrationHandler::hasCameraCalibration, py::arg("cameraId"), DOC(dai, CalibrationHandler, hasCameraCalibration))

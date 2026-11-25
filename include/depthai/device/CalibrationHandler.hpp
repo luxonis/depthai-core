@@ -471,21 +471,27 @@ class CalibrationHandler {
     dai::ImuCalibrationParams getImuParameters() const;
 
     /**
-     * Set the B-spline stereo calibration (RVC4, experimental). flashCalibration stores it next to the EEPROM data.
+     * Set the B-spline lens model of a camera (RVC4, experimental). It replaces the OpenCV distortion model of that camera
+     * where B-spline rectification is selected; the intrinsic matrix and extrinsics of the camera stay in use.
+     * flashCalibration stores it next to the EEPROM data.
      *
+     * @param cameraId Camera the lens model belongs to
      * @param calibration Validated before it is set
      */
-    void setBsplineStereoCalibration(const BsplineStereoCalibration& calibration);
+    void setBsplineCameraCalibration(CameraBoardSocket cameraId, const BsplineCameraCalibration& calibration);
 
     /**
-     * @return The B-spline stereo calibration, if one is set
+     * @param cameraId Camera to look up
+     * @return The B-spline lens model of the camera, if one is set
      */
-    std::optional<BsplineStereoCalibration> getBsplineStereoCalibration() const;
+    std::optional<BsplineCameraCalibration> getBsplineCameraCalibration(CameraBoardSocket cameraId) const;
 
     /**
-     * Remove the B-spline stereo calibration. The other calibration data is unchanged.
+     * Remove the B-spline lens model of a camera. The other calibration data is unchanged.
+     *
+     * @param cameraId Camera whose lens model is removed
      */
-    void clearBsplineStereoCalibration();
+    void clearBsplineCameraCalibration(CameraBoardSocket cameraId);
 
     /**
      * Write raw calibration/board data to json file.

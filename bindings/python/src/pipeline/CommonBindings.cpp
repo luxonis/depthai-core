@@ -755,38 +755,14 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<BsplineCameraCalibration>(m, "BsplineCameraCalibration", DOC(dai, BsplineCameraCalibration))
         .def(py::init<>())
         .def("validate", &BsplineCameraCalibration::validate, DOC(dai, BsplineCameraCalibration, validate))
-        .def("project", &BsplineCameraCalibration::project, DOC(dai, BsplineCameraCalibration, project))
+        .def("project", &BsplineCameraCalibration::project, py::arg("ray"), DOC(dai, BsplineCameraCalibration, project))
+        .def("unproject", &BsplineCameraCalibration::unproject, py::arg("pixel"), DOC(dai, BsplineCameraCalibration, unproject))
+        .def_readwrite("width", &BsplineCameraCalibration::width)
+        .def_readwrite("height", &BsplineCameraCalibration::height)
         .def_readwrite("nx", &BsplineCameraCalibration::nx)
         .def_readwrite("ny", &BsplineCameraCalibration::ny)
         .def_readwrite("fovXDegrees", &BsplineCameraCalibration::fovXDegrees)
         .def_readwrite("intrinsics", &BsplineCameraCalibration::intrinsics);
-    py::class_<BsplineStereoCalibration>(m, "BsplineStereoCalibration", DOC(dai, BsplineStereoCalibration))
-        .def(py::init<>())
-        .def("validate", &BsplineStereoCalibration::validate, DOC(dai, BsplineStereoCalibration, validate))
-        .def("getCameraToReference",
-             &BsplineStereoCalibration::getCameraToReference,
-             py::arg("socket"),
-             DOC(dai, BsplineStereoCalibration, getCameraToReference))
-        .def_readwrite("version", &BsplineStereoCalibration::version)
-        .def_readwrite("deviceId", &BsplineStereoCalibration::deviceId)
-        .def_readwrite("calibrationId", &BsplineStereoCalibration::calibrationId)
-        .def_readwrite("leftSocket", &BsplineStereoCalibration::leftSocket)
-        .def_readwrite("rightSocket", &BsplineStereoCalibration::rightSocket)
-        .def_readwrite("width", &BsplineStereoCalibration::width)
-        .def_readwrite("height", &BsplineStereoCalibration::height)
-        .def_readwrite("left", &BsplineStereoCalibration::left)
-        .def_readwrite("right", &BsplineStereoCalibration::right)
-        .def_readwrite("rotationLeft", &BsplineStereoCalibration::rotationLeft)
-        .def_readwrite("rotationRight", &BsplineStereoCalibration::rotationRight)
-        .def_readwrite("virtualIntrinsics", &BsplineStereoCalibration::virtualIntrinsics)
-        .def_readwrite("baselineCm", &BsplineStereoCalibration::baselineCm)
-        .def_readwrite("leftToRightRotation", &BsplineStereoCalibration::leftToRightRotation)
-        .def_readwrite("leftToRightTranslationCm", &BsplineStereoCalibration::leftToRightTranslationCm)
-        .def_readwrite("referenceSocket", &BsplineStereoCalibration::referenceSocket)
-        .def_readwrite("leftToReferenceRotation", &BsplineStereoCalibration::leftToReferenceRotation)
-        .def_readwrite("leftToReferenceTranslationCm", &BsplineStereoCalibration::leftToReferenceTranslationCm)
-        .def_readwrite("housingToLeftRotation", &BsplineStereoCalibration::housingToLeftRotation)
-        .def_readwrite("housingToLeftTranslationCm", &BsplineStereoCalibration::housingToLeftTranslationCm);
     // EepromData
     eepromData.def(py::init<>())
         .def_readwrite("version", &EepromData::version)
@@ -809,7 +785,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("stereoEnableDistortionCorrection", &EepromData::stereoEnableDistortionCorrection)
         .def_readwrite("verticalCameraSocket", &EepromData::verticalCameraSocket)
         .def_readwrite("imuCalibrationParams", &EepromData::imuCalibrationParams)
-        .def_readwrite("bsplineStereoCalibration", &EepromData::bsplineStereoCalibration);
+        .def_readwrite("bsplineCameraData", &EepromData::bsplineCameraData);
 
     m.attr("ImuParameters") = m.attr("ImuCalibrationParams");
     m.attr("ImuModelParams") = m.attr("ImuNoiseParameters");

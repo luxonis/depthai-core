@@ -1,8 +1,8 @@
 /**
  * RVC4 B-spline rectification on device.
  *
- * The synthetic cameras are pinhole (f = 800 px, 1280x800, 7.5 cm baseline). A 20x12 B-spline is fitted to the
- * same pinhole projection, so rectifying with BSPLINE must give the same depth as LEGACY. Both runs render textured
+ * The synthetic cameras are pinhole (f = 800 px, 1280x800, 7.5 cm baseline). Each gets a 20x12 B-spline lens model fitted
+ * to the same pinhole projection, so rectifying with BSPLINE must give the same depth as LEGACY. Both runs render textured
  * squares at known disparities and check depth, position and size of each square. The calibration exists only
  * in the pipeline: nothing is written to the device. Run with the Catch2 filter [bspline] on an RVC4 device.
  */
@@ -81,6 +81,8 @@ dai::BsplineCameraCalibration pinholeSpline() {
     cv::solve(normal, rhsX, dx, cv::DECOMP_CHOLESKY);
     cv::solve(normal, rhsY, dy, cv::DECOMP_CHOLESKY);
     dai::BsplineCameraCalibration spline;
+    spline.width = WIDTH;
+    spline.height = HEIGHT;
     spline.nx = NX;
     spline.ny = NY;
     spline.fovXDegrees = FOV_X_DEG;
@@ -90,24 +92,6 @@ dai::BsplineCameraCalibration pinholeSpline() {
         spline.intrinsics.push_back(dy.at<double>(i));
     }
     return spline;
-}
-
-dai::BsplineStereoCalibration pinholeStereoSpline(const std::string& deviceId) {
-    const std::vector<double> identity = {1, 0, 0, 0, 1, 0, 0, 0, 1};
-    dai::BsplineStereoCalibration model;
-    model.deviceId = deviceId;
-    model.calibrationId = "pinhole-equivalent-test";
-    model.leftSocket = dai::CameraBoardSocket::CAM_B;
-    model.rightSocket = dai::CameraBoardSocket::CAM_C;
-    model.width = WIDTH;
-    model.height = HEIGHT;
-    model.left = model.right = pinholeSpline();
-    model.rotationLeft = model.rotationRight = model.leftToRightRotation = identity;
-    model.leftToRightTranslationCm = {-BASELINE_CM, 0, 0};
-    model.baselineCm = BASELINE_CM;
-    model.virtualIntrinsics = {FOCAL, FOCAL, WIDTH / 2.0, HEIGHT / 2.0};
-    model.validate();
-    return model;
 }
 
 /** Textured background at a fixed disparity, with textured squares in front of it. */
@@ -177,7 +161,7 @@ void runStereo(dai::StereoDepthProperties::RectificationModel model) {
     dai::Pipeline pipeline;
     if(pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC4) SKIP("B-spline rectification is RVC4 only");
     auto calibration = pinholeCalibration();
-    calibration.setBsplineStereoCalibration(pinholeStereoSpline(pipeline.getDefaultDevice()->getDeviceId()));
+    for(const auto socket : {dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C}) calibration.setBsplineCameraCalibration(socket, pinholeSpline());
     pipeline.setCalibrationData(calibration);  // pipeline-local only, never the device's storage
 
     auto stereo = pipeline.create<dai::node::StereoDepth>();

@@ -12,3 +12,5 @@ dai_set_example_test_labels(stereo ondevice rvc2_all rvc4 ci)
 
 dai_add_example(stereo_depth_remap stereo_depth_remap.cpp ON OFF)
 dai_set_example_test_labels(stereo_depth_remap ondevice rvc2_all rvc4 ci)
+# Needs B-spline lens models in the device calibration to use BSPLINE; falls back to LEGACY otherwise
+dai_add_example(stereo_bspline stereo_bspline.cpp OFF OFF)

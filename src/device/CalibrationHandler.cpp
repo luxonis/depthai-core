@@ -878,15 +878,19 @@ dai::ImuCalibrationParams CalibrationHandler::getImuParameters() const {
     return params;
 }
 
-void CalibrationHandler::setBsplineStereoCalibration(const BsplineStereoCalibration& calibration) {
+void CalibrationHandler::setBsplineCameraCalibration(CameraBoardSocket cameraId, const BsplineCameraCalibration& calibration) {
     calibration.validate();
-    eepromData.bsplineStereoCalibration = calibration;
+    eepromData.bsplineCameraData[cameraId] = calibration;
 }
-std::optional<BsplineStereoCalibration> CalibrationHandler::getBsplineStereoCalibration() const {
-    return eepromData.bsplineStereoCalibration;
+
+std::optional<BsplineCameraCalibration> CalibrationHandler::getBsplineCameraCalibration(CameraBoardSocket cameraId) const {
+    const auto it = eepromData.bsplineCameraData.find(cameraId);
+    if(it == eepromData.bsplineCameraData.end()) return std::nullopt;
+    return it->second;
 }
-void CalibrationHandler::clearBsplineStereoCalibration() {
-    eepromData.bsplineStereoCalibration.reset();
+
+void CalibrationHandler::clearBsplineCameraCalibration(CameraBoardSocket cameraId) {
+    eepromData.bsplineCameraData.erase(cameraId);
 }
 
 bool CalibrationHandler::eepromToJsonFile(std::filesystem::path destPath) const {

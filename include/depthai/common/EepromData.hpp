@@ -48,7 +48,8 @@ struct EepromData {
     // IMU calibration payload serialized with EepromData via DEPTHAI_SERIALIZE_OPTIONAL_EXT;
     // includes biases, scale/shear/rotation decomposition, and IMU noise parameters.
     ImuCalibrationParams imuCalibrationParams;
-    std::optional<BsplineStereoCalibration> bsplineStereoCalibration;
+    // Optional B-spline lens model per camera (RVC4). Lens only: positions are the extrinsics in cameraData.
+    std::unordered_map<CameraBoardSocket, BsplineCameraCalibration> bsplineCameraData;
 };
 
 DEPTHAI_SERIALIZE_OPTIONAL_EXT_DECL(EepromData,
@@ -72,6 +73,6 @@ DEPTHAI_SERIALIZE_OPTIONAL_EXT_DECL(EepromData,
                                     stereoEnableDistortionCorrection,
                                     verticalCameraSocket,
                                     imuCalibrationParams,
-                                    bsplineStereoCalibration);
+                                    bsplineCameraData);
 
 }  // namespace dai

@@ -8,17 +8,22 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
-#include <optional>
 #include <stdexcept>
+#include <unordered_map>
 #include <vector>
 
 #include "depthai/common/BsplineCalibration.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
 
-// RVC4 calibration extension. The legacy area remains readable by older firmware.
-// An exact copy of the legacy area binds the extension to its matching EEPROM.
-// Interrupted writes / older firmware rewrites cannot silently load stale data.
+// B-spline lens models of the main board's cameras, stored next to the EEPROM (which is too small for them).
+// The file keeps an exact copy of the EEPROM area and the device ID it belongs to, so a later EEPROM write by any
+// firmware, or a file from another device, is never loaded as if it matched.
 namespace dai::device {
 class BsplineCalibrationStore {
+   public:
+    using Lenses = std::unordered_map<CameraBoardSocket, BsplineCameraCalibration>;
+
+   private:
     // CRC32 detects accidental coefficient corruption even if CBOR still parses.
     static uint32_t crc32(const std::vector<uint8_t>& bytes) {
         uint32_t crc = 0xffffffffu;
@@ -36,28 +41,30 @@ class BsplineCalibrationStore {
    public:
     explicit BsplineCalibrationStore(std::filesystem::path root = "/persist/calibration") : directory(std::move(root)) {}
 
-    std::optional<BsplineStereoCalibration> load(bool factory, const std::vector<uint8_t>& legacy, const std::string& deviceId) const {
+    /** Lens models stored for this EEPROM area and device; empty if there are none. Throws if the file is stale or corrupt. */
+    Lenses load(bool factory, const std::vector<uint8_t>& legacy, const std::string& deviceId) const {
         const auto file = path(factory);
-        if(!std::filesystem::exists(file)) return std::nullopt;
+        if(!std::filesystem::exists(file)) return {};
         if(std::filesystem::file_size(file) > 1024 * 1024) throw std::runtime_error("Spline calibration extension exceeds size limit");
         std::ifstream input(file, std::ios::binary);
         if(!input) throw std::runtime_error("Cannot read spline calibration extension");
         std::vector<uint8_t> bytes{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
         auto envelope = nlohmann::json::from_cbor(bytes);
-        if(envelope.at("version") != 1 || envelope.at("legacy").get<std::vector<uint8_t>>() != legacy) {
+        if(envelope.at("version") != 2 || envelope.at("legacy").get<std::vector<uint8_t>>() != legacy) {
             throw std::runtime_error("Spline calibration extension does not match current legacy calibration");
         }
+        if(envelope.at("deviceId").get<std::string>() != deviceId) throw std::runtime_error("Spline calibration belongs to another device");
         const auto payload = envelope.at("payload").get<std::vector<uint8_t>>();
         if(envelope.at("crc32").get<uint32_t>() != crc32(payload)) throw std::runtime_error("Spline calibration checksum mismatch");
-        auto model = nlohmann::json::from_cbor(payload).get<BsplineStereoCalibration>();
-        model.validate();
-        if(model.deviceId != deviceId) throw std::runtime_error("Spline calibration belongs to another device");
-        return model;
+        auto lenses = nlohmann::json::from_cbor(payload).get<Lenses>();
+        for(const auto& [socket, lens] : lenses) lens.validate();
+        return lenses;
     }
 
-    void store(bool factory, const std::vector<uint8_t>& legacy, const std::optional<BsplineStereoCalibration>& model, const std::string& deviceId) const {
+    /** Replace the stored lens models atomically; an empty map removes the file. */
+    void store(bool factory, const std::vector<uint8_t>& legacy, const Lenses& lenses, const std::string& deviceId) const {
         const auto file = path(factory);
-        if(!model) {
+        if(lenses.empty()) {
             if(::unlink(file.c_str()) != 0 && errno != ENOENT) throw std::runtime_error("Cannot remove spline calibration extension");
             if(std::filesystem::exists(directory)) {
                 const int fd = ::open(directory.c_str(), O_RDONLY | O_DIRECTORY);
@@ -68,10 +75,10 @@ class BsplineCalibrationStore {
             }
             return;
         }
-        model->validate();
-        if(model->deviceId != deviceId) throw std::runtime_error("Spline calibration belongs to another device");
-        const auto payload = nlohmann::json::to_cbor(nlohmann::json(*model));
-        auto bytes = nlohmann::json::to_cbor(nlohmann::json{{"version", 1}, {"legacy", legacy}, {"payload", payload}, {"crc32", crc32(payload)}});
+        for(const auto& [socket, lens] : lenses) lens.validate();
+        const auto payload = nlohmann::json::to_cbor(nlohmann::json(lenses));
+        auto bytes = nlohmann::json::to_cbor(
+            nlohmann::json{{"version", 2}, {"legacy", legacy}, {"deviceId", deviceId}, {"payload", payload}, {"crc32", crc32(payload)}});
         if(bytes.size() > 1024 * 1024) throw std::runtime_error("Spline calibration extension exceeds size limit");
         std::filesystem::create_directories(directory);
         std::string temporary = file.string() + ".XXXXXX";

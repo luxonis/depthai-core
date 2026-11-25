@@ -32,7 +32,6 @@
 #include "pipeline/Pool.hpp"
 #include "spdlog/spdlog.h"
 #include "utilities/AcceleratorMemory.hpp"
-#include "utilities/OSUtils.hpp"
 #include "vendor/DeviceError.hpp"
 #include "vendor/dai_device_dsp.h"
 
@@ -194,32 +193,50 @@ RectificationMatrices computeRectificationMatrices(cv::Mat M1,
     return rectification;
 }
 
-/** Raw-image position of every mesh point of the rectified (virtual) camera k, through rotation (row-major) and the spline. */
-void splineMeshGrid(const dai::BsplineCameraCalibration& camera,
-                    const std::vector<double>& rotation,
-                    const std::vector<double>& k,
-                    int meshWidth,
-                    int meshHeight,
+/** Raw-image position of every mesh point: the ray of rectified pixel (x * stepWidth, y * stepHeight) through
+ * targetK and rotation R (raw to rectified, 3x3 float), projected by the camera's B-spline lens model. */
+void splineMeshGrid(const dai::BsplineCameraCalibration& lens,
+                    const cv::Mat& R,
+                    const cv::Mat& targetK,
                     int stepWidth,
                     int stepHeight,
+                    int meshWidth,
+                    int meshHeight,
                     std::vector<double>& gridX,
                     std::vector<double>& gridY) {
+    const double fx = targetK.at<float>(0, 0), fy = targetK.at<float>(1, 1), cx = targetK.at<float>(0, 2), cy = targetK.at<float>(1, 2);
     gridX.reserve(meshWidth * meshHeight);
     gridY.reserve(meshWidth * meshHeight);
     for(int y = 0; y < meshHeight; ++y) {
         for(int x = 0; x < meshWidth; ++x) {
-            const std::array<double, 3> target{{(x * stepWidth - k[2]) / k[0], (y * stepHeight - k[3]) / k[1], 1}};
-            std::array<double, 3> raw{{0, 0, 0}};  // rotation^T * target
+            const std::array<double, 3> rectified{{(x * stepWidth - cx) / fx, (y * stepHeight - cy) / fy, 1}};
+            std::array<double, 3> raw{{0, 0, 0}};  // R^T * rectified
             for(int i = 0; i < 3; ++i)
-                for(int j = 0; j < 3; ++j) raw[i] += rotation[3 * j + i] * target[j];
+                for(int j = 0; j < 3; ++j) raw[i] += R.at<float>(j, i) * rectified[j];
             if(raw[2] <= 0) throw std::runtime_error("B-spline mesh contains a ray behind the raw camera");
-            const auto pixel = camera.project(raw);
-            if(!std::isfinite(pixel[0]) || !std::isfinite(pixel[1]) || std::abs(pixel[0]) > 1e6 || std::abs(pixel[1]) > 1e6) {
-                throw std::runtime_error("Invalid B-spline warp coordinate");
-            }
+            const auto pixel = lens.project(raw);
             gridX.push_back(pixel[0]);
             gridY.push_back(pixel[1]);
         }
+    }
+}
+
+/** B-spline rectification needs the camera's lens model, at the resolution of the input, with no upstream crop or scale. */
+void requireNativeBsplineInput(const dai::CalibrationHandler& calib, dai::CameraBoardSocket socket, const dai::ImgFrame& input, int width, int height) {
+    const auto lens = calib.getBsplineCameraCalibration(socket);
+    if(!lens) throw std::runtime_error(fmt::format("BSPLINE rectification selected but camera {} has no B-spline lens model", static_cast<int>(socket)));
+    lens->validate();
+    if(lens->width != width || lens->height != height) {
+        throw std::runtime_error(
+            fmt::format("B-spline lens model of camera {} is {}x{}, the input is {}x{}", static_cast<int>(socket), lens->width, lens->height, width, height));
+    }
+    if(input.transformation.isValid()) {
+        const auto nativeK = calib.getCameraIntrinsics(socket, width, height);
+        const auto inputK = input.transformation.getIntrinsicMatrix();
+        for(int i = 0; i < 3; ++i)
+            for(int j = 0; j < 3; ++j)
+                if(std::abs(inputK[i][j] - nativeK[i][j]) > 0.01)
+                    throw std::runtime_error("B-spline rectification does not support cropped or scaled inputs yet");
     }
 }
 
@@ -423,8 +440,8 @@ void StereoDepth::_ThreadWarp() {
 
             auto rectifiedLeftTransformation = rectifiedLeftFrame->transformation;
             auto rectifiedRightTransformation = rectifiedRightFrame->transformation;
-            setRectifiedTransformations(rectifiedLeftTransformation, cv_R_left, cv_KRect_left, leftSocket);
-            setRectifiedTransformations(rectifiedRightTransformation, cv_R_right, cv_KRect_right, rightSocket);
+            setRectifiedTransformations(rectifiedLeftTransformation, cv_R_left, cv_KRect_left);
+            setRectifiedTransformations(rectifiedRightTransformation, cv_R_right, cv_KRect_right);
             setFrameTransformation(*rectifiedLeftFrame, std::move(rectifiedLeftTransformation));
             setFrameTransformation(*rectifiedRightFrame, std::move(rectifiedRightTransformation));
         }
@@ -1163,10 +1180,7 @@ void StereoDepth::_ThreadStereo() {
         logger->debug("Stereo message push took {} ms", stereoPushTime);
     }
 }
-void StereoDepth::setRectifiedTransformations(dai::ImgTransformation& transformation,
-                                              const cv::Mat& cv_R,
-                                              const cv::Mat& cv_KRect,
-                                              dai::CameraBoardSocket socket) const {
+void StereoDepth::setRectifiedTransformations(dai::ImgTransformation& transformation, const cv::Mat& cv_R, const cv::Mat& cv_KRect) const {
     const auto toDeviceId = transformation.getExtrinsics().toDeviceId;
     if(cv_R.empty() || cv_KRect.empty()) {
         // Custom rectification meshes don't carry a recoverable pinhole camera model.
@@ -1180,22 +1194,6 @@ void StereoDepth::setRectifiedTransformations(dai::ImgTransformation& transforma
 
     const auto distortionModel = transformation.getDistortionModel();
     auto currentExtrinsics = transformation.getExtrinsics();
-    if(activeSplineCalibration) {
-        // Raw input metadata describes the legacy optical axes. Replace it with
-        // this model's fitted pose before applying the rectification rotation.
-        currentExtrinsics = dai::Extrinsics();
-        currentExtrinsics.toDeviceId = activeSplineCalibration->deviceId;
-        if(activeSplineCalibration->referenceSocket != dai::CameraBoardSocket::AUTO) {
-            const auto pose = activeSplineCalibration->getCameraToReference(socket);
-            std::vector<std::vector<float>> matrix(4, std::vector<float>(4));
-            for(int i = 0; i < 4; ++i)
-                for(int j = 0; j < 4; ++j) matrix[i][j] = static_cast<float>(pose[i][j]);
-            currentExtrinsics.setTransformationMatrix(matrix, dai::LengthUnit::CENTIMETER);
-            currentExtrinsics.toCameraSocket = activeSplineCalibration->referenceSocket;
-        }
-        // Without registration the virtual intrinsics are still known, but no
-        // cross-camera/device reference pose is advertised from the legacy fit.
-    }
     if(!currentExtrinsics.rotationMatrix.empty()) {
         auto currentRotationMat = matrix::vectorMatrixToMatrix3x3(currentExtrinsics.getRotationMatrix());
         currentExtrinsics.rotationMatrix = matrix::matrix3x3ToVectorMatrix(matrix::matMul(currentRotationMat, cvMatToArray3x3(cv_R.t())));
@@ -1578,7 +1576,6 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
     std::cout << "Loading calibration data from socket leftSocket " << (int)leftSocket << " and rightSocket " << (int)rightSocket << std::endl;
 
     auto pipeline = getParentPipeline();
-    activeSplineCalibration.reset();
     const bool splineRectification = properties.rectificationModel == dai::StereoDepthProperties::RectificationModel::BSPLINE;
 
     bool isCalib = false;
@@ -1605,7 +1602,7 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
     bool isVertical = false;
     int baselineIdx = isVertical ? 1 : 0;
 
-    if(isCalib && !splineRectification) {
+    if(isCalib) {
         try {
             auto T = calib.getCameraTranslationVector(leftSocket, rightSocket, true);
             isVertical = std::abs(T[1]) > std::abs(T[0]);
@@ -1622,8 +1619,8 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
         outFrameHeight = tmp;
     }
 
-    if(splineRectification && (!enableRectification || isVertical || properties.mesh.meshSize)) {
-        throw std::runtime_error("B-spline rectification requires enabled horizontal stereo and cannot be combined with a custom mesh");
+    if(splineRectification && (!isCalib || !enableRectification || isVertical || properties.mesh.meshSize)) {
+        throw std::runtime_error("B-spline rectification requires a calibration, enabled horizontal stereo and no custom mesh");
     }
     if(properties.mesh.stepWidth <= 0 || properties.mesh.stepHeight <= 0) throw std::runtime_error("Mesh steps must be positive");
     stepWidth = properties.mesh.stepWidth;
@@ -1638,7 +1635,7 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
     bool userMeshRectification = !!properties.mesh.meshSize;
 
     autoAlignment = dai::StereoDepthConfig::AlgorithmControl::DepthAlign::RECTIFIED_LEFT;
-    if(isCalib && !splineRectification) {
+    if(isCalib) {
         try {
             const auto camATranslationToLeft = calib.getCameraTranslationVector(leftSocket, dai::CameraBoardSocket::CAM_A, false);
             const auto camATranslationToRight = calib.getCameraTranslationVector(rightSocket, dai::CameraBoardSocket::CAM_A, false);
@@ -1670,7 +1667,7 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
                                        : dai::getLengthUnitMultiplier(initialConfig->algorithmControl.depthUnit);
     int baselineIndex = isVertical ? 1 : 0;
     fixedNumerator = 0;
-    if(depthConnected && !splineRectification) {
+    if(depthConnected) {
         if(isCalib) {
             try {
                 auto T = calib.getCameraTranslationVector(leftSocket, rightSocket, false);
@@ -1726,64 +1723,7 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
     cv_KRect_right.release();
 
     if(enableRectification) {
-        if(splineRectification) {
-            const auto stored = calib.getBsplineStereoCalibration();
-            if(!isCalib || !stored) throw std::runtime_error("BSPLINE selected but no stored B-spline stereo calibration is available");
-            const auto& model = *stored;
-            model.validate();
-            if(model.deviceId != dai::gate::getSerialNumber() || model.leftSocket != leftSocket || model.rightSocket != rightSocket) {
-                throw std::runtime_error("B-spline calibration device/socket binding mismatch");
-            }
-            if(!usesRectifiedOutputAlignment(requestedAlignment)) throw std::runtime_error("B-spline mode requires RECTIFIED_LEFT/RIGHT alignment");
-            if(inWarpWidth != model.width || inWarpHeight != model.height || outFrameWidth != model.width || outFrameHeight != model.height
-               || model.width % stepWidth || model.height % stepHeight) {
-                throw std::runtime_error("B-spline mode requires native calibration resolution and mesh steps dividing the image size");
-            }
-            if(properties.alphaScaling) throw std::runtime_error("B-spline mode uses its stored virtual camera; alpha scaling is not supported");
-            if(properties.baseline || properties.focalLength)
-                throw std::runtime_error("B-spline mode derives depth geometry from calibration; overrides are not supported");
-            // The spline fit owns its R/T. Persistence checks the device and
-            // calibration-generation binding; comparing against legacy R/T would
-            // incorrectly reject two independently calibrated models.
-            // Reject upstream crop/scale metadata. Missing replay metadata is
-            // allowed only for frames already at the exact native dimensions.
-            const auto nativeCalibration = calib.getEepromData();
-            for(const auto* frame : {leftIn.get(), rightIn.get()}) {
-                const auto& info = nativeCalibration.cameraData.at(frame == leftIn.get() ? leftSocket : rightSocket);
-                if(info.width != model.width || info.height != model.height) throw std::runtime_error("Spline/native sensor dimensions differ");
-                if(frame->transformation.isValid()) {
-                    const auto nativeK = info.intrinsicMatrix;
-                    const auto inputK = frame->transformation.getIntrinsicMatrix();
-                    for(int i = 0; i < 3; ++i)
-                        for(int j = 0; j < 3; ++j)
-                            if(std::abs(inputK[i][j] - nativeK[i][j]) > 0.01) {
-                                throw std::runtime_error("B-spline v1 does not support upstream crop/scale/intrinsic changes");
-                            }
-                }
-            }
-            const auto started = steady_clock::now();
-            auto matrix = [](const std::vector<double>& values) {
-                cv::Mat result(3, 3, CV_32FC1);
-                for(int i = 0; i < 9; ++i) result.at<float>(i) = static_cast<float>(values[i]);
-                return result;
-            };
-            cv_R_left = matrix(model.rotationLeft);
-            cv_R_right = matrix(model.rotationRight);
-            const auto& k = model.virtualIntrinsics;
-            cv_KRect_left = (cv::Mat_<float>(3, 3) << k[0], 0, k[2], 0, k[1], k[3], 0, 0, 1);
-            cv_KRect_right = cv_KRect_left.clone();
-            splineMeshGrid(model.left, model.rotationLeft, k, meshWidth, meshHeight, stepWidth, stepHeight, leftRawGridX, leftRawGridY);
-            splineMeshGrid(model.right, model.rotationRight, k, meshWidth, meshHeight, stepWidth, stepHeight, rightRawGridX, rightRawGridY);
-            baseline = model.baselineCm / 100.0;
-            focal = k[0];
-            fixedNumerator = baseline * customMultiplier * focal;
-            activeSplineCalibration = model;
-            logger->info("B-spline mesh generated on device: calibration={}, grid={}x{}, elapsed={} ms; reused until calibration changes",
-                         model.calibrationId,
-                         meshWidth,
-                         meshHeight,
-                         duration_cast<microseconds>(steady_clock::now() - started).count() / 1000.0);
-        } else if(userMeshRectification) {
+        if(userMeshRectification) {
             if(!usesRectifiedOutputAlignment(requestedAlignment)) {
                 throw std::runtime_error("LEFT/RIGHT alignment is not supported together with custom rectification mesh on RVC4");
             }
@@ -1882,22 +1822,52 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
                 }
             }
 
-            cv::initUndistortRectifyMap(cv_M1, cv_d1, cv_R1, cv_targetCamMatrix, cv_meshSize, CV_32FC1, map_x_l, map_y_l);
+            if(splineRectification) {
+                // Same rectification as legacy; only the lens model maps each rectified ray to a raw pixel
+                const auto started = steady_clock::now();
+                for(const auto& [socket, input] : {std::pair{leftSocket, leftIn}, std::pair{rightSocket, rightIn}}) {
+                    requireNativeBsplineInput(calib, socket, *input, inWarpWidth, inWarpHeight);
+                }
+                splineMeshGrid(*calib.getBsplineCameraCalibration(leftSocket),
+                               cv_R1,
+                               cv_targetCamMatrix,
+                               stepWidth,
+                               stepHeight,
+                               meshWidth,
+                               meshHeight,
+                               leftRawGridX,
+                               leftRawGridY);
+                splineMeshGrid(*calib.getBsplineCameraCalibration(rightSocket),
+                               cv_R2,
+                               cv_targetCamMatrix,
+                               stepWidth,
+                               stepHeight,
+                               meshWidth,
+                               meshHeight,
+                               rightRawGridX,
+                               rightRawGridY);
+                logger->info("B-spline rectification mesh {}x{} built in {} ms",
+                             meshWidth,
+                             meshHeight,
+                             duration_cast<microseconds>(steady_clock::now() - started).count() / 1000.0);
+            } else {
+                cv::initUndistortRectifyMap(cv_M1, cv_d1, cv_R1, cv_targetCamMatrix, cv_meshSize, CV_32FC1, map_x_l, map_y_l);
 
-            auto leftMesh = downSampleMesh(outFrameWidth, outFrameHeight, meshWidth, meshHeight, stepWidth, stepHeight, map_x_l, map_y_l);
+                auto leftMesh = downSampleMesh(outFrameWidth, outFrameHeight, meshWidth, meshHeight, stepWidth, stepHeight, map_x_l, map_y_l);
 
-            cv::initUndistortRectifyMap(cv_M2, cv_d2, cv_R2, cv_targetCamMatrix, cv_meshSize, CV_32FC1, map_x_r, map_y_r);
+                cv::initUndistortRectifyMap(cv_M2, cv_d2, cv_R2, cv_targetCamMatrix, cv_meshSize, CV_32FC1, map_x_r, map_y_r);
 
-            auto rightMesh = downSampleMesh(outFrameWidth, outFrameHeight, meshWidth, meshHeight, stepWidth, stepHeight, map_x_r, map_y_r);
+                auto rightMesh = downSampleMesh(outFrameWidth, outFrameHeight, meshWidth, meshHeight, stepWidth, stepHeight, map_x_r, map_y_r);
 
-            for(auto& p : leftMesh) {
-                leftRawGridX.push_back(p.x);
-                leftRawGridY.push_back(p.y);
-            }
+                for(auto& p : leftMesh) {
+                    leftRawGridX.push_back(p.x);
+                    leftRawGridY.push_back(p.y);
+                }
 
-            for(auto& p : rightMesh) {
-                rightRawGridX.push_back(p.x);
-                rightRawGridY.push_back(p.y);
+                for(auto& p : rightMesh) {
+                    rightRawGridX.push_back(p.x);
+                    rightRawGridY.push_back(p.y);
+                }
             }
 
             if(1) {

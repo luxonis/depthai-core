@@ -310,11 +310,11 @@ std::tuple<bool, std::string, std::vector<uint8_t>> eeprom_read_raw(eeprom_area 
 }
 
 namespace {
-// Store (or with nullopt remove) the main board's B-spline calibration, bound to the legacy bytes now in the area
-void storeBsplineCalibration(eeprom_area area, const std::optional<dai::BsplineStereoCalibration>& model) {
+// Store (or with an empty map remove) the main board's B-spline lens models, bound to the legacy bytes now in the area
+void storeBsplineCalibration(eeprom_area area, const dai::device::BsplineCalibrationStore::Lenses& lenses) {
     auto [ok, message, legacy] = eeprom_read_raw(area, dai::CameraBoardSocket::AUTO);
     if(!ok) throw std::runtime_error(message);
-    dai::device::BsplineCalibrationStore{}.store(area == EEPROM_AREA_FACTORY, legacy, model, dai::gate::getSerialNumber());
+    dai::device::BsplineCalibrationStore{}.store(area == EEPROM_AREA_FACTORY, legacy, lenses, dai::gate::getSerialNumber());
 }
 }  // namespace
 
@@ -488,7 +488,7 @@ std::tuple<bool, std::string> eeprom_factory_reset(dai::CameraBoardSocket camSoc
 
     if(camSocket == dai::CameraBoardSocket::AUTO) {
         try {
-            storeBsplineCalibration(EEPROM_AREA_USER, board_data_config.bsplineStereoCalibration);
+            storeBsplineCalibration(EEPROM_AREA_USER, board_data_config.bsplineCameraData);
         } catch(const std::exception& ex) {
             return {false, std::string("Factory reset spline extension failed: ") + ex.what()};
         }
@@ -508,13 +508,15 @@ eeprom_status eeprom_store_config(dai::EepromData& board_data_config,
         return EEPROM_NOT_AVAILABLE;
     }
 
-    if(board_data_config.bsplineStereoCalibration) {
+    if(!board_data_config.bsplineCameraData.empty()) {
         if(board_data_config.version != 6 && board_data_config.version != 7) return EEPROM_INVALID_DATA;
         // CBA EEPROM cannot hold this payload. Validate before any legacy write.
         if(camSocket != dai::CameraBoardSocket::AUTO) return EEPROM_INVALID_DATA;
         try {
-            board_data_config.bsplineStereoCalibration->validate();
-            if(board_data_config.bsplineStereoCalibration->deviceId != dai::gate::getSerialNumber()) return EEPROM_INVALID_DATA;
+            for(const auto& [socket, lens] : board_data_config.bsplineCameraData) {
+                if(board_data_config.cameraData.count(socket) == 0) return EEPROM_INVALID_DATA;  // a lens needs its camera's calibration
+                lens.validate();
+            }
         } catch(const std::exception& ex) {
             printf("Invalid spline calibration: %s\n", ex.what());
             return EEPROM_INVALID_DATA;
@@ -538,10 +540,11 @@ eeprom_status eeprom_store_config(dai::EepromData& board_data_config,
 
     if(camSocket == dai::CameraBoardSocket::AUTO) {
         dai::EepromData previous;
-        if(eeprom_load_config(previous, area, camSocket) == EEPROM_OK && (board_data_config.bsplineStereoCalibration || previous.bsplineStereoCalibration)) {
+        if(eeprom_load_config(previous, area, camSocket) == EEPROM_OK
+           && (!board_data_config.bsplineCameraData.empty() || !previous.bsplineCameraData.empty())) {
             auto legacyFields = [](const dai::EepromData& data) {
                 nlohmann::json value = data;
-                value.erase("bsplineStereoCalibration");
+                value.erase("bsplineCameraData");
                 // Noise parameters are supplied by the detected IMU model,
                 // not stored in the legacy area. Camera map order is immaterial.
                 value["imuCalibrationParams"]["noise"] = nullptr;
@@ -552,7 +555,7 @@ eeprom_status eeprom_store_config(dai::EepromData& board_data_config,
             // Only the B-spline calibration changed: keep the EEPROM as it is
             if(legacyFields(previous) == legacyFields(board_data_config)) {
                 try {
-                    storeBsplineCalibration(area, board_data_config.bsplineStereoCalibration);
+                    storeBsplineCalibration(area, board_data_config.bsplineCameraData);
                     return EEPROM_OK;
                 } catch(const std::exception& ex) {
                     if(errorDetail) *errorDetail = ex.what();
@@ -773,7 +776,7 @@ eeprom_status eeprom_store_config(dai::EepromData& board_data_config,
 
         if(camSocket == dai::CameraBoardSocket::AUTO) {
             try {
-                storeBsplineCalibration(area, board_data_config.bsplineStereoCalibration);
+                storeBsplineCalibration(area, board_data_config.bsplineCameraData);
             } catch(const std::exception& ex) {
                 printf("Failed to persist spline calibration extension: %s\n", ex.what());
                 if(errorDetail) *errorDetail = ex.what();
@@ -1196,12 +1199,12 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
         board_data_config.cameraData[dai::CameraBoardSocket::CAM_A].lensPosition = 135;
     }
 
-    board_data_config.bsplineStereoCalibration.reset();
+    board_data_config.bsplineCameraData.clear();
     if(camSocket == dai::CameraBoardSocket::AUTO) {
         try {
             auto [ok, message, legacy] = eeprom_read_raw(area, camSocket);
             if(!ok) return EEPROM_ERROR;
-            board_data_config.bsplineStereoCalibration =
+            board_data_config.bsplineCameraData =
                 dai::device::BsplineCalibrationStore{}.load(area == EEPROM_AREA_FACTORY, legacy, dai::gate::getSerialNumber());
         } catch(const std::exception& ex) {
             // Legacy rectification remains available. Explicit BSPLINE selection
@@ -1231,7 +1234,7 @@ std::tuple<bool, std::string> eeprom_clear(eeprom_area area, bool protectedPermi
         case EEPROM_OK:
             if(camSocket == dai::CameraBoardSocket::AUTO) {
                 try {
-                    storeBsplineCalibration(area, std::nullopt);
+                    storeBsplineCalibration(area, {});
                 } catch(const std::exception& ex) {
                     return {false, std::string("Cleared EEPROM but failed to clear spline extension: ") + ex.what()};
                 }
