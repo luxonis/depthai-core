@@ -69,8 +69,7 @@ struct AutoCalibrationConfig : public Buffer {
     double calibrationConfidenceThreshold = 0.9;
 
     /**
-     * @brief Minimum quality threshold (0.0 to 1.0) for input features to be used. A value below 0 selects the default based on the lens model when the node
-     * starts.
+     * @brief Minimum quality threshold (0.0 to 1.0) for input features to be used. A value below 0 selects the default based on the lens model.
      */
     double dataConfidenceThreshold = -1.;
 

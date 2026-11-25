@@ -11,6 +11,7 @@
 #include <cstring>
 #include <exception>
 #include <functional>
+#include <mutex>
 #include <optional>
 #include <sstream>
 #include <tuple>
@@ -173,14 +174,19 @@ XLinkGlobalHandler_t g_xlink_glob_handler = {
 dai::PipelineSchema pipelineSchema;
 dai::Assets assets;
 dai::EepromData eepromData;
+// eepromData is written by the RPC handlers and by the on-device DynamicCalibration node (flash), each on its own thread.
+std::mutex eepromDataMtx;
 dai::gate::PipelineBuilder& pipelineBuilder{dai::gate::PipelineBuilder::getInstance()};
 // std::shared_ptr<dai::Pipeline> pipeline;
 dai::Pipeline pipeline = dai::Pipeline(false);
 dai::DeviceProperties deviceProperties;
 
 dai::EepromData getCalibration() {
-    auto calibData = pipeline.getEepromData();
-    return calibData.value_or(eepromData);
+    if(auto calibData = pipeline.getEepromData()) {
+        return *calibData;
+    }
+    std::lock_guard<std::mutex> lock(eepromDataMtx);
+    return eepromData;
 }
 
 std::unique_ptr<XLinkRpc> mainRpc;
@@ -322,7 +328,13 @@ void mergeCBACalibrations(dai::EepromData& runtimeCalibration) {
 std::function<std::tuple<bool, std::string>(std::optional<dai::EepromData>)> setCalibration =
     [](std::optional<dai::EepromData> newEepromData) -> std::tuple<bool, std::string> {
     try {
-        dai::EepromData runtimeCalibration = newEepromData.value_or(eepromData);
+        dai::EepromData runtimeCalibration;
+        if(newEepromData) {
+            runtimeCalibration = *newEepromData;
+        } else {
+            std::lock_guard<std::mutex> lock(eepromDataMtx);
+            runtimeCalibration = eepromData;
+        }
         if(!newEepromData.has_value()) {
             mergeCBACalibrations(runtimeCalibration);
         }
@@ -370,6 +382,7 @@ std::function<std::tuple<bool, std::string>(dai::EepromData, bool, bool, dai::Ca
 
     if(res == 0) {
         if(skt == dai::CameraBoardSocket::AUTO) {
+            std::lock_guard<std::mutex> lock(eepromDataMtx);
             eepromData = localEepromData;
         }
         bool success;

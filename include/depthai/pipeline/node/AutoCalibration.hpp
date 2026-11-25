@@ -143,6 +143,9 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     void loadData(unsigned int numImages);
     void discardQueuedFrames();
     CalibrationHandler readCurrentCalibration();
+    int gateFps() const;
+    /// Logger, telemetry aggregate and the lens dependent data confidence threshold.
+    void setUp();
 
     std::shared_ptr<dai::CalibrationMetrics> getMetrics(const std::shared_ptr<dai::CalibrationHandler>& calibration);
 

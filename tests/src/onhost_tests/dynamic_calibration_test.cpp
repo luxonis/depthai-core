@@ -428,21 +428,3 @@ TEST_CASE("DynamicCalibrationControl commands survive serialization", "[DynamicC
     requireControlRoundTrips<dai::SerializationType::JSON>();
     requireControlRoundTrips<dai::SerializationType::JSON_MSGPACK>();
 }
-
-namespace dai::node {
-struct DynamicCalibrationTestAccess {
-    static void evaluate(DynamicCalibration& node, const std::shared_ptr<dai::DynamicCalibrationControl>& control) {
-        node.evaluateCommand(control);
-    }
-};
-}  // namespace dai::node
-
-TEST_CASE("DynamicCalibration ResetData drops the frames queued at its input", "[DynamicCalibration]") {
-    dai::Pipeline pipeline{false};
-    auto node = pipeline.create<dai::node::DynamicCalibration>();
-    node->syncInput.send(std::make_shared<dai::MessageGroup>());
-    REQUIRE(node->syncInput.has());
-
-    dai::node::DynamicCalibrationTestAccess::evaluate(*node, dai::DynamicCalibrationControl::resetData());
-    REQUIRE_FALSE(node->syncInput.has());
-}

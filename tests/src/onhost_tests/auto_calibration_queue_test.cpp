@@ -157,7 +157,7 @@ TEST_CASE("AutoCalibration starts recalibration with fresh result and coverage m
 
 // The RVC4 firmware constructs the node from these properties and starts from their config; the construction itself
 // needs the firmware build (no subnodes) and is covered by the on-device auto_calibration_test.
-TEST_CASE("AutoCalibration serializes its current config in the properties", "[AutoCalibration]") {
+TEST_CASE("AutoCalibration on the device serializes its current config in the properties", "[AutoCalibration]") {
     const auto type = GENERATE(dai::SerializationType::LIBNOP, dai::SerializationType::JSON, dai::SerializationType::JSON_MSGPACK);
     CAPTURE(static_cast<int>(type));
 
@@ -167,6 +167,7 @@ TEST_CASE("AutoCalibration serializes its current config in the properties", "[A
     // edit it once more through the pointer.
     node->initialConfig = std::make_shared<dai::AutoCalibrationConfig>(dai::AutoCalibrationConfig::CONTINUOUS, 7, 0.8, 0.6, 3, 4, 2, false);
     node->initialConfig->maxIterations = 9;
+    node->setRunOnHost(false);
 
     std::vector<std::uint8_t> data;
     Access::properties(*node).serialize(data, type);
@@ -182,15 +183,6 @@ TEST_CASE("AutoCalibration serializes its current config in the properties", "[A
     REQUIRE(config.maxImagesPerRecalibration == 4);
     REQUIRE(config.validationSetSize == 2);
     REQUIRE_FALSE(config.flashCalibration);
-}
-
-TEST_CASE("AutoCalibration keeps the lens dependent threshold unresolved until it runs", "[AutoCalibration]") {
-    dai::Pipeline pipeline{false};
-    auto node = pipeline.create<dai::node::AutoCalibration>();
-    // Resolved in run(), on the side where the node runs: a node created before a device is bound must not
-    // serialize a fallback value.
-    REQUIRE(node->initialConfig->dataConfidenceThreshold < 0.0);
-    REQUIRE(Access::properties(*node).initialConfig.dataConfidenceThreshold < 0.0);
 }
 
 TEST_CASE("AutoCalibration runs on the host by default and its DynamicCalibration follows", "[AutoCalibration]") {

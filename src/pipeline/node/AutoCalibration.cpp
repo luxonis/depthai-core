@@ -163,8 +163,10 @@ AutoCalibration::~AutoCalibration() {
 }
 
 AutoCalibration::Properties& AutoCalibration::getProperties() {
-    // initialConfig is edited through the shared pointer; serialize its current state for a node that runs on the device.
-    properties.initialConfig = *initialConfig;
+    // initialConfig is edited through the shared pointer; a node that runs on the device starts from the serialized copy.
+    if(!runOnHost()) {
+        properties.initialConfig = *initialConfig;
+    }
     return properties;
 }
 
@@ -279,10 +281,16 @@ CalibrationHandler AutoCalibration::readCurrentCalibration() {
     // Read on every call: the DynamicCalibration node or a host setCalibration() may replace it at any time.
     return getParentPipeline().getCalibrationData();
 #else
-    if(!device) {
-        throw std::runtime_error("AutoCalibration node does not have access to any device");
-    }
     return device->getCalibration();
+#endif
+}
+
+int AutoCalibration::gateFps() const {
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    // The firmware node has no gate subnode; build() sets the host gate to this rate.
+    return GATE_FPS_DEFAULT;
+#else
+    return gate->initialConfig->fps;
 #endif
 }
 
@@ -365,7 +373,7 @@ void AutoCalibration::discardQueuedFrames() {
 }
 
 void AutoCalibration::loadData(unsigned int numImages) {
-    gateControlQueue.send(dai::GateControl::openGate(-1, GATE_FPS_DEFAULT));
+    gateControlQueue.send(dai::GateControl::openGate(-1, gateFps()));
     coverageQueue.tryGetAll<dai::CoverageData>();
     for(unsigned int i = 0; i < numImages; i++) {
         dynamicCalibrationCommandQueue.send(DCC::loadImage());
@@ -381,7 +389,25 @@ std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(const std::
 }
 
 void AutoCalibration::buildInternal() {
+    setUp();
+}
+
+void AutoCalibration::setUp() {
     logger = pimpl->logger;
+    telemetryAggregateState = std::make_shared<TelemetryAggregateState>();
+    auto telemetryState = telemetryAggregateState;
+    telemetryAggregateMetricsHandle = utility::Telemetry::getInstance().addAggregateMetrics([telemetryState](nlohmann::json& properties) {
+        std::lock_guard<std::mutex> lock(telemetryState->mutex);
+        appendTelemetryAggregateProperties(properties, *telemetryState);
+    });
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    if(!device) {
+        return;
+    }
+#endif
+    if(initialConfig->dataConfidenceThreshold < 0.0) {
+        initialConfig->dataConfidenceThreshold = areLensesWide(readCurrentCalibration()) ? 0.65 : 0.85;
+    }
 }
 
 void AutoCalibration::setWorldConstraints(const WorldConstraints& constraints) {
@@ -413,7 +439,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
     // Start with an empty pair of queues before the gate can produce new calibration messages.
     dynamicCalibrationQueue.tryGetAll<dai::DynamicCalibrationResult>();
     coverageQueue.tryGetAll<dai::CoverageData>();
-    gateControlQueue.send(dai::GateControl::openGate(-1, GATE_FPS_DEFAULT));
+    gateControlQueue.send(dai::GateControl::openGate(-1, gateFps()));
     recordAggregateRecalibrationTriggered();
     std::shared_ptr<CoverageData> coverage;
     for(unsigned int i = 0; i < maxNumIteration; i++) {
@@ -588,7 +614,7 @@ bool AutoCalibration::validateIncomingData() {
     bool timedout = true;
 
     while(mainLoop()) {
-        gateControlQueue.send(dai::GateControl::openGate(1, GATE_FPS_DEFAULT));
+        gateControlQueue.send(dai::GateControl::openGate(1, gateFps()));
         auto messageGroup = gateOutput.get<MessageGroup>(waitingTime, timedout);
 
         if(!timedout && messageGroup) {
@@ -624,18 +650,9 @@ bool AutoCalibration::validateIncomingData() {
 }
 
 void AutoCalibration::run() {
-    // Set up here, not in buildInternal(): the firmware constructs the node without calling it.
-    logger = pimpl->logger;
-    telemetryAggregateState = std::make_shared<TelemetryAggregateState>();
-    auto telemetryState = telemetryAggregateState;
-    telemetryAggregateMetricsHandle = utility::Telemetry::getInstance().addAggregateMetrics([telemetryState](nlohmann::json& properties) {
-        std::lock_guard<std::mutex> lock(telemetryState->mutex);
-        appendTelemetryAggregateProperties(properties, *telemetryState);
-    });
-    if(initialConfig->dataConfidenceThreshold < 0.0) {
-        initialConfig->dataConfidenceThreshold = areLensesWide(readCurrentCalibration()) ? 0.65 : 0.85;
-    }
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    // The firmware constructs the node without buildInternal().
+    setUp();
     logger->info("{} running on device.", this->getName());
 #else
     logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
