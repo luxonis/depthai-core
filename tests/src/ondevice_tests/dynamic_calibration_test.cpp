@@ -938,3 +938,89 @@ TEST_CASE("DynamicCalibration: on the RVC4 device, loads camera frames and appli
     p.stop();
     p.wait();
 }
+
+namespace {
+// Lists the calibration library's threads ("dcl-worker") in the firmware with their allowed CPUs and nice value.
+const char* kDclThreadsScript = R"(
+import json, os
+node.inputs['trigger'].get()
+threads = []
+for pid in filter(str.isdigit, os.listdir('/proc')):
+    try:
+        tids = os.listdir('/proc/%s/task' % pid)
+    except OSError:
+        continue
+    for tid in tids:
+        base = '/proc/%s/task/%s/' % (pid, tid)
+        try:
+            if open(base + 'comm').read().strip() != 'dcl-worker':
+                continue
+            cpus = [l.split(':')[1].strip() for l in open(base + 'status') if l.startswith('Cpus_allowed_list')][0]
+            stat = open(base + 'stat').read()
+            nice = int(stat[stat.rfind(')') + 2:].split()[16])
+        except (OSError, IndexError, ValueError):
+            continue
+        threads.append({'cpus': cpus, 'nice': nice})
+data = json.dumps(threads).encode()
+b = Buffer(len(data))
+b.setData(data)
+node.outputs['out'].send(b)
+)";
+
+// Runs DynamicCalibration on the RVC4 device, loads one image so the library threads exist, then reads them.
+nlohmann::json dclThreadsOnDevice(const std::optional<dai::DynamicCalibrationThreadPolicy>& policy) {
+    auto device = std::make_shared<dai::Device>();
+    if(device->getPlatform() != dai::Platform::RVC4) {
+        SKIP("The thread policy applies to the calibration library in the RVC4 firmware");
+    }
+    std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
+    auto p = makePipeline(device, dynCalib, true);
+    dynCalib->setRunOnHost(false);
+    if(policy) {
+        dynCalib->setThreadPolicy(*policy);
+    }
+    auto script = p.create<dai::node::Script>();
+    script->setScript(kDclThreadsScript);
+    auto trigger = script->inputs["trigger"].createInputQueue();
+    auto threadsOut = script->outputs["out"].createOutputQueue();
+    auto commandInput = dynCalib->inputControl.createInputQueue();
+    auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
+    p.start();
+
+    commandInput->send(dai::DynamicCalibrationControl::loadImage());
+    bool timedOut = true;
+    REQUIRE(coverageOutput->get<dai::CoverageData>(30s, timedOut) != nullptr);
+    REQUIRE_FALSE(timedOut);
+
+    trigger->send(std::make_shared<dai::Buffer>());
+    auto reply = threadsOut->get<dai::Buffer>(10s, timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(reply != nullptr);
+    const auto bytes = reply->getData();
+    auto threads = nlohmann::json::parse(bytes.begin(), bytes.end());
+    INFO(threads.dump());
+    REQUIRE_FALSE(threads.empty());
+
+    p.stop();
+    p.wait();
+    return threads;
+}
+}  // namespace
+
+TEST_CASE("DynamicCalibration: the RVC4 firmware keeps the calibration library off the prime core by default") {
+    // DCL_THREAD_AFFINITY=0-4 in device/rvc4/scripts/env_set.sh
+    for(const auto& thread : dclThreadsOnDevice(std::nullopt)) {
+        REQUIRE(thread["cpus"] == "0-4");
+    }
+}
+
+TEST_CASE("DynamicCalibration: a host thread policy reaches the calibration library threads on RVC4") {
+    dai::DynamicCalibrationThreadPolicy policy;
+    policy.openCvThreads = 3;
+    policy.niceness = 5;
+    policy.cpuAffinity = std::vector<std::uint32_t>{0, 1, 2};
+    for(const auto& thread : dclThreadsOnDevice(policy)) {
+        REQUIRE(thread["cpus"] == "0-2");
+        REQUIRE(thread["nice"] == 5);
+    }
+}
