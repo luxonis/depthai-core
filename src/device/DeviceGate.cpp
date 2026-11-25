@@ -329,62 +329,90 @@ tl::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileUr
     }
 }
 
-void DeviceGate::waitForSessionEnd() {
+void DeviceGate::waitForSessionEnd(bool saveLogsOnStop) {
+    // The gate watchdog terminates a firmware process that stops responding, so a session normally ends within about
+    // 30 seconds. A process that can't exit (e.g. blocked in the VPU IPC driver after a VPU crash) keeps the session
+    // RUNNING forever, so give up after a timeout instead of hanging the caller.
+    auto timeout = std::chrono::seconds(DEFAULT_SESSION_END_TIMEOUT_S);
+    auto timeoutStr = utility::getEnv("DEPTHAI_GATE_SESSION_END_TIMEOUT");
+    if(!timeoutStr.empty()) {
+        int seconds = 0;
+        try {
+            seconds = std::stoi(timeoutStr);
+        } catch(const std::exception&) {
+        }
+        if(seconds > 0) {
+            timeout = std::chrono::seconds(seconds);
+        } else {
+            spdlog::warn("Invalid DEPTHAI_GATE_SESSION_END_TIMEOUT value '{}', using {}s", timeoutStr, timeout.count());
+        }
+    }
+    auto deadline = std::chrono::steady_clock::now() + timeout;
     while(true) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        auto sessionState = getState();
-        if(sessionState == SessionState::ERROR_STATE) {
-            spdlog::error("DeviceGate session state is in error state - exiting");
-            return;
-        }
-        switch(sessionState) {
+        switch(getState()) {
             case SessionState::NOT_CREATED:
             case SessionState::CREATED:
             case SessionState::RUNNING:
             case SessionState::STOPPING:
-                break;  // Nothing to do
+                if(std::chrono::steady_clock::now() > deadline) {
+                    spdlog::error("DeviceGate session didn't end in {}s - the firmware process is stuck, the device may need a reboot", timeout.count());
+                    return;
+                }
+                break;
             case SessionState::ERROR_STATE:
                 spdlog::error("DeviceGate session state is in error state - exiting");
                 return;
             case SessionState::STOPPED:
-                return;  // Session stopped - stop the thread
-            case SessionState::CRASHED:
-            case SessionState::DESTROYED:
-                auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
-                if(crashDumpPathStr.empty()) {
-                    spdlog::warn("Firmware crashed but the environment variable DEPTHAI_CRASHDUMP is not set, the crash dump will not be saved.");
-                    return;
-                }
-
-                auto currentVersion = getVersion();
-                auto requiredVersion = Version(0, 0, 14);
-                if(currentVersion < requiredVersion) {
-                    spdlog::warn("FW crashed but the gate version does not support transfering over the crash dump. Current version {}, required is {}",
-                                 currentVersion.toString(),
-                                 requiredVersion.toString());
-                    return;
-                }
-                spdlog::warn("FW crashed - trying to get out the crash dump");
-                std::this_thread::sleep_for(std::chrono::seconds(3));  // Allow for the generation of the crash dump and the log file
-                std::string crashDumpName;
-                spdlog::warn("Getting the crash dump out - this can take up to a minute, because it first needs to be compressed.");
-                auto crashDump = getCrashDump(crashDumpName);
-                if(crashDump) {
-                    spdlog::warn("Crash dump found - trying to save it");
-                    if(crashDumpName.empty()) {
-                        crashDumpName = "depthai_gate_crash_dump.tar.gz";
-                    }
-                    std::string fullName = deviceInfo.getMxId() + "-" + crashDumpName;
-                    if(auto path = saveFileToTemporaryDirectory(*crashDump, fullName, crashDumpPathStr)) {
-                        spdlog::warn("Crash dump saved to {} - please report to developers", *path);
-                    } else {
-                        spdlog::error("Couldn't save crash dump");
-                    }
-                } else {
-                    spdlog::warn("Crash dump not found");
+                // A clean exit after a VPU crash produces no crash archive, but its firmware log is still needed
+                if(saveLogsOnStop) {
+                    // The gate writes the log file when the process output ends, which can be after the session stopped
+                    std::this_thread::sleep_for(std::chrono::seconds(3));
+                    saveSessionArchive("Firmware stopped after a VPU crash - getting its logs out");
                 }
                 return;
+            case SessionState::CRASHED:
+            case SessionState::DESTROYED:
+                std::this_thread::sleep_for(std::chrono::seconds(3));  // Allow for the generation of the crash dump and the log file
+                saveSessionArchive("FW crashed - trying to get out the crash dump");
+                return;
         }
+    }
+}
+
+void DeviceGate::saveSessionArchive(const std::string& reason) {
+    auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
+    if(crashDumpPathStr.empty()) {
+        spdlog::warn("{}, but the environment variable DEPTHAI_CRASHDUMP is not set, the crash dump will not be saved.", reason);
+        return;
+    }
+
+    auto currentVersion = getVersion();
+    auto requiredVersion = Version(0, 0, 14);
+    if(currentVersion < requiredVersion) {
+        spdlog::warn("{}, but the gate version does not support transfering over the crash dump. Current version {}, required is {}",
+                     reason,
+                     currentVersion.toString(),
+                     requiredVersion.toString());
+        return;
+    }
+    spdlog::warn("{}", reason);
+    std::string crashDumpName;
+    spdlog::warn("Getting the crash dump out - this can take up to a minute, because it first needs to be compressed.");
+    auto crashDump = getCrashDump(crashDumpName);
+    if(crashDump) {
+        spdlog::warn("Crash dump found - trying to save it");
+        if(crashDumpName.empty()) {
+            crashDumpName = "depthai_gate_crash_dump.tar.gz";
+        }
+        std::string fullName = deviceInfo.getMxId() + "-" + crashDumpName;
+        if(auto path = saveFileToTemporaryDirectory(*crashDump, fullName, crashDumpPathStr)) {
+            spdlog::warn("Crash dump saved to {} - please report to developers", *path);
+        } else {
+            spdlog::error("Couldn't save crash dump");
+        }
+    } else {
+        spdlog::warn("Crash dump not found");
     }
 }
 

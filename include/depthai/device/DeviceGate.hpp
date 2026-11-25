@@ -46,8 +46,11 @@ class DeviceGate {
     bool deleteSession();
     bool destroySession();
     SessionState getState();
-    // Waits for the gate session to end and tries to get the logs and crash dump out
-    void waitForSessionEnd();
+    // Waits for the gate session to end and tries to get the logs and crash dump out if it crashed, or if it stopped and
+    // saveLogsOnStop is set. Gives up waiting when the session is still running after DEPTHAI_GATE_SESSION_END_TIMEOUT
+    // seconds (default 60); the deadline is checked between the gate state requests.
+    void waitForSessionEnd(bool saveLogsOnStop = false);
+    static constexpr int DEFAULT_SESSION_END_TIMEOUT_S = 60;
 
     tl::optional<std::vector<uint8_t>> getCrashDump(std::string& filename);
 
@@ -68,6 +71,7 @@ class DeviceGate {
     tl::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename);
 
     tl::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, std::string direcotryPath = "");
+    void saveSessionArchive(const std::string& reason);
 
     // state of the session
     std::atomic_bool sessionCreated{false};
