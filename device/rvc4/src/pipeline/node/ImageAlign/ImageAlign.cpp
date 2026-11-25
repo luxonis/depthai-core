@@ -13,17 +13,19 @@
 #include <unordered_set>
 #include <vector>
 
+#include "ImageAlignCpuExecutor.hpp"
+#include "ImageAlignGPU.hpp"
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/utility/ImageAlignDepth.hpp"
 #include "depthai/utility/matrixOps.hpp"
-#include "hexagon/ImageAlignDsp/shared/ImageAlignDspConfig.h"
 #include "pipeline/NodeTiming.hpp"
+#include "pipeline/utilities/Alignment/ImageAlignCpu.hpp"
 #include "pipeline/utilities/Alignment/RectifiedBounds.hpp"
+#include "utilities/GpuAvailability.hpp"
 #include "utilities/ImageRemap.hpp"
-#include "vendor/DeviceError.hpp"
-#include "vendor/dai_device_dsp.h"
 
 namespace dai {
 namespace gate {
@@ -127,7 +129,6 @@ std::pair<bool, std::string> ImageAlign::allocatePools(
     }
 
     uint32_t frameSize = std::max(static_cast<uint32_t>(roundf(width * height * bpp)), warp1MinSize);
-    up_plgPoolImageAlign = std::make_shared<Pool<ImgFrame>>(poolFrames, frameSize);
     up_plgWarpPool1 = std::make_shared<Pool<ImgFrame>>(poolFrames, frameSize);
 
     uint32_t outFrameSize = std::max(static_cast<uint32_t>(roundf(alignWidth * alignHeight * bpp)), warp2MinSize);
@@ -229,6 +230,24 @@ void ImageAlign::extractCalibrationData(int depthWidth, int depthHeight) {
     cv_meshSize = cv::Size(alignWidth, alignHeight);
 
     cv::initUndistortRectifyMap(cv_targetCamMatrix, cv_dNone, cv_R_back, cv_M2, cv_meshSize, CV_32FC1, map_x_2, map_y_2);
+
+    if(inputFrameType == ImgFrame::Type::RAW16) {
+        cv::Mat sourceZFromRectifiedPixel = cv_R1.t() * cv_targetCamMatrix.inv();
+        cv::Mat sourceZFromAlignedPixel = cv_R.t() * cv_M2.inv();
+        cv::Mat sourceTranslation = cv_R.t() * cv_T.t();
+        alignedDepthOffset = sourceTranslation.at<float>(2);
+        const auto rectifiedDepthScales = impl::imageAlignDepthScales(
+            rectifiedSize.width,
+            rectifiedSize.height,
+            {sourceZFromRectifiedPixel.at<float>(2, 0), sourceZFromRectifiedPixel.at<float>(2, 1), sourceZFromRectifiedPixel.at<float>(2, 2)},
+            false);
+        rectifiedRayZ = AcceleratorMemory::create(rectifiedDepthScales.size() * sizeof(float));
+        memcpy(rectifiedRayZ->data(), rectifiedDepthScales.data(), rectifiedDepthScales.size() * sizeof(float));
+        alignedDepthScales = impl::imageAlignDepthScales(
+            alignWidth,
+            alignHeight,
+            {sourceZFromAlignedPixel.at<float>(2, 0), sourceZFromAlignedPixel.at<float>(2, 1), sourceZFromAlignedPixel.at<float>(2, 2)});
+    }
 
     logger->debug("R = {}", matToString(cv_R));
     logger->debug("T = {}", matToString(cv_T));
@@ -362,24 +381,9 @@ void ImageAlign::initialize(const std::shared_ptr<ImgFrame>& inputImg,
     }
 }
 
-void ImageAlign::buildStage1() {
-    // This warms up the dsp so it works afterwards when called.
-    // Without this it fails in some cases with:
-    // Remote_session_control failed
-    // as it has some race conditions with some unknown stuff.
-    // Main suspects are the hardware accelerator and fastCV. fastCV and the accelerator already had a race condition,
-    // where fastCV had to be configured before the accelerator or the accelerator init would fail.
-    //
-    // THEORY:
-    // As the accelerator init also uses CDSP this is probably the same s**t.
-    // fastCV maybe reconfigures / overrides some global CDSP state
-    // and that doesn't play nice with other CDSP stuff.
-    dai::device::openDspSession(dai_device_dsp_open_align, "dai_device_dsp_open_align");
-}
-
 void ImageAlign::run() {
     using namespace std::chrono;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on device.", this->getName());
 
     auto pipeline = getParentPipeline();
 
@@ -403,9 +407,19 @@ void ImageAlign::run() {
 
     int previousShiftFactor = 0;
 
-    dai::device::openDspSession(dai_device_dsp_open_align, "dai_device_dsp_open_align");
-
-    std::shared_ptr<AcceleratorMemory> inConfigData = AcceleratorMemory::create(sizeof(ImageAlignDspConfig));
+    // AUTO uses the fused CPU path for depth: it beats the DSP path everywhere and the GPU
+    // path at low frame rates, where the GPU pays a wake-up cost per frame. GPU is opt-in.
+    if(properties.backend != Backend::GPU) logger->info("ImageAlign CPU backend enabled (fused RAW16: 2 threads)");
+    ImageAlignCpuExecutor cpuExecutor;
+    cv::Mat cpuShifted;
+    std::array<float, 65536> cpuDepthLut{};
+    std::vector<std::ptrdiff_t> cpuFirstMap, cpuSecondMap;
+    std::vector<float> cpuRayZ;
+    bool cpuConfigurationDirty = true;
+    size_t cpuInputStride = 0;
+    std::unique_ptr<ImageAlignGPU> gpu;
+    bool gpuConfigurationDirty = true;
+    bool gpuAttempted = false;
 
     bool warpInited = false;
     bool hwSupportedFrameType = false;
@@ -476,6 +490,9 @@ void ImageAlign::run() {
         }
 
         if(currentInputs.differsFrom(previousInputs)) {
+            gpuConfigurationDirty = true;
+            cpuConfigurationDirty = true;
+            // The backend preference applies to RAW16 depth. 8-bit frames always use the EVA warp when supported.
             hwSupportedFrameType = hwSupportedFrameTypes.count(inputFrameType);
             initialize(inputImg, inputAlignToImg, inputAlignToTransform, hwSupportedFrameType, warpInited);
             previousInputs = currentInputs;
@@ -501,6 +518,8 @@ void ImageAlign::run() {
         int currentShiftFactor = constantShiftFactor - previousShiftFactor;
 
         if(currentShiftFactor != 0) {
+            gpuConfigurationDirty = true;
+            cpuConfigurationDirty = true;
             shiftMesh(map_x_1, -currentShiftFactor);
             if(warpInited && hwSupportedFrameType) {
                 warp1.SetWarpMesh(map_x_1, map_y_1);
@@ -509,6 +528,20 @@ void ImageAlign::run() {
 
         previousShiftFactor = constantShiftFactor;
 
+        if(properties.backend == Backend::GPU && inputIsDepth && staticDepthPlane == 0 && !gpuAttempted) {
+            gpuAttempted = true;
+            if(dai::utils::hasGPU()) {
+                try {
+                    gpu = std::make_unique<ImageAlignGPU>();
+                    logger->info("ImageAlign RAW16 GPU backend enabled");
+                } catch(const std::exception& error) {
+                    logger->warn("ImageAlign GPU unavailable; using CPU: {}", error.what());
+                }
+            } else {
+                logger->warn("ImageAlign GPU backend requested, but this device has no GPU; using CPU");
+            }
+        }
+
         auto tAbsoluteBeginning = steady_clock::now();
         auto tGotInput = tAbsoluteBeginning;
         decltype(steady_clock::now()) t1, t2;
@@ -516,97 +549,72 @@ void ImageAlign::run() {
             t1 = steady_clock::now();
         }
 
-        // warp1
-        auto depthImgRectified = up_plgWarpPool1->get();
-
-        depthImgRectified->setMetadata(*inputImg);
-        depthImgRectified->setWidth(map_x_1.cols);
-        depthImgRectified->setHeight(map_x_1.rows);
-        depthImgRectified->setType(inputImg->getType());
-        depthImgRectified->fb.stride = depthImgRectified->fb.width * depthImgRectified->getBytesPerPixel();
-        depthImgRectified->fb.p1Offset = 0;
-        depthImgRectified->fb.p2Offset = 0;
-        depthImgRectified->fb.p3Offset = 0;
-        if(inputFrameType == ImgFrame::Type::NV12 || inputFrameType == ImgFrame::Type::YUV420p) {
-            depthImgRectified->fb.p2Offset = depthImgRectified->fb.stride * depthImgRectified->fb.height;
-            depthImgRectified->fb.p3Offset = depthImgRectified->fb.p2Offset;
-            if(inputFrameType == ImgFrame::Type::YUV420p) {
-                depthImgRectified->fb.p3Offset += (depthImgRectified->fb.stride / 2) * (depthImgRectified->fb.height / 2);
+        const bool useGpu = gpu && inputIsDepth && staticDepthPlane == 0 && map_x_1.cols <= 65535 && inputImg->getFrame().isContinuous();
+        const bool fusedCpu = !useGpu && inputIsDepth && staticDepthPlane == 0;
+        std::shared_ptr<ImgFrame> warp2Input;
+        if(fusedCpu) {
+            auto inputFrame = inputImg->getFrame();
+            if(cpuConfigurationDirty || cpuInputStride != inputFrame.step1()) {
+                cpuFirstMap = detail::nearestDepthOffsets(map_x_1, map_y_1, inputFrame.size(), inputFrame.step1());
+                cpuSecondMap = detail::nearestDepthOffsets(map_x_2, map_y_2, map_x_1.size(), map_x_1.cols);
+                const auto* rays = reinterpret_cast<const float*>(rectifiedRayZ->data());
+                cpuRayZ.assign(rays, rays + map_x_1.total());
+                const float shift = depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0];
+                for(size_t i = 1; i < cpuDepthLut.size(); ++i) cpuDepthLut[i] = shift / static_cast<float>(i);
+                cpuInputStride = inputFrame.step1();
+                cpuConfigurationDirty = false;
             }
-        }
+            detail::remapAndShiftDepth(
+                inputFrame, cpuShifted, map_x_1.size(), cpuFirstMap, cpuDepthLut, depthToAlignExtrinsics[0][3] > 0, cpuRayZ, cpuExecutor);
+        } else if(!useGpu) {
+            // warp1
+            auto depthImgRectified = up_plgWarpPool1->get();
 
-        // todo each step could run on its own thread for max throughput
-        if(hwSupportedFrameType) {
-            warp1.Run(inputImg, depthImgRectified);
-        } else {
-            remapFrame(*inputImg, *depthImgRectified, map_x_1, map_y_1);
-        }
-
-        if(PRINT_DEBUG) {
-            t2 = steady_clock::now();
-            auto elapsed = duration_cast<microseconds>(t2 - t1).count() / 1000.f;
-            logger->warn("Align step1 took '{}' ms.", elapsed);
-        }
-
-        auto shiftedOutput = up_plgPoolImageAlign->get();
-
-        if(PRINT_DEBUG) {
-            t1 = steady_clock::now();
-        }
-
-        auto warp2Input = depthImgRectified;
-
-        if(inputIsDepth && staticDepthPlane == 0) {
-            shiftedOutput->setMetadata(*inputImg);
-            shiftedOutput->setWidth(map_x_1.cols);
-            shiftedOutput->setHeight(map_x_1.rows);
-            shiftedOutput->setType(inputImg->getType());
-            shiftedOutput->fb.stride = shiftedOutput->fb.width * shiftedOutput->getBytesPerPixel();
-
-            std::shared_ptr<AcceleratorMemory> inDepthImgRectified = AcceleratorMemory::convert(depthImgRectified->data);
-            std::shared_ptr<AcceleratorMemory> outShiftedOutput = AcceleratorMemory::convert(shiftedOutput->data);
-
-            auto startDSP = high_resolution_clock::now();
-
-            auto& config = *reinterpret_cast<ImageAlignDspConfig*>(inConfigData->data());
-
-            config.depthSourceIntrinsics = depthSourceIntrinsics;
-            config.alignSourceIntrinsics = alignSourceIntrinsics;
-            config.depthToAlignExtrinsics = depthToAlignExtrinsics;
-            config.width = shiftedOutput->fb.width;
-            config.height = shiftedOutput->fb.height;
-            config.stride = shiftedOutput->fb.stride;
-            config.bpp = shiftedOutput->getBytesPerPixel();
-
-            int nErr = 0;
-            const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDepthImgRectified), dspConfig = dai::device::toDeviceBuf(*inConfigData),
-                                 dspOut = dai::device::toDeviceBuf(*outShiftedOutput);
-            nErr = dai_device_dsp_shift_depth(&dspIn0, &dspConfig, &dspOut);
-
-            if(nErr != 0) {
-                logger->error("alignDepthImg failed with code {}", nErr);
+            depthImgRectified->setMetadata(*inputImg);
+            depthImgRectified->setWidth(map_x_1.cols);
+            depthImgRectified->setHeight(map_x_1.rows);
+            depthImgRectified->setType(inputImg->getType());
+            depthImgRectified->fb.stride = depthImgRectified->fb.width * depthImgRectified->getBytesPerPixel();
+            depthImgRectified->fb.p1Offset = 0;
+            depthImgRectified->fb.p2Offset = 0;
+            depthImgRectified->fb.p3Offset = 0;
+            if(inputFrameType == ImgFrame::Type::NV12 || inputFrameType == ImgFrame::Type::YUV420p) {
+                depthImgRectified->fb.p2Offset = depthImgRectified->fb.stride * depthImgRectified->fb.height;
+                depthImgRectified->fb.p3Offset = depthImgRectified->fb.p2Offset;
+                if(inputFrameType == ImgFrame::Type::YUV420p) {
+                    depthImgRectified->fb.p3Offset += (depthImgRectified->fb.stride / 2) * (depthImgRectified->fb.height / 2);
+                }
             }
 
-            shiftedOutput->data = AcceleratorMemory::convert(outShiftedOutput);
+            // todo each step could run on its own thread for max throughput
+            if(hwSupportedFrameType) {
+                warp1.Run(inputImg, depthImgRectified);
+            } else {
+                remapFrame(*inputImg, *depthImgRectified, map_x_1, map_y_1);
+            }
 
-            auto stopDSP = high_resolution_clock::now();
+            if(PRINT_DEBUG) {
+                t2 = steady_clock::now();
+                auto elapsed = duration_cast<microseconds>(t2 - t1).count() / 1000.f;
+                logger->warn("Align step1 took '{}' ms.", elapsed);
+            }
 
-            auto durationDSP = duration_cast<microseconds>(stopDSP - startDSP);
-            logger->debug("ImageAlign depth shift took {} ms.", durationDSP.count() / 1000.0f);
+            if(PRINT_DEBUG) {
+                t1 = steady_clock::now();
+            }
 
-            warp2Input = shiftedOutput;
+            warp2Input = depthImgRectified;
+
+            if(PRINT_DEBUG) {
+                t2 = steady_clock::now();
+                auto elapsed = duration_cast<microseconds>(t2 - t1).count() / 1000.f;
+                logger->warn("Align step2 took '{}' ms.", elapsed);
+            }
+
+            if(PRINT_DEBUG) {
+                t1 = steady_clock::now();
+            }
         }
-
-        if(PRINT_DEBUG) {
-            t2 = steady_clock::now();
-            auto elapsed = duration_cast<microseconds>(t2 - t1).count() / 1000.f;
-            logger->warn("Align step2 took '{}' ms.", elapsed);
-        }
-
-        if(PRINT_DEBUG) {
-            t1 = steady_clock::now();
-        }
-
         // warp2
         auto alignedImg = up_plgWarpPool2->get();
         if(PRINT_DEBUG) {
@@ -636,7 +644,23 @@ void ImageAlign::run() {
             alignedImg->fb.p3Offset = alignedImg->fb.p2Offset + (alignedImg->fb.stride / 2) * (alignedImg->fb.height / 2);
         }
 
-        if(hwSupportedFrameType) {
+        if(useGpu) {
+            if(gpuConfigurationDirty) {
+                gpu->configure(map_x_1,
+                               map_y_1,
+                               map_x_2,
+                               map_y_2,
+                               inputImg->getWidth(),
+                               inputImg->getHeight(),
+                               reinterpret_cast<const float*>(rectifiedRayZ->data()),
+                               alignedDepthScales);
+                gpuConfigurationDirty = false;
+            }
+            gpu->run(inputImg->getFrame(), alignedImg->getFrame(), depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0], alignedDepthOffset);
+        } else if(fusedCpu) {
+            auto outputFrame = alignedImg->getFrame();
+            detail::remapAndConvertDepth(cpuShifted, outputFrame, cpuSecondMap, alignedDepthScales, alignedDepthOffset, cpuExecutor);
+        } else if(hwSupportedFrameType) {
             warp2.Run(warp2Input, alignedImg);
         } else {
             remapFrame(*warp2Input, *alignedImg, map_x_2, map_y_2);
@@ -648,6 +672,11 @@ void ImageAlign::run() {
             logger->warn("Align step3 took '{}' ms.", elapsed);
         }
 
+        if(inputIsDepth && !useGpu && !fusedCpu) {
+            auto alignedFrame = alignedImg->getFrame();
+            impl::imageAlignConvertDepth(alignedFrame.data, alignWidth, alignHeight, alignedFrame.step, alignedDepthScales.data(), alignedDepthOffset);
+        }
+
         alignedImg->setInstanceNum((uint32_t)alignTo);
 
         alignedImg->setBufferMetadataFrom(inputImg);
@@ -655,6 +684,9 @@ void ImageAlign::run() {
         alignedImg->transformation = inputAlignToTransform;
 
         auto tProcessed = steady_clock::now();
+        logger->debug("ImageAlign processing {} ms, backend {}",
+                      duration<double, std::milli>(tProcessed - tGotInput).count(),
+                      useGpu ? "gpu" : "cpu");
         auto alignedDistortion = alignedImg->transformation.getDistortionCoefficients();
         alignedImg->transformation.setDistortionCoefficients(std::vector<float>(alignedDistortion.size(), 0.0f));
         {

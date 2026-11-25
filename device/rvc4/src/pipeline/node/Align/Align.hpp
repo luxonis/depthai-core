@@ -8,6 +8,7 @@
 #include <opencv2/imgproc.hpp>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/datatype/AlignConfig.hpp"
@@ -15,7 +16,7 @@
 #include "depthai/pipeline/node/Align.hpp"
 #include "pipeline/Pool.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
-#include "utilities/AcceleratorMemory.hpp"
+#include "../ImageAlign/ImageAlignCpuExecutor.hpp"
 
 namespace dai {
 namespace gate {
@@ -35,7 +36,6 @@ class Align : public ::dai::node::Align {
         return true;
     }
     void run() override;
-    void buildStage1() override;
 
    private:
     static const bool PRINT_DEBUG;
@@ -74,14 +74,25 @@ class Align : public ::dai::node::Align {
 
     ImgFrame::Type inputFrameType = ImgFrame::Type::NONE;
 
-    std::shared_ptr<Pool<ImgFrame>> up_plgPoolAlign, up_plgWarpPool1, up_plgWarpPool2;
+    std::shared_ptr<Pool<ImgFrame>> up_plgWarpPool1, up_plgWarpPool2;
 
     cv::Mat map_x_1, map_y_1;
     cv::Mat map_x_2, map_y_2;
 
+    std::vector<float> rectifiedRayZ;
+    std::vector<float> alignedDepthScales;
+    float alignedDepthOffset = 0.0f;
+    bool degenerateStereoTransform = false;
+
     uint16_t staticDepthPlane = 0;
-    bool dspOpened = false;  // the ImageAlign session of the DSP offload is open
-    std::shared_ptr<AcceleratorMemory> dspConfigData;
+
+    // Fused CPU depth path, shared with ImageAlign. Caches are rebuilt when the maps or input stride change.
+    ImageAlignCpuExecutor cpuExecutor;
+    std::array<float, 65536> depthShiftLut{};  // Class member, so it lives on the heap with the node.
+    std::vector<std::ptrdiff_t> rectifiedOffsets, alignedOffsets;
+    cv::Mat shiftedDepth;
+    size_t cachedInputStride = 0;
+    bool depthCachesDirty = true;
 };
 
 }  // namespace gate

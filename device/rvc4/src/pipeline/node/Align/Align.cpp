@@ -28,12 +28,11 @@
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 #include "depthai/pipeline/datatype/Transformable.hpp"
+#include "depthai/utility/ImageAlignDepth.hpp"
 #include "depthai/utility/matrixOps.hpp"
-#include "hexagon/ImageAlignDsp/shared/ImageAlignDspConfig.h"
+#include "pipeline/utilities/Alignment/ImageAlignCpu.hpp"
 #include "pipeline/utilities/Alignment/RectifiedBounds.hpp"
 #include "utilities/ImageRemap.hpp"
-#include "vendor/DeviceError.hpp"
-#include "vendor/dai_device_dsp.h"
 
 namespace dai {
 namespace gate {
@@ -302,7 +301,6 @@ std::pair<bool, std::string> Align::allocatePools(int width, int height, int ali
     uint32_t outFrameSize = roundf(alignWidth * alignHeight * bpp);
     if(allocated && allocatedIntermediateFrameSize == frameSize && allocatedOutputFrameSize == outFrameSize) return {true, ""};
 
-    up_plgPoolAlign = std::make_shared<Pool<ImgFrame>>(poolFrames, frameSize);
     up_plgWarpPool1 = std::make_shared<Pool<ImgFrame>>(poolFrames, frameSize);
     up_plgWarpPool2 = std::make_shared<Pool<ImgFrame>>(poolFrames, outFrameSize);
 
@@ -355,7 +353,7 @@ void Align::extractCalibrationData(const dai::ImgTransformation& inputTransforma
 
     const float translationNorm =
         std::sqrt(translationVec[0] * translationVec[0] + translationVec[1] * translationVec[1] + translationVec[2] * translationVec[2]);
-    const bool degenerateStereoTransform = translationNorm <= 1e-6f;
+    degenerateStereoTransform = translationNorm <= 1e-6f;
     const std::array<std::array<float, 3>, 3> identityRotation = {{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}};
     const bool rotationOnlyDegenerateTransform = degenerateStereoTransform && !matrix::mateq(inputToAlignRotation, identityRotation, 1e-4f);
 
@@ -421,6 +419,24 @@ void Align::extractCalibrationData(const dai::ImgTransformation& inputTransforma
     }
     cv::initUndistortRectifyMap(cv_M1, cv_d1, cv_R1, shiftedProjection, cv_meshSize, CV_32FC1, map_x_1, map_y_1);
 
+    if(inputFrameType == ImgFrame::Type::RAW16) {
+        cv::Mat sourceZFromRectifiedPixel = cv_R1.t() * cv_targetCamMatrix.inv();
+        cv::Mat sourceZFromAlignedPixel = cv_R.t() * cv_M2.inv();
+        cv::Mat sourceTranslation = cv_R.t() * cv_T.t();
+        alignedDepthOffset = sourceTranslation.at<float>(2);
+        rectifiedRayZ = impl::imageAlignDepthScales(
+            cv_meshSize.width,
+            cv_meshSize.height,
+            {sourceZFromRectifiedPixel.at<float>(2, 0), sourceZFromRectifiedPixel.at<float>(2, 1), sourceZFromRectifiedPixel.at<float>(2, 2)},
+            false);
+        const float shift = depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0];
+        for(size_t depth = 1; depth < depthShiftLut.size(); ++depth) depthShiftLut[depth] = shift / static_cast<float>(depth);
+        alignedDepthScales = impl::imageAlignDepthScales(
+            outputWidth,
+            outputHeight,
+            {sourceZFromAlignedPixel.at<float>(2, 0), sourceZFromAlignedPixel.at<float>(2, 1), sourceZFromAlignedPixel.at<float>(2, 2)});
+    }
+
     cv_meshSize = cv::Size(outputWidth, outputHeight);
 
     cv::initUndistortRectifyMap(cv_targetCamMatrix, cv_dNone, cv_R_back, cv_M2, cv_meshSize, CV_32FC1, map_x_2, map_y_2);
@@ -437,22 +453,8 @@ void Align::extractCalibrationData(const dai::ImgTransformation& inputTransforma
     logger->debug("combinedExtrinsics = {}", matToString(cv_combinedExtrinsics));
     logger->debug("R_back = {}", matToString(cv_R_back));
 
+    depthCachesDirty = true;
     calibrationSet = true;
-}
-
-void Align::buildStage1() {
-    // This warms up the dsp so it works afterwards when called.
-    // Without this it fails in some cases with:
-    // Remote_session_control failed
-    // as it has some race conditions with some unknown stuff.
-    // Main suspects are the hardware accelerator and fastCV. fastCV and the accelerator already had a race condition,
-    // where fastCV had to be configured before the accelerator or the accelerator init would fail.
-    //
-    // THEORY:
-    // As the accelerator init also uses CDSP this is probably the same s**t.
-    // fastCV maybe reconfigures / overrides some global CDSP state
-    // and that doesn't play nice with other CDSP stuff.
-    dai::device::openDspSession(dai_device_dsp_open_align, "dai_device_dsp_open_align");
 }
 
 std::shared_ptr<ImgFrame> Align::alignImgFrame(std::shared_ptr<ImgFrame> inputImg, const cv::Scalar borderColor, const cv::InterpolationFlags interpolation) {
@@ -479,87 +481,54 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(std::shared_ptr<ImgFrame> inputIm
         t1 = steady_clock::now();
     }
 
-    auto depthImgRectified = up_plgWarpPool1->get();
-    depthImgRectified->setWidth(map_x_1.cols);
-    depthImgRectified->setHeight(map_x_1.rows);
-    depthImgRectified->setType(frameType);
-    depthImgRectified->fb.stride = depthImgRectified->fb.width * depthImgRectified->getBytesPerPixel();
-
-    depthImgRectified->setBufferMetadataFrom(inputImg);
-    depthImgRectified->setInstanceNum(inputImg->getInstanceNum());
-
-    depthImgRectified->fb.p1Offset = 0;
-    depthImgRectified->fb.p2Offset = depthImgRectified->fb.stride * depthImgRectified->getHeight();
-    depthImgRectified->fb.p3Offset = inputIsPlanarRgb ? 2 * depthImgRectified->fb.p2Offset : depthImgRectified->fb.p2Offset;
-    if(frameType == ImgFrame::Type::YUV420p) {
-        depthImgRectified->fb.p3Offset += (depthImgRectified->getStride() / 2) * (depthImgRectified->getHeight() / 2);
-    }
-
-    auto depthImgRectifiedFrame = depthImgRectified->getFrame();
-
-    // TODO (aljazkonec): Move the remap to GPU for depth
-    if(frameType == ImgFrame::Type::NV12 || frameType == ImgFrame::Type::YUV420p) {
-        remapFrame(*inputImg, *depthImgRectified, map_x_1, map_y_1, interpolation);
-    } else if(inputIsPlanarRgb) {
-        remapPlanarRgb(inputImg, depthImgRectified, map_x_1, map_y_1, interpolation, borderColor);
+    // Depth with a real baseline takes the fused CPU path shared with ImageAlign. Static depth planes
+    // and degenerate (translation-free) transforms only remap, as on host.
+    const bool fusedDepth = inputIsDepth && staticDepthPlane == 0 && !degenerateStereoTransform;
+    std::shared_ptr<ImgFrame> warp2Input;
+    if(fusedDepth) {
+        auto inputFrame = frameForRemap(*inputImg);
+        if(depthCachesDirty || cachedInputStride != inputFrame.step1()) {
+            rectifiedOffsets = detail::nearestDepthOffsets(map_x_1, map_y_1, inputFrame.size(), inputFrame.step1());
+            alignedOffsets = detail::nearestDepthOffsets(map_x_2, map_y_2, map_x_1.size(), map_x_1.cols);
+            cachedInputStride = inputFrame.step1();
+            depthCachesDirty = false;
+        }
+        detail::remapAndShiftDepth(
+            inputFrame, shiftedDepth, map_x_1.size(), rectifiedOffsets, depthShiftLut, depthToAlignExtrinsics[0][3] > 0, rectifiedRayZ, cpuExecutor);
     } else {
-        cv::remap(frameForRemap(*inputImg), depthImgRectifiedFrame, map_x_1, map_y_1, interpolation, cv::BORDER_CONSTANT, borderColor);
-    }
+        auto depthImgRectified = up_plgWarpPool1->get();
+        depthImgRectified->setWidth(map_x_1.cols);
+        depthImgRectified->setHeight(map_x_1.rows);
+        depthImgRectified->setType(frameType);
+        depthImgRectified->fb.stride = depthImgRectified->fb.width * depthImgRectified->getBytesPerPixel();
 
-    if(PRINT_DEBUG) {
-        t2 = steady_clock::now();
-        auto elapsed = duration_cast<microseconds>(t2 - t1).count() / 1000.f;
-        logger->warn("Align step1 took '{}' ms.", elapsed);
-        t1 = steady_clock::now();
-    }
+        depthImgRectified->setBufferMetadataFrom(inputImg);
+        depthImgRectified->setInstanceNum(inputImg->getInstanceNum());
 
-    auto shiftedOutput = up_plgPoolAlign->get();
-
-    if(PRINT_DEBUG) {
-        t1 = steady_clock::now();
-    }
-
-    auto warp2Input = depthImgRectified;
-    if(inputIsDepth && staticDepthPlane == 0) {
-        if(!dspOpened || !dspConfigData) {
-            throw std::logic_error("Align DSP must be initialized before aligning depth frames");
+        depthImgRectified->fb.p1Offset = 0;
+        depthImgRectified->fb.p2Offset = depthImgRectified->fb.stride * depthImgRectified->getHeight();
+        depthImgRectified->fb.p3Offset = inputIsPlanarRgb ? 2 * depthImgRectified->fb.p2Offset : depthImgRectified->fb.p2Offset;
+        if(frameType == ImgFrame::Type::YUV420p) {
+            depthImgRectified->fb.p3Offset += (depthImgRectified->getStride() / 2) * (depthImgRectified->getHeight() / 2);
         }
 
-        shiftedOutput->setBufferMetadataFrom(inputImg);
-        shiftedOutput->setWidth(map_x_1.cols);
-        shiftedOutput->setHeight(map_x_1.rows);
-        shiftedOutput->setType(frameType);
-        shiftedOutput->fb.stride = shiftedOutput->fb.width * shiftedOutput->getBytesPerPixel();
-        shiftedOutput->fb.p1Offset = 0;
-        shiftedOutput->fb.p2Offset = shiftedOutput->fb.stride * shiftedOutput->getHeight();
-        shiftedOutput->fb.p3Offset = shiftedOutput->fb.p2Offset;
+        auto depthImgRectifiedFrame = depthImgRectified->getFrame();
 
-        std::shared_ptr<AcceleratorMemory> inDepthImgRectified = AcceleratorMemory::convert(depthImgRectified->data);
-        std::shared_ptr<AcceleratorMemory> outShiftedOutput = AcceleratorMemory::convert(shiftedOutput->data);
-
-        auto startDSP = high_resolution_clock::now();
-        auto& config = *reinterpret_cast<ImageAlignDspConfig*>(dspConfigData->data());
-        config.depthSourceIntrinsics = depthSourceIntrinsics;
-        config.alignSourceIntrinsics = alignSourceIntrinsics;
-        config.depthToAlignExtrinsics = depthToAlignExtrinsics;
-        config.width = shiftedOutput->fb.width;
-        config.height = shiftedOutput->fb.height;
-        config.stride = shiftedOutput->fb.stride;
-        config.bpp = shiftedOutput->getBytesPerPixel();
-
-        const dai_device_buf dspIn0 = dai::device::toDeviceBuf(*inDepthImgRectified), dspConfig = dai::device::toDeviceBuf(*dspConfigData),
-                             dspOut = dai::device::toDeviceBuf(*outShiftedOutput);
-        int nErr = dai_device_dsp_shift_depth(&dspIn0, &dspConfig, &dspOut);
-        if(nErr != 0) {
-            logger->error("alignDepthImg failed with code {}", nErr);
+        if(frameType == ImgFrame::Type::NV12 || frameType == ImgFrame::Type::YUV420p) {
+            remapFrame(*inputImg, *depthImgRectified, map_x_1, map_y_1, interpolation);
+        } else if(inputIsPlanarRgb) {
+            remapPlanarRgb(inputImg, depthImgRectified, map_x_1, map_y_1, interpolation, borderColor);
+        } else {
+            cv::remap(frameForRemap(*inputImg), depthImgRectifiedFrame, map_x_1, map_y_1, interpolation, cv::BORDER_CONSTANT, borderColor);
         }
 
-        shiftedOutput->data = AcceleratorMemory::convert(outShiftedOutput);
-        auto stopDSP = high_resolution_clock::now();
-        auto durationDSP = duration_cast<microseconds>(stopDSP - startDSP);
-        logger->debug("DSP time: {} ms", durationDSP.count() / 1000.0f);
-
-        warp2Input = shiftedOutput;
+        if(PRINT_DEBUG) {
+            t2 = steady_clock::now();
+            auto elapsed = duration_cast<microseconds>(t2 - t1).count() / 1000.f;
+            logger->warn("Align step1 took '{}' ms.", elapsed);
+            t1 = steady_clock::now();
+        }
+        warp2Input = depthImgRectified;
     }
 
     if(PRINT_DEBUG) {
@@ -615,9 +584,10 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(std::shared_ptr<ImgFrame> inputIm
 
     auto alignedImgFrame = alignedImg->getFrame();
 
-    // TODO (aljazkonec): Move this warp to the GPU, as for Warp 1 above. The maps are static between calibration changes,
-    // thus the GPU mesh buffers can stay allocated and only the source and destination frames change for each frame.
-    if(frameType == ImgFrame::Type::NV12 || frameType == ImgFrame::Type::YUV420p) {
+    // Align runs on the CPU only: no DSP, EVA or GPU.
+    if(fusedDepth) {
+        detail::remapAndConvertDepth(shiftedDepth, alignedImgFrame, alignedOffsets, alignedDepthScales, alignedDepthOffset, cpuExecutor);
+    } else if(frameType == ImgFrame::Type::NV12 || frameType == ImgFrame::Type::YUV420p) {
         remapFrame(*warp2Input, *alignedImg, map_x_2, map_y_2, interpolation);
     } else if(inputIsPlanarRgb) {
         remapPlanarRgb(warp2Input, alignedImg, map_x_2, map_y_2, interpolation, borderColor);
@@ -631,6 +601,9 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(std::shared_ptr<ImgFrame> inputIm
         logger->warn("Align step3 took '{}' ms.", elapsed);
     }
 
+    if(inputIsDepth && !fusedDepth) {
+        impl::imageAlignConvertDepth(alignedImgFrame.data, alignedWidth, alignedHeight, alignedImgFrame.step, alignedDepthScales.data(), alignedDepthOffset);
+    }
     return alignedImg;
 }
 
@@ -834,9 +807,6 @@ void Align::run() {
     auto firstInput = input.get<Buffer>();
     auto firstAlignTo = inputAlignTo.get<Buffer>();
     std::shared_ptr<Buffer> alignToMsg = firstAlignTo;
-    dai::device::openDspSession(dai_device_dsp_open_align, "dai_device_dsp_open_align");
-    dspOpened = true;
-    dspConfigData = AcceleratorMemory::create(sizeof(ImageAlignDspConfig));
 
     staticDepthPlane = properties.initialConfig.staticDepthPlane;
 
@@ -891,9 +861,6 @@ void Align::run() {
             passthroughInput.send(inputMsg);
         }
     }
-
-    dspConfigData.reset();
-    dspOpened = false;
 }
 
 }  // namespace gate
