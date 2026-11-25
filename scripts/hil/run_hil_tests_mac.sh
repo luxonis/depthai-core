@@ -40,7 +40,7 @@ CMAKE_ARGS=(
 )
 
 # RVC4 firmware package that .github/workflows/test_child_mac.yml puts in rvc4-fwp/ before the workspace sync. Without
-# a package, the configure step builds the firmware from device/rvc4 in Docker.
+# a package, the configure step builds the firmware from device/rvc4 in Docker, and stops where Docker is not installed.
 if [ -f rvc4-fwp/depthai-device-rvc4-fwp.tar.xz ]; then
   CMAKE_ARGS+=(-D DEPTHAI_DEVICE_RVC4_FWP_PATH="$PWD/rvc4-fwp/depthai-device-rvc4-fwp.tar.xz")
 fi

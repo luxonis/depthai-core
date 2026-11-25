@@ -190,6 +190,7 @@ jobs:
           !C:\depthai-core\build\vcpkg\downloads
           !C:\depthai-core\build\**\*.obj
           !C:\depthai-core\winpython.zip
+          !C:\depthai-core\rvc4-fwp
         retention-days: 1
 
   run_windows_tests_rvc4:
