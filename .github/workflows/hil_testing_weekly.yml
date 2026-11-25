@@ -34,8 +34,18 @@ jobs:
       - id: selection
         run: echo "test_all=${{ !inputs.test_os && !inputs.test_replay && !inputs.test_sanitizers }}" >> "$GITHUB_OUTPUT"
 
+  rvc4-fwp:
+    uses: ./.github/workflows/rvc4_fwp.yml
+    secrets: inherit
+
+  rvc4-fwp-asan-ubsan:
+    uses: ./.github/workflows/rvc4_fwp.yml
+    with:
+      target: rvc4-asan-ubsan
+    secrets: inherit
+
   run_vanilla_tests:
-    needs: select_tests
+    needs: [select_tests, rvc4-fwp]
     if: inputs.test_os || needs.select_tests.outputs.test_all == 'true'
     uses: ./.github/workflows/test_child.yml
     with:
@@ -54,7 +64,7 @@ jobs:
       CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
 
   run_tsan_tests:
-    needs: select_tests
+    needs: [select_tests, rvc4-fwp]
     if: inputs.test_sanitizers || needs.select_tests.outputs.test_all == 'true'
     uses: ./.github/workflows/test_child.yml
     with:
@@ -71,7 +81,7 @@ jobs:
       CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
 
   run_asan-ubsan_tests:
-    needs: select_tests
+    needs: [select_tests, rvc4-fwp-asan-ubsan]
     if: inputs.test_sanitizers || needs.select_tests.outputs.test_all == 'true'
     uses: ./.github/workflows/test_child.yml
     with:
@@ -105,7 +115,7 @@ jobs:
       CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
 
   run_replay_tests:
-    needs: select_tests
+    needs: [select_tests, rvc4-fwp]
     if: inputs.test_replay || needs.select_tests.outputs.test_all == 'true'
     uses: ./.github/workflows/test_child.yml
     with:

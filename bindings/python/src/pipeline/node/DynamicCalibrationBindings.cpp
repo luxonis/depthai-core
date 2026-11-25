@@ -1,3 +1,5 @@
+#include <pybind11/stl/filesystem.h>
+
 #include "Common.hpp"
 #include "NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
@@ -68,7 +70,18 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
         .def("setRunOnHost", &DynamicCalibration::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, DynamicCalibration, setRunOnHost))
         .def("runOnHost", &DynamicCalibration::runOnHost, DOC(dai, node, DynamicCalibration, runOnHost))
         .def("setThreadPolicy", &DynamicCalibration::setThreadPolicy, py::arg("policy"), DOC(dai, node, DynamicCalibration, setThreadPolicy))
-        .def("getThreadPolicy", &DynamicCalibration::getThreadPolicy, DOC(dai, node, DynamicCalibration, getThreadPolicy));
+        .def("getThreadPolicy", &DynamicCalibration::getThreadPolicy, DOC(dai, node, DynamicCalibration, getThreadPolicy))
+        .def("setWorldConstraints", &DynamicCalibration::setWorldConstraints, py::arg("constraints"), DOC(dai, node, DynamicCalibration, setWorldConstraints))
+        .def("setWorldConstraintsFromJson",
+             &DynamicCalibration::setWorldConstraintsFromJson,
+             py::arg("json"),
+             DOC(dai, node, DynamicCalibration, setWorldConstraintsFromJson))
+        .def("setWorldConstraintsFromFile",
+             &DynamicCalibration::setWorldConstraintsFromFile,
+             py::arg("path"),
+             DOC(dai, node, DynamicCalibration, setWorldConstraintsFromFile))
+        .def("clearWorldConstraints", &DynamicCalibration::clearWorldConstraints, DOC(dai, node, DynamicCalibration, clearWorldConstraints))
+        .def("getWorldConstraints", &DynamicCalibration::getWorldConstraints, DOC(dai, node, DynamicCalibration, getWorldConstraints));
 
     // Keep the Properties class attached to the node type
     daiNodeModule.attr("DynamicCalibration").attr("Properties") = DynamicCalibrationProperties;

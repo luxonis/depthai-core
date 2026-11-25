@@ -1,5 +1,7 @@
 #include "depthai/basalt/BasaltVIO.hpp"
 
+#include <atomic>
+
 #include "../utility/PimplImpl.hpp"
 #include "basalt/calibration/calibration.hpp"
 #include "basalt/serialization/headers_serialization.h"
@@ -37,6 +39,7 @@ class BasaltVIO::Impl {
 
     std::vector<int64_t> vioTNSec;
     std::shared_ptr<basalt::PoseState<double>::SE3> localTransform;
+    std::atomic<bool> imuStarted{false};
 };
 
 BasaltVIO::BasaltVIO() {}
@@ -85,6 +88,7 @@ void BasaltVIO::run() {
         const auto velocity = pimpl->localTransform->unit_quaternion() * data->vel_w_i;
         auto out =
             std::make_shared<Odometry>(trans.x(), trans.y(), trans.z(), rot.x(), rot.y(), rot.z(), rot.w(), Point3d(velocity.x(), velocity.y(), velocity.z()));
+        out->setTimestamp(std::chrono::steady_clock::time_point(std::chrono::nanoseconds(data->t_ns)));
         transform.send(out);
         std::lock_guard<std::mutex> lck(imgMtx);
         passthrough.send(leftImg);
@@ -95,6 +99,8 @@ void BasaltVIO::stereoCB(std::shared_ptr<ADatatype> in) {
     auto group = std::dynamic_pointer_cast<MessageGroup>(in);
     if(group == nullptr) return;
     if(!initialized) {
+        // Don't start Basalt until the IMU stream is live; otherwise its first frames have no IMU data.
+        if(!pimpl->imuStarted) return;
         std::vector<std::shared_ptr<ImgFrame>> imgFrames;
         for(auto& msg : *group) {
             imgFrames.emplace_back(std::dynamic_pointer_cast<ImgFrame>(msg.second));
@@ -110,7 +116,7 @@ void BasaltVIO::stereoCB(std::shared_ptr<ADatatype> in) {
             std::lock_guard<std::mutex> lck(imgMtx);
             leftImg = imgFrame;
         };
-        auto t = imgFrame->getTimestamp();
+        auto t = imgFrame->getTimestamp(CameraExposureOffset::MIDDLE);
         int64_t tNS = std::chrono::time_point_cast<std::chrono::nanoseconds>(t).time_since_epoch().count();
         auto exposure = imgFrame->getExposureTime();
 
@@ -139,6 +145,7 @@ void BasaltVIO::imuCB(std::shared_ptr<ADatatype> imuData) {
     if(!imuPackets) {
         return;
     }
+    pimpl->imuStarted = true;
 
     for(auto& imuPacket : imuPackets->packets) {
         basalt::ImuData<double>::Ptr data;
@@ -154,8 +161,8 @@ void BasaltVIO::imuCB(std::shared_ptr<ADatatype> imuData) {
 };
 
 void BasaltVIO::stop() {
-    pimpl->imageDataQueue->push(nullptr);
-    pimpl->imuDataQueue->push(nullptr);
+    if(pimpl->imageDataQueue) pimpl->imageDataQueue->push(nullptr);
+    if(pimpl->imuDataQueue) pimpl->imuDataQueue->push(nullptr);
     ThreadedHostNode::stop();
 }
 

@@ -1,8 +1,10 @@
 name: Save vcpkg binary cache
 description: >
   Prunes archives the build did not use from the vcpkg binary cache and saves the cache when its
-  content changed, this job is the family's designated saver, the event is not a pull request and
-  the build is not a tag build (tag builds run without a cache, see the restore action).
+  content changed, this job is the family's designated saver and the run is on main (the default
+  branch, which vcpkg_cache_warm.yml refreshes every night). A run on any other branch restores
+  its own branch's entries before main's, so an entry saved there shadows the warm one and goes
+  stale on the next runner image update; tag builds run without a cache (see the restore action).
   Must follow .github/actions/vcpkg-cache/restore and the vcpkg install (CMake configure) step.
 
 inputs:
@@ -73,12 +75,12 @@ runs:
         if [[ -n "${VCPKG_CACHE_RESTORED_KEY:-}" && "${ADDED:-0}" -gt 0 ]]; then
           echo "::warning::vcpkg built $ADDED package(s) from source although cache '$VCPKG_CACHE_RESTORED_KEY' was restored. This is expected once after a port, compiler, runner image or vcpkg tool change; if it repeats, the family's saver no longer produces the ABIs this job needs."
         fi
-        if [[ "$CHANGED" == "true" && ( "$SAVE" != "true" || "$EVENT" == pull_request* ) ]]; then
-          echo "::notice::vcpkg binary cache content changed but this job does not save it (save=$SAVE, event=$EVENT)."
+        if [[ "$CHANGED" == "true" && ( "$SAVE" != "true" || "$GITHUB_REF" != refs/heads/main ) ]]; then
+          echo "::notice::vcpkg binary cache content changed but this job does not save it (save=$SAVE, ref=$GITHUB_REF); vcpkg_cache_warm.yml saves it on main."
         fi
 
     - name: Save vcpkg binary cache
-      if: inputs.save == 'true' && steps.prune.outputs.changed == 'true' && !startsWith(github.event_name, 'pull_request') && !startsWith(github.ref, 'refs/tags/')
+      if: inputs.save == 'true' && steps.prune.outputs.changed == 'true' && github.ref == 'refs/heads/main'
       uses: actions/cache/save@v6
       with:
         path: ${{ env.VCPKG_CACHE_DIR }}

@@ -1,3 +1,5 @@
+#include <pybind11/stl/filesystem.h>
+
 #include "Common.hpp"
 #include "NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
@@ -32,7 +34,6 @@ void bind_auto_calibration(pybind11::module& m, void* pCallstack) {
     dynamicCalibrationWorker.def("build", &AutoCalibration::build, py::arg("cameraLeft"), py::arg("cameraRight"), DOC(dai, node, AutoCalibration, build))
         .def("setRunOnHost", &AutoCalibration::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, AutoCalibration, setRunOnHost))
         .def_readonly("output", &AutoCalibration::output, DOC(dai, node, AutoCalibration, output))
-        .def("runOnHost", &AutoCalibration::runOnHost, DOC(dai, node, AutoCalibration, runOnHost))
         .def("setThreadPolicy", &AutoCalibration::setThreadPolicy, py::arg("policy"), DOC(dai, node, AutoCalibration, setThreadPolicy))
         .def("getThreadPolicy", &AutoCalibration::getThreadPolicy, DOC(dai, node, AutoCalibration, getThreadPolicy))
         .def_property(
@@ -45,5 +46,17 @@ void bind_auto_calibration(pybind11::module& m, void* pCallstack) {
                 // Assigning the shared_ptr directly
                 self.initialConfig = cfg;
             },
-            DOC(dai, node, AutoCalibration, initialConfig));
+            DOC(dai, node, AutoCalibration, initialConfig))
+        .def("runOnHost", &AutoCalibration::runOnHost, DOC(dai, node, AutoCalibration, runOnHost))
+        .def("setWorldConstraints", &AutoCalibration::setWorldConstraints, py::arg("constraints"), DOC(dai, node, AutoCalibration, setWorldConstraints))
+        .def("setWorldConstraintsFromJson",
+             &AutoCalibration::setWorldConstraintsFromJson,
+             py::arg("json"),
+             DOC(dai, node, AutoCalibration, setWorldConstraintsFromJson))
+        .def("setWorldConstraintsFromFile",
+             &AutoCalibration::setWorldConstraintsFromFile,
+             py::arg("path"),
+             DOC(dai, node, AutoCalibration, setWorldConstraintsFromFile))
+        .def("clearWorldConstraints", &AutoCalibration::clearWorldConstraints, DOC(dai, node, AutoCalibration, clearWorldConstraints))
+        .def("getWorldConstraints", &AutoCalibration::getWorldConstraints, DOC(dai, node, AutoCalibration, getWorldConstraints));
 }

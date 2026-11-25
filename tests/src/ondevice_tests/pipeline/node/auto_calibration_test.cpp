@@ -41,6 +41,46 @@ dai::Pipeline makePipeline(const std::shared_ptr<dai::Device>& device, std::shar
 }
 }  // namespace
 
+TEST_CASE("AutoCalibration: runs on the host by default, on the device only on RVC4") {
+    auto device = std::make_shared<dai::Device>();
+    if(!hasResolution(device, dai::CameraBoardSocket::CAM_B, kAutoCalibrationRequiredResolution)
+       || !hasResolution(device, dai::CameraBoardSocket::CAM_C, kAutoCalibrationRequiredResolution)) {
+        SKIP("Skipping AutoCalibration test: CAM_B/C does not advertise 1280x800 required by AutoCalibration.");
+    }
+
+    std::shared_ptr<dai::node::AutoCalibration> autoCalibration;
+    auto pipeline = makePipeline(device, autoCalibration);
+    REQUIRE(autoCalibration->runOnHost());
+
+    if(device->getPlatform() != dai::Platform::RVC4) {
+        REQUIRE_THROWS(autoCalibration->setRunOnHost(false));
+        REQUIRE(autoCalibration->runOnHost());
+        return;
+    }
+
+    // On the device the whole chain runs in the firmware: only the result crosses the link. The config has to
+    // arrive with the properties, a default one would flash the EEPROM.
+    autoCalibration->setRunOnHost(false);
+    REQUIRE_FALSE(autoCalibration->runOnHost());
+    autoCalibration->initialConfig = std::make_shared<dai::AutoCalibrationConfig>(dai::AutoCalibrationConfig::ON_START, 10, 0.9f, 0.7f, 2, 10, 2, false);
+    const auto eepromBefore = device->readCalibrationRaw();
+    auto output = autoCalibration->output.createOutputQueue();
+
+    pipeline.start();
+    bool timedOut = false;
+    // ON_START always reports once: the applied calibration, or the last candidate after maxIterations.
+    auto result = output->get<dai::AutoCalibrationResult>(180s, timedOut);
+    // Give a wrongly requested flash the time to happen before the EEPROM is compared.
+    std::this_thread::sleep_for(2s);
+    const auto eepromAfter = device->readCalibrationRaw();
+    pipeline.stop();
+    pipeline.wait();
+
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(result != nullptr);
+    REQUIRE(eepromAfter == eepromBefore);
+}
+
 TEST_CASE("AutoCalibration: Do not crash") {
     std::vector<dai::AutoCalibrationConfig> configs = {dai::AutoCalibrationConfig{dai::AutoCalibrationConfig::ON_START, 10, 0.9f, 0.7f, 20, 20, 2, false},
                                                        dai::AutoCalibrationConfig{dai::AutoCalibrationConfig::CONTINUOUS, 10, 0.9f, 0.7f, 20, 20, 2, false},

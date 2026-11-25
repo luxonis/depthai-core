@@ -28,6 +28,6 @@ struct Size2f {
     }
 };
 
-DEPTHAI_SERIALIZE_EXT(Size2f, width, height, normalized, hasNormalized);
+DEPTHAI_SERIALIZE_EXT_DECL(Size2f, width, height, normalized, hasNormalized);
 
 }  // namespace dai

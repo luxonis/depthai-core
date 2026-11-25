@@ -4,6 +4,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "depthai/common/ImgTransformations.hpp"
+#include "depthai/common/Rect.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
@@ -388,7 +390,7 @@ class CameraControl : public Buffer {
         uint32_t sensitivityIso;
         uint32_t frameDurationUs;
 
-        DEPTHAI_SERIALIZE(ManualExposureParams, exposureTimeUs, sensitivityIso, frameDurationUs);
+        DEPTHAI_SERIALIZE_DECL(ManualExposureParams, exposureTimeUs, sensitivityIso, frameDurationUs);
     };
 
     // AE_REGION / AF_REGION
@@ -400,7 +402,7 @@ class CameraControl : public Buffer {
         // Set to 1 for now. TODO
         uint32_t priority;
 
-        DEPTHAI_SERIALIZE(RegionParams, x, y, width, height, priority);
+        DEPTHAI_SERIALIZE_DECL(RegionParams, x, y, width, height, priority);
     };
 
     struct StrobeTimings {
@@ -411,7 +413,7 @@ class CameraControl : public Buffer {
         /// Fixed duration in microseconds. If set (non-zero), overrides `exposureEndOffsetUs`
         uint32_t durationUs;
 
-        DEPTHAI_SERIALIZE(StrobeTimings, exposureBeginOffsetUs, exposureEndOffsetUs, durationUs);
+        DEPTHAI_SERIALIZE_DECL(StrobeTimings, exposureBeginOffsetUs, exposureEndOffsetUs, durationUs);
     };
 
     struct StrobeConfig {
@@ -422,7 +424,7 @@ class CameraControl : public Buffer {
         /// GPIO number to drive, or -1 if sensor driven
         int8_t gpioNumber;
 
-        DEPTHAI_SERIALIZE(StrobeConfig, enable, activeLevel, gpioNumber);
+        DEPTHAI_SERIALIZE_DECL(StrobeConfig, enable, activeLevel, gpioNumber);
     };
 
     /**
@@ -495,13 +497,25 @@ class CameraControl : public Buffer {
 
     /**
      * Set a command to specify focus region in pixels.
-     * Note: the region should be mapped to the configured sensor resolution, before ISP scaling
+     * Note: the region is in pixels of the source frame of the camera's frames, ImgTransformation::getSourceSize(), whatever
+     * the size of its outputs; on RVC4 that is the sensor's full resolution. To set the region from a rectangle in a frame,
+     * use setAutoFocusRegion(const Rect&, const ImgTransformation&).
      * @param startX X coordinate of top left corner of region
      * @param startY Y coordinate of top left corner of region
      * @param width Region width
      * @param height Region height
      */
     CameraControl& setAutoFocusRegion(uint16_t startX, uint16_t startY, uint16_t width, uint16_t height);
+
+    /**
+     * Set a command to specify focus region from a rectangle in a frame.
+     * The rectangle is mapped to the frame's source with ImgTransformation::invTransformRect(), clamped to the source and
+     * set as with setAutoFocusRegion(uint16_t, uint16_t, uint16_t, uint16_t).
+     * @param rect Region in pixels of the frame, or normalized to the frame's size
+     * @param transformation The frame's transformation, from ImgFrame::getTransformation() or ImgDetections::getTransformation()
+     * @throws std::invalid_argument if the region is empty, the transformation has no size or the region lies outside the source frame
+     */
+    CameraControl& setAutoFocusRegion(const Rect& rect, const ImgTransformation& transformation);
 
     /**
      * Set a command to specify manual focus position
@@ -531,13 +545,25 @@ class CameraControl : public Buffer {
 
     /**
      * Set a command to specify auto exposure region in pixels.
-     * Note: the region should be mapped to the configured sensor resolution, before ISP scaling
+     * Note: the region is in pixels of the source frame of the camera's frames, ImgTransformation::getSourceSize(), whatever
+     * the size of its outputs; on RVC4 that is the sensor's full resolution. To set the region from a rectangle in a frame,
+     * use setAutoExposureRegion(const Rect&, const ImgTransformation&).
      * @param startX X coordinate of top left corner of region
      * @param startY Y coordinate of top left corner of region
      * @param width Region width
      * @param height Region height
      */
     CameraControl& setAutoExposureRegion(uint16_t startX, uint16_t startY, uint16_t width, uint16_t height);
+
+    /**
+     * Set a command to specify auto exposure region from a rectangle in a frame.
+     * The rectangle is mapped to the frame's source with ImgTransformation::invTransformRect(), clamped to the source and
+     * set as with setAutoExposureRegion(uint16_t, uint16_t, uint16_t, uint16_t).
+     * @param rect Region in pixels of the frame, or normalized to the frame's size
+     * @param transformation The frame's transformation, from ImgFrame::getTransformation() or ImgDetections::getTransformation()
+     * @throws std::invalid_argument if the region is empty, the transformation has no size or the region lies outside the source frame
+     */
+    CameraControl& setAutoExposureRegion(const Rect& rect, const ImgTransformation& transformation);
 
     /**
      * Set a command to specify auto exposure compensation. This modifies the brightness target with positive numbers making the image brighter and negative
@@ -812,41 +838,41 @@ class CameraControl : public Buffer {
         return DatatypeEnum::CameraControl;
     }
 
-    DEPTHAI_SERIALIZE(CameraControl,
-                      cmdMask,
-                      autoFocusMode,
-                      lensPosition,
-                      lensPositionRaw,
-                      lensPosAutoInfinity,
-                      lensPosAutoMacro,
-                      expManual,
-                      aeRegion,
-                      afRegion,
-                      awbMode,
-                      sceneMode,
-                      antiBandingMode,
-                      aeLockMode,
-                      awbLockMode,
-                      captureIntent,
-                      controlMode,
-                      effectMode,
-                      frameSyncMode,
-                      strobeConfig,
-                      strobeTimings,
-                      aeMaxExposureTimeUs,
-                      aeMaxISO,
-                      expCompensation,
-                      brightness,
-                      contrast,
-                      saturation,
-                      sharpness,
-                      lumaDenoise,
-                      chromaDenoise,
-                      wbColorTemp,
-                      lowPowerNumFramesBurst,
-                      lowPowerNumFramesDiscard,
-                      enableHdr,
-                      miscControls);
+    DEPTHAI_SERIALIZE_DECL(CameraControl,
+                           cmdMask,
+                           autoFocusMode,
+                           lensPosition,
+                           lensPositionRaw,
+                           lensPosAutoInfinity,
+                           lensPosAutoMacro,
+                           expManual,
+                           aeRegion,
+                           afRegion,
+                           awbMode,
+                           sceneMode,
+                           antiBandingMode,
+                           aeLockMode,
+                           awbLockMode,
+                           captureIntent,
+                           controlMode,
+                           effectMode,
+                           frameSyncMode,
+                           strobeConfig,
+                           strobeTimings,
+                           aeMaxExposureTimeUs,
+                           aeMaxISO,
+                           expCompensation,
+                           brightness,
+                           contrast,
+                           saturation,
+                           sharpness,
+                           lumaDenoise,
+                           chromaDenoise,
+                           wbColorTemp,
+                           lowPowerNumFramesBurst,
+                           lowPowerNumFramesDiscard,
+                           enableHdr,
+                           miscControls);
     /**
      * Retrieves lens position, range 0.0f..1.0f.
      */

@@ -17,22 +17,24 @@ with dai.Pipeline() as p:
     right = p.create(dai.node.Camera)
     color = p.create(dai.node.Camera)
     stereo = p.create(dai.node.NeuralDepth)
-    rgbd = p.create(dai.node.RGBD).build()
+    pointcloud = p.create(dai.node.PointCloud)
+    pointcloud.initialConfig.setOrganized(True)
     align = None
 
     color.build(sensorFps=FPS)
+    pointcloud.setTargetCoordinateSystem(color.getBoardSocket())
     left.build(dai.CameraBoardSocket.CAM_B, sensorFps=FPS)
     right.build(dai.CameraBoardSocket.CAM_C, sensorFps=FPS)
 
     # Linking
     stereo.build(left.requestFullResolutionOutput(), right.requestFullResolutionOutput(), dai.DeviceModelZoo.NEURAL_DEPTH_LARGE)
     out = color.requestOutput((1280, 800), dai.ImgFrame.Type.RGB888i, enableUndistortion=True)
-    align = p.create(dai.node.ImageAlign)
+    align = p.create(dai.node.Align)
     stereo.depth.link(align.input)
     out.link(align.inputAlignTo)
-    align.outputAligned.link(rgbd.inDepth)
-    out.link(rgbd.inColor)
-    remoteConnector.addTopic("pcl", rgbd.pcl, "common")
+    align.outputAligned.link(pointcloud.inputDepth)
+    out.link(pointcloud.getColorInput())
+    remoteConnector.addTopic("pcl", pointcloud.outputPointCloud, "common")
 
     p.start()
     remoteConnector.registerPipeline(p)

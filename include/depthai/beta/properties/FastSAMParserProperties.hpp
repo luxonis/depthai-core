@@ -23,7 +23,9 @@ struct FastSAMParserProperties : PropertiesSerializable<Properties, FastSAMParse
     ~FastSAMParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(FastSAMParserProperties, initialConfig, numClasses, yoloOutputs, maskOutputs, protosOutput);
+DEPTHAI_SERIALIZE_EXT_DECL(FastSAMParserProperties, initialConfig, numClasses, yoloOutputs, maskOutputs, protosOutput);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::FastSAMParserProperties>;

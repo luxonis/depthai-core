@@ -10,7 +10,7 @@ void bind_beta_lines(pybind11::module& m, void* pCallstack) {
 
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
     py::class_<beta::Line> line(betaModule, "Line", DOC(dai, beta, Line));
-    py::class_<beta::Lines, Py<beta::Lines>, Buffer, Transformable, std::shared_ptr<beta::Lines>> lines(betaModule, "Lines", DOC(dai, beta, Lines));
+    py::class_<beta::Lines, Py<beta::Lines>, Buffer, Transformable, py::smart_holder> lines(betaModule, "Lines", DOC(dai, beta, Lines));
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling

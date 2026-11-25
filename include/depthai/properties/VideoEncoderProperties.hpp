@@ -76,17 +76,19 @@ struct VideoEncoderProperties : PropertiesSerializable<Properties, VideoEncoderP
     ~VideoEncoderProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(VideoEncoderProperties,
-                      bitrate,
-                      keyframeFrequency,
-                      maxBitrate,
-                      numBFrames,
-                      numFramesPool,
-                      outputFrameSize,
-                      profile,
-                      quality,
-                      lossless,
-                      rateCtrlMode,
-                      frameRate);
+DEPTHAI_SERIALIZE_EXT_DECL(VideoEncoderProperties,
+                           bitrate,
+                           keyframeFrequency,
+                           maxBitrate,
+                           numBFrames,
+                           numFramesPool,
+                           outputFrameSize,
+                           profile,
+                           quality,
+                           lossless,
+                           rateCtrlMode,
+                           frameRate);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::VideoEncoderProperties>;

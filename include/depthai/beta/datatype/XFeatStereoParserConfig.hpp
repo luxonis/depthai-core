@@ -49,7 +49,7 @@ class XFeatStereoParserConfig : public Buffer {
         return DatatypeEnum::XFeatStereoParserConfig;
     }
 
-    DEPTHAI_SERIALIZE(XFeatStereoParserConfig, maxKeypoints);
+    DEPTHAI_SERIALIZE_DECL(XFeatStereoParserConfig, maxKeypoints);
 };
 
 }  // namespace beta

@@ -19,3 +19,6 @@
 [submodule "shared/depthai_boards"]
 	path = shared/depthai_boards
 	url = https://github.com/luxonis/depthai-boards
+[submodule "device/rvc4/external/cpp-subprocess"]
+	path = device/rvc4/external/cpp-subprocess
+	url = https://github.com/luxonis/cpp-subprocess.git

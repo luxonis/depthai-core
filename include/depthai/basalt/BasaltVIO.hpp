@@ -124,7 +124,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     Input imu{*this, {"inIMU", DEFAULT_GROUP, false, 0, {{DatatypeEnum::IMUData, true}}}};
 
     /**
-     * Output odometry data.
+     * Output odometry data, stamped with the host time of its frame's mid-exposure. The device timestamp is not set.
      */
     Output transform{*this, {"transform", DEFAULT_GROUP, {{DatatypeEnum::Odometry, true}}}};
     /**

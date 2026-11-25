@@ -64,27 +64,27 @@ class ImgDetectionsFilterConfig : public Buffer {
     /** Return whether any output pixel geometry limit is active. */
     bool hasGeometryFilters() const;
 
-    DEPTHAI_SERIALIZE(ImgDetectionsFilterConfig,
-                      Buffer::sequenceNum,
-                      Buffer::ts,
-                      Buffer::tsDevice,
-                      Buffer::tsSystem,
-                      labelsToKeep,
-                      labelsToReject,
-                      minConfidence,
-                      maxConfidence,
-                      minArea,
-                      maxArea,
-                      minWidth,
-                      maxWidth,
-                      minHeight,
-                      maxHeight,
-                      regionOfInterest,
-                      maxDetections,
-                      sortByConfidence,
-                      overlapMode,
-                      overlapIouThreshold,
-                      reference);
+    DEPTHAI_SERIALIZE_DECL(ImgDetectionsFilterConfig,
+                           Buffer::sequenceNum,
+                           Buffer::ts,
+                           Buffer::tsDevice,
+                           Buffer::tsSystem,
+                           labelsToKeep,
+                           labelsToReject,
+                           minConfidence,
+                           maxConfidence,
+                           minArea,
+                           maxArea,
+                           minWidth,
+                           maxWidth,
+                           minHeight,
+                           maxHeight,
+                           regionOfInterest,
+                           maxDetections,
+                           sortByConfidence,
+                           overlapMode,
+                           overlapIouThreshold,
+                           reference);
 };
 
 }  // namespace dai

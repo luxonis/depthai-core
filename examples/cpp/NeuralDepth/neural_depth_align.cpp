@@ -57,6 +57,8 @@ int main() {
     // --- Define pipeline nodes ---
     auto camRgb = pipeline.create<dai::node::Camera>();
     camRgb->build(RGB_SOCKET);
+    // Leave room for RGB history in Sync and frames in flight.
+    camRgb->setOutputsNumFramesPool(8);
 
     auto left = pipeline.create<dai::node::Camera>();
     left->build(LEFT_SOCKET);
@@ -66,7 +68,7 @@ int main() {
 
     auto stereo = pipeline.create<dai::node::NeuralDepth>();
     auto sync = pipeline.create<dai::node::Sync>();
-    auto align = pipeline.create<dai::node::ImageAlign>();
+    auto align = pipeline.create<dai::node::Align>();
 
     // --- Configure nodes ---
     sync->setSyncThreshold(std::chrono::milliseconds(static_cast<long long>(1000.0 / (2.0 * FPS))));
@@ -83,6 +85,14 @@ int main() {
     rgbOut->link(align->inputAlignTo);
     rgbOut->link(sync->inputs["rgb"]);
     align->outputAligned.link(sync->inputs["depth_aligned"]);
+
+    // Use nonblocking queues to limit backpressure while synchronizing.
+    for(const auto* name : {"rgb", "depth_aligned"}) {
+        sync->inputs[name].setBlocking(false);
+        sync->inputs[name].setMaxSize(1);
+    }
+    // Retain 160 ms of RGB history at 25 FPS for delayed neural depth results.
+    sync->inputs["rgb"].setMaxSize(4);
 
     // Create an output queue for the synchronized frames
     auto queue = sync->out.createOutputQueue();

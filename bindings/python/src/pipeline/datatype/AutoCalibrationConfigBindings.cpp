@@ -16,7 +16,7 @@ void bind_auto_calibration_config(pybind11::module& m, void* pCallstack) {
     using namespace pybind11::literals;
 
     // 1. Define the main class
-    py::class_<AutoCalibrationConfig, Py<AutoCalibrationConfig>, Buffer, std::shared_ptr<AutoCalibrationConfig>> dynCalibConfig(
+    py::class_<AutoCalibrationConfig, Py<AutoCalibrationConfig>, Buffer, py::smart_holder> dynCalibConfig(
         m, "AutoCalibrationConfig", DOC(dai, AutoCalibrationConfig));
 
     // 2. Bind the nested Enum

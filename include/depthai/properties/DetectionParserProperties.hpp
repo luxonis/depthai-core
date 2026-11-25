@@ -24,6 +24,8 @@ struct DetectionParserProperties : PropertiesSerializable<Properties, DetectionP
     ~DetectionParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(DetectionParserProperties, numFramesPool, networkInputs, parser);
+DEPTHAI_SERIALIZE_EXT_DECL(DetectionParserProperties, numFramesPool, networkInputs, parser);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::DetectionParserProperties>;

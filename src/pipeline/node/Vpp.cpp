@@ -1,5 +1,6 @@
 #include "depthai/pipeline/node/Vpp.hpp"
 
+#include "depthai/device/Device.hpp"
 #include "depthai/pipeline/datatype/VppConfig.hpp"
 #include "utility/Logging.hpp"
 
@@ -14,6 +15,11 @@ std::shared_ptr<Vpp> Vpp::build(Output& leftInput, Output& rightInput, Output& d
     rightInput.link(right);
     disparityInput.link(disparity);
     confidenceInput.link(confidence);
+#else
+    (void)leftInput;
+    (void)rightInput;
+    (void)disparityInput;
+    (void)confidenceInput;
 #endif
     return std::static_pointer_cast<Vpp>(shared_from_this());
 }

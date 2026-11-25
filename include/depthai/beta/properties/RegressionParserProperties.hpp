@@ -16,7 +16,9 @@ struct RegressionParserProperties : PropertiesSerializable<Properties, Regressio
     ~RegressionParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(RegressionParserProperties, outputLayerName);
+DEPTHAI_SERIALIZE_EXT_DECL(RegressionParserProperties, outputLayerName);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::RegressionParserProperties>;

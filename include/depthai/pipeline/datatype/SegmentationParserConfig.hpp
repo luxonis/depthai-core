@@ -48,7 +48,7 @@ class SegmentationParserConfig : public Buffer {
         return DatatypeEnum::SegmentationParserConfig;
     }
 
-    DEPTHAI_SERIALIZE(SegmentationParserConfig, confidenceThreshold, stepSize);
+    DEPTHAI_SERIALIZE_DECL(SegmentationParserConfig, confidenceThreshold, stepSize);
 };
 
 }  // namespace dai

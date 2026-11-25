@@ -33,29 +33,29 @@ std::shared_ptr<dai::Node> createBoundNode(dai::Pipeline& p, py::object class_, 
 }
 
 template <typename T, typename DERIVED = dai::DeviceNode>
-py::class_<T, DERIVED, std::shared_ptr<T>> addNode(const char* name, const char* docstring = nullptr) {
-    auto node = py::class_<T, DERIVED, std::shared_ptr<T>>(daiNodeModule, name, docstring);
+py::class_<T, DERIVED, py::smart_holder> addNode(const char* name, const char* docstring = nullptr) {
+    auto node = py::class_<T, DERIVED, py::smart_holder>(daiNodeModule, name, docstring);
     pyNodeCreateMap.push_back(std::make_pair(node, &createBoundNode<T>));
     return node;
 }
 
 template <typename T, typename DERIVED = dai::DeviceNode>
-py::class_<T, DERIVED, std::shared_ptr<T>> addNodeInternal(const char* name, const char* docstring = nullptr) {
-    auto node = py::class_<T, DERIVED, std::shared_ptr<T>>(daiNodeInternalModule, name, docstring);
+py::class_<T, DERIVED, py::smart_holder> addNodeInternal(const char* name, const char* docstring = nullptr) {
+    auto node = py::class_<T, DERIVED, py::smart_holder>(daiNodeInternalModule, name, docstring);
     pyNodeCreateMap.push_back(std::make_pair(node, &createBoundNode<T>));
     return node;
 }
 
 template <typename T, typename DERIVED = dai::DeviceNode>
-py::class_<T, DERIVED, std::shared_ptr<T>> addBetaNode(const char* name, const char* docstring = nullptr) {
-    auto node = py::class_<T, DERIVED, std::shared_ptr<T>>(daiBetaNodeModule, name, docstring);
+py::class_<T, DERIVED, py::smart_holder> addBetaNode(const char* name, const char* docstring = nullptr) {
+    auto node = py::class_<T, DERIVED, py::smart_holder>(daiBetaNodeModule, name, docstring);
     pyNodeCreateMap.push_back(std::make_pair(node, &createBoundNode<T>));
     return node;
 }
 
 template <typename T, typename DERIVED = dai::DeviceNode>
-py::class_<T, DERIVED, std::shared_ptr<T>> addNodeAbstract(const char* name, const char* docstring = nullptr) {
-    auto node = py::class_<T, DERIVED, std::shared_ptr<T>>(daiNodeModule, name, docstring);
+py::class_<T, DERIVED, py::smart_holder> addNodeAbstract(const char* name, const char* docstring = nullptr) {
+    auto node = py::class_<T, DERIVED, py::smart_holder>(daiNodeModule, name, docstring);
     pyNodeCreateMap.push_back(
         std::make_pair(node, [](dai::Pipeline& p, py::object class_, const std::shared_ptr<dai::Device>& device) -> std::shared_ptr<dai::Node> {
             (void)p;

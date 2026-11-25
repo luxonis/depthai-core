@@ -16,7 +16,7 @@ void bind_pointcloudconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     // py::class_<RawPointCloudConfig, RawBuffer, std::shared_ptr<RawPointCloudConfig>> rawConfig(m, "RawPointCloudConfig", DOC(dai, RawPointCloudConfig));
-    py::class_<PointCloudConfig, Py<PointCloudConfig>, Buffer, std::shared_ptr<PointCloudConfig>> config(m, "PointCloudConfig", DOC(dai, PointCloudConfig));
+    py::class_<PointCloudConfig, Py<PointCloudConfig>, Buffer, py::smart_holder> config(m, "PointCloudConfig", DOC(dai, PointCloudConfig));
 
     py::enum_<PointCloudConfig::CoordinateSystemType>(config, "CoordinateSystemType")
         .value("DEFAULT", PointCloudConfig::CoordinateSystemType::DEFAULT)

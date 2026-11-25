@@ -80,7 +80,7 @@ class MessageGroup : public Buffer {
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::MessageGroup;
     }
-    DEPTHAI_SERIALIZE(MessageGroup, group, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum);
+    DEPTHAI_SERIALIZE_DECL(MessageGroup, group, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum);
 
    private:
     // Deliberately NOT serialized (wire format is shared with device firmware):

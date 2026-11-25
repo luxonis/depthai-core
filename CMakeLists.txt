@@ -47,8 +47,19 @@ else()
     message(STATUS "DEPTHAI_BOOTSTRAP_VCPKG is OFF")
 endif()
 
-# Minimal supported macOS SDK version for both arm64 and x86_64
-set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0)
+# Minimal supported macOS version. Default: the major version of the macOS that builds, at least 11.0, as Homebrew
+# builds its libraries: a build that links libraries of the system (for example OpenCV of Homebrew) runs only on that
+# macOS anyway. The Python wheels set 11.0 (setup.py). For binaries for older macOS: -D CMAKE_OSX_DEPLOYMENT_TARGET=11.0
+# or the environment variable MACOSX_DEPLOYMENT_TARGET.
+if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET AND "$ENV{MACOSX_DEPLOYMENT_TARGET}" STREQUAL "")
+    execute_process(COMMAND sw_vers -productVersion OUTPUT_VARIABLE _macos_version OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    string(REGEX MATCH "^[0-9]+" _macos_major "${_macos_version}")
+    set(_deployment_target 11.0)
+    if(_macos_major GREATER 11)
+        set(_deployment_target "${_macos_major}.0")
+    endif()
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "${_deployment_target}" CACHE STRING "Minimum macOS version of the build")
+endif()
 
 # Set type to canonicalize relative paths for user-provided toolchain
 set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
@@ -75,7 +86,7 @@ else()
 endif()
 
 # Create depthai project
-project(depthai VERSION "3.12.0" LANGUAGES CXX C)
+project(depthai VERSION "3.12.1" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
@@ -295,13 +306,24 @@ set(DEPTHAI_DEVICE_MANAGER_SOURCES
     src/bspatch/bspatch.c
 )
 
+# json conversions and str() of the types that the public headers declare with DEPTHAI_SERIALIZE*_DECL
+set(DEPTHAI_SERIALIZATION_SOURCES
+    src/utility/serialization/Common.cpp
+    src/utility/serialization/Datatypes.cpp
+    src/utility/serialization/Device.cpp
+    src/utility/serialization/Pipeline.cpp
+    src/utility/serialization/Properties.cpp
+)
+
 set(TARGET_CORE_SOURCES
     # depthai-bootloader-shared sources
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
+    ${DEPTHAI_SERIALIZATION_SOURCES}
     # sources shared with depthai::device-manager
     "${DEPTHAI_DEVICE_MANAGER_SOURCES}"
     # sources
     src/common/ModelType.cpp
+    src/common/WorldConstraints.cpp
     src/device/CrashDump.cpp
     src/device/CrashDumpManager.cpp
     src/device/Device.cpp
@@ -454,11 +476,11 @@ list(APPEND TARGET_CORE_SOURCES
     src/pipeline/datatype/ImgDetectionsFilterConfig.cpp
     src/pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.cpp
     src/pipeline/node/ImgDetectionsFilter.cpp
-    src/properties/ImgDetectionsFilterProperties.cpp
 )
 
 if(DEPTHAI_BUILD_BETA)
     list(APPEND TARGET_CORE_SOURCES
+        src/utility/serialization/Beta.cpp
         src/beta/BetaNode.cpp
         src/beta/device/MultiDeviceCalibrationHandler.cpp
         src/beta/datatype/Classifications.cpp
@@ -545,6 +567,7 @@ endif()
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     list(APPEND TARGET_CORE_SOURCES
         src/pipeline/node/DynamicCalibrationNode.cpp
+        src/pipeline/node/WorldConstraintsValidation.cpp
         src/pipeline/datatype/DynamicCalibrationResults.cpp
         src/pipeline/datatype/DynamicCalibrationControl.cpp
         src/pipeline/node/AutoCalibration.cpp
@@ -637,6 +660,86 @@ set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_A
 # depthai::core and depthai::device-manager define the same symbols; make CMake refuse a consumer that links both
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY INTERFACE_DEPTHAI_FLAVOR "core")
 set_property(TARGET ${TARGET_CORE_NAME} APPEND PROPERTY COMPATIBLE_INTERFACE_STRING DEPTHAI_FLAVOR)
+if(DEPTHAI_UNITY_BUILD)
+    set_target_properties(${TARGET_CORE_NAME} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 8)
+    # MSVC defines M_PI only when _USE_MATH_DEFINES is set before the first <cmath>. Sources define it
+    # themselves, which is too late when an earlier source of the batch included <cmath>.
+    if(MSVC)
+        target_compile_definitions(${TARGET_CORE_NAME} PRIVATE _USE_MATH_DEFINES=)
+    endif()
+    set_source_files_properties(
+        # These define file-local names that other sources also define, define macros, or have a
+        # file-scope using-directive.
+        src/beta/datatype/Classifications.cpp
+        src/beta/datatype/Keypoints.cpp
+        src/beta/datatype/Lines.cpp
+        src/beta/datatype/Predictions.cpp
+        src/beta/device/MultiDeviceCalibrationHandler.cpp
+        src/beta/node/FastSAMParser.cpp
+        src/beta/node/HRNetParser.cpp
+        src/beta/node/ImageOutputParser.cpp
+        src/beta/node/MLSDParser.cpp
+        src/beta/node/MapOutputParser.cpp
+        src/beta/node/MultiDeviceCalibration.cpp
+        src/beta/node/PPTextDetectionParser.cpp
+        src/beta/node/XFeatMonoParser.cpp
+        src/beta/node/XFeatStereoParser.cpp
+        src/beta/utilities/FastSAM/FastSAMUtils.cpp
+        src/beta/utilities/MLSD/MLSDUtils.cpp
+        src/beta/utilities/MediaPipe/MediaPipeUtils.cpp
+        src/beta/utilities/PPText/PPTextUtils.cpp
+        src/beta/utilities/RFDETR/RFDETRUtils.cpp
+        src/beta/utilities/SCRFD/SCRFDUtils.cpp
+        src/beta/utilities/YuNet/YuNetUtils.cpp
+        src/device/CalibrationHandler.cpp
+        src/device/DeviceBase.cpp
+        src/opencv/HolisticRecordReplay.cpp
+        src/pipeline/Pipeline.cpp
+        src/pipeline/node/Align.cpp
+        src/pipeline/node/DynamicCalibrationNode.cpp
+        src/pipeline/node/ImageAlign.cpp
+        src/pipeline/node/Rectification.cpp
+        src/pipeline/node/Script.cpp
+        src/pipeline/node/internal/XLinkInHost.cpp
+        src/pipeline/node/internal/XLinkOutHost.cpp
+        src/utility/McapImpl.cpp
+        src/utility/OCVPorts.cpp
+        src/utility/ObjectTrackerImpl.cpp
+        src/utility/XLinkGlobalProfilingLogger.cpp
+        # httplib.h includes <resolv.h>, which defines the macro _res. Eigen uses _res as a name.
+        src/device/DeviceGate.cpp
+        src/modelzoo/Zoo.cpp
+        src/remote_connection/RemoteConnection.cpp
+        src/remote_connection/RemoteConnectionImpl.cpp
+        src/utility/EventsManager.cpp
+        src/utility/LogCollection.cpp
+        src/utility/StartupNotifications.cpp
+        src/utility/Telemetry.cpp
+        # windows.h defines the macro ERROR, and ImageManipImpl.hpp has an enumerator ERROR.
+        src/pipeline/datatype/ImgTransformations.cpp
+        src/pipeline/datatype/SpatialImgDetections.cpp
+        src/pipeline/node/ImageManip.cpp
+        src/pipeline/node/PointCloud.cpp
+        src/pipeline/utilities/Alignment/AlignmentUtilities.cpp
+        src/pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.cpp
+        src/pipeline/utilities/Stitching/PlanarStitcher.cpp
+        src/utility/ImageManipImpl.cpp
+        # These include large third-party headers (PCL, RTAB-Map, Basalt).
+        src/basalt/BasaltVIO.cpp
+        src/pcl/PointCloudData.cpp
+        src/rtabmap/RTABMapConversions.cpp
+        src/rtabmap/RTABMapSLAM.cpp
+        src/rtabmap/RTABMapVIO.cpp
+        # Each holds the json, libnop and properties code of many types.
+        ${DEPTHAI_SERIALIZATION_SOURCES}
+        src/utility/serialization/Beta.cpp
+        PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
+    )
+endif()
+if(MSVC)
+    # MSVC error C1128 in Debug builds: the serialization sources have more sections than the default object format allows.
+    set_property(SOURCE ${DEPTHAI_SERIALIZATION_SOURCES} src/utility/serialization/Beta.cpp APPEND PROPERTY COMPILE_OPTIONS /bigobj)
+endif()
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
 
@@ -691,8 +794,11 @@ endif()
 # Add default flags to core
 add_default_flags(${TARGET_CORE_NAME})
 
-if(DEPTHAI_VCPKG_INTERNAL_ONLY)
+if(DEPTHAI_EXCLUDE_ARCHIVE_LIBS_SYMBOLS)
     exclude_archive_libs_symbols(${TARGET_CORE_NAME})
+endif()
+if(DEPTHAI_LINK_GC_SECTIONS)
+    gc_unused_sections(${TARGET_CORE_NAME})
 endif()
 
 # And clang-tidy and format
@@ -783,6 +889,8 @@ include(Depthai/DepthaiVisualizerConfig)    # depthai-visualizer commit/version 
 include(DepthaiDownloader)                  # Depthai device binary downloader
 include(DepthaiBootloaderDownloader)        # Depthai bootloader binary downloader
 include(DepthaiDeviceKbDownloader)          # depthai-device-kb fwp downloader
+include(DepthaiDeviceRvc4LocalFwp)          # local depthai-device-rvc4 fwp in place of the pinned one
+include(DepthaiDeviceRvc4FirmwareBuild)     # depthai-device-rvc4 fwp built from device/rvc4 when no version is set
 include(DepthaiVisualizerDownloader)        # depthai-visualizer downloader
 include(DepthaiVisualizerLicense)           # depthai-visualizer license extraction and verification
 
@@ -858,25 +966,47 @@ if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
     list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_KB_RESOURCE_LIST})
 endif()
 
+set(DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET "")
 if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
-    if(DEPTHAI_SANITIZE AND SANITIZE_THREAD)
-        string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-tsan")
-    elseif(DEPTHAI_SANITIZE)
-        string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-asan-ubsan")
-    endif()
+    if(DEPTHAI_DEVICE_RVC4_FWP_PATH)
+        # A local firmware package (for example a build of device/rvc4) in place of the pinned package
+        DepthaiDeviceRvc4LocalFwp(
+            "${DEPTHAI_DEVICE_RVC4_FWP_PATH}"
+            "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
+            DEPTHAI_DEVICE_RVC4_VERSION                       # In: pinned version, out: version of the local package
+            DEPTHAI_DEVICE_RVC4_RESOURCE_LIST                 # List of output resources
+        )
+    elseif("${DEPTHAI_DEVICE_RVC4_VERSION}" STREQUAL "")
+        # No version: build the firmware from device/rvc4 of this checkout at each build
+        DepthaiDeviceRvc4FirmwareBuild(
+            "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
+            DEPTHAI_DEVICE_RVC4_VERSION                       # Out: version of the built package
+            DEPTHAI_DEVICE_RVC4_RESOURCE_LIST                 # List of output resources
+            DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET              # Target that builds the package
+        )
+        add_dependencies(${TARGET_CORE_NAME} "${DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET}")
+    else()
+        if(DEPTHAI_SANITIZE AND SANITIZE_THREAD)
+            string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-tsan")
+        elseif(DEPTHAI_SANITIZE)
+            string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-asan-ubsan")
+        endif()
 
-    # Add device-RVC4 FW
-    DepthaiDeviceDownloader(
-        "depthai-device-rvc4"
-        "luxonis-rvc4-snapshot-local"
-        "luxonis-rvc4-release-local"
-        "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
-        "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
-        DEPTHAI_DEVICE_RVC4_RESOURCE_LIST                 # List of output resources
-        "${DEPTHAI_DEVICE_RVC4_MATURITY}"                # Maturity
-        "${DEPTHAI_DEVICE_RVC4_VERSION}"
-    )
+        # Add device-RVC4 FW
+        DepthaiDeviceDownloader(
+            "depthai-device-rvc4"
+            "luxonis-rvc4-snapshot-local"
+            "luxonis-rvc4-release-local"
+            "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
+            "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
+            DEPTHAI_DEVICE_RVC4_RESOURCE_LIST                 # List of output resources
+            "${DEPTHAI_DEVICE_RVC4_MATURITY}"                # Maturity
+            "${DEPTHAI_DEVICE_RVC4_VERSION}"
+        )
+    endif()
     list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_RVC4_RESOURCE_LIST})
+    set(DEPTHAI_DEVICE_RVC4_EMBEDDED_VERSION "${DEPTHAI_DEVICE_RVC4_VERSION}" CACHE INTERNAL
+        "Version of the RVC4 firmware package that the library embeds (scripts/generate_sbom.py)")
 endif()
 
 
@@ -910,6 +1040,9 @@ if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
 
     # Link to resource library
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE "${DEPTHAI_RESOURCE_LIBRARY_NAME}")
+    if(DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET)
+        add_dependencies("${DEPTHAI_RESOURCE_LIBRARY_NAME}" "${DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET}")
+    endif()
 
     # Bootloader-only resource library for depthai::device-manager, so it does not embed device firmware it cannot use
     if(DEPTHAI_BUILD_DEVICE_MANAGER)
@@ -1506,6 +1639,20 @@ message(STATUS "BUILD_DATETIME: ${BUILD_DATETIME}, BUILD_COMMIT: ${BUILD_COMMIT}
 # Configure build information (version, opencv, pcl support)
 set(DEPTHAI_VERSION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/include/depthai/build/version.hpp")
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include/depthai/build")
+# About 70 sources include version.hpp through ErrorMacros.hpp. When only the time changed, keep the
+# BUILD_DATETIME of the existing header, so that a reconfigure does not compile them all again.
+if(EXISTS "${DEPTHAI_VERSION_HEADER}")
+    file(READ "${DEPTHAI_VERSION_HEADER}" _old_version_header)
+    if(_old_version_header MATCHES "BUILD_DATETIME = \"([^\"]*)\"")
+        set(_new_build_datetime "${BUILD_DATETIME}")
+        set(BUILD_DATETIME "${CMAKE_MATCH_1}")
+        configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT_BINARY_DIR}/version.hpp.check")
+        file(READ "${CMAKE_CURRENT_BINARY_DIR}/version.hpp.check" _check_version_header)
+        if(NOT _check_version_header STREQUAL _old_version_header)
+            set(BUILD_DATETIME "${_new_build_datetime}")
+        endif()
+    endif()
+endif()
 configure_file(
     "${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in"
     "${DEPTHAI_VERSION_HEADER}"
