@@ -8,7 +8,6 @@ on:
     - 'v3*'
 jobs:
 
-  # RVC4 firmware package that the image embeds: there is no pinned package since #2224
   rvc4-fwp:
     uses: ./.github/workflows/rvc4_fwp.yml
     secrets: inherit
@@ -54,7 +53,6 @@ jobs:
         with:
           push: true
           file: ci/Dockerfile
-          # The Git context of this commit, and the package of job rvc4-fwp (ci/Dockerfile)
           build-contexts: rvc4-fwp=${{ github.workspace }}/rvc4-fwp
           build-args: DEPTHAI_DEVICE_RVC4_FWP_PATH=/rvc4-fwp/depthai-device-rvc4-fwp.tar.xz
           tags: luxonis/depthai-library:${{ env.LUXONIS_IMAGE_TAG }}

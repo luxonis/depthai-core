@@ -91,7 +91,6 @@ From the depthai-core repository root:
 
 ```sh
 git submodule update --init --recursive
-# RVC4 firmware package to embed: the package that CI built for this commit
 rm -rf /tmp/rvc4-fwp
 ci/device-rvc4-fwp-ak.sh download "$(ci/device-rvc4-fwp-ak.sh version .)" rvc4 /tmp/rvc4-fwp &&
 docker build -f ci/Dockerfile -t depthai-library:local \

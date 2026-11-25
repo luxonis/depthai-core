@@ -1,6 +1,3 @@
-# RVC4 firmware package to embed: --build-context rvc4-fwp=<folder with depthai-device-rvc4-fwp.tar.xz> and
-# --build-arg DEPTHAI_DEVICE_RVC4_FWP_PATH=/rvc4-fwp/depthai-device-rvc4-fwp.tar.xz (.github/workflows/containers.yml).
-# Without a package, the configure step builds the firmware from device/rvc4 in Docker, which this image does not have.
 FROM scratch AS rvc4-fwp
 
 FROM debian:trixie-slim AS builder
@@ -38,7 +35,6 @@ COPY . .
 RUN if [ -d .git ]; then git submodule update --init --recursive; fi
 
 COPY --from=rvc4-fwp / /rvc4-fwp/
-# The configure steps of the library and of the wheel take it from the environment (cmake/depthaiOptions.cmake)
 ARG DEPTHAI_DEVICE_RVC4_FWP_PATH=""
 
 RUN rm -rf build && \
