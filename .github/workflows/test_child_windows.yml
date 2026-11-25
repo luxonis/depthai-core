@@ -28,7 +28,6 @@ on:
         required: true
 
 jobs:
-  # RVC4 firmware package that the build embeds: since #2224 there is no pinned package
   rvc4-fwp:
     uses: ./.github/workflows/rvc4_fwp.yml
 
@@ -91,7 +90,6 @@ jobs:
       with:
         submodules: recursive
 
-    # Sets DEPTHAI_DEVICE_RVC4_FWP_PATH for the configure step below
     - uses: ./.github/actions/rvc4-fwp
       if: steps.reuse.outputs.skip_build != 'true'
       with:
