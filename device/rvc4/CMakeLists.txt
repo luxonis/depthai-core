@@ -141,7 +141,8 @@ set(DEPTHAI_ENABLE_DEVICE_FW OFF CACHE BOOL "" FORCE)
 set(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW OFF CACHE BOOL "" FORCE)
 set(DEPTHAI_ENABLE_DEVICE_RVC3_FW OFF CACHE BOOL "" FORCE)
 set(DEPTHAI_ENABLE_DEVICE_RVC4_FW OFF CACHE BOOL "" FORCE)
-set(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT OFF CACHE BOOL "" FORCE)
+# DynamicCalibration runs on the device: libdynamic_calibration.so is shipped in the fwp next to the executable
+set(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT ON CACHE BOOL "" FORCE)
 set(XLINK_LIBUSB_SYSTEM ON CACHE BOOL "Use target sysroot libusb for XLink" FORCE)
 
 # Set compiler features (c++17), and disables extensions (g++17)
@@ -505,6 +506,7 @@ set(DEPTHAI_PLATFORM_SOURCES
     src/pipeline/node/NeuralNetwork/rvc4/NeuralNetworkRvc4.cpp
     src/pipeline/node/NeuralNetwork/CreateUserBuffer.cpp
     src/pipeline/node/NeuralDepth/NeuralDepth.cpp
+    src/pipeline/node/DynamicCalibration/DynamicCalibration.cpp
     src/pipeline/node/ToFStereoFusion/ToFStereoFusion.cpp
     src/pipeline/node/GstPipelineInterface.cpp
     src/pipeline/node/rvc4/GstVaapiEncRvc4.cpp
@@ -984,6 +986,8 @@ DepthaiModelsKbDownload(
 set(TARGET_DEVICE_EXECUTABLE depthai-device-rvc4)
 
 add_executable(${TARGET_DEVICE_EXECUTABLE} src/main.cpp)
+# Finds libdynamic_calibration.so next to the executable
+set_target_properties(${TARGET_DEVICE_EXECUTABLE} PROPERTIES BUILD_RPATH "$ORIGIN")
 target_sources(${TARGET_DEVICE_EXECUTABLE}
     PRIVATE
         src/utilities/GpioLine.cpp
@@ -1047,21 +1051,26 @@ if(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR)
     list(APPEND DEPTHAI_DEVICE_LICENSE_PRIVATE_MODULE_ARGS --private-module-root "${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}")
 endif()
 # The firmware package itself contains its license (LICENSE.fwp) and the Luxonis DepthAI Vendor Module EULA of the
-# vendor module that it links (legal/DEPTHAI-EULA.txt of the legal files of the module). The full license bundle, with
+# vendor module that it links (legal/DEPTHAI-EULA.txt of the legal files of the module), and the license of the
+# dynamic calibration library that it ships (legal/dynamic_calibration-LICENSE). The full license bundle, with
 # the third-party notices, stays next to the package.
-set(DEPTHAI_DEVICE_FWP_LEGAL_FILES "${DEPTHAI_DEVICE_BINARY_DIR}/LICENSE.fwp" "${DEPTHAI_DEVICE_BINARY_DIR}/legal/DEPTHAI-EULA.txt")
+set(DEPTHAI_DEVICE_FWP_LEGAL_FILES "${DEPTHAI_DEVICE_BINARY_DIR}/LICENSE.fwp" "${DEPTHAI_DEVICE_BINARY_DIR}/legal/DEPTHAI-EULA.txt"
+    "${DEPTHAI_DEVICE_BINARY_DIR}/legal/dynamic_calibration-LICENSE")
 add_custom_command(TARGET ${TARGET_DEVICE_EXECUTABLE} POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} --only-keep-debug "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>" "$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/$<TARGET_FILE_BASE_NAME:${TARGET_DEVICE_EXECUTABLE}>.debug"
     COMMAND ${CMAKE_STRIP} --strip-unneeded "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>"
     COMMAND ${CMAKE_OBJCOPY} --add-gnu-debuglink="$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/$<TARGET_FILE_BASE_NAME:${TARGET_DEVICE_EXECUTABLE}>.debug" "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>"
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>" "${DEPTHAI_DEVICE_BINARY_DIR}/$<TARGET_FILE_NAME:${TARGET_DEVICE_EXECUTABLE}>"
     ${DEPTHAI_DEVICE_DSP_SKEL_COPY_COMMANDS}
+    COMMAND ${CMAKE_STRIP} --strip-unneeded -o "${DEPTHAI_DEVICE_BINARY_DIR}/libdynamic_calibration.so" "${DYNAMIC_CALIBRATION_RELEASE}"
     COMMAND ${CMAKE_COMMAND} -E copy "${DEPTHAI_DEVICE_SOURCE_DIR}/LICENSE.fwp" "${DEPTHAI_DEVICE_BINARY_DIR}/LICENSE.fwp"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${DEPTHAI_DEVICE_BINARY_DIR}/legal"
     COMMAND ${CMAKE_COMMAND} -E copy "${DEPTHAI_DEVICE_RVC4_VENDOR_LEGAL_DIR}/legal/DEPTHAI-EULA.txt" "${DEPTHAI_DEVICE_BINARY_DIR}/legal/DEPTHAI-EULA.txt"
+    COMMAND ${CMAKE_COMMAND} -E copy "${DEPTHAI_DEVICE_KB_CORE_PATH}/notices/dynamic_calibration-LICENSE" "${DEPTHAI_DEVICE_BINARY_DIR}/legal/dynamic_calibration-LICENSE"
     COMMAND ${CMAKE_COMMAND} -E tar cfJ "$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/depthai-device-rvc4-fwp.tar.xz"
         "${DEPTHAI_DEVICE_BINARY_DIR}/$<TARGET_FILE_NAME:${TARGET_DEVICE_EXECUTABLE}>"
         ${DEPTHAI_DEVICE_DSP_SKELS_IN_FWP}
+        "${DEPTHAI_DEVICE_BINARY_DIR}/libdynamic_calibration.so"
         ${DEPTHAI_MODELS_KB_RESOURCE_LIST}
         ${DEPTHAI_CUSTOM_SCRIPTS_OUTPUT_DIR}
         ${DEPTHAI_DEVICE_FWP_LEGAL_FILES}

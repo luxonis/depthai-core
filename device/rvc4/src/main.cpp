@@ -54,6 +54,7 @@
 #include "pipeline/PipelineBuilder.hpp"
 #include "utilities/MatrixUtils.hpp"
 #include "utilities/AnonymousTelemetryId.hpp"
+#include "utilities/CalibrationAccess.hpp"
 #include "utilities/CameraDiscovery.hpp"
 #include "utilities/DeviceTelemetry.hpp"
 #include "utilities/DeviceModel.hpp"

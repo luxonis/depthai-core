@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <optional>
+#include <stdexcept>
 #include <unordered_map>
 #include <vector>
 
@@ -141,6 +142,44 @@ class StereoPairCalculator {
         return stereoPairs;
     }
 };
+
+/// Outcome of findStereoPairs(), for the caller's logging.
+enum class StereoPairSearch { DONE, NO_CALIBRATION, FAILED };
+
+/**
+ * Stereo pairs of a device: searched in the runtime calibration, or in the factory calibration when the runtime
+ * one cannot be read or has no cameras. Returns an empty list when neither calibration is available or the
+ * search fails (no intrinsics or extrinsics stored). The host (dai::DeviceBase::getStereoPairs) and the firmware
+ * read the three inputs differently and share the rules through this function.
+ */
+template <typename GetCalibration, typename ReadFactoryCalibration, typename GetCameraFeatures>
+std::vector<StereoPair> findStereoPairs(GetCalibration&& getCalibration,
+                                        ReadFactoryCalibration&& readFactoryCalibration,
+                                        GetCameraFeatures&& getCameraFeatures,
+                                        StereoPairSearch* outcome = nullptr) {
+    const auto finish = [outcome](StereoPairSearch value, std::vector<StereoPair> pairs = {}) {
+        if(outcome != nullptr) *outcome = value;
+        return pairs;
+    };
+    CalibrationHandler calibration;
+    try {
+        calibration = getCalibration();
+        if(calibration.getEepromData().cameraData.empty()) {
+            throw std::runtime_error("No camera data found.");
+        }
+    } catch(const std::exception&) {
+        try {
+            calibration = readFactoryCalibration();
+        } catch(const std::exception&) {
+            return finish(StereoPairSearch::NO_CALIBRATION);
+        }
+    }
+    try {
+        return finish(StereoPairSearch::DONE, StereoPairCalculator::find(calibration, getCameraFeatures()));
+    } catch(const std::exception&) {
+        return finish(StereoPairSearch::FAILED);
+    }
+}
 
 }  // namespace detail
 }  // namespace dai
