@@ -2,6 +2,7 @@
 
 #include <opencv2/core.hpp>
 #include <opencv2/stitching/detail/motion_estimators.hpp>
+#include <optional>
 #include <vector>
 
 #include "FixedBlender.hpp"
@@ -35,8 +36,33 @@ class FixedPanoramaCompositor {
     void reset();
     bool isPrepared() const;
 
-    /** Build all fixed composition state from a registered OpenCV camera model and one image group. */
-    void prepare(const std::vector<cv::Mat>& images, const std::vector<cv::detail::CameraParams>& cameras, double registrationScale);
+    /**
+     * Ground the panorama is projected onto: the plane out to `wallDistance` from the eye, a vertical wall beyond it. What lies
+     * on the ground then lines up across cameras mounted apart, the camera centers being their `cv::detail::CameraParams::t`.
+     * All of it is in the panorama frame, in centimeters.
+     */
+    struct Ground {
+        cv::Vec3d point;            ///< A point on the ground
+        cv::Vec3d up;               ///< Unit normal of the ground, on the side of the cameras
+        double wallDistance = 0.0;  ///< Horizontal distance from the eye to the wall, beyond every camera
+        cv::Vec3d eye;              ///< Center the panorama is seen from
+    };
+
+    /**
+     * Region of the projection surface, in pixels of a surface of radius `scale`, that one camera covers on the ground.
+     * @param camera Intrinsics for `imageSize`, rotation from the camera to the panorama frame and center
+     */
+    static cv::Rect groundRoi(CameraModel model, double scale, const Ground& ground, const cv::detail::CameraParams& camera, const cv::Size& imageSize);
+
+    /**
+     * Build all fixed composition state from a registered OpenCV camera model and one image group.
+     * @param ground Surface to project onto, using the camera centers; without it the cameras share one center and the
+     * surface is at infinity
+     */
+    void prepare(const std::vector<cv::Mat>& images,
+                 const std::vector<cv::detail::CameraParams>& cameras,
+                 double registrationScale,
+                 const std::optional<Ground>& ground);
 
     /** Compose images using only the state built by prepare(). */
     cv::Mat compose(const std::vector<cv::Mat>& images);
