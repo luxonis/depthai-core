@@ -119,10 +119,6 @@ void StereoDepth::setDepthAlign(CameraBoardSocket camera) {
 }
 
 void StereoDepth::setRectificationModel(RectificationModel model) {
-    const auto device = getDevice();
-    if(model == RectificationModel::BSPLINE && device && device->getPlatform() != Platform::RVC4) {
-        throw std::invalid_argument("B-spline rectification requires RVC4 firmware support");
-    }
     properties.rectificationModel = model;
 }
 
