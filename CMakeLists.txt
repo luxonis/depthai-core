@@ -322,6 +322,7 @@ set(TARGET_CORE_SOURCES
     # sources shared with depthai::device-manager
     "${DEPTHAI_DEVICE_MANAGER_SOURCES}"
     # sources
+    src/common/BsplineCalibration.cpp
     src/common/ModelType.cpp
     src/common/WorldConstraints.cpp
     src/device/CrashDump.cpp

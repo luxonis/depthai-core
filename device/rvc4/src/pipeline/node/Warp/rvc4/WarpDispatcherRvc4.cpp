@@ -109,24 +109,19 @@ void WarpDispatcher::SetWarpMesh(cv::Mat mesh_x, cv::Mat mesh_y, size_t inputInd
     SetWarpMesh(rawGridX, rawGridY, inputIndex);
 }
 
-void WarpDispatcher::ParseMeshResourceData(std::vector<uint8_t>& data, int width, int height, std::vector<double>& rawGridX, std::vector<double>& rawGridY) {
+void WarpDispatcher::ParseMeshResourceData(
+    std::vector<uint8_t>& data, int width, int height, std::vector<double>& rawGridX, std::vector<double>& rawGridY, bool alignedRows) {
     if(width <= 0 || height <= 0) {
         throw std::runtime_error("Mesh dimensions must be positive");
     }
-    // Rows of (y, x) float pairs: tightly packed (StereoDepth mesh files) or padded to 16 bytes (Warp::setWarpMesh)
     constexpr size_t ALIGNMENT = 16;
     const size_t packedStride = static_cast<size_t>(width) * sizeof(float) * 2;
-    const size_t alignedStride = (packedStride + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1);
-    if(static_cast<size_t>(height) > std::numeric_limits<size_t>::max() / alignedStride) {
+    const size_t meshStride = alignedRows ? (packedStride + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1) : packedStride;
+    if(static_cast<size_t>(height) > std::numeric_limits<size_t>::max() / meshStride) {
         throw std::runtime_error("Mesh dimensions overflow the resource size");
     }
-    size_t meshStride = 0;
-    if(data.size() == packedStride * static_cast<size_t>(height)) {
-        meshStride = packedStride;
-    } else if(data.size() == alignedStride * static_cast<size_t>(height)) {
-        meshStride = alignedStride;
-    } else {
-        throw std::runtime_error("Mesh resource size does not match its dimensions");
+    if(data.size() < meshStride * static_cast<size_t>(height)) {  // assets may be padded at the end
+        throw std::runtime_error("Mesh resource is smaller than its dimensions");
     }
 
     for(int i = 0; i < height; i++) {

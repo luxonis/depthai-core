@@ -16,6 +16,7 @@ set(PYBIND11_TEST_FILES
     "xlink_protocol_test.py"
     "chrono_operator_lookup_test.cpp"
     "utf8_support_test.py"
+    "bspline_calibration_test.py"
     "dai_path_conversion_test.py"
     "nn_archive_gil_test.py"
     "nn_archive_head_test.py"

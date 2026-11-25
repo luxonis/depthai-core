@@ -37,7 +37,7 @@ void Warp::run() {
     if(!properties.meshUri.empty()) {
         auto meshResource = loadResource(properties.meshUri);
         logger->info("Mesh data read {}", meshResource.size());
-        WarpDispatcher::ParseMeshResourceData(meshResource, properties.meshWidth, properties.meshHeight, rawGridX, rawGridY);
+        WarpDispatcher::ParseMeshResourceData(meshResource, properties.meshWidth, properties.meshHeight, rawGridX, rawGridY, true);
     } else {
         logger->error("No mesh data. Exit");
         return;

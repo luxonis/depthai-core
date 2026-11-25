@@ -250,11 +250,11 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      */
     void setRectification(bool enable);
     using RectificationModel = StereoDepthProperties::RectificationModel;
-    /** Select LEGACY (also the AUTO default) or an independent stored BSPLINE
-     * calibration. Installing a spline never changes the default selection.
-     * BSPLINE is RVC4 only; device generates and
-     * caches the warp on initialization/calibration update, never per frame.
-     * Requires native calibration resolution and RECTIFIED_LEFT/RIGHT alignment.
+    /**
+     * Lens model for rectification: LEGACY (also the AUTO default) or BSPLINE, which uses the B-spline stereo
+     * calibration of the device. A stored B-spline calibration never changes the default.
+     * BSPLINE is RVC4 only, needs rectification enabled, the native calibration resolution and RECTIFIED_LEFT/RIGHT
+     * alignment. The device builds the mesh once, when the calibration is loaded.
      */
     void setRectificationModel(RectificationModel model);
 

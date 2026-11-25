@@ -752,15 +752,21 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("accelerometer", &ImuCalibrationParams::accelerometer)
         .def_readwrite("gyroscope", &ImuCalibrationParams::gyroscope);
 
-    py::class_<BsplineCameraCalibration>(m, "BsplineCameraCalibration")
-        .def(py::init<>()).def("validate", &BsplineCameraCalibration::validate)
-        .def("project", &BsplineCameraCalibration::project)
-        .def_readwrite("nx", &BsplineCameraCalibration::nx).def_readwrite("ny", &BsplineCameraCalibration::ny)
+    py::class_<BsplineCameraCalibration>(m, "BsplineCameraCalibration", DOC(dai, BsplineCameraCalibration))
+        .def(py::init<>())
+        .def("validate", &BsplineCameraCalibration::validate, DOC(dai, BsplineCameraCalibration, validate))
+        .def("project", &BsplineCameraCalibration::project, DOC(dai, BsplineCameraCalibration, project))
+        .def_readwrite("nx", &BsplineCameraCalibration::nx)
+        .def_readwrite("ny", &BsplineCameraCalibration::ny)
         .def_readwrite("fovXDegrees", &BsplineCameraCalibration::fovXDegrees)
         .def_readwrite("intrinsics", &BsplineCameraCalibration::intrinsics);
-    py::class_<BsplineStereoCalibration>(m, "BsplineStereoCalibration")
-        .def(py::init<>()).def("validate", &BsplineStereoCalibration::validate)
-        .def("getCameraToReference", &BsplineStereoCalibration::getCameraToReference, py::arg("socket"))
+    py::class_<BsplineStereoCalibration>(m, "BsplineStereoCalibration", DOC(dai, BsplineStereoCalibration))
+        .def(py::init<>())
+        .def("validate", &BsplineStereoCalibration::validate, DOC(dai, BsplineStereoCalibration, validate))
+        .def("getCameraToReference",
+             &BsplineStereoCalibration::getCameraToReference,
+             py::arg("socket"),
+             DOC(dai, BsplineStereoCalibration, getCameraToReference))
         .def_readwrite("version", &BsplineStereoCalibration::version)
         .def_readwrite("deviceId", &BsplineStereoCalibration::deviceId)
         .def_readwrite("calibrationId", &BsplineStereoCalibration::calibrationId)
@@ -780,8 +786,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("leftToReferenceRotation", &BsplineStereoCalibration::leftToReferenceRotation)
         .def_readwrite("leftToReferenceTranslationCm", &BsplineStereoCalibration::leftToReferenceTranslationCm)
         .def_readwrite("housingToLeftRotation", &BsplineStereoCalibration::housingToLeftRotation)
-        .def_readwrite("housingToLeftTranslationCm", &BsplineStereoCalibration::housingToLeftTranslationCm)
-        ;
+        .def_readwrite("housingToLeftTranslationCm", &BsplineStereoCalibration::housingToLeftTranslationCm);
     // EepromData
     eepromData.def(py::init<>())
         .def_readwrite("version", &EepromData::version)

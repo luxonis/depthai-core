@@ -34,7 +34,9 @@ class WarpDispatcher {
 
     void SetWarpMesh(std::vector<double>& rawGridX, std::vector<double>& rawGridY, size_t inputIndex = 0);
     void SetWarpMesh(cv::Mat mesh_x, cv::Mat mesh_y, size_t inputIndex = 0);
-    static void ParseMeshResourceData(std::vector<uint8_t>& data, int width, int height, std::vector<double>& rawGridX, std::vector<double>& rawGridY);
+    /** Mesh resource of (y, x) float pairs. Rows are tightly packed, or padded to 16 bytes if alignedRows (Warp::setWarpMesh). */
+    static void ParseMeshResourceData(
+        std::vector<uint8_t>& data, int width, int height, std::vector<double>& rawGridX, std::vector<double>& rawGridY, bool alignedRows);
 
    private:
     /// The accelerator buffers of the last RunAsync: they stay valid until Wait

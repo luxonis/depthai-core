@@ -471,16 +471,28 @@ class CalibrationHandler {
     dai::ImuCalibrationParams getImuParameters() const;
 
     /**
+     * Set the B-spline stereo calibration (RVC4, experimental). flashCalibration stores it next to the EEPROM data.
+     *
+     * @param calibration Validated before it is set
+     */
+    void setBsplineStereoCalibration(const BsplineStereoCalibration& calibration);
+
+    /**
+     * @return The B-spline stereo calibration, if one is set
+     */
+    std::optional<BsplineStereoCalibration> getBsplineStereoCalibration() const;
+
+    /**
+     * Remove the B-spline stereo calibration. The other calibration data is unchanged.
+     */
+    void clearBsplineStereoCalibration();
+
+    /**
      * Write raw calibration/board data to json file.
      *
      * @param destPath  Full path to the json file in which raw calibration data will be stored
      * @return True on success, false otherwise
      */
-    /** RVC4 experimental native-resolution spline calibration, persisted by flashCalibration. */
-    void setBsplineStereoCalibration(const BsplineStereoCalibration& calibration);
-    std::optional<BsplineStereoCalibration> getBsplineStereoCalibration() const;
-    void clearBsplineStereoCalibration();
-
     bool eepromToJsonFile(std::filesystem::path destPath) const;
 
     /**

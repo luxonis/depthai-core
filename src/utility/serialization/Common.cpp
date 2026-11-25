@@ -1,6 +1,6 @@
 #include "depthai/capabilities/ImgFrameCapability.hpp"
-#include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/BsplineCalibration.hpp"
+#include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/CameraInfo.hpp"
 #include "depthai/common/ChipTemperature.hpp"
 #include "depthai/common/ChipTemperatureRVC4.hpp"

@@ -164,7 +164,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
              static_cast<void (StereoDepth::*)(CameraBoardSocket)>(&StereoDepth::setDepthAlign),
              py::arg("camera"),
              DOC(dai, node, StereoDepth, setDepthAlign, 2))
-        .def("setRectificationModel", &StereoDepth::setRectificationModel, py::arg("model"))
+        .def("setRectificationModel", &StereoDepth::setRectificationModel, py::arg("model"), DOC(dai, node, StereoDepth, setRectificationModel))
         .def("setRectification", &StereoDepth::setRectification, py::arg("enable"), DOC(dai, node, StereoDepth, setRectification))
         .def("setLeftRightCheck", &StereoDepth::setLeftRightCheck, py::arg("enable"), DOC(dai, node, StereoDepth, setLeftRightCheck))
         .def("setSubpixel", &StereoDepth::setSubpixel, py::arg("enable"), DOC(dai, node, StereoDepth, setSubpixel))

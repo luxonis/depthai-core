@@ -1,17 +1,17 @@
 #pragma once
-#include <string>
 #include <optional>
-#include "depthai/common/optional.hpp"
-#include "depthai/common/BsplineCalibration.hpp"
+#include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "depthai/common/BsplineCalibration.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraInfo.hpp"
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/ImuParameters.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/StereoRectification.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {

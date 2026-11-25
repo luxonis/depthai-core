@@ -885,7 +885,9 @@ void CalibrationHandler::setBsplineStereoCalibration(const BsplineStereoCalibrat
 std::optional<BsplineStereoCalibration> CalibrationHandler::getBsplineStereoCalibration() const {
     return eepromData.bsplineStereoCalibration;
 }
-void CalibrationHandler::clearBsplineStereoCalibration() { eepromData.bsplineStereoCalibration.reset(); }
+void CalibrationHandler::clearBsplineStereoCalibration() {
+    eepromData.bsplineStereoCalibration.reset();
+}
 
 bool CalibrationHandler::eepromToJsonFile(std::filesystem::path destPath) const {
     nlohmann::json j = eepromData;

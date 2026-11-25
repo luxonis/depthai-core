@@ -310,6 +310,15 @@ std::tuple<bool, std::string, std::vector<uint8_t>> eeprom_read_raw(eeprom_area 
 }
 
 namespace {
+// Store (or with nullopt remove) the main board's B-spline calibration, bound to the legacy bytes now in the area
+void storeBsplineCalibration(eeprom_area area, const std::optional<dai::BsplineStereoCalibration>& model) {
+    auto [ok, message, legacy] = eeprom_read_raw(area, dai::CameraBoardSocket::AUTO);
+    if(!ok) throw std::runtime_error(message);
+    dai::device::BsplineCalibrationStore{}.store(area == EEPROM_AREA_FACTORY, legacy, model, dai::gate::getSerialNumber());
+}
+}  // namespace
+
+namespace {
 // A write must stay within one page, otherwise it wraps to the start of that page
 constexpr size_t I2C_EEPROM_PAGE_SIZE = 32;
 // The CCI I2C bridge carries at most 11 bytes per write: the 2-byte memory address plus 9 data bytes
@@ -477,16 +486,13 @@ std::tuple<bool, std::string> eeprom_factory_reset(dai::CameraBoardSocket camSoc
         return {false, "Couldn't flash factory defaults to USER area, error: " + std::string(eeprom_status_to_str(status))};
     }
 
-#ifdef TARGET_DEVICE_RVC4
     if(camSocket == dai::CameraBoardSocket::AUTO) {
         try {
-            const std::vector<uint8_t> legacy(factory_default, factory_default + SIZE_OF_CONFIGURATION);
-            dai::device::BsplineCalibrationStore{}.store(false, legacy, board_data_config.bsplineStereoCalibration, dai::gate::getSerialNumber());
+            storeBsplineCalibration(EEPROM_AREA_USER, board_data_config.bsplineStereoCalibration);
         } catch(const std::exception& ex) {
             return {false, std::string("Factory reset spline extension failed: ") + ex.what()};
         }
     }
-#endif
 
     return {true, ""};
 }
@@ -504,9 +510,6 @@ eeprom_status eeprom_store_config(dai::EepromData& board_data_config,
 
     if(board_data_config.bsplineStereoCalibration) {
         if(board_data_config.version != 6 && board_data_config.version != 7) return EEPROM_INVALID_DATA;
-#ifndef TARGET_DEVICE_RVC4
-        return EEPROM_INVALID_DATA;
-#else
         // CBA EEPROM cannot hold this payload. Validate before any legacy write.
         if(camSocket != dai::CameraBoardSocket::AUTO) return EEPROM_INVALID_DATA;
         try {
@@ -516,7 +519,6 @@ eeprom_status eeprom_store_config(dai::EepromData& board_data_config,
             printf("Invalid spline calibration: %s\n", ex.what());
             return EEPROM_INVALID_DATA;
         }
-#endif
     }
     eeprom_status ret = EEPROM_OK;
 
@@ -534,7 +536,6 @@ eeprom_status eeprom_store_config(dai::EepromData& board_data_config,
         }
     }
 
-#ifdef TARGET_DEVICE_RVC4
     if(camSocket == dai::CameraBoardSocket::AUTO) {
         dai::EepromData previous;
         if(eeprom_load_config(previous, area, camSocket) == EEPROM_OK && (board_data_config.bsplineStereoCalibration || previous.bsplineStereoCalibration)) {
@@ -548,12 +549,10 @@ eeprom_status eeprom_store_config(dai::EepromData& board_data_config,
                 std::sort(cameras.begin(), cameras.end(), [](const auto& a, const auto& b) { return a[0] < b[0]; });
                 return value;
             };
+            // Only the B-spline calibration changed: keep the EEPROM as it is
             if(legacyFields(previous) == legacyFields(board_data_config)) {
                 try {
-                    auto [ok, message, legacy] = eeprom_read_raw(area, camSocket);
-                    if(!ok) return EEPROM_ERROR;
-                    dai::device::BsplineCalibrationStore{}.store(
-                        area == EEPROM_AREA_FACTORY, legacy, board_data_config.bsplineStereoCalibration, dai::gate::getSerialNumber());
+                    storeBsplineCalibration(area, board_data_config.bsplineStereoCalibration);
                     return EEPROM_OK;
                 } catch(const std::exception& ex) {
                     if(errorDetail) *errorDetail = ex.what();
@@ -562,7 +561,6 @@ eeprom_status eeprom_store_config(dai::EepromData& board_data_config,
             }
         }
     }
-#endif
 
     auto matrix_to_1D = [](std::vector<std::vector<float>>& src, void* dest_unaligned) {
         float dest[3 * 3];
@@ -773,20 +771,15 @@ eeprom_status eeprom_store_config(dai::EepromData& board_data_config,
             }
         }
 
-#ifdef TARGET_DEVICE_RVC4
         if(camSocket == dai::CameraBoardSocket::AUTO) {
             try {
-                auto [ok, message, legacy] = eeprom_read_raw(area, camSocket);
-                if(!ok) return EEPROM_ERROR;
-                dai::device::BsplineCalibrationStore{}.store(
-                    area == EEPROM_AREA_FACTORY, legacy, board_data_config.bsplineStereoCalibration, dai::gate::getSerialNumber());
+                storeBsplineCalibration(area, board_data_config.bsplineStereoCalibration);
             } catch(const std::exception& ex) {
                 printf("Failed to persist spline calibration extension: %s\n", ex.what());
                 if(errorDetail) *errorDetail = ex.what();
                 return EEPROM_ERROR;
             }
         }
-#endif
         return EEPROM_OK;
     } else {
         // Not using this as of now
@@ -1203,7 +1196,6 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
         board_data_config.cameraData[dai::CameraBoardSocket::CAM_A].lensPosition = 135;
     }
 
-#ifdef TARGET_DEVICE_RVC4
     board_data_config.bsplineStereoCalibration.reset();
     if(camSocket == dai::CameraBoardSocket::AUTO) {
         try {
@@ -1217,7 +1209,6 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
             printf("Spline calibration unavailable: %s\n", ex.what());
         }
     }
-#endif
 
     return EEPROM_OK;
 }
@@ -1238,15 +1229,13 @@ std::tuple<bool, std::string> eeprom_clear(eeprom_area area, bool protectedPermi
 
     switch(status) {
         case EEPROM_OK:
-#ifdef TARGET_DEVICE_RVC4
             if(camSocket == dai::CameraBoardSocket::AUTO) {
                 try {
-                    dai::device::BsplineCalibrationStore{}.store(area == EEPROM_AREA_FACTORY, {}, std::nullopt, dai::gate::getSerialNumber());
+                    storeBsplineCalibration(area, std::nullopt);
                 } catch(const std::exception& ex) {
                     return {false, std::string("Cleared EEPROM but failed to clear spline extension: ") + ex.what()};
                 }
             }
-#endif
             return {true, ""};
         case EEPROM_NOT_AVAILABLE:
             printf("EEPROM not available to perform a clear\n");
