@@ -6,9 +6,11 @@
 
 #include <algorithm>
 #include <array>
+#include <exception>
 #include <iostream>
 #include <limits>
 
+#include "depthai/pipeline/MessageQueue.hpp"
 #include "camera/HalBufferMemory.hpp"
 #include "glib-object.h"
 #include "gst/video/gstvideometa.h"
@@ -26,6 +28,7 @@ static void on_error(GstBus* bus, GstMessage* message, gpointer user_data) {
     GstVaapiEnc* that = static_cast<GstVaapiEnc*>(user_data);
     that->error = true;
     that->errorMsg = std::string(err->message);
+    if(that->logger) that->logger->error("VideoEncoder GStreamer error from {}: {}", GST_OBJECT_NAME(message->src), err->message);
 
     g_error_free(err);
     g_free(debug_info);
@@ -82,7 +85,24 @@ static GstFlowReturn on_new_sample(GstElement* elem, GstVaapiEnc* vaapiEncClass)
 
         gst_buffer_map(buffer, &map, GST_MAP_READ);
 
-        vaapiEncClass->handle_buffer(map.data, gst_buffer_get_size(buffer) * sizeof(uint8_t), sample_width, sample_height);
+        // Codec2 delivers this sample on its own thread. An exception leaving this
+        // callback crosses the GStreamer C boundary and aborts the process.
+        try {
+            vaapiEncClass->handle_buffer(map.data, gst_buffer_get_size(buffer) * sizeof(uint8_t), sample_width, sample_height);
+            vaapiEncClass->noteEncodedFrame();
+        } catch(const dai::MessageQueue::QueueException& exception) {
+            if(vaapiEncClass->logger) {
+                vaapiEncClass->logger->debug("VideoEncoder output queue is closed, dropping encoded frame: {}", exception.what());
+            }
+        } catch(const std::exception& exception) {
+            if(vaapiEncClass->logger) {
+                vaapiEncClass->logger->error("Exception in VideoEncoder encoded-frame callback: {}", exception.what());
+            }
+        } catch(...) {
+            if(vaapiEncClass->logger) {
+                vaapiEncClass->logger->error("Unknown exception in VideoEncoder encoded-frame callback");
+            }
+        }
         // size_t size = map.size;
         // int fd = gst_dmabuf_memory_get_fd(map.memory);
         gst_buffer_unmap(buffer, &map);
@@ -101,7 +121,9 @@ static GstFlowReturn on_new_sample(GstElement* elem, GstVaapiEnc* vaapiEncClass)
 const char* GstVaapiEnc::get_encoder_name_by_video_prop(dai::VideoEncoderProperties::Profile profile) {
     switch(profile) {
         case dai::VideoEncoderProperties::Profile::MJPEG:
-            return "qtijpegenc";
+            // qtijpegenc opens a QMMF session and does not return while the camera
+            // already holds that service. jpegenc encodes the mapped NV12 on the CPU.
+            return "jpegenc";
         case dai::VideoEncoderProperties::Profile::H265_MAIN:
         case dai::VideoEncoderProperties::Profile::H264_BASELINE:
         case dai::VideoEncoderProperties::Profile::H264_HIGH:
@@ -127,13 +149,17 @@ GstVaapiEnc::GstVaapiEnc(dai::VideoEncoderProperties props, std::shared_ptr<spdl
     encoder = gst_element_factory_make(encoder_name, NULL);
     capsfilter = gst_element_factory_make("capsfilter", NULL);
     appsink = gst_element_factory_make("appsink", NULL);
+    videoconvert = nullptr;
+    if(props.profile == dai::VideoEncoderProperties::Profile::MJPEG) {
+        videoconvert = gst_element_factory_make("videoconvert", NULL);
+    }
 
     if(!src) {
         logger->error("Failed to create appsrc");
         return;
     }
     if(!encoder) {
-        logger->error("Failed to create encoder");
+        logger->error("Failed to create encoder {}", encoder_name);
         return;
     }
     if(!capsfilter) {
@@ -144,13 +170,29 @@ GstVaapiEnc::GstVaapiEnc(dai::VideoEncoderProperties props, std::shared_ptr<spdl
         logger->error("Failed to create appsink");
         return;
     }
+    if(props.profile == dai::VideoEncoderProperties::Profile::MJPEG && videoconvert == nullptr) {
+        logger->error("Failed to create videoconvert");
+        encoder = nullptr;
+        return;
+    }
 
     g_object_set(src, "block", TRUE, "max-buffers", static_cast<guint64>(1), "max-bytes", static_cast<guint64>(0), NULL);
     g_object_set(appsink, "emit-signals", TRUE, "sync", FALSE, "max-buffers", static_cast<guint>(1), "enable-last-sample", FALSE, NULL);
     g_signal_connect(appsink, "new-sample", G_CALLBACK(on_new_sample), this);
     set_encoder_props(props);
-    gst_bin_add_many(GST_BIN(pipeline), src, encoder, capsfilter, appsink, NULL);
-    gst_element_link_many(src, encoder, capsfilter, appsink, NULL);
+    gboolean linked = FALSE;
+    if(videoconvert != nullptr) {
+        gst_bin_add_many(GST_BIN(pipeline), src, videoconvert, encoder, capsfilter, appsink, NULL);
+        linked = gst_element_link_many(src, videoconvert, encoder, capsfilter, appsink, NULL);
+    } else {
+        gst_bin_add_many(GST_BIN(pipeline), src, encoder, capsfilter, appsink, NULL);
+        linked = gst_element_link_many(src, encoder, capsfilter, appsink, NULL);
+    }
+    if(!linked) {
+        logger->error("VideoEncoder failed to link the {} pipeline", encoder_name);
+        encoder = nullptr;
+        return;
+    }
     bus = gst_element_get_bus(pipeline);
     main_loop = g_main_loop_new(NULL, FALSE);
     // TODO(themarpe) - doesn't work at the moment
@@ -253,6 +295,43 @@ void GstVaapiEnc::set_encoder_props(dai::VideoEncoderProperties props) {
         g_object_set(capsfilter, "caps", caps, NULL);
     }
 }
+
+void GstVaapiEnc::requestKeyframe() {
+    if(encoder == nullptr) {
+        logger->warn("VideoEncoder cannot force a keyframe before the encoder exists");
+        return;
+    }
+    if(props.profile == dai::VideoEncoderProperties::Profile::MJPEG) return;
+    // qtic2venc does not act on GstForceKeyUnit. trigger-iframe sets the Codec2 sync-frame
+    // parameter, but the handler dereferences the engine with no null check. The engine is
+    // created while the first picture is encoded, so the signal is emitted on a later push.
+    keyframeRequested.store(true, std::memory_order_release);
+    logger->debug("VideoEncoder queued an IDR request");
+}
+
+void GstVaapiEnc::noteEncodedFrame() {
+    encoderStarted.store(true, std::memory_order_release);
+}
+
+void GstVaapiEnc::emitQueuedKeyframe() {
+    if(!encoderStarted.load(std::memory_order_acquire)) return;
+    if(!keyframeRequested.load(std::memory_order_acquire)) return;
+    // Look the signal up before clearing the request. A missing signal used to drop the IDR for good.
+    if(encoder == nullptr || g_signal_lookup("trigger-iframe", G_OBJECT_TYPE(encoder)) == 0) {
+        logger->warn("VideoEncoder has no trigger-iframe signal");
+        keyframeRequested.store(false, std::memory_order_release);
+        return;
+    }
+    if(!keyframeRequested.exchange(false, std::memory_order_acq_rel)) return;
+    // Flush before the signal. A null engine pointer kills the process with no dump.
+    // The signal returns gboolean. The plugin reports false when the engine call returns 0,
+    // but the next picture is still an IDR, so the return is not a rejection.
+    logger->debug("VideoEncoder emitting trigger-iframe");
+    logger->flush();
+    gboolean triggered = FALSE;
+    g_signal_emit_by_name(encoder, "trigger-iframe", &triggered);
+    logger->debug("VideoEncoder requested an IDR frame");
+}
 void GstVaapiEnc::set_appsrc_caps(const int width, const int height, const int fps, dai::ImgFrame::Type type) {
     this->width = width;
     this->height = height;
@@ -274,7 +353,8 @@ void GstVaapiEnc::set_appsrc_caps(const int width, const int height, const int f
     }
     printf("Setting the datatype: %s\n", formatName.c_str());
 
-    GstCaps* caps = gst_caps_from_string("video/x-raw(memory:GBM)");
+    // jpegenc reads ordinary system memory. qtic2venc requires the GBM feature.
+    GstCaps* caps = gst_caps_from_string(props.profile == dai::VideoEncoderProperties::Profile::MJPEG ? "video/x-raw" : "video/x-raw(memory:GBM)");
 
     gst_caps_set_simple(caps, "format", G_TYPE_STRING, formatName.c_str(), NULL);
     gst_caps_set_simple(caps, "width", G_TYPE_INT, width, NULL);
@@ -305,85 +385,37 @@ std::tuple<bool, std::string> GstVaapiEnc::push_to_encoder(std::shared_ptr<dai::
         int stride = frame->getStride();
         int planeStride = frame->getPlaneStride();
 
-        if(props.profile == dai::VideoEncoderProperties::Profile::MJPEG) {
-            if(fdMemoryPool == nullptr) {
-                GstStructure* config = NULL;
-                GstAllocator* fdAllocator = NULL;
-
-                fdMemoryPool = gst_mem_buffer_pool_new(GST_MEMORY_BUFFER_POOL_TYPE_ION);
-                if(!fdMemoryPool) {
-                    return {false, "Failed to create memory pool!"};
-                }
-                config = gst_buffer_pool_get_config(fdMemoryPool);
-                if(!config) {
-                    g_object_unref(fdMemoryPool);
-                    return {false, "Failed to get memory pool configuration!"};
-                }
-                gst_buffer_pool_config_set_params(config, NULL, _dataSize, FD_MEMPOOL_MIN_BUFFERS, FD_MEMPOOL_MAX_BUFFERS);
-                fdAllocator = gst_fd_allocator_new();
-                if(!fdAllocator) {
-                    g_object_unref(fdMemoryPool);
-                    return {false, "Failed to create memory pool allocator!"};
-                }
-                gst_buffer_pool_config_set_allocator(config, fdAllocator, NULL);
-
-                if(!gst_buffer_pool_set_config(fdMemoryPool, config)) {
-                    g_object_unref(fdMemoryPool);
-                    return {false, "Failed to set memory pool configuration!"};
-                }
-
-                g_object_unref(fdAllocator);
-
-                if(!gst_buffer_pool_is_active(fdMemoryPool) && !gst_buffer_pool_set_active(fdMemoryPool, TRUE)) {
-                    return {false, "Failed to activate memory pool!"};
-                }
-            }
-
-            gst_buffer_pool_acquire_buffer(fdMemoryPool, &buffer, NULL);
-            if(!gst_is_fd_memory(gst_buffer_peek_memory(buffer, 0))) {
-                return {false, "Failed to acquire memory from memory pool!"};
-            }
-
-            GstMapInfo map;
-            if(gst_buffer_map(buffer, &map, GST_MAP_READWRITE)) {
-                memcpy(map.data, static_cast<void*>(_data), _dataSize);
-                gst_buffer_unmap(buffer, &map);
-            } else {
-                return {false, "Failed to write to memory!"};
-            }
-
-        } else {  // H26X path
-            auto* halMem = dynamic_cast<dai::gate::HalBufferMemory*>(data.get());
-            if(halMem != nullptr && halMem->privHnd != nullptr && halMem->privHnd->fd >= 0) {
+        // qtic2venc imports the camera dmabuf. jpegenc reads the mapping HalBufferMemory already made.
+        auto* halMem = dynamic_cast<dai::gate::HalBufferMemory*>(data.get());
+        if(props.profile != dai::VideoEncoderProperties::Profile::MJPEG && halMem != nullptr && halMem->privHnd != nullptr && halMem->privHnd->fd >= 0) {
+            if(inputFdAllocator == nullptr) {
+                inputFdAllocator = gst_fd_allocator_new();
                 if(inputFdAllocator == nullptr) {
-                    inputFdAllocator = gst_fd_allocator_new();
-                    if(inputFdAllocator == nullptr) {
-                        return {false, "Failed to create input FD allocator!"};
-                    }
+                    return {false, "Failed to create input FD allocator!"};
                 }
-                GstMemory* mem = gst_fd_allocator_alloc(
-                    inputFdAllocator, halMem->privHnd->fd, halMem->privHnd->size, static_cast<GstFdMemoryFlags>(GST_FD_MEMORY_FLAG_DONT_CLOSE));
-                if(mem == nullptr) {
-                    return {false, "Failed to import input dmabuf!"};
-                }
-                buffer = gst_buffer_new();
-                if(buffer == nullptr) {
-                    gst_memory_unref(mem);
-                    return {false, "Failed to create input buffer!"};
-                }
-                gst_buffer_append_memory(buffer, mem);
-                // Keep the camera buffer alive until GStreamer releases its non-owning dmabuf import.
-                gst_mini_object_set_qdata(
-                    GST_MINI_OBJECT(buffer), g_quark_from_static_string("dai-imgframe"), new std::shared_ptr<dai::ImgFrame>(frame), on_destroy_buffer);
-            } else {
-                buffer = gst_buffer_new_wrapped_full((GstMemoryFlags)(GST_MEMORY_FLAG_READONLY | GST_MEMORY_FLAG_PHYSICALLY_CONTIGUOUS),
-                                                     _data,
-                                                     _dataSize,
-                                                     0,
-                                                     _dataSize,
-                                                     new std::shared_ptr<dai::ImgFrame>(frame),
-                                                     on_destroy_buffer);
             }
+            GstMemory* mem = gst_fd_allocator_alloc(
+                inputFdAllocator, halMem->privHnd->fd, halMem->privHnd->size, static_cast<GstFdMemoryFlags>(GST_FD_MEMORY_FLAG_DONT_CLOSE));
+            if(mem == nullptr) {
+                return {false, "Failed to import input dmabuf!"};
+            }
+            buffer = gst_buffer_new();
+            if(buffer == nullptr) {
+                gst_memory_unref(mem);
+                return {false, "Failed to create input buffer!"};
+            }
+            gst_buffer_append_memory(buffer, mem);
+            // Keep the camera buffer alive until GStreamer releases its non-owning dmabuf import.
+            gst_mini_object_set_qdata(
+                GST_MINI_OBJECT(buffer), g_quark_from_static_string("dai-imgframe"), new std::shared_ptr<dai::ImgFrame>(frame), on_destroy_buffer);
+        } else {
+            buffer = gst_buffer_new_wrapped_full((GstMemoryFlags)(GST_MEMORY_FLAG_READONLY | GST_MEMORY_FLAG_PHYSICALLY_CONTIGUOUS),
+                                                 _data,
+                                                 _dataSize,
+                                                 0,
+                                                 _dataSize,
+                                                 new std::shared_ptr<dai::ImgFrame>(frame),
+                                                 on_destroy_buffer);
         }
 
         GstClockTime frame_ts_ns = frame->getTimestampDevice().time_since_epoch().count();
@@ -414,6 +446,7 @@ std::tuple<bool, std::string> GstVaapiEnc::push_to_encoder(std::shared_ptr<dai::
     }
 
     // g_signal_emit_by_name(src, "push-buffer", buffer, &ret);
+    emitQueuedKeyframe();
     ret = gst_app_src_push_buffer(appsrc, buffer);  // buffer released automatically
     if(ret != GST_FLOW_OK) {
         printf("Couldn't push to appsrc, ret: %d\n", ret);
@@ -427,8 +460,9 @@ void GstVaapiEnc::run(bool run_in_thread) {
     // Debug: dump graph
     gst_debug_bin_to_dot_file(GST_BIN(pipeline), GST_DEBUG_GRAPH_SHOW_ALL, "encoder");
 
-    // Start the pipeline
-    gst_element_set_state(pipeline, GST_STATE_PLAYING);
+    logger->info("VideoEncoder setting the pipeline to PLAYING");
+    const auto change = gst_element_set_state(pipeline, GST_STATE_PLAYING);
+    logger->info("VideoEncoder pipeline state change returned {}", static_cast<int>(change));
 
     // run in thread
     if(run_in_thread) {

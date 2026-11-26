@@ -64,6 +64,10 @@
 #include "node/Align/Align.hpp"
 #include "node/Camera/Camera.hpp"
 #include "node/ImageAlign/ImageAlign.hpp"
+#include "node/Replay/Replay.hpp"
+#ifdef TARGET_DEVICE_RVC4
+    #include "node/Record/Record.hpp"
+#endif
 #include "node/Warp/Warp.hpp"
 #include "node/VideoEncoder.hpp"
 #include "node/XLinkIn.hpp"
@@ -158,6 +162,11 @@ decltype(PipelineEventAggregation::NAME) constexpr PipelineEventAggregation::NAM
 decltype(Rectification::NAME) constexpr Rectification::NAME;
 decltype(NeuralDepth::NAME) constexpr NeuralDepth::NAME;
 decltype(GPUStereo::NAME) constexpr GPUStereo::NAME;
+#ifdef TARGET_DEVICE_RVC4
+decltype(RecordVideo::NAME) constexpr RecordVideo::NAME;
+decltype(ReplayVideo::NAME) constexpr ReplayVideo::NAME;
+decltype(ReplayMetadataOnly::NAME) constexpr ReplayMetadataOnly::NAME;
+#endif
 decltype(Gate::NAME) constexpr Gate::NAME;
 decltype(Stitching::NAME) constexpr Stitching::NAME;
 
@@ -272,6 +281,11 @@ PipelineBuilder::NodeHandler PipelineBuilder::getDefaultNodeHandler() {
     handler[PointCloud::NAME] = nodeHelper<PointCloud>;
     handler[SystemLogger::NAME] = nodeHelper<SystemLogger>;
     handler[Camera::NAME] = nodeHelper<Camera>;
+#ifdef TARGET_DEVICE_RVC4
+    handler[RecordVideo::NAME] = nodeHelper<RecordVideo>;
+    handler[ReplayVideo::NAME] = nodeHelper<ReplayVideo>;
+    handler[ReplayMetadataOnly::NAME] = nodeHelper<ReplayMetadataOnly>;
+#endif
     handler[Stitching::NAME] = nodeHelper<Stitching>;
     handler[Sync::NAME] = nodeHelper<Sync>;
     handler[ImageManip::NAME] = nodeHelper<ImageManip>;

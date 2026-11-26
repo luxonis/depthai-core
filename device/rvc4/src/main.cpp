@@ -11,6 +11,7 @@
 #include <cstring>
 #include <exception>
 #include <functional>
+#include <map>
 #include <optional>
 #include <sstream>
 #include <tuple>
@@ -62,6 +63,11 @@
 #include "utilities/OSUtils.hpp"
 #include "utilities/StereoPairs.hpp"
 #include "vendor/dai_device_calibration.h"
+#ifdef TARGET_DEVICE_RVC4
+    #include "pipeline/node/Record/Record.hpp"
+    #include "utilities/RecordingStoreDevice.hpp"
+    #include "utilities/ReplayCacheDevice.hpp"
+#endif
 
 // #include "pipeline/PipelineRequirements.hpp"
 #include "depthai/pipeline/datatype/SystemInformationRVC4.hpp"
@@ -1133,6 +1139,47 @@ int main(int argc, char** args) {
         });
 
         rpcHandle(*mainRpc, "isRunning", []() { return true; });
+#ifdef TARGET_DEVICE_RVC4
+        rpcHandle(*mainRpc, "recordStoreList", []() { return dai::gate::recordingStore()->list(); });
+        rpcHandle(*mainRpc, "recordStoreListFiles", [](std::string name) { return dai::gate::recordingStore()->listFiles(name); });
+        rpcHandle(*mainRpc, "recordStoreReadChunk", [](std::string name, std::string relative, std::uint64_t offset, std::uint64_t length) {
+            return dai::gate::recordingStore()->readChunk(name, relative, offset, length);
+        });
+        rpcHandle(*mainRpc, "recordStoreDelete", [](std::string name) { dai::gate::recordingStore()->remove(name); });
+        rpcHandle(*mainRpc, "recordStorePrepareDownload", []() {
+            std::vector<std::shared_ptr<dai::gate::RecordVideo>> writers;
+            for(const auto& node : pipeline.getAllNodes()) {
+                if(auto record = std::dynamic_pointer_cast<dai::gate::RecordVideo>(node)) writers.push_back(std::move(record));
+            }
+            for(const auto& writer : writers) writer->stop();
+            for(const auto& writer : writers) writer->wait();
+            for(const auto& writer : writers) writer->releaseRecording();
+            std::vector<std::tuple<std::int64_t, std::vector<std::uint8_t>>> statuses;
+            for(const auto& writer : writers) statuses.emplace_back(writer->id, writer->statusMetadata());
+            return statuses;
+        });
+        rpcHandle(*mainRpc, "replayCacheInfo", []() { return dai::gate::replayCacheInfo(); });
+        rpcHandle(*mainRpc, "replayCacheSetLimit", [](std::uint64_t bytes) { dai::gate::replayCacheSetLimit(bytes); });
+        rpcHandle(*mainRpc, "replayCacheClear", []() { dai::gate::replayCacheClear(); });
+        rpcHandle(*mainRpc, "replayCacheQuery", [](std::string hash) { return dai::gate::replayCacheQuery(hash); });
+        rpcHandle(*mainRpc, "replayCacheBegin", [](std::string hash, std::uint64_t totalBytes) { dai::gate::replayCacheBegin(hash, totalBytes); });
+        rpcHandle(*mainRpc, "replayCachePrepareFile", [](std::string hash, std::uint64_t totalBytes) {
+            return dai::gate::replayCachePrepareFile(hash, totalBytes);
+        });
+        rpcHandle(*mainRpc, "replayCacheBeginDirectory", [](std::string hash, std::map<std::string, std::uint64_t> files) {
+            return dai::gate::replayCacheBeginDirectory(hash, files);
+        });
+        rpcHandle(*mainRpc, "replayCacheWrite", [](std::string hash, std::uint64_t offset, std::vector<std::uint8_t> bytes) {
+            dai::gate::replayCacheWrite(hash, offset, bytes);
+        });
+        rpcHandle(*mainRpc, "replayCacheWriteFile", [](std::string hash, std::string filename, std::uint64_t offset, std::vector<std::uint8_t> bytes) {
+            dai::gate::replayCacheWriteFile(hash, filename, offset, bytes);
+        });
+        rpcHandle(*mainRpc, "replayCacheCommit", [](std::string hash) { dai::gate::replayCacheCommit(hash); });
+        rpcHandle(*mainRpc, "replayCacheAbort", [](std::string hash) { dai::gate::replayCacheAbort(hash); });
+        rpcHandle(*mainRpc, "replayCacheRelease", [](std::vector<std::string> keys) { dai::gate::replayCacheRelease(keys); });
+        rpcHandle(*mainRpc, "replayCacheSourceSize", [](std::string absolutePath) { return dai::gate::replayCacheSourceSize(absolutePath); });
+#endif
         rpcHandle(*mainRpc, "hasCrashDump", []() { return false; });
 
         rpcHandle(*mainRpc, "crashDevice", crashDevice);

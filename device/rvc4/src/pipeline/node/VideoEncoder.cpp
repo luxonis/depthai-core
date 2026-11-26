@@ -11,6 +11,9 @@
 #include <gst/video/video-info.h>
 
 // libraries
+#include <hardware/gr_priv_handle.h>
+
+#include "camera/CameraPool.hpp"
 #include "camera/CameraSingleton.hpp"
 #include "camera/HalBufferMemory.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
@@ -42,23 +45,24 @@ namespace gate {
 #define DEFAULT_PROP_MIN_BUFFERS 2
 #define DEFAULT_PROP_MAX_BUFFERS 10
 
-static GstBufferPool* createPool(GstCaps* caps) {
+static GstBufferPool* createPool(GstCaps* caps, int width, int height) {
     GstBufferPool* pool = NULL;
     GstStructure* config = NULL;
     GstAllocator* allocator = NULL;
-    GstVideoInfo info;
 
-    auto res = gst_video_info_from_caps(&info, caps);
-    DAI_CHECK_IN(res);
+    // image/jpeg is not video/x-raw. gst_video_info_from_caps rejects it, and a
+    // failed pool here used to take down MJPEG recording on the first frame.
+    DAI_CHECK_IN(width > 0 && height > 0);
 
     pool = gst_image_buffer_pool_new(GST_IMAGE_BUFFER_POOL_TYPE_ION);
 
     // Align size to 64 lines
-    gint alignedw = (GST_VIDEO_INFO_WIDTH(&info) + 64 - 1) & ~(64 - 1);
-    gint alignedh = (GST_VIDEO_INFO_HEIGHT(&info) + 64 - 1) & ~(64 - 1);
-    gsize aligned_size = alignedw * alignedh * 4;
+    const gint alignedw = (width + 64 - 1) & ~(64 - 1);
+    const gint alignedh = (height + 64 - 1) & ~(64 - 1);
+    const gsize aligned_size = static_cast<gsize>(alignedw) * static_cast<gsize>(alignedh) * 4;
 
     config = gst_buffer_pool_get_config(pool);
+    auto res = true;
     gst_buffer_pool_config_set_params(config, caps, aligned_size, DEFAULT_PROP_MIN_BUFFERS, DEFAULT_PROP_MAX_BUFFERS);
 
     allocator = gst_fd_allocator_new();
@@ -302,7 +306,7 @@ void VideoEncoder::initialize(const int width, const int height, const int fps, 
 
     // Set output caps
     outcaps = gst_caps_new_simple("image/jpeg", "width", G_TYPE_INT, width, "height", G_TYPE_INT, height, NULL);
-    outpool = createPool(outcaps);
+    outpool = createPool(outcaps, width, height);
     DAI_CHECK_IN(outpool);
 
     // Activate the pool
@@ -332,11 +336,21 @@ void VideoEncoder::run() {
         logger->warn("Both bitrate and maxBitrate are set, bitrate will be ignored.");
         properties.bitrate = properties.maxBitrate;
     }
-    const auto useGstreamer = (properties.profile != VideoEncoderProperties::Profile::MJPEG);
+    // jpegenc encodes MJPEG from the mapped camera buffer. qtijpegenc does not
+    // return while the camera holds QMMF, and the offline JPEG CHI postproc faults
+    // inside DoEncode.
+    const auto useGstreamer = true;
     if(useGstreamer) {
-        encodePipeline = std::make_shared<GstVaapiEnc>(properties, logger);
-        encodePipeline->register_handle_buffer(&VideoEncoder::send_buffer, this);
-        encodePipeline->run(true);
+        auto pipeline = std::make_shared<GstVaapiEnc>(properties, logger);
+        if(pipeline->encoder == nullptr || pipeline->src == nullptr || pipeline->appsink == nullptr) {
+            throw std::runtime_error("VideoEncoder failed to create the GStreamer encoder");
+        }
+        pipeline->register_handle_buffer(&VideoEncoder::send_buffer, this);
+        {
+            std::lock_guard<std::mutex> lock(encodePipelineMutex);
+            encodePipeline = pipeline;
+        }
+        pipeline->run(true);
     }
 
     bool first_frame = false;
@@ -354,6 +368,7 @@ void VideoEncoder::run() {
             if(!first_frame) {
                 first_frame = true;
                 encodePipeline->set_appsrc_caps(inputFrame->getWidth(), inputFrame->getHeight(), properties.frameRate, inputFrame->getType());
+                logger->info("VideoEncoder submitting the first {}x{} frame", inputFrame->getWidth(), inputFrame->getHeight());
             }
             bool error;
             std::string errorMsg;
@@ -422,10 +437,25 @@ void VideoEncoder::run() {
         dai::gate::logTiming(logger, this->getName(), startTs, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
+void VideoEncoder::requestKeyframe() {
+    if(properties.profile == VideoEncoderProperties::Profile::MJPEG) return;
+    std::lock_guard<std::mutex> lock(encodePipelineMutex);
+    if(!encodePipeline || encodePipeline->encoder == nullptr) {
+        logger->debug("VideoEncoder keyframe request arrived before the encoder was ready");
+        return;
+    }
+    encodePipeline->requestKeyframe();
+}
+
 void VideoEncoder::stop() {
     ThreadedNode::stop();
-    if(encodePipeline != nullptr) {
-        encodePipeline->stop();
+    std::shared_ptr<GstVaapiEnc> pipeline;
+    {
+        std::lock_guard<std::mutex> lock(encodePipelineMutex);
+        pipeline = encodePipeline;
+    }
+    if(pipeline != nullptr) {
+        pipeline->stop();
     }
 }
 
