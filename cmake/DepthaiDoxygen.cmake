@@ -1,12 +1,3 @@
-# Generates the API documentation of the public headers with Doxygen (DEPTHAI_BUILD_DOCS=ON).
-#
-# - Target: doxygen (also part of ALL).
-# - Output: html/ and xml/ in DEPTHAI_DOXYGEN_OUTPUT_DIR. Default: <build folder>/docs, the same folder as before the move
-#   from docs/. Tools that generate the API reference read the XML there: keep the target name and this default.
-# - Template: Doxyfile.in in this folder. configure_file() replaces the @VAR@ values.
-#
-# DepthaiDoxygen()
-
 function(DepthaiDoxygen)
     # Get doxygen executable - required
     find_package(Doxygen REQUIRED)
@@ -38,8 +29,6 @@ function(DepthaiDoxygen)
     file(MAKE_DIRECTORY ${DOXYGEN_OUTPUT_DIR})
 
     # Add command to run doxygen documentation
-    # Doxygen runs in the folder of the template, as before the move: with an empty STRIP_FROM_PATH, Doxygen removes
-    # the path of its working directory from the file names, and no input file is in this folder.
     add_custom_command(OUTPUT ${DOXYGEN_INDEX_FILE}
                        DEPENDS "${header_files}"
                        COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
