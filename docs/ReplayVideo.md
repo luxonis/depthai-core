@@ -21,7 +21,7 @@ Video must be 8-bit 4:2:0. VP8 and VP9 are not accepted. A `.dai` file that hold
 
 `setArchiveEntry(name)` selects one stream inside an archive or a holistic directory. The entry is the record name, for example `CameraCAM_A`. It can name a directory, `<name>.mp4`, `<name>.avi`, or `<name>.mcap`.
 
-`setReplayMetadataFile` attaches an `ImgFrame` `.mcap` sidecar. For a directory, `<stream>.mcap` is used when it is present. A `.dai` stream ignores that sidecar and logs one warning. A sidecar with fewer messages than frames fails at start. Extra messages are not a mismatch: a frame is paired by sequence number when those numbers identify it, and that paired frame's size must match.
+`setReplayMetadataFile` attaches an `ImgFrame` `.mcap` sidecar. For a directory, `<stream>.mcap` is used when it is present. A `.dai` stream ignores that sidecar and logs one warning. A sidecar with fewer messages than frames fails at start. Extra messages are not a mismatch when they contain each frame's sequence number: the frame is paired by that number, and that paired frame's size must match. A directory whose filename sequences are missing from the sidecar fails at start.
 
 ## Output
 
@@ -73,7 +73,7 @@ The default limit is 32 GiB. `ReplayVideo::setReplayCacheLimit` changes it and d
 
 The whole recording is one cache entry. A directory is packed into one tar so it can be uploaded as that entry. The pack is not the size probe. The probe reads the video, the first and last `.dai` frame, or the `.mcap` so the camera mock ISP size is known before start.
 
-A camera stream is a video plus metadata, or a directory of `.dai` frames, or a `.mcap` of full frames. Fewer metadata messages than frames fails at start. Extra metadata messages do not.
+A camera stream is a video plus metadata, or a directory of `.dai` frames, or a `.mcap` of full frames. Fewer metadata messages than frames fails at start. Extra metadata messages do not, unless filename sequences are missing from the sidecar.
 
 ## What this repository does not do
 

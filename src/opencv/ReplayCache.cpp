@@ -2,7 +2,9 @@
 #include <atomic>
 #include <cctype>
 #include <cerrno>
+#include <chrono>
 #include <condition_variable>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <functional>
@@ -11,6 +13,7 @@
 #include <optional>
 #include <set>
 #include <stdexcept>
+#include <thread>
 
 #include "ReplayInternal.hpp"
 #include "utility/Environment.hpp"
@@ -194,7 +197,7 @@ bool processAlive(std::int64_t pid) {
     if(pid <= 0) return false;
 #if defined(_WIN32)
     HANDLE handle = OpenProcess(SYNCHRONIZE, FALSE, static_cast<DWORD>(pid));
-    if(handle == nullptr) return false;
+    if(handle == nullptr) return GetLastError() == ERROR_ACCESS_DENIED;
     const auto wait = WaitForSingleObject(handle, 0);
     CloseHandle(handle);
     return wait == WAIT_TIMEOUT;
@@ -257,9 +260,109 @@ struct IndexFileLock {
 #endif
 };
 
-void writeOwnerPid(const std::filesystem::path& directory) {
-    std::ofstream out(directory / ".owner.pid", std::ios::trunc);
-    if(out) out << currentPid();
+bool claimOwnerPid(const std::filesystem::path& directory) {
+    std::filesystem::create_directories(directory);
+    const auto stamp = directory / ".owner.pid";
+    const auto text = std::to_string(currentPid());
+    for(int attempt = 0; attempt < 3; attempt++) {
+#if defined(_WIN32)
+        HANDLE created = CreateFileW(stamp.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if(created != INVALID_HANDLE_VALUE) {
+            DWORD written = 0;
+            const auto ok = WriteFile(created, text.data(), static_cast<DWORD>(text.size()), &written, nullptr);
+            CloseHandle(created);
+            if(!ok || written != text.size()) {
+                DeleteFileW(stamp.c_str());
+                throw std::runtime_error("Replay cache owner stamp failed");
+            }
+            return true;
+        }
+        if(GetLastError() != ERROR_FILE_EXISTS) throw std::runtime_error("Replay cache owner stamp failed");
+        HANDLE handle = CreateFileW(stamp.c_str(),
+                                    GENERIC_READ | GENERIC_WRITE,
+                                    FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                    nullptr,
+                                    OPEN_EXISTING,
+                                    FILE_ATTRIBUTE_NORMAL,
+                                    nullptr);
+        if(handle == INVALID_HANDLE_VALUE) continue;
+        OVERLAPPED overlapped{};
+        if(!LockFileEx(handle, LOCKFILE_EXCLUSIVE_LOCK, 0, 1, 0, &overlapped)) {
+            CloseHandle(handle);
+            throw std::runtime_error("Replay cache owner stamp failed");
+        }
+        char bytes[64] = {};
+        DWORD got = 0;
+        if(!ReadFile(handle, bytes, sizeof(bytes) - 1, &got, nullptr)) {
+            UnlockFileEx(handle, 0, 1, 0, &overlapped);
+            CloseHandle(handle);
+            throw std::runtime_error("Replay cache owner stamp failed");
+        }
+        const auto owner = std::strtoll(bytes, nullptr, 10);
+        bool claimed = false;
+        if(owner == currentPid() || owner == 0 || !processAlive(owner)) {
+            SetFilePointer(handle, 0, nullptr, FILE_BEGIN);
+            SetEndOfFile(handle);
+            DWORD written = 0;
+            const auto ok = WriteFile(handle, text.data(), static_cast<DWORD>(text.size()), &written, nullptr);
+            claimed = ok && written == text.size();
+            if(!claimed) {
+                UnlockFileEx(handle, 0, 1, 0, &overlapped);
+                CloseHandle(handle);
+                throw std::runtime_error("Replay cache owner stamp failed");
+            }
+        }
+        UnlockFileEx(handle, 0, 1, 0, &overlapped);
+        CloseHandle(handle);
+        if(owner == currentPid() || claimed) return true;
+        return false;
+#else
+        int created = ::open(stamp.c_str(), O_CREAT | O_EXCL | O_WRONLY, 0644);
+        if(created >= 0) {
+            const auto wrote = ::write(created, text.data(), text.size());
+            ::close(created);
+            if(wrote != static_cast<ssize_t>(text.size())) {
+                ::unlink(stamp.c_str());
+                throw std::runtime_error("Replay cache owner stamp failed");
+            }
+            return true;
+        }
+        if(errno != EEXIST) throw std::runtime_error("Replay cache owner stamp failed");
+        int fd = ::open(stamp.c_str(), O_RDWR);
+        if(fd < 0) continue;
+        if(::flock(fd, LOCK_EX) != 0) {
+            ::close(fd);
+            throw std::runtime_error("Replay cache owner stamp failed");
+        }
+        char bytes[64] = {};
+        const auto got = ::read(fd, bytes, sizeof(bytes) - 1);
+        if(got < 0) {
+            ::flock(fd, LOCK_UN);
+            ::close(fd);
+            throw std::runtime_error("Replay cache owner stamp failed");
+        }
+        const auto owner = got > 0 ? std::strtoll(bytes, nullptr, 10) : 0;
+        if(owner == currentPid()) {
+            ::flock(fd, LOCK_UN);
+            ::close(fd);
+            return true;
+        }
+        if(owner != 0 && processAlive(owner)) {
+            ::flock(fd, LOCK_UN);
+            ::close(fd);
+            return false;
+        }
+        if(::lseek(fd, 0, SEEK_SET) < 0 || ::ftruncate(fd, 0) != 0 || ::write(fd, text.data(), text.size()) != static_cast<ssize_t>(text.size())) {
+            ::flock(fd, LOCK_UN);
+            ::close(fd);
+            throw std::runtime_error("Replay cache owner stamp failed");
+        }
+        ::flock(fd, LOCK_UN);
+        ::close(fd);
+        return true;
+#endif
+    }
+    return false;
 }
 
 std::int64_t readOwnerPid(const std::filesystem::path& directory) {
@@ -579,48 +682,58 @@ std::string sha256OfFileAndMetadata(const std::filesystem::path& file, const std
 
 CacheSlot beginCacheEntry(std::uint64_t nodeId, std::uint64_t pipelineToken, bool persistent, const CacheSlotRequest& request) {
     const auto dir = hostCacheDirectory(false);
-    std::unique_lock<std::mutex> lock(gMutex);
-    gCv.wait(lock, [&]() { return gPending.count(request.key) == 0; });
-    IndexFileLock fileLock(dir);
-    loadIndex(dir);
-    CacheSlot slot;
-    if(auto* existing = findEntry(request.key)) {
-        const auto previous = *existing;
+    for(;;) {
+        std::unique_lock<std::mutex> lock(gMutex);
+        gCv.wait(lock, [&]() { return gPending.count(request.key) == 0; });
+        bool blocked = false;
+        {
+        IndexFileLock fileLock(dir);
+        loadIndex(dir);
+        CacheSlot slot;
+        if(auto* existing = findEntry(request.key)) {
+            const auto previous = *existing;
+            try {
+                addHold(*existing, nodeId, pipelineToken, persistent);
+                saveIndex(dir);
+            } catch(...) {
+                *existing = previous;
+                throw;
+            }
+            slot.hit = true;
+            if(existing->ownsFiles && !existing->relativePath.empty())
+                slot.path = dir / existing->relativePath;
+            else
+                slot.path = existing->externalPath;
+            if(existing->kind == ReplayCacheKind::SOURCE)
+                slot.logs.push_back("Replay cache hit " + existing->sourceHash);
+            else
+                slot.logs.push_back("Replay cache hit " + existing->sourceHash);
+            return slot;
+        }
+        ensureSpace(dir, request);
+        gPending.insert(request.key);
         try {
-            addHold(*existing, nodeId, pipelineToken, persistent);
             saveIndex(dir);
+            slot.hit = false;
+            if(request.ownsFiles) {
+                slot.path = dir / safeRelative(request.key);
+                if(!claimOwnerPid(slot.path)) {
+                    blocked = true;
+                    gPending.erase(request.key);
+                    gCv.notify_all();
+                }
+            } else {
+                slot.path = request.externalPath;
+            }
         } catch(...) {
-            *existing = previous;
+            gPending.erase(request.key);
+            gCv.notify_all();
             throw;
         }
-        slot.hit = true;
-        if(existing->ownsFiles && !existing->relativePath.empty())
-            slot.path = dir / existing->relativePath;
-        else
-            slot.path = existing->externalPath;
-        if(existing->kind == ReplayCacheKind::SOURCE)
-            slot.logs.push_back("Replay cache hit " + existing->sourceHash);
-        else
-            slot.logs.push_back("Replay cache hit " + existing->sourceHash);
-        return slot;
-    }
-    ensureSpace(dir, request);
-    gPending.insert(request.key);
-    try {
-        saveIndex(dir);
-        slot.hit = false;
-        if(request.ownsFiles) {
-            slot.path = dir / safeRelative(request.key);
-            std::filesystem::create_directories(slot.path);
-            writeOwnerPid(slot.path);
-        } else {
-            slot.path = request.externalPath;
+        if(!blocked) return slot;
         }
-        return slot;
-    } catch(...) {
-        gPending.erase(request.key);
-        gCv.notify_all();
-        throw;
+        lock.unlock();
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 }
 
@@ -673,13 +786,10 @@ void abortCacheEntry(const std::string& key) {
     gPending.erase(key);
     const auto folder = dir / safeRelative(key);
     const auto stamped = readOwnerPid(folder);
-    const auto* entry = findEntry(key);
-    const bool foreignEntry = entry != nullptr && entry->ownerPid != 0 && entry->ownerPid != currentPid() && processAlive(entry->ownerPid);
-    const bool foreignStamp = stamped != 0 && stamped != currentPid() && processAlive(stamped);
-    if(!foreignEntry && !foreignStamp) {
+    if(stamped == currentPid()) {
         std::error_code error;
         std::filesystem::remove_all(folder, error);
-        if(entry != nullptr && entry->ownerPid == currentPid()) {
+        if(const auto* entry = findEntry(key); entry != nullptr && entry->ownerPid == currentPid()) {
             gIndex.entries.erase(std::remove_if(gIndex.entries.begin(), gIndex.entries.end(), [&](const Entry& item) { return item.key == key; }),
                                  gIndex.entries.end());
             saveIndex(dir);

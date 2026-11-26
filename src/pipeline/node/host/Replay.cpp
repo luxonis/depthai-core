@@ -848,7 +848,7 @@ std::vector<std::shared_ptr<ImgFrame>> alignMetadata(const McapScan& scan, int f
         for(const auto sequence : sequences) aligned.push_back(scan.frames[static_cast<std::size_t>(bySequence.at(sequence))]);
         return aligned;
     };
-    if(!frames.empty() && unique && anyNonZero && static_cast<int>(frames.size()) == frameCount) {
+    if(!frames.empty() && static_cast<int>(frames.size()) == frameCount) {
         bool allPresent = true;
         for(const auto& frame : frames) {
             if(bySequence.find(frame.sequence) == bySequence.end()) {
@@ -856,13 +856,11 @@ std::vector<std::shared_ptr<ImgFrame>> alignMetadata(const McapScan& scan, int f
                 break;
             }
         }
-        if(allPresent) {
-            std::vector<std::int64_t> sequences;
-            sequences.reserve(frames.size());
-            for(const auto& frame : frames) sequences.push_back(frame.sequence);
-            return takeSequences(sequences);
-        }
-        if(scan.count == frameCount) throw std::runtime_error("ReplayVideo metadata does not match the frames");
+        if(!allPresent) throw std::runtime_error("ReplayVideo metadata does not match the frames");
+        std::vector<std::int64_t> sequences;
+        sequences.reserve(frames.size());
+        for(const auto& frame : frames) sequences.push_back(frame.sequence);
+        return takeSequences(sequences);
     }
     if(frames.empty() && unique && anyNonZero) {
         bool indexed = true;
