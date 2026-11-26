@@ -87,6 +87,8 @@ jobs:
     - uses: actions/setup-python@v7
       with:
         python-version: '3.12'
+    - name: Test combined wheel metadata
+      run: python -m unittest discover -s bindings/python/ci -p 'test_combine_wheels.py'
     - name: Install binding precheck dependencies
       if: github.event_name == 'pull_request'
       run: python -m pip install -r ci/requirements-binding-check.txt
@@ -463,6 +465,7 @@ jobs:
           # Install wheel
           python -m pip install -U pip
           python -m pip install --force-reinstall $wheel
+          python -m pip check
 
           EXPECTED_VERSION="$ver" python bindings/python/ci/smoke_depthai.py
 
@@ -584,6 +587,7 @@ jobs:
           "$PYBIN" -m ensurepip --upgrade || true
           "$PYBIN" -m pip install -U pip
           "$PYBIN" -m pip install --force-reinstall $wheel
+          "$PYBIN" -m pip check
 
           # Smoke test: fail hard on any exception or version mismatch
           EXPECTED_VERSION="$ver" "$PYBIN" bindings/python/ci/smoke_depthai.py
@@ -711,6 +715,7 @@ jobs:
           "$PYBIN" -m ensurepip --upgrade || true
           "$PYBIN" -m pip install -U pip
           "$PYBIN" -m pip install --force-reinstall $wheel
+          "$PYBIN" -m pip check
 
           EXPECTED_VERSION="$ver" "$PYBIN" bindings/python/ci/smoke_depthai.py
 
@@ -762,6 +767,8 @@ jobs:
           # Install combined wheel
           python -m pip install -U pip
           python -m pip install --force-reinstall bindings/python/wheelhouse/audited/$wheel_name
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           # Smoke test (no heredoc; YAML-safe). Fail on import error or version mismatch.
           $env:EXPECTED_VERSION = $ver
