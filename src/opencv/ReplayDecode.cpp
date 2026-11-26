@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstring>
 #include <fstream>
+#include <map>
 #include <magic_enum/magic_enum.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
@@ -51,7 +52,7 @@ bool isArchiveName(const std::filesystem::path& path) {
 
 bool isVideoName(const std::filesystem::path& path) {
     const auto ext = lowerExt(path);
-    return ext == ".mp4" || ext == ".avi";
+    return ext == ".mp4" || ext == ".avi" || ext == ".mkv" || ext == ".mov" || ext == ".m4v";
 }
 
 std::uint64_t fileSizeOf(const std::filesystem::path& path) {
@@ -223,14 +224,19 @@ DaiInfo readDai(const std::filesystem::path& path) {
 }
 
 ListedSource listFrameDirectory(const std::filesystem::path& directory) {
-    std::vector<std::pair<std::filesystem::path, std::int64_t>> frames;
-    std::set<std::string> prefixes;
-    std::set<std::string> extensions;
-    std::set<std::int64_t> seen;
+    struct Item {
+        std::filesystem::path path;
+        std::int64_t sequence = 0;
+        std::string prefix;
+        std::string ext;
+    };
+    std::vector<Item> frames;
+    std::uint64_t directoryBytes = 0;
     for(const auto& entry : std::filesystem::directory_iterator(directory)) {
         if(!entry.is_regular_file()) continue;
         const auto filename = entry.path().filename().string();
         if(filename.empty() || filename.front() == '.') continue;
+        directoryBytes += fileSizeOf(entry.path());
         auto ext = lowerExt(entry.path());
         if(ext == ".jpeg") ext = ".jpg";
         if(ext != ".dai" && ext != ".jpg" && ext != ".png") continue;
@@ -239,13 +245,20 @@ ListedSource listFrameDirectory(const std::filesystem::path& directory) {
         if(split == std::string::npos || split == 0 || split + 1 >= stem.size()) continue;
         const auto seqText = stem.substr(split + 1);
         if(!std::all_of(seqText.begin(), seqText.end(), [](unsigned char character) { return std::isdigit(character) != 0; })) continue;
-        const auto sequence = std::stoll(seqText);
-        if(!seen.insert(sequence).second) fail("ReplayVideo duplicate frame number " + std::to_string(sequence) + " in " + directory.string());
-        prefixes.insert(stem.substr(0, split));
-        extensions.insert(ext);
-        frames.emplace_back(entry.path(), sequence);
+        Item item;
+        item.path = entry.path();
+        item.sequence = std::stoll(seqText);
+        item.prefix = stem.substr(0, split);
+        item.ext = ext;
+        frames.push_back(std::move(item));
     }
     if(frames.empty()) fail("ReplayVideo source is empty: " + directory.string());
+    std::set<std::string> prefixes;
+    std::set<std::string> extensions;
+    for(const auto& frame : frames) {
+        prefixes.insert(frame.prefix);
+        extensions.insert(frame.ext);
+    }
     if(prefixes.size() != 1) {
         std::string listed;
         for(const auto& prefix : prefixes) {
@@ -255,7 +268,13 @@ ListedSource listFrameDirectory(const std::filesystem::path& directory) {
         fail("ReplayVideo directory has more than one stream: " + listed);
     }
     if(extensions.size() != 1) fail("ReplayVideo directory has more than one extension: " + directory.string());
-    std::sort(frames.begin(), frames.end(), [](const auto& a, const auto& b) { return a.second < b.second; });
+    std::map<std::int64_t, std::string> seen;
+    for(const auto& frame : frames) {
+        if(!seen.emplace(frame.sequence, frame.path.filename().string()).second) {
+            fail("ReplayVideo duplicate frame number " + std::to_string(frame.sequence) + " in " + frame.path.filename().string());
+        }
+    }
+    std::sort(frames.begin(), frames.end(), [](const auto& a, const auto& b) { return a.sequence < b.sequence; });
     ListedSource source;
     source.kind = ListedSource::Kind::Frames;
     source.path = directory;
@@ -265,7 +284,7 @@ ListedSource listFrameDirectory(const std::filesystem::path& directory) {
     const auto metadata = directory / (source.stream + ".mcap");
     if(std::filesystem::exists(metadata)) source.autoMetadata = metadata;
     if(source.dai) {
-        const auto first = readDai(frames.front().first);
+        const auto first = readDai(frames.front().path);
         source.width = first.width;
         source.height = first.height;
         source.sourceType = first.type;
@@ -276,58 +295,45 @@ ListedSource listFrameDirectory(const std::filesystem::path& directory) {
             source.passthrough = false;
         }
         for(std::size_t i = 1; i < frames.size(); i++) {
-            const auto other = readDai(frames[i].first);
+            const auto other = readDai(frames[i].path);
             if(other.width != source.width || other.height != source.height) {
-                fail("ReplayVideo frame size does not match: " + frames[i].first.string() + " is " + std::to_string(other.width) + "x"
+                fail("ReplayVideo frame size does not match: " + frames[i].path.string() + " is " + std::to_string(other.width) + "x"
                      + std::to_string(other.height));
             }
             if(other.type != source.sourceType && !first.mjpeg) {
-                fail("ReplayVideo frame type does not match: " + frames[i].first.string());
+                fail("ReplayVideo frame type does not match: " + frames[i].path.string());
             }
         }
     } else {
         const bool png = *extensions.begin() == ".png";
-        if(png) checkPngHeader(frames.front().first);
+        if(png) checkPngHeader(frames.front().path);
         const auto size = png ? [](const std::filesystem::path& path) {
             checkPngHeader(path);
             const auto image = cv::imread(path.string(), cv::IMREAD_UNCHANGED | cv::IMREAD_IGNORE_ORIENTATION);
             if(image.empty()) fail("ReplayVideo png header is not valid: " + path.string());
             return std::pair<int, int>{image.cols, image.rows};
-        }(frames.front().first)
-                              : jpegSize(frames.front().first);
+        }(frames.front().path)
+                              : jpegSize(frames.front().path);
         source.width = size.first;
         source.height = size.second;
         source.sourceType = ImgFrame::Type::NV12;
         for(std::size_t i = 1; i < frames.size(); i++) {
             const auto other = png ? [&]() {
-                checkPngHeader(frames[i].first);
-                const auto image = cv::imread(frames[i].first.string(), cv::IMREAD_UNCHANGED | cv::IMREAD_IGNORE_ORIENTATION);
-                if(image.empty()) fail("ReplayVideo png header is not valid: " + frames[i].first.string());
+                checkPngHeader(frames[i].path);
+                const auto image = cv::imread(frames[i].path.string(), cv::IMREAD_UNCHANGED | cv::IMREAD_IGNORE_ORIENTATION);
+                if(image.empty()) fail("ReplayVideo png header is not valid: " + frames[i].path.string());
                 return std::pair<int, int>{image.cols, image.rows};
             }()
-                                   : jpegSize(frames[i].first);
+                                   : jpegSize(frames[i].path);
             if(other.first != source.width || other.second != source.height) {
-                fail("ReplayVideo frame size does not match: " + frames[i].first.string() + " is " + std::to_string(other.first) + "x"
+                fail("ReplayVideo frame size does not match: " + frames[i].path.string() + " is " + std::to_string(other.first) + "x"
                      + std::to_string(other.second));
             }
         }
     }
     source.frameCount = static_cast<int>(frames.size());
-    source.bytes = 0;
-    for(const auto& frame : frames) {
-        source.frames.push_back(ListedFrame{frame.first, frame.second});
-        source.bytes += fileSizeOf(frame.first);
-    }
-    for(const auto& entry : std::filesystem::directory_iterator(directory)) {
-        if(entry.is_regular_file()) source.bytes += 0;
-    }
-    source.bytes = 0;
-    for(const auto& entry : std::filesystem::directory_iterator(directory)) {
-        if(!entry.is_regular_file()) continue;
-        const auto name = entry.path().filename().string();
-        if(name.empty() || name.front() == '.') continue;
-        source.bytes += fileSizeOf(entry.path());
-    }
+    source.bytes = directoryBytes;
+    for(const auto& frame : frames) source.frames.push_back(ListedFrame{frame.path, frame.sequence});
     return source;
 }
 
@@ -339,6 +345,7 @@ struct LibavVideo {
     AVFrame* frame = nullptr;
     int streamIndex = -1;
     int next = 0;
+    bool jpeg = false;
     ~LibavVideo() {
         if(frame) av_frame_free(&frame);
         if(packet) av_packet_free(&packet);
@@ -368,6 +375,7 @@ void openLibav(LibavVideo& video, const std::filesystem::path& path) {
     }
     video.packet = av_packet_alloc();
     video.frame = av_frame_alloc();
+    video.jpeg = stream->codecpar->codec_id == AV_CODEC_ID_MJPEG;
 }
 
 ListedSource probeLibav(const std::filesystem::path& path) {
@@ -392,6 +400,7 @@ ListedSource probeLibav(const std::filesystem::path& path) {
     }
     if(!yuv420 || bitDepth != 8) {
         const auto name = source.profile.empty() ? source.codec : source.profile;
+        if(bitDepth != 8) fail("ReplayVideo bit depth " + std::to_string(bitDepth) + " is not supported: " + name);
         fail("ReplayVideo profile " + name + " is not supported");
     }
     if(stream->nb_frames > 0)
@@ -426,7 +435,7 @@ DecodedPixels readLibavFrame(LibavVideo& video) {
             pixels.width = width;
             pixels.height = height;
             pixels.type = ImgFrame::Type::YUV420p;
-            pixels.fullRange = video.frame->format == AV_PIX_FMT_YUVJ420P;
+            pixels.fullRange = video.jpeg || video.frame->format == AV_PIX_FMT_YUVJ420P;
             const int ySize = width * height;
             const int cSize = ySize / 4;
             pixels.data.resize(static_cast<std::size_t>(ySize + 2 * cSize));
@@ -456,6 +465,56 @@ DecodedPixels readLibavFrame(LibavVideo& video) {
 }
 #endif
 
+std::string lowerCodecTag(const std::string& tag) {
+    std::string codec = tag;
+    for(char& character : codec) {
+        const auto value = static_cast<unsigned char>(character);
+        if(value < 32 || value > 126)
+            character = ' ';
+        else
+            character = static_cast<char>(std::tolower(value));
+    }
+    return codec;
+}
+
+bool bytesAt(const std::vector<char>& data, std::size_t index, const char* key, std::size_t length) {
+    if(index + length > data.size()) return false;
+    return std::memcmp(data.data() + index, key, length) == 0;
+}
+
+int openCvBitDepthMinus8(const std::filesystem::path& path) {
+    std::ifstream in(path, std::ios::binary);
+    if(!in) return 0;
+    std::vector<char> data(4 << 20);
+    in.read(data.data(), static_cast<std::streamsize>(data.size()));
+    data.resize(static_cast<std::size_t>(std::max<std::streamsize>(0, in.gcount())));
+    for(std::size_t index = 0; index + 22 < data.size(); index++) {
+        if(!bytesAt(data, index, "hvcC", 4)) continue;
+        if(static_cast<unsigned char>(data[index + 4]) != 1) continue;
+        const int luma = static_cast<unsigned char>(data[index + 21]) & 0x7;
+        if(luma != 0) return luma;
+    }
+    for(std::size_t index = 0; index + 6 < data.size(); index++) {
+        if(!bytesAt(data, index, "avcC", 4)) continue;
+        if(static_cast<unsigned char>(data[index + 4]) != 1) continue;
+        const auto profile = static_cast<unsigned char>(data[index + 5]);
+        if(profile == 110 || profile == 122) return 2;
+    }
+    return 0;
+}
+
+void rejectOpenCvCodec(const std::filesystem::path& path, const std::string& codec) {
+    const bool vp9 = codec.find("vp9") != std::string::npos || codec.find("vp09") != std::string::npos || codec.find("vp90") != std::string::npos;
+    const bool vp8 = codec.find("vp8") != std::string::npos || codec.find("vp08") != std::string::npos || codec.find("vp80") != std::string::npos;
+    if(vp9) fail("ReplayVideo codec vp9 is not supported");
+    if(vp8) fail("ReplayVideo codec vp8 is not supported");
+    const int minus8 = openCvBitDepthMinus8(path);
+    if(minus8 > 0) {
+        const auto name = codec.find_first_not_of(' ') == std::string::npos ? std::string("hevc") : codec;
+        fail("ReplayVideo bit depth " + std::to_string(8 + minus8) + " is not supported: " + name);
+    }
+}
+
 ListedSource probeOpenCv(const std::filesystem::path& path) {
     cv::VideoCapture capture(path.string(), cv::CAP_FFMPEG);
     if(!capture.isOpened()) fail("ReplayVideo missing decoder support for " + path.string());
@@ -474,6 +533,7 @@ ListedSource probeOpenCv(const std::filesystem::path& path) {
                    static_cast<char>((fourcc >> 24) & 0xff),
                    0};
     source.codec = tag;
+    rejectOpenCvCodec(path, lowerCodecTag(tag));
     if(source.frameCount <= 0 || source.width <= 0 || source.height <= 0) fail("ReplayVideo source is empty: " + path.string());
     source.sourceType = ImgFrame::Type::YUV420p;
     source.bytes = fileSizeOf(path);
@@ -496,7 +556,7 @@ void packYuv(DecodedPixels& pixels, const cv::Mat& y, const cv::Mat& u, const cv
     pixels.width = width;
     pixels.height = height;
     pixels.type = type;
-    if(type == ImgFrame::Type::GRAY8) {
+    if(type == ImgFrame::Type::GRAY8 || type == ImgFrame::Type::RAW8) {
         pixels.data.assign(y.datastart, y.dataend);
         return;
     }
@@ -554,7 +614,7 @@ void bgrToPlanes(const cv::Mat& bgr, bool fullRange, cv::Mat& y, cv::Mat& u, cv:
 
 bool isReplayOutType(ImgFrame::Type type) {
     return type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p || type == ImgFrame::Type::GRAY8 || type == ImgFrame::Type::RGB888i
-           || type == ImgFrame::Type::BGR888i;
+           || type == ImgFrame::Type::BGR888i || type == ImgFrame::Type::RGB888p || type == ImgFrame::Type::BGR888p || type == ImgFrame::Type::RAW8;
 }
 
 std::string frameTypeName(ImgFrame::Type type) {
@@ -619,6 +679,8 @@ struct FrameReader::State {
 #endif
     cv::VideoCapture capture;
     bool opencv = false;
+    bool mjpeg = false;
+    bool rawYuv = false;
 };
 
 FrameReader::FrameReader() = default;
@@ -637,7 +699,13 @@ void FrameReader::open(const ListedSource& source) {
         openLibav(*state->libav, state->source.path);
 #else
         state->opencv = true;
+        std::string codec = state->source.codec;
+        std::transform(codec.begin(), codec.end(), codec.begin(), [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+        state->mjpeg = codec.find("mjp") != std::string::npos || codec.find("jpeg") != std::string::npos;
+        state->rawYuv = codec.find("ffv1") != std::string::npos;
+        if(state->rawYuv) state->capture.set(cv::CAP_PROP_CONVERT_RGB, 0);
         state->capture.open(state->source.path.string(), cv::CAP_FFMPEG);
+        if(state->rawYuv) state->capture.set(cv::CAP_PROP_CONVERT_RGB, 0);
         if(!state->capture.isOpened()) fail("ReplayVideo missing decoder support for " + state->source.path.string());
 #endif
     }
@@ -698,10 +766,21 @@ DecodedPixels FrameReader::read(int index) {
             cv::Mat frame;
             if(!state->capture.read(frame) || frame.empty()) fail("ReplayVideo frame decode failed");
             DecodedPixels pixels;
-            pixels.width = frame.cols;
-            pixels.height = frame.rows;
-            pixels.type = ImgFrame::Type::BGR888i;
-            pixels.fullRange = false;
+            const bool i420 = state->rawYuv && frame.type() == CV_8UC1 && frame.cols == state->source.width && state->source.height > 0
+                              && frame.rows == state->source.height * 3 / 2;
+            if(i420) {
+                pixels.width = state->source.width;
+                pixels.height = state->source.height;
+                pixels.type = ImgFrame::Type::YUV420p;
+                pixels.fullRange = state->mjpeg;
+            } else {
+                if(frame.channels() == 4) cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR);
+                if(frame.channels() == 1) cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
+                pixels.width = frame.cols;
+                pixels.height = frame.rows;
+                pixels.type = ImgFrame::Type::BGR888i;
+                pixels.fullRange = state->mjpeg;
+            }
             if(!frame.isContinuous()) frame = frame.clone();
             pixels.data.assign(frame.datastart, frame.dataend);
             state->next++;
@@ -738,10 +817,29 @@ DecodedPixels convertPixels(const DecodedPixels& pixels, ImgFrame::Type outType,
     };
     const int chromaWidth = width / 2 + width % 2;
     const int chromaHeight = height / 2 + height % 2;
-    if(pixels.type == ImgFrame::Type::GRAY8) {
+    if(pixels.type == ImgFrame::Type::GRAY8 || pixels.type == ImgFrame::Type::RAW8) {
         y = plane(height, width, CV_8UC1, firstOffset, rowStride);
         u = cv::Mat(chromaHeight, chromaWidth, CV_8UC1, cv::Scalar(128));
         v = u.clone();
+    } else if(pixels.type == ImgFrame::Type::BGR888p || pixels.type == ImgFrame::Type::RGB888p) {
+        const auto area = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+        const auto stride = pixels.fb.stride != 0 ? static_cast<std::size_t>(pixels.fb.stride) : static_cast<std::size_t>(width);
+        const auto plane0 = explicitOffsets ? static_cast<std::size_t>(pixels.fb.p1Offset) : 0;
+        const auto plane1 = explicitOffsets ? static_cast<std::size_t>(pixels.fb.p2Offset) : area;
+        const auto plane2 = explicitOffsets ? static_cast<std::size_t>(pixels.fb.p3Offset) : area * 2;
+        const auto channel0 = plane(height, width, CV_8UC1, plane0, stride);
+        const auto channel1 = plane(height, width, CV_8UC1, plane1, stride);
+        const auto channel2 = plane(height, width, CV_8UC1, plane2, stride);
+        bgr.create(height, width, CV_8UC3);
+        for(int row = 0; row < height; row++) {
+            for(int col = 0; col < width; col++) {
+                const auto b = pixels.type == ImgFrame::Type::BGR888p ? channel0.at<std::uint8_t>(row, col) : channel2.at<std::uint8_t>(row, col);
+                const auto g = channel1.at<std::uint8_t>(row, col);
+                const auto r = pixels.type == ImgFrame::Type::BGR888p ? channel2.at<std::uint8_t>(row, col) : channel0.at<std::uint8_t>(row, col);
+                bgr.at<cv::Vec3b>(row, col) = cv::Vec3b(b, g, r);
+            }
+        }
+        bgrToPlanes(bgr, pixels.fullRange, y, u, v);
     } else if(pixels.type == ImgFrame::Type::BGR888i || pixels.type == ImgFrame::Type::RGB888i) {
         bgr = plane(height, width, CV_8UC3, firstOffset, rowStride);
         if(pixels.type == ImgFrame::Type::RGB888i) cv::cvtColor(bgr, bgr, cv::COLOR_RGB2BGR);
@@ -774,8 +872,33 @@ DecodedPixels convertPixels(const DecodedPixels& pixels, ImgFrame::Type outType,
     out.width = outW;
     out.height = outH;
     out.type = outType;
-    if(outType == ImgFrame::Type::GRAY8 || outType == ImgFrame::Type::YUV420p || outType == ImgFrame::Type::NV12) {
+    if(outType == ImgFrame::Type::GRAY8 || outType == ImgFrame::Type::RAW8 || outType == ImgFrame::Type::YUV420p || outType == ImgFrame::Type::NV12) {
         packYuv(out, y, u, v, outType);
+        return out;
+    }
+    if(outType == ImgFrame::Type::RGB888p || outType == ImgFrame::Type::BGR888p) {
+        const int area = outW * outH;
+        out.data.resize(static_cast<std::size_t>(area) * 3);
+        for(int row = 0; row < outH; row++) {
+            for(int col = 0; col < outW; col++) {
+                const int uvRow = row / 2;
+                const int uvCol = col / 2;
+                int r = 0;
+                int g = 0;
+                int b = 0;
+                yuvToRgb(y.at<std::uint8_t>(row, col), u.at<std::uint8_t>(uvRow, uvCol), v.at<std::uint8_t>(uvRow, uvCol), r, g, b);
+                const auto pixel = static_cast<std::size_t>(row * outW + col);
+                if(outType == ImgFrame::Type::BGR888p) {
+                    out.data[pixel] = static_cast<std::uint8_t>(b);
+                    out.data[static_cast<std::size_t>(area) + pixel] = static_cast<std::uint8_t>(g);
+                    out.data[static_cast<std::size_t>(area) * 2 + pixel] = static_cast<std::uint8_t>(r);
+                } else {
+                    out.data[pixel] = static_cast<std::uint8_t>(r);
+                    out.data[static_cast<std::size_t>(area) + pixel] = static_cast<std::uint8_t>(g);
+                    out.data[static_cast<std::size_t>(area) * 2 + pixel] = static_cast<std::uint8_t>(b);
+                }
+            }
+        }
         return out;
     }
     if(outType != ImgFrame::Type::RGB888i && outType != ImgFrame::Type::BGR888i) {
@@ -829,12 +952,18 @@ std::shared_ptr<ImgFrame> pixelsToFrame(const DecodedPixels& pixels) {
     frame->sourceFb.type = pixels.type;
     frame->sourceFb.width = width;
     frame->sourceFb.height = height;
-    if(pixels.type == ImgFrame::Type::GRAY8) {
+    if(pixels.type == ImgFrame::Type::GRAY8 || pixels.type == ImgFrame::Type::RAW8) {
         frame->fb.stride = width;
         frame->fb.bytesPP = 1;
         frame->fb.p1Offset = 0;
         frame->fb.p2Offset = 0;
         frame->fb.p3Offset = 0;
+    } else if(pixels.type == ImgFrame::Type::RGB888p || pixels.type == ImgFrame::Type::BGR888p) {
+        frame->fb.stride = width;
+        frame->fb.bytesPP = 1;
+        frame->fb.p1Offset = 0;
+        frame->fb.p2Offset = ySize;
+        frame->fb.p3Offset = ySize * 2;
     } else if(pixels.type == ImgFrame::Type::YUV420p) {
         frame->fb.stride = width;
         frame->fb.bytesPP = 1;

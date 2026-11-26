@@ -21,11 +21,11 @@ Video must be 8-bit 4:2:0. VP8 and VP9 are not accepted. A `.dai` file that hold
 
 `setArchiveEntry(name)` selects one stream inside an archive or a holistic directory. The entry is the record name, for example `CameraCAM_A`. It can name a directory, `<name>.mp4`, `<name>.avi`, or `<name>.mcap`.
 
-`setReplayMetadataFile` attaches an `ImgFrame` `.mcap` sidecar. For a directory, `<stream>.mcap` is used when it is present. A `.dai` stream ignores that sidecar and logs one warning. The message count and the frame size in the sidecar must match the frames.
+`setReplayMetadataFile` attaches an `ImgFrame` `.mcap` sidecar. For a directory, `<stream>.mcap` is used when it is present. A `.dai` stream ignores that sidecar and logs one warning. A sidecar with fewer messages than frames fails at start. Extra messages are not a mismatch: a frame is paired by sequence number when those numbers identify it, and that paired frame's size must match.
 
 ## Output
 
-The default output type is `YUV420p`. `setOutFrameType` accepts `NV12`, `YUV420p`, `GRAY8`, `RGB888i`, and `BGR888i`. An unset `.dai` stream keeps the type stored in the files, including a type outside that set such as `RAW16`. Setting a type or a size on a `RAW16` stream fails at start.
+The default output type is `YUV420p`. `setOutFrameType` accepts `NV12`, `YUV420p`, `GRAY8`, `RGB888i`, `BGR888i`, `RGB888p`, `BGR888p`, and `RAW8`. An unset `.dai` stream keeps the type stored in the files, including a type outside that set such as `RAW16`. Setting a type or a size on a `RAW16` stream fails at start.
 
 `setSize` resizes. Both sides must be positive and even. The check runs at start. A size equal to the source is not resized, and the bytes stay equal. The frame transformation is scaled by the same ratio. There is no half-pixel shift.
 
@@ -65,7 +65,7 @@ The default limit is 32 GiB. `ReplayVideo::setReplayCacheLimit` changes it and d
 
 `Camera::setMockIsp` and `Camera::build` link the replay output to `mockIsp`. They set the output type to `NV12` on RVC4 and to `YUV420p` on RVC2, and they copy the size and fps onto the mock ISP. A device path with no `setSize` asks the device for the size. An archive with no `setSize` fails in `setMockIsp` because the size is not known until the recording is opened by holistic replay.
 
-`NeuralNetwork::build(ReplayVideo, model, fps)` sets the type, size, and fps from the model. A model type outside the five supported types fails and the error names the type.
+`NeuralNetwork::build(ReplayVideo, model, fps)` sets the type, size, and fps from the model. A model type outside the accepted output types fails and the error names the type.
 
 ## Holistic replay
 
@@ -73,7 +73,7 @@ The default limit is 32 GiB. `ReplayVideo::setReplayCacheLimit` changes it and d
 
 The whole recording is one cache entry. A directory is packed into one tar so it can be uploaded as that entry. The pack is not the size probe. The probe reads the video, the first and last `.dai` frame, or the `.mcap` so the camera mock ISP size is known before start.
 
-A camera stream is a video plus metadata, or a directory of `.dai` frames, or a `.mcap` of full frames. The metadata count must match the frame count. A recording that breaks that rule fails at start.
+A camera stream is a video plus metadata, or a directory of `.dai` frames, or a `.mcap` of full frames. Fewer metadata messages than frames fails at start. Extra metadata messages do not.
 
 ## What this repository does not do
 

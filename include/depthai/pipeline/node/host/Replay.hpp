@@ -94,7 +94,7 @@ class ReplayVideo : public DeviceNodeCRTP<DeviceNode, ReplayVideo, ReplayVideoPr
     /** With loop off, stop the pipeline after the last frame. Ignored when loop is on. */
     ReplayVideo& setStopPipelineAtEnd(bool stopPipeline);
 
-    /** True for NV12, YUV420p, GRAY8, RGB888i, and BGR888i. */
+    /** True for NV12, YUV420p, GRAY8, RGB888i, BGR888i, RGB888p, BGR888p, and RAW8. */
     static bool isSupportedOutFrameType(ImgFrame::Type type);
 
     /** Host-cache limit in bytes. The default is 32 GiB. A new limit removes nothing by itself. */

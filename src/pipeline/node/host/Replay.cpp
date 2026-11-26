@@ -107,9 +107,10 @@ bool deviceIsRvc4(const DeviceNode& node) {
 
 std::uint64_t outputBytes(ImgFrame::Type type, int width, int height) {
     const auto pixels = static_cast<std::uint64_t>(width) * static_cast<std::uint64_t>(height);
-    if(type == ImgFrame::Type::GRAY8) return pixels;
+    if(type == ImgFrame::Type::GRAY8 || type == ImgFrame::Type::RAW8) return pixels;
     if(type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p) return pixels * 3 / 2;
-    if(type == ImgFrame::Type::RGB888i || type == ImgFrame::Type::BGR888i) return pixels * 3;
+    if(type == ImgFrame::Type::RGB888i || type == ImgFrame::Type::BGR888i || type == ImgFrame::Type::RGB888p || type == ImgFrame::Type::BGR888p)
+        return pixels * 3;
     return pixels;
 }
 
@@ -154,15 +155,61 @@ FileSnap snapOf(const std::filesystem::path& path) {
     return snap;
 }
 
-void checkSnaps(const std::vector<FileSnap>& snaps) {
-    for(const auto& snap : snaps) {
-        std::error_code error;
-        const auto size = std::filesystem::file_size(snap.path, error);
-        const auto mtime = std::filesystem::last_write_time(snap.path, error);
-        if(error || size != snap.size || mtime != snap.mtime) {
-            throw std::runtime_error("ReplayVideo frame changed during replay: " + snap.path.string());
-        }
+void checkSnap(const FileSnap& snap) {
+    std::error_code error;
+    const auto size = std::filesystem::file_size(snap.path, error);
+    const auto mtime = std::filesystem::last_write_time(snap.path, error);
+    if(error || size != snap.size || mtime != snap.mtime) {
+        throw std::runtime_error("ReplayVideo frame changed during replay: " + snap.path.string());
     }
+}
+
+void checkSnaps(const std::vector<FileSnap>& snaps) {
+    for(const auto& snap : snaps) checkSnap(snap);
+}
+
+void checkCurrentSnap(const std::vector<FileSnap>& snaps, int index) {
+    if(snaps.empty()) return;
+    if(snaps.size() == 1) {
+        checkSnap(snaps.front());
+        return;
+    }
+    if(index < 0 || index >= static_cast<int>(snaps.size())) return;
+    checkSnap(snaps[static_cast<std::size_t>(index)]);
+}
+
+bool archiveNameEscapes(const char* name) {
+    if(name == nullptr || name[0] == '\0') return true;
+    const std::filesystem::path path(name);
+    if(path.is_absolute() || path.has_root_name()) return true;
+    for(const auto& part : path) {
+        if(part == "..") return true;
+    }
+    return false;
+}
+
+void rejectEscapingArchiveLinks(const std::filesystem::path& archive) {
+    struct archive* reader = archive_read_new();
+    if(reader == nullptr) return;
+    archive_read_support_filter_all(reader);
+    archive_read_support_format_all(reader);
+    if(archive_read_open_filename(reader, archive.string().c_str(), 10240) != ARCHIVE_OK) {
+        archive_read_free(reader);
+        return;
+    }
+    struct archive_entry* entry = nullptr;
+    while(archive_read_next_header(reader, &entry) == ARCHIVE_OK) {
+        const char* link = archive_entry_symlink(entry);
+        if(link == nullptr) link = archive_entry_hardlink(entry);
+        if(link != nullptr && archiveNameEscapes(link)) {
+            const char* name = archive_entry_pathname(entry);
+            const std::string member = name == nullptr ? std::string(link) : std::string(name);
+            archive_read_free(reader);
+            throw std::runtime_error("ReplayVideo archive entry escapes: " + member);
+        }
+        archive_read_data_skip(reader);
+    }
+    archive_read_free(reader);
 }
 
 struct RecordedTiming {
@@ -758,9 +805,11 @@ McapScan scanMcap(const std::filesystem::path& path, bool imgFramesOnly, const c
             scan.deviceFirst = buffer->getTimestampDevice();
             first = false;
         } else {
-            if(buffer->getSequenceNum() <= previousSeq) {
+            const auto sequence = buffer->getSequenceNum();
+            const bool constantZero = sequence == 0 && previousSeq == 0;
+            if(sequence < previousSeq || (sequence == previousSeq && !constantZero)) {
                 throw std::runtime_error(std::string(nodeName) + " sequence numbers do not increase: " + std::to_string(previousSeq) + " then "
-                                         + std::to_string(buffer->getSequenceNum()));
+                                         + std::to_string(sequence));
             }
             if(buffer->getTimestampDevice() < previousDevice) throw std::runtime_error(std::string(nodeName) + " timestamps decrease");
         }
@@ -773,6 +822,63 @@ McapScan scanMcap(const std::filesystem::path& path, bool imgFramesOnly, const c
     }
     if(scan.count == 0) throw std::runtime_error(std::string(nodeName) + " metadata file is empty: " + path.string());
     return scan;
+}
+
+std::vector<std::shared_ptr<ImgFrame>> alignMetadata(const McapScan& scan, int frameCount, const std::vector<replay::ListedFrame>& frames) {
+    if(scan.count < frameCount) {
+        throw std::runtime_error("ReplayVideo metadata count " + std::to_string(scan.count) + " does not match frame count " + std::to_string(frameCount));
+    }
+    std::map<std::int64_t, int> bySequence;
+    bool unique = true;
+    bool anyNonZero = false;
+    for(int index = 0; index < scan.count; index++) {
+        const auto sequence = scan.frames[static_cast<std::size_t>(index)]->getSequenceNum();
+        if(sequence != 0) anyNonZero = true;
+        if(!bySequence.emplace(sequence, index).second) unique = false;
+    }
+    auto takeOrder = [&]() {
+        std::vector<std::shared_ptr<ImgFrame>> aligned;
+        aligned.reserve(static_cast<std::size_t>(frameCount));
+        for(int index = 0; index < frameCount; index++) aligned.push_back(scan.frames[static_cast<std::size_t>(index)]);
+        return aligned;
+    };
+    auto takeSequences = [&](const std::vector<std::int64_t>& sequences) {
+        std::vector<std::shared_ptr<ImgFrame>> aligned;
+        aligned.reserve(sequences.size());
+        for(const auto sequence : sequences) aligned.push_back(scan.frames[static_cast<std::size_t>(bySequence.at(sequence))]);
+        return aligned;
+    };
+    if(!frames.empty() && unique && anyNonZero && static_cast<int>(frames.size()) == frameCount) {
+        bool allPresent = true;
+        for(const auto& frame : frames) {
+            if(bySequence.find(frame.sequence) == bySequence.end()) {
+                allPresent = false;
+                break;
+            }
+        }
+        if(allPresent) {
+            std::vector<std::int64_t> sequences;
+            sequences.reserve(frames.size());
+            for(const auto& frame : frames) sequences.push_back(frame.sequence);
+            return takeSequences(sequences);
+        }
+        if(scan.count == frameCount) throw std::runtime_error("ReplayVideo metadata does not match the frames");
+    }
+    if(frames.empty() && unique && anyNonZero) {
+        bool indexed = true;
+        for(int index = 0; index < frameCount; index++) {
+            if(bySequence.find(index) == bySequence.end()) {
+                indexed = false;
+                break;
+            }
+        }
+        if(indexed) {
+            std::vector<std::int64_t> sequences(static_cast<std::size_t>(frameCount));
+            for(int index = 0; index < frameCount; index++) sequences[static_cast<std::size_t>(index)] = index;
+            return takeSequences(sequences);
+        }
+    }
+    return takeOrder();
 }
 #endif
 
@@ -1150,6 +1256,7 @@ void ReplayVideo::buildStage1() {
 
         if(onHost && archive) {
             hash = replay::sha256OfFile(sourcePath);
+            rejectEscapingArchiveLinks(sourcePath);
             const auto peak = static_cast<std::uint64_t>(std::filesystem::file_size(sourcePath)) + archiveContentBytes(sourcePath);
             replay::CacheSlotRequest request;
             request.key = hash;
@@ -1280,22 +1387,19 @@ void ReplayVideo::buildStage1() {
         }
         if(!metadataPath.empty()) {
             auto scan = scanMcap(metadataPath, true, "ReplayVideo");
-            if(scan.count != runtime->listed.frameCount) {
-                throw std::runtime_error("ReplayVideo metadata count " + std::to_string(scan.count) + " does not match frame count "
-                                         + std::to_string(runtime->listed.frameCount));
-            }
-            const auto message = scan.frames.front();
+            auto aligned = alignMetadata(scan, runtime->listed.frameCount, runtime->listed.frames);
+            const auto message = aligned.front();
             if(message != nullptr
                && (static_cast<int>(message->getWidth()) != runtime->listed.width || static_cast<int>(message->getHeight()) != runtime->listed.height)) {
                 throw std::runtime_error("ReplayVideo metadata frame size does not match: message 0 is " + std::to_string(message->getWidth()) + "x"
                                          + std::to_string(message->getHeight()));
             }
-            runtime->metadata = std::move(scan.frames);
+            runtime->seqFirst = aligned.front()->getSequenceNum();
+            runtime->seqLast = aligned.back()->getSequenceNum();
+            runtime->deviceFirst = aligned.front()->getTimestampDevice();
+            runtime->deviceLast = aligned.back()->getTimestampDevice();
+            runtime->metadata = std::move(aligned);
             runtime->recorded = true;
-            runtime->seqFirst = scan.seqFirst;
-            runtime->seqLast = scan.seqLast;
-            runtime->deviceFirst = scan.deviceFirst;
-            runtime->deviceLast = scan.deviceLast;
         }
 
         if(runtime->listed.kind == replay::ListedSource::Kind::Video) runtime->snaps.push_back(snapOf(runtime->listed.path));
@@ -1332,7 +1436,7 @@ void ReplayVideo::buildStage1() {
             if(!runtime->usePredecoded) {
                 try {
                     for(int index = 0; index < runtime->count; index++) {
-                        checkSnaps(runtime->snaps);
+                        checkCurrentSnap(runtime->snaps, index);
                         auto pixels = runtime->reader.read(index);
                         if(runtime->listed.dai && metadataPath.empty()) noteDaiTiming(*runtime, pixels, index);
                         if(decodingToCache) {
@@ -1419,7 +1523,7 @@ void ReplayVideo::run() {
                 break;
             }
         }
-        checkSnaps(runtime->snaps);
+        checkCurrentSnap(runtime->snaps, index);
         std::shared_ptr<ImgFrame> frame;
         RecordedTiming timing;
         if(runtime->usePredecoded) {
@@ -1646,6 +1750,7 @@ void ReplayMetadataOnly::buildStage1() {
             const bool archive = ext.rfind(".tar") != std::string::npos || ext.rfind(".tgz") != std::string::npos;
             if(archive) {
                 const auto hash = replay::sha256OfFile(sourcePath);
+                rejectEscapingArchiveLinks(sourcePath);
                 const auto peak = static_cast<std::uint64_t>(std::filesystem::file_size(sourcePath)) + archiveContentBytes(sourcePath);
                 replay::CacheSlotRequest request;
                 request.key = hash;
@@ -1770,7 +1875,7 @@ void ReplayMetadataOnly::run() {
             else if(havePrevious)
                 recordedInterval = timing.timestampDevice - previousDevice;
         }
-        checkSnaps(runtime->snaps);
+        checkCurrentSnap(runtime->snaps, index);
         const int pass = runtime->count == 0 ? 0 : sent / runtime->count;
         applyRecorded(buffer, *runtime, timing, pass);
         previousDevice = timing.timestampDevice;
