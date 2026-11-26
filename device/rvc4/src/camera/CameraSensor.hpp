@@ -125,6 +125,7 @@ class CameraSensor : public camera3_callback_ops_t {
     // AF and AE regions are clamped to the active array, read once the camera is opened.
     std::optional<std::pair<int32_t, int32_t>> activeArraySize;
     mutable bool warnedRegionClamped{false};
+    bool warnedBrightnessUnsupported{false};
     std::optional<std::pair<int32_t, int32_t>> readActiveArraySize() const;
     std::array<int32_t, 5> toCamxRegion(const dai::CameraControl::RegionParams& region, const char* name) const;
     int stride_align = 64;
