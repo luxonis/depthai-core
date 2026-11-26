@@ -165,6 +165,7 @@ struct Book {
 };
 
 Book gBook;
+std::unordered_map<std::string, int> gScratchLeases;
 std::mutex gMutex;
 
 std::filesystem::path cacheDir() {
@@ -270,6 +271,8 @@ std::string scratchHash(const std::string& name) {
 }
 
 bool scratchHeld(const std::string& name) {
+    const auto lease = gScratchLeases.find(name);
+    if(lease != gScratchLeases.end() && lease->second > 0) return true;
     const auto hash = scratchHash(name);
     if(hash.empty()) return false;
     for(const auto& entry : gBook.entries) {
@@ -529,6 +532,30 @@ void replayCacheSetLimit(std::uint64_t bytes) {
     }
 }
 
+void replayCacheAcquireScratch(const std::string& name) {
+    std::lock_guard<std::mutex> lock(gMutex);
+    if(!isScratchName(name) || name.find('/') != std::string::npos || name.find('\\') != std::string::npos) {
+        throw std::runtime_error("Replay cache scratch name is invalid");
+    }
+    auto& count = gScratchLeases[name];
+    if(count == std::numeric_limits<int>::max()) throw std::runtime_error("Replay cache hold count overflow");
+    ++count;
+}
+
+void replayCacheReleaseScratch(const std::string& name) {
+    std::lock_guard<std::mutex> lock(gMutex);
+    const auto found = gScratchLeases.find(name);
+    if(found == gScratchLeases.end()) return;
+    if(found->second > 0) --found->second;
+    if(found->second <= 0) gScratchLeases.erase(found);
+}
+
+int replayCacheScratchHolders(const std::string& name) {
+    std::lock_guard<std::mutex> lock(gMutex);
+    const auto found = gScratchLeases.find(name);
+    return found == gScratchLeases.end() ? 0 : found->second;
+}
+
 void replayCacheClear() {
     std::lock_guard<std::mutex> lock(gMutex);
     loadIndex();
@@ -542,6 +569,7 @@ void replayCacheClear() {
         std::filesystem::remove_all(blobPath(entry.key), error);
     }
     for(const auto& dir : scratchDirs()) {
+        if(scratchHeld(dir.name)) continue;
         std::error_code error;
         std::filesystem::remove_all(dir.path, error);
     }

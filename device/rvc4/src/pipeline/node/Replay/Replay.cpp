@@ -16,6 +16,7 @@
 #include <functional>
 #include <mutex>
 #include <limits>
+#include <magic_enum/magic_enum.hpp>
 #include <optional>
 #include <stdexcept>
 #include <set>
@@ -58,6 +59,37 @@ class RecordingReadLease {
     std::shared_ptr<RecordingStoreDevice> store = recordingStore();
     std::string name;
 };
+
+class ScratchDirLease {
+   public:
+    ScratchDirLease() = default;
+    ScratchDirLease(const ScratchDirLease&) = delete;
+    ScratchDirLease& operator=(const ScratchDirLease&) = delete;
+    void hold(const std::string& directoryName) {
+        replayCacheAcquireScratch(directoryName);
+        held = directoryName;
+    }
+    ~ScratchDirLease() {
+        if(!held.empty()) replayCacheReleaseScratch(held);
+    }
+
+   private:
+    std::string held;
+};
+
+void holdScratch(std::vector<std::unique_ptr<ScratchDirLease>>& leases, const std::string& name) {
+    auto lease = std::make_unique<ScratchDirLease>();
+    lease->hold(name);
+    leases.push_back(std::move(lease));
+}
+
+std::string unpackScratchName(const std::filesystem::path& archive, const std::string& hash) {
+    return "unpack_" + (hash.empty() ? archive.filename().string() : hash);
+}
+
+std::string preScratchName(const std::string& hash) {
+    return "pre_" + (hash.empty() ? std::string("local") : hash);
+}
 
 struct Chain {
     const char* demux;
@@ -267,10 +299,15 @@ class GstPlayer {
         }
         GstBus* bus = gst_element_get_bus(pipeline);
         GstMessage* message = gst_bus_timed_pop_filtered(bus, 5 * GST_SECOND, static_cast<GstMessageType>(GST_MESSAGE_ERROR | GST_MESSAGE_ASYNC_DONE));
+        const bool timedOut = message == nullptr;
         bool failed = message != nullptr && GST_MESSAGE_TYPE(message) == GST_MESSAGE_ERROR;
         if(message != nullptr) gst_message_unref(message);
         GstSample* sample = nullptr;
-        if(!failed) {
+        if(!failed && timedOut) {
+            // A chain that posts neither an error nor a sample must not spend another pull timeout.
+            sample = gst_app_sink_try_pull_sample(GST_APP_SINK(appsink), 0);
+            failed = sample == nullptr;
+        } else if(!failed) {
             const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
             while(sample == nullptr && std::chrono::steady_clock::now() < deadline) {
                 GstMessage* errorMessage = gst_bus_pop_filtered(bus, GST_MESSAGE_ERROR);
@@ -589,6 +626,67 @@ void copyFrameIdentity(const std::shared_ptr<ImgFrame>& dst, const std::shared_p
     dst->transformation = src->transformation;
 }
 
+bool isReplayOutType(ImgFrame::Type type) {
+    return type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p || type == ImgFrame::Type::GRAY8 || type == ImgFrame::Type::RGB888i
+           || type == ImgFrame::Type::BGR888i;
+}
+
+std::string replayTypeName(ImgFrame::Type type) {
+    const auto name = magic_enum::enum_name(type);
+    return name.empty() ? std::string("unsupported") : std::string(name);
+}
+
+void rgbToYuv(int red, int green, int blue, int& y, int& u, int& v, bool fullRange) {
+    if(fullRange) {
+        y = clampByte((299 * red + 587 * green + 114 * blue + 500) / 1000);
+        u = clampByte(((-169 * red - 331 * green + 500 * blue + 500) / 1000) + 128);
+        v = clampByte(((500 * red - 419 * green - 81 * blue + 500) / 1000) + 128);
+        return;
+    }
+    y = clampByte(((66 * red + 129 * green + 25 * blue + 128) >> 8) + 16);
+    u = clampByte(((-38 * red - 74 * green + 112 * blue + 128) >> 8) + 128);
+    v = clampByte(((112 * red - 94 * green - 18 * blue + 128) >> 8) + 128);
+}
+
+std::vector<std::uint8_t> nv12FromInterleaved(const std::uint8_t* src, int stride, int srcW, int srcH, bool rgb, bool fullRange) {
+    const int tightStride = srcW + srcW % 2;
+    const int chromaW = srcW / 2 + srcW % 2;
+    const int chromaH = srcH / 2 + srcH % 2;
+    std::vector<std::uint8_t> nv12(static_cast<std::size_t>(tightStride) * static_cast<std::size_t>(srcH + chromaH), 128);
+    std::vector<int> uAcc(static_cast<std::size_t>(chromaW) * static_cast<std::size_t>(chromaH));
+    std::vector<int> vAcc(uAcc.size());
+    std::vector<int> count(uAcc.size());
+    for(int row = 0; row < srcH; row++) {
+        for(int col = 0; col < srcW; col++) {
+            const auto* pixel = src + static_cast<std::size_t>(row) * static_cast<std::size_t>(stride) + static_cast<std::size_t>(col) * 3;
+            const int red = rgb ? pixel[0] : pixel[2];
+            const int green = pixel[1];
+            const int blue = rgb ? pixel[2] : pixel[0];
+            int y = 0;
+            int u = 0;
+            int v = 0;
+            rgbToYuv(red, green, blue, y, u, v, fullRange);
+            nv12[static_cast<std::size_t>(row) * static_cast<std::size_t>(tightStride) + static_cast<std::size_t>(col)] = static_cast<std::uint8_t>(y);
+            const auto index = static_cast<std::size_t>(row / 2) * static_cast<std::size_t>(chromaW) + static_cast<std::size_t>(col / 2);
+            uAcc[index] += u;
+            vAcc[index] += v;
+            count[index] += 1;
+        }
+    }
+    auto* uv = nv12.data() + static_cast<std::size_t>(tightStride) * static_cast<std::size_t>(srcH);
+    for(int row = 0; row < chromaH; row++) {
+        for(int col = 0; col < chromaW; col++) {
+            const auto index = static_cast<std::size_t>(row) * static_cast<std::size_t>(chromaW) + static_cast<std::size_t>(col);
+            const int samples = std::max(count[index], 1);
+            uv[static_cast<std::size_t>(row) * static_cast<std::size_t>(tightStride) + static_cast<std::size_t>(col) * 2] =
+                static_cast<std::uint8_t>((uAcc[index] + samples / 2) / samples);
+            uv[static_cast<std::size_t>(row) * static_cast<std::size_t>(tightStride) + static_cast<std::size_t>(col) * 2 + 1] =
+                static_cast<std::uint8_t>((vAcc[index] + samples / 2) / samples);
+        }
+    }
+    return nv12;
+}
+
 std::shared_ptr<ImgFrame> convertDaiFrame(const std::shared_ptr<ImgFrame>& src, ImgFrame::Type outType, int outW, int outH) {
     const int srcW = static_cast<int>(src->getWidth());
     const int srcH = static_cast<int>(src->getHeight());
@@ -602,8 +700,8 @@ std::shared_ptr<ImgFrame> convertDaiFrame(const std::shared_ptr<ImgFrame>& src, 
         copyFrameIdentity(frame, src);
         return frame;
     };
-    auto fromNv12 = [&](const std::uint8_t* nv12, int stride, int uvOffset) {
-        return finish(frameFromNv12(nv12, stride, uvOffset, srcW, srcH, outType, outW, outH, true, nullptr));
+    auto fromNv12 = [&](const std::uint8_t* nv12, int stride, int uvOffset, bool fullRange) {
+        return finish(frameFromNv12(nv12, stride, uvOffset, srcW, srcH, outType, outW, outH, fullRange, nullptr));
     };
     auto planeFits = [&](std::size_t offset, std::size_t stride, int rows, int cols) {
         const auto rowBytes = static_cast<std::size_t>(cols);
@@ -619,7 +717,7 @@ std::shared_ptr<ImgFrame> convertDaiFrame(const std::shared_ptr<ImgFrame>& src, 
         if(!planeFits(uv, static_cast<std::size_t>(rowStride), chromaH, srcW + srcW % 2)) {
             throw std::runtime_error("ReplayVideo frame payload is too small or has an invalid plane layout");
         }
-        return fromNv12(bytes.data() + p1, rowStride, static_cast<int>(uv - p1));
+        return fromNv12(bytes.data() + p1, rowStride, static_cast<int>(uv - p1), true);
     }
     if(src->getType() == ImgFrame::Type::GRAY8) {
         if(!planeFits(p1, static_cast<std::size_t>(rowStride), srcH, srcW)) {
@@ -632,7 +730,7 @@ std::shared_ptr<ImgFrame> convertDaiFrame(const std::shared_ptr<ImgFrame>& src, 
                         bytes.data() + p1 + static_cast<std::size_t>(row) * static_cast<std::size_t>(rowStride),
                         static_cast<std::size_t>(srcW));
         }
-        return fromNv12(nv12.data(), rowStride, rowStride * srcH);
+        return fromNv12(nv12.data(), rowStride, rowStride * srcH, true);
     }
     if(src->getType() == ImgFrame::Type::YUV420p) {
         const int chromaW = srcW / 2 + srcW % 2;
@@ -661,9 +759,18 @@ std::shared_ptr<ImgFrame> convertDaiFrame(const std::shared_ptr<ImgFrame>& src, 
                     bytes[p3 + static_cast<std::size_t>(row) * static_cast<std::size_t>(chromaStride) + static_cast<std::size_t>(col)];
             }
         }
-        return fromNv12(nv12.data(), tightStride, tightStride * srcH);
+        return fromNv12(nv12.data(), tightStride, tightStride * srcH, true);
     }
-    throw std::runtime_error("ReplayVideo output type is not supported");
+    if(src->getType() == ImgFrame::Type::RGB888i || src->getType() == ImgFrame::Type::BGR888i) {
+        const int pixelStride = src->fb.stride > 0 ? static_cast<int>(src->fb.stride) : srcW * 3;
+        if(!planeFits(p1, static_cast<std::size_t>(pixelStride), srcH, srcW * 3)) {
+            throw std::runtime_error("ReplayVideo frame payload is too small or has an invalid plane layout");
+        }
+        const auto nv12 = nv12FromInterleaved(bytes.data() + p1, pixelStride, srcW, srcH, src->getType() == ImgFrame::Type::RGB888i, false);
+        const int tightStride = srcW + srcW % 2;
+        return fromNv12(nv12.data(), tightStride, tightStride * srcH, false);
+    }
+    throw std::runtime_error(std::string("ReplayVideo output type is not supported: ") + replayTypeName(src->getType()));
 }
 
 using SamplePtr = std::unique_ptr<GstSample, decltype(&gst_sample_unref)>;
@@ -838,9 +945,11 @@ void requireReadablePayload(const std::filesystem::path& path, const std::string
 }
 
 std::filesystem::path extractArchive(const std::filesystem::path& archive, const std::string& hash) {
-    const auto root = std::filesystem::path("/data/depthai/replay_cache") / ("unpack_" + (hash.empty() ? archive.filename().string() : hash));
+    const auto name = unpackScratchName(archive, hash);
+    const auto root = std::filesystem::path("/data/depthai/replay_cache") / name;
     const auto marker = root / ".extracted-v2";
     if(std::filesystem::exists(marker)) return root;
+    if(replayCacheScratchHolders(name) > 1) throw std::runtime_error("Replay cache scratch is in use: " + name);
     // Replace partial extractions and the older extractor's cache entries.
     std::filesystem::remove_all(root);
     try {
@@ -855,7 +964,7 @@ std::filesystem::path extractArchive(const std::filesystem::path& archive, const
         std::filesystem::rename(temporary, marker);
     } catch(...) {
         std::error_code error;
-        std::filesystem::remove_all(root, error);
+        if(replayCacheScratchHolders(name) <= 1) std::filesystem::remove_all(root, error);
         throw;
     }
     return root;
@@ -908,6 +1017,7 @@ struct ReplayVideo::State {
     std::vector<std::shared_ptr<ImgFrame>> metadata;
     std::vector<std::filesystem::path> frames;
     std::unique_ptr<GstPlayer> player;
+    std::vector<std::unique_ptr<ScratchDirLease>> scratchLeases;
 };
 
 ReplayVideo::ReplayVideo() : ReplayVideo(std::make_unique<Properties>()) {}
@@ -931,6 +1041,7 @@ struct ReplayMetadataOnly::State {
     SteadyTime deviceFirst{};
     SteadyTime deviceLast{};
     SteadyTime::duration nominal{};
+    std::vector<std::unique_ptr<ScratchDirLease>> scratchLeases;
 };
 
 ReplayMetadataOnly::ReplayMetadataOnly() : ReplayMetadataOnly(std::make_unique<Properties>()) {}
@@ -1072,6 +1183,7 @@ void ReplayVideo::buildStage1() {
     recording->acquire(media);
     if(!std::filesystem::exists(media)) throw std::runtime_error("ReplayVideo source is missing: " + media.string());
     if(!std::filesystem::is_directory(media) && (isArchiveName(originalName) || isArchiveName(fileNameOf(media)))) {
+        holdScratch(state->scratchLeases, unpackScratchName(media, state->hash));
         const auto root = extractArchive(media, state->hash);
         media = properties.archiveEntrySet ? findNamed(root, properties.archiveEntry, false) : replay::selectReplayArchiveSource(root);
     }
@@ -1092,8 +1204,18 @@ void ReplayVideo::buildStage1() {
                 if(index == 0) {
                     state->srcW = static_cast<int>(probe->getWidth());
                     state->srcH = static_cast<int>(probe->getHeight());
+                    const auto sourceType = probe->getType();
                     state->passthrough = !properties.outFrameTypeSet && !properties.sizeSet;
-                    state->outType = state->passthrough ? probe->getType() : static_cast<ImgFrame::Type>(properties.outFrameType);
+                    if(state->passthrough) {
+                        state->outType = sourceType;
+                    } else if(!isReplayOutType(sourceType)) {
+                        throw std::runtime_error(std::string("ReplayVideo output type is not supported: ") + replayTypeName(sourceType));
+                    } else {
+                        state->outType = properties.outFrameTypeSet ? static_cast<ImgFrame::Type>(properties.outFrameType) : sourceType;
+                        if(!isReplayOutType(state->outType)) {
+                            throw std::runtime_error(std::string("ReplayVideo output type is not supported: ") + replayTypeName(state->outType));
+                        }
+                    }
                 }
                 if(first) {
                     state->seqFirst = probe->getSequenceNum();
@@ -1150,8 +1272,11 @@ void ReplayVideo::buildStage1() {
     }
     state->outW = properties.sizeSet ? properties.width : state->srcW;
     state->outH = properties.sizeSet ? properties.height : state->srcH;
-    if(!state->passthrough) {
+    if(!state->dai) {
         state->outType = properties.outFrameTypeSet ? static_cast<ImgFrame::Type>(properties.outFrameType) : ImgFrame::Type::YUV420p;
+    }
+    if(!state->passthrough && !isReplayOutType(state->outType)) {
+        throw std::runtime_error(std::string("ReplayVideo output type is not supported: ") + replayTypeName(state->outType));
     }
     std::filesystem::path metadata;
     if(!properties.resolvedMetadataPath.empty())
@@ -1175,8 +1300,9 @@ void ReplayVideo::buildStage1() {
     if(!state->dai && !metadata.empty() && std::filesystem::exists(metadata)) readMetadata(metadata, *state, state->count);
     if(state->recorded) state->nominal = nominalOf(state->fpsSet, state->fps, state->deviceFirst, state->deviceLast, state->count);
     if(properties.decodeMode == static_cast<std::int32_t>(ReplayDecodeMode::PRE_DECODE) && (state->player != nullptr || state->compressedImages)) {
-        const auto directory = std::filesystem::path("/data/depthai/replay_cache") / ("pre_" + (state->hash.empty() ? "local" : state->hash))
-                               / ("node_" + std::to_string(id));
+        const auto scratchName = preScratchName(state->hash);
+        holdScratch(state->scratchLeases, scratchName);
+        const auto directory = std::filesystem::path("/data/depthai/replay_cache") / scratchName / ("node_" + std::to_string(id));
         std::filesystem::create_directories(directory);
         state->predecodedStride = state->srcW + state->srcW % 2;
         state->predecodedUvOffset = state->predecodedStride * state->srcH;
@@ -1377,7 +1503,10 @@ void ReplayMetadataOnly::buildStage1() {
     const auto originalName = fileNameOf(properties.sourcePath);
     if(isArchiveName(originalName) || isArchiveName(fileNameOf(media)) || std::filesystem::is_directory(media)) {
         std::filesystem::path root = media;
-        if(!std::filesystem::is_directory(media)) root = extractArchive(media, state->hash);
+        if(!std::filesystem::is_directory(media)) {
+            holdScratch(state->scratchLeases, unpackScratchName(media, state->hash));
+            root = extractArchive(media, state->hash);
+        }
         if(properties.archiveEntry.empty()) throw std::runtime_error("ReplayMetadataOnly source is not an mcap file: " + media.string());
         media = findNamed(root, properties.archiveEntry, true);
     }
