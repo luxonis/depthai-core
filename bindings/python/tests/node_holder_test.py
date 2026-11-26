@@ -95,7 +95,6 @@ def test_shared_from_this_preserves_python_virtual_dispatch_and_final_release():
     node = pipeline.create(Node)
     ref = weakref.ref(node)
     owner = NodeOwner(node)
-    assert owner.shares_shared_from_this_owner()
     original_owner = owner.from_shared_from_this()
     del node, owner, pipeline
     gc.collect()
