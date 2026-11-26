@@ -1,0 +1,118 @@
+name: RVC4 firmware package
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        description: Target of device/rvc4/create_deployment_artifacts.sh
+        type: string
+        default: rvc4
+    secrets:
+      AK_URL:
+        required: false
+      AK_TOKEN:
+        required: false
+    outputs:
+      artifact:
+        description: Name of the artifact with the firmware package
+        value: ${{ jobs.reuse-or-build.outputs.artifact }}
+
+permissions:
+  contents: read
+
+jobs:
+  reuse-or-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    env:
+      TARGET: ${{ inputs.target }}
+      ARTIFACT: depthai-device-${{ inputs.target }}-fwp
+      AK_PUBLISH: ${{ github.event_name != 'pull_request' && secrets.AK_TOKEN != '' }}
+    outputs:
+      artifact: ${{ env.ARTIFACT }}
+    steps:
+      - name: Find the package of this run
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: ${{ runner.temp }}/rvc4-fwp
+
+      - name: Checkout
+        if: steps.download.outcome == 'failure'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 11
+
+      - name: Download the package of this commit from Artifact Keeper
+        id: ak
+        if: steps.download.outcome == 'failure'
+        run: |
+          version=$(ci/device-rvc4-fwp-ak.sh version .)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          status=0
+          ci/device-rvc4-fwp-ak.sh download "$version" "$TARGET" "$RUNNER_TEMP/rvc4-fwp-out" || status=$?
+          if [ "$status" = 0 ]; then
+            echo "downloaded=true" >> "$GITHUB_OUTPUT"
+          elif [ "$status" = 2 ]; then
+            echo "Not on Artifact Keeper: $version ($TARGET). Build it."
+          else
+            echo "::warning::Could not download $version ($TARGET) from Artifact Keeper. Build it."
+          fi
+
+      - name: Checkout the submodules
+        if: steps.download.outcome == 'failure' && steps.ak.outputs.downloaded != 'true'
+        run: git submodule update --init --recursive
+
+      - name: Build the firmware package
+        if: steps.download.outcome == 'failure' && steps.ak.outputs.downloaded != 'true'
+        env:
+          DEPTHAI_ACCEPT_QUALCOMM_LICENSE: 'yes'
+          DEPTHAI_ACCEPT_VENDOR_EULA: 'yes'
+          COLD_BUILD: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release_') || startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          if [ "$COLD_BUILD" = true ]; then
+            export DEPTHAI_DEVICE_BUILD_CACHE=0 DEPTHAI_DEVICE_SDK_CACHE="$RUNNER_TEMP/device-sdk-cache"
+            echo "Cold build for $GITHUB_REF: no published build cache, empty caches in $DEPTHAI_DEVICE_SDK_CACHE"
+          fi
+          gb_per_compile_job=4
+          memory_jobs=$(( $(awk '/^MemAvailable:/ {print int($2 / 1048576)}' /proc/meminfo) / gb_per_compile_job ))
+          DEPTHAI_BUILD_JOBS=$(( memory_jobs < 1 ? 1 : (memory_jobs < $(nproc) ? memory_jobs : $(nproc)) ))
+          export DEPTHAI_BUILD_JOBS
+          device/rvc4/create_deployment_artifacts.sh "$TARGET"
+          mkdir -p "$RUNNER_TEMP/rvc4-fwp-out"
+          package_dir="device/rvc4/build_docker_arm64_$TARGET/RelWithDebInfo"
+          cp "$package_dir/depthai-device-rvc4-fwp.tar.xz" "$package_dir/depthai-device-rvc4-fwp-LICENSE" \
+            "$package_dir/depthai-device-rvc4-fwp.spdx.json" "$package_dir/depthai-device-rvc4-fwp.cdx.json" "$RUNNER_TEMP/rvc4-fwp-out/"
+
+      - name: Check the license bundle against the committed notice file
+        if: steps.download.outcome == 'failure'
+        run: >-
+          cmake -D LICENSE_FILE="$RUNNER_TEMP/rvc4-fwp-out/depthai-device-rvc4-fwp-LICENSE"
+          -D EXPECTED=notices/depthai-device-RVC4-LICENSE
+          -D ORIGIN=${{ steps.ak.outputs.downloaded == 'true' && 'Downloaded' || 'Built' }} -P cmake/VerifyLicense.cmake
+
+      - name: Upload the firmware package
+        if: steps.download.outcome == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: |
+            ${{ runner.temp }}/rvc4-fwp-out/depthai-device-rvc4-fwp.tar.xz
+            ${{ runner.temp }}/rvc4-fwp-out/depthai-device-rvc4-fwp-LICENSE
+            ${{ runner.temp }}/rvc4-fwp-out/depthai-device-rvc4-fwp.spdx.json
+            ${{ runner.temp }}/rvc4-fwp-out/depthai-device-rvc4-fwp.cdx.json
+          if-no-files-found: error
+          overwrite: true
+
+      - name: Publish the package on Artifact Keeper
+        if: steps.download.outcome == 'failure' && steps.ak.outputs.downloaded != 'true' && env.AK_PUBLISH == 'true'
+        continue-on-error: true
+        env:
+          AK_URL: ${{ secrets.AK_URL }}
+          AK_TOKEN: ${{ secrets.AK_TOKEN }}
+          VERSION: ${{ steps.ak.outputs.version }}
+        run: |
+          ci/device-rvc4-fwp-ak.sh upload "$VERSION" "$TARGET" "$RUNNER_TEMP/rvc4-fwp-out" ||
+            { echo "::warning::Could not publish $VERSION ($TARGET) on Artifact Keeper"; exit 1; }
