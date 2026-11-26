@@ -6,8 +6,10 @@
 
 # The default is the image that depthai-core pins (DEPTHAI_DEVICE_RVC4_SDK_IMAGE in
 # cmake/Depthai/DepthaiDeviceRVC4Config.cmake). The release image has no sanitizer libraries. The dev image adds them.
+# When the registry does not have the pinned image yet (a new pin), sdk-images.sh builds it on this host from its
+# inputs on the artifact server.
 if [ -z "${DEPTHAI_DEVICE_SDK_IMAGE:-}" ]; then
-    DEPTHAI_DEVICE_SDK_IMAGE=$("$SOURCE_DIR/docker/sdk-images.sh" pinned "${DEPTHAI_DEVICE_SDK_IMAGE_KIND:-release}") || exit 1
+    DEPTHAI_DEVICE_SDK_IMAGE=$("$SOURCE_DIR/docker/sdk-images.sh" ensure "${DEPTHAI_DEVICE_SDK_IMAGE_KIND:-release}") || exit 1
 fi
 echo "Build image: $DEPTHAI_DEVICE_SDK_IMAGE"
 
