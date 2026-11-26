@@ -28,8 +28,9 @@ struct DepthTestAccess {
     static std::pair<Depth::Algorithm, Depth::Config> selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                                                     float targetFps,
                                                                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
-                                                                    const std::vector<DeviceModelZoo>& modelFilter = {}) {
-        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter);
+                                                                    const std::vector<DeviceModelZoo>& modelFilter = {},
+                                                                    bool strict = false) {
+        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter, strict);
         return {selection.algorithm, selection.config};
     }
 
@@ -1000,9 +1001,9 @@ TEST_CASE("Depth: RVC4 AUTO selects neural model from size and fps") {
 
     auto depth = pipeline.create<node::Depth>();
     const auto supported = node::Depth::getSupportedAlgorithms(device);
-    const auto expected = node::DepthTestAccess::selectBackend(std::make_pair(640u, 400u), 30.f, supported, device->getSupportedDeviceModels());
+    const auto expected = node::DepthTestAccess::selectBackend(std::make_pair(640u, 400u), 30.f, supported, device->getSupportedDeviceModels(), true);
     REQUIRE(expected.first == node::Depth::Algorithm::NEURAL);
-    REQUIRE(std::get<DeviceModelZoo>(expected.second) == DeviceModelZoo::NEURAL_DEPTH_576X360);
+    REQUIRE(std::get<DeviceModelZoo>(expected.second) == DeviceModelZoo::NEURAL_DEPTH_864X540);
 
     depth->build(node::Depth::Algorithm::AUTO, 30.f, std::pair<uint32_t, uint32_t>{640, 400});
     REQUIRE_NOTHROW((void)&depth->depth());
@@ -1039,8 +1040,11 @@ TEST_CASE("Depth: RVC4 AUTO uses requested output size from existing stereo came
     (void)rightQueue;
 
     auto depth = pipeline.create<node::Depth>();
-    const auto expected =
-        node::DepthTestAccess::selectBackend(std::make_pair(640u, 400u), 20.f, node::Depth::getSupportedAlgorithms(device), device->getSupportedDeviceModels());
+    const auto expected = node::DepthTestAccess::selectBackend(std::make_pair(640u, 400u),
+                                                               20.f,
+                                                               node::Depth::getSupportedAlgorithms(device),
+                                                               device->getSupportedDeviceModels(),
+                                                               false);
     REQUIRE(expected.first == node::Depth::Algorithm::NEURAL);
 
     REQUIRE_NOTHROW((void)&depth->depth());
@@ -1074,4 +1078,69 @@ TEST_CASE("Depth STEREO rectified access wires and streams the backend pair", "[
     const auto right = requireStreamFrame(rightQueue, std::chrono::seconds(15));
     REQUIRE(left->getWidth() == 640);
     REQUIRE(right->getHeight() == 400);
+}
+
+TEST_CASE("Depth FPS profiles wire and stream the selected backend", "[Depth][FpsProfileLive]") {
+    struct Case {
+        uint32_t width;
+        uint32_t height;
+        float fps;
+        node::Depth::Algorithm algorithm;
+    };
+    const auto c = GENERATE(Case{640, 400, 30.f, node::Depth::Algorithm::AUTO},
+                            Case{1280, 800, 30.f, node::Depth::Algorithm::AUTO},
+                            Case{640, 400, 60.f, node::Depth::Algorithm::AUTO},
+                            Case{640, 400, 30.f, node::Depth::Algorithm::NEURAL});
+    {
+        Pipeline pipeline;
+        const auto device = requireDefaultDevice(pipeline);
+        if(device->getPlatform() != Platform::RVC4) SKIP("Requires RVC4");
+        if(c.algorithm == node::Depth::Algorithm::NEURAL && !device->isNeuralDepthSupported()) SKIP("Requires NeuralDepth support");
+        (void)requireFirstStereoPairForTest(device);
+        const auto algorithms =
+            c.algorithm == node::Depth::Algorithm::AUTO ? node::Depth::getSupportedAlgorithms(device) : std::vector{node::Depth::Algorithm::NEURAL};
+        const auto models = device->getSupportedDeviceModels();
+        std::optional<std::pair<node::Depth::Algorithm, node::Depth::Config>> expected;
+        std::string selectionError;
+        try {
+            expected = node::DepthTestAccess::selectBackend(
+                std::make_pair(c.width, c.height), c.fps, algorithms, models, c.algorithm == node::Depth::Algorithm::AUTO);
+        } catch(const std::runtime_error& error) {
+            // Pinned AUTO requests must fail rather than silently accept a slower backend.
+            selectionError = error.what();
+        }
+        const auto depth = pipeline.create<node::Depth>()->build(c.algorithm, c.fps, std::make_pair(c.width, c.height));
+        if(!expected) {
+            REQUIRE(c.algorithm == node::Depth::Algorithm::AUTO);
+            REQUIRE_THROWS_WITH(depth->depth(), selectionError);
+            return;
+        }
+        const auto meter = pipeline.create<node::BenchmarkIn>();
+        meter->setRunOnHost(false);
+        meter->sendReportEveryNMessages(30);
+        depth->depth().link(meter->input);
+        REQUIRE(depth->getResolvedAlgorithm() == expected->first);
+        REQUIRE(depth->getResolvedConfig() == expected->second);
+        const auto queue = meter->report.createOutputQueue(32, false);
+        PipelineStopGuard guard(pipeline);
+        pipeline.start();
+        double seconds = 0;
+        int64_t frames = 0;
+        int warmupReports = 0;
+        // Functional streaming check only; throughput is not asserted here because host/USB jitter would make CI flaky.
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+        while(seconds < 3.0 && std::chrono::steady_clock::now() < deadline) {
+            bool timedOut = false;
+            const auto report = queue->get<BenchmarkReport>(std::chrono::milliseconds(500), timedOut);
+            if(timedOut || !report) continue;
+            if(++warmupReports <= 2) continue;
+            seconds += report->timeTotal;
+            frames += report->numMessagesReceived;
+        }
+        REQUIRE(seconds >= 3.0);
+        const auto fps = static_cast<double>(frames) / seconds;
+        INFO("size=" << c.width << "x" << c.height << " target=" << c.fps << " fps=" << fps);
+        REQUIRE(fps > 0.0);
+        REQUIRE(fps <= static_cast<double>(c.fps) * 1.1);
+    }
 }

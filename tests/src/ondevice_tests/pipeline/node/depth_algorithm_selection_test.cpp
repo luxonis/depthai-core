@@ -1,5 +1,6 @@
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch_all.hpp>
+#include <limits>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -27,8 +28,9 @@ struct DepthTestAccess {
     static std::pair<Depth::Algorithm, Depth::Config> selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                                                     float targetFps,
                                                                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
-                                                                    const std::vector<DeviceModelZoo>& modelFilter = {}) {
-        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter);
+                                                                    const std::vector<DeviceModelZoo>& modelFilter = {},
+                                                                    bool strict = false) {
+        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter, strict);
         return {selection.algorithm, selection.config};
     }
 
@@ -107,7 +109,7 @@ TEST_CASE("Depth::selectBackend picks NeuralDepth model whose tensor band fits t
         DeviceModelZoo expectedModel;
     };
     const std::vector<Case> cases = {
-        {640, 400, 30.f, DeviceModelZoo::NEURAL_DEPTH_576X360},
+        {640, 400, 30.f, DeviceModelZoo::NEURAL_DEPTH_864X540},
         {640, 400, 10.f, DeviceModelZoo::NEURAL_DEPTH_864X540},
         {640, 400, 15.f, DeviceModelZoo::NEURAL_DEPTH_864X540},
         {1280, 800, 1.5f, DeviceModelZoo::NEURAL_DEPTH_1248X780},
@@ -123,8 +125,8 @@ TEST_CASE("Depth::selectBackend picks NeuralDepth model whose tensor band fits t
 }
 
 TEST_CASE("Depth::selectBackend falls back to NAS when no NeuralDepth model meets FPS but resolution fits stereo", "[Depth]") {
-    // 1280x800: no NEURAL tensor band fits; NAS @55 FPS is the first matching profile @30 FPS (required 27).
-    const auto sel = select(std::make_pair(1280u, 800u), 30.f);
+    // 1280x800 @60 FPS (required 54): the fastest fitting NEURAL model is 960x600 @38; NAS @55 FPS is the first match.
+    const auto sel = select(std::make_pair(1280u, 800u), 60.f);
     REQUIRE(sel.algorithm == Depth::Algorithm::NEURAL_ASSISTED_STEREO);
     REQUIRE(std::holds_alternative<std::monostate>(sel.config));
 }
@@ -169,14 +171,13 @@ TEST_CASE("Depth::selectBackend picks GPUStereo when it is the only backend that
 TEST_CASE("Depth::selectBackend rejects NeuralAssistedStereo above its 1280x800 cap", "[Depth]") {
     const std::vector<Depth::Algorithm> nasOnly = {Depth::Algorithm::NEURAL_ASSISTED_STEREO};
     // 1280x1000 exceeds NAS height cap (800).
-    const auto sel = select(std::make_pair(1280u, 1000u), 30.f, nasOnly);
-    REQUIRE(sel.algorithm == Depth::Algorithm::STEREO);
-    REQUIRE(std::get<StereoDepth::PresetMode>(sel.config) == StereoDepth::PresetMode::FAST_ACCURACY);
+    REQUIRE_THROWS_WITH(select(std::make_pair(1280u, 1000u), 30.f, nasOnly), Catch::Matchers::ContainsSubstring("no available algorithm"));
+    REQUIRE_THROWS_WITH(select(std::make_pair(1280u, 1000u), 30.f, nasOnly), Catch::Matchers::ContainsSubstring("1280x1000"));
 }
 
 TEST_CASE("Depth::selectBackend without resolution picks largest NeuralDepth meeting FPS", "[Depth]") {
     REQUIRE(std::get<DeviceModelZoo>(select(std::nullopt, 5.f).config) == DeviceModelZoo::NEURAL_DEPTH_1248X780);
-    REQUIRE(std::get<DeviceModelZoo>(select(std::nullopt, 30.f).config) == DeviceModelZoo::NEURAL_DEPTH_576X360);
+    REQUIRE(std::get<DeviceModelZoo>(select(std::nullopt, 30.f).config) == DeviceModelZoo::NEURAL_DEPTH_1056X660);
 }
 
 TEST_CASE("Depth::selectBackend without NeuralDepth falls through to StereoDepth presets by quality and FPS", "[Depth]") {
@@ -221,4 +222,92 @@ TEST_CASE("Depth rectified access forwards backend outputs and locks configurati
     REQUIRE(&depth->rectifiedRight() == &stereo->rectifiedRight);
     REQUIRE(&depth->depth() == &stereo->depth);
     REQUIRE_THROWS(depth->setAlgorithm(Depth::Algorithm::TOF));
+}
+
+TEST_CASE("Depth FPS profile preserves resolution and model filters", "[Depth][FpsProfile]") {
+    const auto native60 = dai::node::DepthTestAccess::selectBackend(std::make_pair(1280u, 800u), 60.f, kAllRvc4Backends);
+    REQUIRE(native60.first == Depth::Algorithm::NEURAL_ASSISTED_STEREO);
+    const auto limited = dai::node::DepthTestAccess::selectBackend(std::make_pair(640u, 400u), 30.f, kAllRvc4Backends, {DeviceModelZoo::NEURAL_DEPTH_480X300});
+    REQUIRE(std::get<DeviceModelZoo>(limited.second) == DeviceModelZoo::NEURAL_DEPTH_480X300);
+    REQUIRE_THROWS(dai::node::DepthTestAccess::selectBackend(std::make_pair(1280u, 800u), 100.f, kAllRvc4Backends, {}, true));
+}
+
+TEST_CASE("Depth neural FPS profiles honor every advertised FPS and tensor band", "[Depth][FpsProfile][adversarial]") {
+    struct Profile {
+        DeviceModelZoo model;
+        uint32_t width;
+        uint32_t height;
+        float maxFps;
+    };
+    const std::vector<Profile> profiles = {
+        {DeviceModelZoo::NEURAL_DEPTH_1248X780, 1248, 780, 20.f},
+        {DeviceModelZoo::NEURAL_DEPTH_1056X660, 1056, 660, 30.f},
+        {DeviceModelZoo::NEURAL_DEPTH_960X600, 960, 600, 38.f},
+        {DeviceModelZoo::NEURAL_DEPTH_864X540, 864, 540, 45.f},
+        {DeviceModelZoo::NEURAL_DEPTH_768X480, 768, 480, 60.f},
+        {DeviceModelZoo::NEURAL_DEPTH_576X360, 576, 360, 60.f},
+        {DeviceModelZoo::NEURAL_DEPTH_480X300, 480, 300, 60.f},
+        {DeviceModelZoo::NEURAL_DEPTH_384X240, 384, 240, 60.f},
+        {DeviceModelZoo::NEURAL_DEPTH_288X180, 288, 180, 60.f},
+        {DeviceModelZoo::NEURAL_DEPTH_192X120, 192, 120, 60.f},
+    };
+
+    for(const auto& p : profiles) {
+        INFO("model=" << static_cast<unsigned>(p.model) << " maxFps=" << p.maxFps);
+        // Restrict candidates to this supported model so priority cannot mask a bad row.
+        const float targetFps = (p.maxFps - 0.05f) / 0.9f;
+        const uint32_t minW = static_cast<uint32_t>(static_cast<float>(p.width) / 1.4142135f);
+        const uint32_t maxW = static_cast<uint32_t>(static_cast<float>(p.width) * 1.4142135f);
+        const uint32_t minH = static_cast<uint32_t>(static_cast<float>(p.height) / 1.4142135f);
+        const uint32_t maxH = static_cast<uint32_t>(static_cast<float>(p.height) * 1.4142135f);
+        for(const auto& resolution : {std::make_pair(minW, minH), std::make_pair(p.width, p.height), std::make_pair(maxW, maxH)}) {
+            CAPTURE(resolution.first, resolution.second);
+            const auto selected = dai::node::DepthTestAccess::selectBackend(resolution, targetFps, {Depth::Algorithm::NEURAL}, {p.model}, true);
+            REQUIRE(selected.first == Depth::Algorithm::NEURAL);
+            REQUIRE(std::get<DeviceModelZoo>(selected.second) == p.model);
+        }
+
+        // Above the tolerated capacity, strict mode must reject this sole available neural row.
+        REQUIRE_THROWS(dai::node::DepthTestAccess::selectBackend(
+            std::make_pair(p.width, p.height), (p.maxFps + 0.2f) / 0.9f, {Depth::Algorithm::NEURAL}, {p.model}, true));
+    }
+}
+
+TEST_CASE("Depth FPS selector rejects impossible strict requests and handles nonfinite FPS conservatively", "[Depth][FpsProfile][adversarial]") {
+    const auto neuralOnly = std::vector<Depth::Algorithm>{Depth::Algorithm::NEURAL};
+    const auto onlyLargeModel = std::vector<DeviceModelZoo>{DeviceModelZoo::NEURAL_DEPTH_1248X780};
+
+    // Unknown model catalogs must not accidentally select an unsupported neural model.
+    REQUIRE_THROWS(dai::node::DepthTestAccess::selectBackend(std::make_pair(640u, 400u), 10.f, neuralOnly, {DeviceModelZoo::TOF_NEURAL_FUSION_672X804}, true));
+
+    // Strict mode is defined for an impossible FPS+resolution pair; ensure the requested resolution
+    // is covered by the candidate model so only FPS causes the failure.
+    REQUIRE_THROWS(dai::node::DepthTestAccess::selectBackend(std::make_pair(1280u, 800u), 1000.f, neuralOnly, onlyLargeModel, true));
+    REQUIRE_THROWS(dai::node::DepthTestAccess::selectBackend(std::make_pair(100000u, 100000u), 30.f, neuralOnly, onlyLargeModel, true));
+
+    // Existing targetFpsWithDefault behavior maps NaN, zero, and negative values to the 30 FPS default.
+    for(float fps : {std::numeric_limits<float>::quiet_NaN(), 0.f, -1.f, -std::numeric_limits<float>::infinity()}) {
+        INFO("fps=" << fps);
+        const auto result = dai::node::DepthTestAccess::selectBackend(std::nullopt, fps, neuralOnly, {DeviceModelZoo::NEURAL_DEPTH_576X360}, true);
+        REQUIRE(result.first == Depth::Algorithm::NEURAL);
+        REQUIRE(std::get<DeviceModelZoo>(result.second) == DeviceModelZoo::NEURAL_DEPTH_576X360);
+    }
+    REQUIRE_THROWS(dai::node::DepthTestAccess::selectBackend(
+        std::make_pair(864u, 540u), std::numeric_limits<float>::infinity(), neuralOnly, {DeviceModelZoo::NEURAL_DEPTH_576X360}, true));
+}
+
+TEST_CASE("Depth never falls back to an unavailable backend", "[Depth][FpsProfile][adversarial]") {
+    const std::vector<Depth::Algorithm> neuralOnly = {Depth::Algorithm::NEURAL};
+    const std::vector<DeviceModelZoo> noUsableModel = {DeviceModelZoo::TOF_NEURAL_FUSION_672X804};
+    REQUIRE_THROWS_WITH(select(std::make_pair(640u, 400u), 10.f, neuralOnly, noUsableModel), Catch::Matchers::ContainsSubstring("no available algorithm"));
+    REQUIRE_THROWS(select(std::nullopt, 30.f, {}));
+    // Available EVA still provides the existing best-effort FPS fallback.
+    REQUIRE(select(std::make_pair(640u, 400u), 100.f, kStereoOnly).algorithm == Depth::Algorithm::STEREO);
+}
+
+TEST_CASE("Pinned AUTO rejects stereo-only hardware below the requested FPS", "[Depth][FpsProfile]") {
+    const auto resolution = std::make_pair(640u, 400u);
+    const auto bestEffort = dai::node::DepthTestAccess::selectBackend(resolution, 60.f, kStereoOnly);
+    REQUIRE(bestEffort.first == Depth::Algorithm::STEREO);
+    REQUIRE_THROWS_AS(dai::node::DepthTestAccess::selectBackend(resolution, 60.f, kStereoOnly, {}, true), std::runtime_error);
 }
