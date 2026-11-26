@@ -2,7 +2,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 
-#include "../../camera_socket_requirements.hpp"
 #include "depthai/depthai.hpp"
 
 #define VIDEO_DURATION_SECONDS 10
@@ -112,7 +111,6 @@ TEST_CASE("Object Tracker transformation") {
     dai::Pipeline pipeline;
 
     // Define sources and outputs
-    dai::test::requireAutoCameraSocket(*pipeline.getDefaultDevice());
     auto cam = pipeline.create<dai::node::Camera>()->build();
     auto* camOut = cam->requestOutput({1240, 720});
 
@@ -156,7 +154,6 @@ TEST_CASE("Object Tracker matching sequence num") {
     dai::Pipeline pipeline;
 
     // Define sources and outputs
-    dai::test::requireAutoCameraSocket(*pipeline.getDefaultDevice());
     auto cam = pipeline.create<dai::node::Camera>()->build();
 
     // Create spatial detection network

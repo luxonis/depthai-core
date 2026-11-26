@@ -4,7 +4,6 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
-#include "camera_socket_requirements.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -14,7 +13,6 @@
 
 TEST_CASE("OLD_OUTPUT") {
     dai::Pipeline pipeline;
-    dai::test::requireAutoCameraSocket(*pipeline.getDefaultDevice());
     auto camNode = pipeline.create<dai::node::Camera>()->build();
     auto camOut = camNode->requestOutput({640, 480}, dai::ImgFrame::Type::NV12);
     auto encNode = pipeline.create<dai::node::VideoEncoder>();
@@ -35,7 +33,6 @@ TEST_CASE("JPEG_ENCODING_LOSSLESS") {
         return;
     }
 
-    dai::test::requireAutoCameraSocket(*pipeline.getDefaultDevice());
     auto camNode = pipeline.create<dai::node::Camera>()->build();
     auto camOut = camNode->requestOutput({640, 480}, dai::ImgFrame::Type::NV12);
     auto encNode = pipeline.create<dai::node::VideoEncoder>();
@@ -89,7 +86,6 @@ TEST_CASE("JPEG_ENCODING_LOSSLESS") {
 
 TEST_CASE("JPEG_ENCODING_LOSSY") {
     dai::Pipeline pipeline;
-    dai::test::requireAutoCameraSocket(*pipeline.getDefaultDevice());
     auto camNode = pipeline.create<dai::node::Camera>()->build();
     auto camOut = camNode->requestOutput({640, 480}, dai::ImgFrame::Type::NV12);
     auto encNode = pipeline.create<dai::node::VideoEncoder>();
@@ -118,7 +114,6 @@ TEST_CASE("JPEG_ENCODING_LOSSY") {
 
 TEST_CASE("AVC_ENCODING") {
     dai::Pipeline pipeline;
-    dai::test::requireAutoCameraSocket(*pipeline.getDefaultDevice());
     auto camNode = pipeline.create<dai::node::Camera>()->build();
     auto camOut = camNode->requestOutput({640, 480}, dai::ImgFrame::Type::NV12);
     auto encNode = pipeline.create<dai::node::VideoEncoder>();
@@ -149,7 +144,6 @@ TEST_CASE("AVC_ENCODING") {
 
 TEST_CASE("HEVC_ENCODING") {
     dai::Pipeline pipeline;
-    dai::test::requireAutoCameraSocket(*pipeline.getDefaultDevice());
     auto camNode = pipeline.create<dai::node::Camera>()->build();
     auto camOut = camNode->requestOutput({640, 480}, dai::ImgFrame::Type::NV12);
     auto encNode = pipeline.create<dai::node::VideoEncoder>();
