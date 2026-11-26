@@ -726,7 +726,7 @@ class StereoDepthConfig : public Buffer {
 
     /**
      * Doubles the disparity range, combined from full resolution and downscaled images.
-     * On RVC2 with the default disparity search, the range increases from 0-95 to 0-190 pixels.
+     * The range increases from 0-95 to 0-190 pixels on RVC2 (default disparity search) and from 0-63 to 0-126 pixels on RVC4.
      *
      * Suitable for short range objects. Can be enabled together with sub-pixel disparity.
      */
