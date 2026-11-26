@@ -57,6 +57,8 @@ Line::Line(const std::string& chipPath, unsigned int offset, Direction direction
         case Bias::PullUp:
             request.config.flags |= GPIO_V2_LINE_FLAG_BIAS_PULL_UP;
             break;
+        case Bias::AsIs:
+            break;
     }
 
     if(ioctl(chipFd, GPIO_V2_GET_LINE_IOCTL, &request) < 0) {

@@ -1,16 +1,20 @@
 #pragma once
 
-#include <linux/aux-connector.h>
 #include <sys/types.h>
 
 #include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <system_error>
 #include <variant>
 #include <vector>
 
 #include "utilities/FsyncRole.hpp"
+#include "utilities/GpioLine.hpp"
+
+struct aux_pin_info;
+struct aux_pin_state;
 
 namespace dai {
 namespace aux {
@@ -51,9 +55,16 @@ struct PinState {
 struct Pin {
     uint32_t index;
     std::string label;
+    uint32_t fixed;
     std::vector<uint32_t> functions;  // AUX_FUNC_*, empty on a fixed pin
+    uint32_t gpioPullCaps;
     std::optional<GpioLineRef> gpio;
     PinState state;
+};
+
+struct Connector {
+    std::vector<Pin> pins;
+    uint32_t detect;
 };
 
 Pin parsePin(const aux_pin_info& info, const aux_pin_state& state);
@@ -61,9 +72,9 @@ std::optional<Pin> findPinWithFunction(const std::vector<Pin>& pins, uint32_t fu
 
 /**
  * Read every pin of the connector once, without taking a lock.
- * @return The pins in index order, or the errno of the first call that failed.
+ * @return The connector, or the errno of the first call that failed.
  */
-std::variant<std::vector<Pin>, int> readConnector(const std::filesystem::path& device = "/dev/aux-connector");
+std::variant<Connector, int> readConnector(const std::filesystem::path& device = "/dev/aux-connector");
 
 /**
  * @return The name in /proc/<pid>/comm, "" when it cannot be read.
@@ -73,13 +84,46 @@ std::string readComm(pid_t pid);
 /**
  * @return The consumer of a requested line, "" when the line has none or cannot be read.
  */
-std::string lineConsumer(const GpioLineRef& line);
+std::string lineConsumer(const std::filesystem::path& chip, uint32_t offset);
+
+std::optional<std::string> connectorHintForTlmm(int tlmm, const std::string& consumer);
 
 /**
  * Describe the FSYNC pin of a connector whose FSYNC pin fsync-stm could not acquire.
  * @return Busy with the pin's label and its holder, as far as the connector and /proc show them.
  */
 gate::PinUnavailable busyFsyncPin(const std::vector<Pin>& pins);
+
+struct GpioPlan {
+    uint32_t pin;
+    uint32_t pull;
+    GpioLineRef line;
+};
+
+std::variant<GpioPlan, std::string> planGpio(const std::string& name, gpio::Bias bias, const std::variant<Connector, int>& connector);
+
+std::string gpioSetupError(const std::string& name, const std::string& reason);
+
+struct AcquiredLine {
+    uint32_t pin;
+    std::filesystem::path chip;
+    uint32_t offset;
+};
+
+class GpioPins {
+   public:
+    GpioPins() = default;
+    GpioPins(const GpioPins&) = delete;
+    GpioPins& operator=(const GpioPins&) = delete;
+    ~GpioPins();
+
+    std::variant<AcquiredLine, std::string> acquire(const std::string& name, gpio::Bias bias);
+
+    std::error_code release(uint32_t pin);
+
+   private:
+    int fd = -1;
+};
 
 }  // namespace aux
 }  // namespace dai

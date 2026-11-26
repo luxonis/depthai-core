@@ -79,14 +79,17 @@ struct HolderText {
 
 }  // namespace
 
+std::string holderText(const Holder& holder) {
+    return std::visit(HolderText{}, holder);
+}
+
 std::string pinReason(const PinUnavailable& unavailable) {
     switch(unavailable.problem) {
         case PinProblem::Busy:
             if(unavailable.pinLabel.empty()) {
                 return "the FSYNC pin is busy";
             }
-            return "connector pin " + unavailable.pinLabel + " (FSYNC) "
-                   + (unavailable.holder ? std::visit(HolderText{}, *unavailable.holder) : "is busy");
+            return "connector pin " + unavailable.pinLabel + " (FSYNC) " + (unavailable.holder ? holderText(*unavailable.holder) : "is busy");
         case PinProblem::ConnectorNotReady:
             return "the aux connector driver has not started yet";
         case PinProblem::ConnectorFailed:
