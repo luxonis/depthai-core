@@ -412,6 +412,74 @@ TEST_CASE("Test ImageManip with u16 frames") {
     }
 }
 
+TEST_CASE("ImageManip resets the operations of the previous configuration", "[imagemanip][reset-state][rvc4]") {
+    dai::Pipeline pipeline;
+    // The RVC4 firmware runs the ImageManipOperations of include/depthai/utility/ImageManipImpl.hpp and rebuilds one instance on
+    // every configuration change. RVC2 has its own ImageManip implementation.
+    if(pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC4) SKIP("RVC4 runs the shared ImageManip implementation");
+
+    constexpr int inputWidth = 64, inputHeight = 48;
+    const cv::Rect cropRect(8, 4, 32, 24);
+    cv::Mat image(inputHeight, inputWidth, CV_8UC3);
+    cv::RNG(7061).fill(image, cv::RNG::UNIFORM, 0, 256);
+
+    auto manip = pipeline.create<dai::node::ImageManip>();
+    manip->setMaxOutputFrameSize(inputWidth * inputHeight * 3);
+    manip->inputConfig.setWaitForMessage(true);
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto configQueue = manip->inputConfig.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+    pipeline.start();
+
+    auto crop = std::make_shared<dai::ImageManipConfig>();
+    crop->addCrop(cropRect.x, cropRect.y, cropRect.width, cropRect.height);
+    auto convert = std::make_shared<dai::ImageManipConfig>();
+    convert->setFrameType(dai::ImgFrame::Type::RGB888i);
+    auto passthrough = std::make_shared<dai::ImageManipConfig>();
+
+    int sequence = 0;
+    auto process = [&](const std::shared_ptr<dai::ImageManipConfig>& config) {
+        auto input = std::make_shared<dai::ImgFrame>();
+        input->setCvFrame(image, dai::ImgFrame::Type::BGR888i);
+        input->setSequenceNum(sequence);
+        configQueue->send(config);
+        inputQueue->send(input);
+        bool timedOut = false;
+        auto output = outputQueue->get<dai::ImgFrame>(std::chrono::seconds(5), timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(output != nullptr);
+        REQUIRE(output->getSequenceNum() == sequence++);
+        return output;
+    };
+
+    // Every configuration must give the same result, whatever configuration ran before it
+    for(int round = 0; round < 2; ++round) {
+        CAPTURE(round);
+        auto cropped = process(crop);
+        REQUIRE(cropped->getType() == dai::ImgFrame::Type::BGR888i);
+        REQUIRE(cropped->getWidth() == cropRect.width);
+        REQUIRE(cropped->getHeight() == cropRect.height);
+        CHECK(cv::norm(cropped->getCvFrame(), image(cropRect), cv::NORM_INF) <= 1.0);
+
+        auto converted = process(convert);
+        REQUIRE(converted->getType() == dai::ImgFrame::Type::RGB888i);
+        REQUIRE(converted->getWidth() == inputWidth);
+        REQUIRE(converted->getHeight() == inputHeight);
+        // getCvFrame() converts RGB888i back to BGR: a stale crop or channel order shows as a pixel mismatch
+        CHECK(cv::norm(converted->getCvFrame(), image, cv::NORM_INF) == 0.0);
+        // The crop of the previous configuration must not leak into the output transformation
+        CHECK(converted->transformation.getSrcCrops().empty());
+
+        auto passed = process(passthrough);
+        REQUIRE(passed->getType() == dai::ImgFrame::Type::BGR888i);
+        REQUIRE(passed->getWidth() == inputWidth);
+        REQUIRE(passed->getHeight() == inputHeight);
+        CHECK(cv::norm(passed->getCvFrame(), image, cv::NORM_INF) == 0.0);
+        CHECK(passed->transformation.getSrcCrops().empty());
+    }
+    pipeline.stop();
+}
+
 TEST_CASE("ImageManip rebuild on cfg change") {
     dai::Pipeline p;
     auto cam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
