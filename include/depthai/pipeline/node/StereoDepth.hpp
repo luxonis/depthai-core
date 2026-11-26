@@ -17,6 +17,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
    public:
     constexpr static const char* NAME = "StereoDepth";
     StereoDepth() = default;
+    void buildInternal() override;
 
     /**
      * Preset modes for stereo depth.
@@ -68,6 +69,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     // Platform specific profile presets
     void setRvc2ProfilePreset(PresetMode mode);
     void setRvc4ProfilePreset(PresetMode mode);
+    void setRvc2ngProfilePreset(PresetMode mode);
 
    public:
     using MedianFilter = dai::StereoDepthConfig::MedianFilter;

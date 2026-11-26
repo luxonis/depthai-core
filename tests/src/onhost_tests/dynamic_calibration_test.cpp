@@ -178,6 +178,8 @@ TEST_CASE("Stereo AUTO reference follows platform and measured CAM_A proximity",
     const auto expected = rightDistance == 7.0f ? Socket::CAM_C : Socket::CAM_B;
     REQUIRE(dai::node::detail::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC4) == expected);
     REQUIRE(dai::node::detail::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC2) == Socket::CAM_B);
+    // RVC2NG stereo outputs AUTO in the rectified left camera, like RVC2.
+    REQUIRE(dai::node::detail::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC2NG) == Socket::CAM_B);
 
     using Align = dai::StereoDepthConfig::AlgorithmControl::DepthAlign;
     for(auto alignment : {Align::LEFT, Align::RECTIFIED_LEFT}) {

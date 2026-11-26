@@ -199,11 +199,48 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             setRvc4ProfilePreset(mode);
             break;
         case Platform::RVC2NG:
+            setRvc2ngProfilePreset(mode);
+            break;
         case Platform::RVC3:
         default:
             DAI_CHECK_V(false, "Unsupported platform: {}", device->getPlatformAsString());
             break;
     }
+}
+
+void StereoDepth::buildInternal() {
+    // RVC2NG has no matching confidence, which hole filling and the adaptive median need. They start disabled there,
+    // and the device rejects enabling them.
+    auto device = getDevice();
+    if(device && device->getPlatform() == Platform::RVC2NG) {
+        initialConfig->postProcessing.holeFilling.enable = false;
+        initialConfig->postProcessing.adaptiveMedianFilter.enable = false;
+    }
+}
+
+void StereoDepth::setRvc2ngProfilePreset(PresetMode mode) {
+    // The RVC2 tuning, without what RVC2NG lacks and rejects: matching confidence and the filters that use it, penalty
+    // tuning by edge and smoothness, a speckle region size, and SHAVEs.
+    setRvc2ProfilePreset(mode);
+    // RVC2 runs its median, spatial, temporal and decimation filters on SHAVEs. RVC2NG has none of them in hardware, so
+    // its presets leave them off and keep only the filters the stereo matcher runs. Enabling a filter in initialConfig
+    // still runs it on the CPU.
+    initialConfig->setMedianFilter(MedianFilter::MEDIAN_OFF);
+    initialConfig->postProcessing.spatialFilter.enable = false;
+    initialConfig->postProcessing.temporalFilter.enable = false;
+    initialConfig->postProcessing.decimationFilter.decimationFactor = 1;
+    const StereoDepthConfig defaults;
+    initialConfig->costMatching.confidenceThreshold = defaults.costMatching.confidenceThreshold;
+    initialConfig->confidenceMetrics = defaults.confidenceMetrics;
+    initialConfig->costAggregation.p1Config = defaults.costAggregation.p1Config;
+    initialConfig->costAggregation.p2Config = defaults.costAggregation.p2Config;
+    initialConfig->postProcessing.holeFilling = defaults.postProcessing.holeFilling;
+    initialConfig->postProcessing.holeFilling.enable = false;
+    initialConfig->postProcessing.adaptiveMedianFilter = defaults.postProcessing.adaptiveMedianFilter;
+    initialConfig->postProcessing.adaptiveMedianFilter.enable = false;
+    initialConfig->postProcessing.speckleFilter.speckleRange = defaults.postProcessing.speckleFilter.speckleRange;
+    properties.numPostProcessingShaves = Properties::AUTO;
+    properties.numPostProcessingMemorySlices = Properties::AUTO;
 }
 
 void StereoDepth::setRvc2ProfilePreset(PresetMode mode) {
