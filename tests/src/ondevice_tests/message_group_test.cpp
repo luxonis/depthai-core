@@ -7,6 +7,7 @@
 #include <depthai/pipeline/datatype/MessageGroup.hpp>
 #include <depthai/utility/span.hpp>
 
+#include "camera_socket_requirements.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
@@ -42,6 +43,8 @@ TEST_CASE("Set and get messages") {
 
 TEST_CASE("Send large messages") {
     dai::Pipeline pipeline;
+    dai::test::requireCameraSockets(*pipeline.getDefaultDevice(),
+                                    {dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C});
     auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto left = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto right = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);

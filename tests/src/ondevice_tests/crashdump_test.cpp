@@ -12,6 +12,7 @@
 #include <thread>
 #include <vector>
 
+#include "camera_socket_requirements.hpp"
 #include "depthai/depthai.hpp"
 #include "utility/Environment.hpp"
 
@@ -377,6 +378,7 @@ TEST_CASE("Crashdump can be collected more than once when reconnection is allowe
     device->registerCrashdumpCallback([&](std::shared_ptr<dai::CrashDump> dump) { observer.callback(dump); });
 
     dai::Pipeline pipeline(device);
+    dai::test::requireAutoCameraSocket(*device);
     auto camera = pipeline.create<dai::node::Camera>()->build();
     auto* cameraOutput = camera->requestOutput(std::make_pair(640, 400));
     REQUIRE(cameraOutput != nullptr);

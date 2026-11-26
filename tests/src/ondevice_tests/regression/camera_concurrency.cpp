@@ -2,6 +2,7 @@
 
 #include <catch2/catch_all.hpp>
 
+#include "../camera_socket_requirements.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/BenchmarkReport.hpp"
 #include "depthai/pipeline/node/BenchmarkIn.hpp"
@@ -12,6 +13,8 @@ TEST_CASE("camera_concurrency") {
     constexpr float MAX_FPS_OFFSET = 0.5;
     constexpr int MAX_SECONDS_OFFSET = 5;
     dai::Pipeline pipeline;
+    dai::test::requireCameraSockets(*pipeline.getDefaultDevice(),
+                                    {dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C});
     auto cam = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto monoRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);

@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "camera_socket_requirements.hpp"
 #include "depthai/depthai.hpp"
 
 namespace {
@@ -47,6 +48,7 @@ std::uintmax_t getFileSize(const TempFile& file) {
 
 TEST_CASE("Test pipeline device property setters apply before start") {
     dai::Pipeline pipeline;
+    dai::test::requireCameraSockets(*pipeline.getDefaultDevice(), {dai::CameraBoardSocket::CAM_A});
 
     pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A)->requestOutput({640, 480})->createOutputQueue();
 
@@ -83,6 +85,7 @@ TEST_CASE("Test pipeline device property setters apply before start") {
 
 TEST_CASE("Test pipeline camera tuning blob setters update device properties") {
     dai::Pipeline pipeline;
+    dai::test::requireCameraSockets(*pipeline.getDefaultDevice(), {dai::CameraBoardSocket::CAM_A});
 
     pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A)->requestOutput({640, 480})->createOutputQueue();
 
@@ -111,6 +114,7 @@ TEST_CASE("Test pipeline camera tuning blob setters update device properties") {
 
 TEST_CASE("Test device setProperties before and after start") {
     dai::Pipeline pipeline;
+    dai::test::requireCameraSockets(*pipeline.getDefaultDevice(), {dai::CameraBoardSocket::CAM_A});
     pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A)->requestOutput({640, 480})->createOutputQueue();
 
     auto device = pipeline.getDefaultDevice();

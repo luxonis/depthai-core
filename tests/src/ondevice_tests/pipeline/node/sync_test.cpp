@@ -5,6 +5,7 @@
 #include <thread>
 #include <vector>
 
+#include "../../camera_socket_requirements.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
@@ -56,6 +57,7 @@ std::shared_ptr<dai::Buffer> makeBuffer(const TestBufferTimestamps& timestamps) 
 void test_camera_sync(bool runSyncOnHost) {
     // Create pipeline
     dai::Pipeline p;
+    dai::test::requireCameraSockets(*p.getDefaultDevice(), {dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C});
     auto left = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto right = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
     auto sync = p.create<dai::node::Sync>();

@@ -5,6 +5,7 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 
+#include "../../camera_socket_requirements.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/Gate.hpp"
 
@@ -103,6 +104,7 @@ TEST_CASE("Test Gate Timing and Data Flow") {
     dai::Pipeline pipeline;
 
     // 1. Setup Nodes
+    dai::test::requireAutoCameraSocket(*pipeline.getDefaultDevice());
     auto camera = pipeline.create<dai::node::Camera>()->build();
     // We set 30fps: 2 seconds should yield ~60 frames
     auto cameraOut = camera->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, 30);
@@ -177,6 +179,7 @@ TEST_CASE("Test Gate N Messages") {
     dai::Pipeline pipeline;
 
     // 1. Setup Nodes
+    dai::test::requireAutoCameraSocket(*pipeline.getDefaultDevice());
     auto camera = pipeline.create<dai::node::Camera>()->build();
     // We set 30fps: 2 seconds should yield ~60 frames
     auto cameraOut = camera->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, 30);
@@ -233,6 +236,7 @@ TEST_CASE("Test Gate N Messages") {
 TEST_CASE("Two Queue from one camera") {
     dai::Pipeline pipeline;
 
+    dai::test::requireAutoCameraSocket(*pipeline.getDefaultDevice());
     auto camera = pipeline.create<dai::node::Camera>()->build();
 
     auto cameraOutGate = camera->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, 30);
@@ -286,6 +290,7 @@ TEST_CASE("Two Queue from one camera") {
 TEST_CASE("FPS regulation") {
     dai::Pipeline pipeline;
 
+    dai::test::requireAutoCameraSocket(*pipeline.getDefaultDevice());
     auto camera = pipeline.create<dai::node::Camera>()->build();
 
     auto cameraOutGate = camera->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, 30);

@@ -251,6 +251,9 @@ if __name__ == "__main__":
                 "DEPTHAI_PLATFORM": "rvc4",
                 "DEPTHAI_PROTOCOL": "tcpip",
                 "DEPTHAI_AUTOCALIBRATION": "OFF",
+                # The FFC testbeds do not all connect the same camera sockets (some have only CAM_D and CAM_E).
+                # The HIL sanity check makes sure that each testbed has the cameras of its configuration.
+                "DEPTHAI_TESTS_ALLOW_MISSING_CAMERAS": "1",
             },
             "labels": ["rvc4ffc"],
         },
