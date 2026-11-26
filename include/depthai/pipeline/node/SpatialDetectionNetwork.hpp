@@ -115,12 +115,6 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
      */
     Input& inputDepth;
 
-    // /**
-    //  * Input SpatialLocationCalculatorConfig message with ability to modify parameters in runtime.
-    //  * Default queue is non-blocking with size 4.
-    //  */
-    // Input& inputConfig;
-
     /**
      * Outputs ImgDetections message that carries parsed detection results.
      */

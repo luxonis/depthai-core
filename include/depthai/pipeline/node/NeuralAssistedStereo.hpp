@@ -65,77 +65,77 @@ class NeuralAssistedStereo : public DeviceNodeGroup {
                                                 DeviceModelZoo neuralModel = DeviceModelZoo::NEURAL_DEPTH_384X240,
                                                 bool rectifyImages = true);
 
-    // /**
-    //  * Subnodes that compose this pipeline
-    //  */
+    /**
+     * Subnodes that compose this pipeline
+     */
     Subnode<node::Rectification> rectification{*this, "rectification"};
     Subnode<node::NeuralDepth> neuralDepth{*this, "neuralDepth"};
     Subnode<node::Vpp> vpp{*this, "vpp"};
     Subnode<node::StereoDepth> stereoDepth{*this, "stereoDepth"};
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    // /**
-    //  * Input for left ImgFrame
-    //  */
+    /**
+     * Input for left ImgFrame
+     */
     Input& left{rectification->input1};
 
-    // /**
-    //  * Input for right ImgFrame
-    //  */
+    /**
+     * Input for right ImgFrame
+     */
     Input& right{rectification->input2};
 
-    // /**
-    //  * Output rectified left (full resolution)
-    //  */
+    /**
+     * Output rectified left (full resolution)
+     */
     Output& rectifiedLeft{rectification->output1};
 
-    // /**
-    //  * Output rectified right (full resolution)
-    //  */
+    /**
+     * Output rectified right (full resolution)
+     */
     Output& rectifiedRight{rectification->output2};
 
-    // /**
-    //  * Output VPP-enhanced left
-    //  */
+    /**
+     * Output VPP-enhanced left
+     */
     Output& vppLeft{vpp->leftOut};
 
-    // /**
-    //  * Output VPP-enhanced right
-    //  */
+    /**
+     * Output VPP-enhanced right
+     */
     Output& vppRight{vpp->rightOut};
-    // /**
-    //  * Neural disparity output
-    //  */
+    /**
+     * Neural disparity output
+     */
     Output& neuralDisparity{neuralDepth->disparity};
 
-    // /**
-    //  * Neural depth confidence output
-    //  */
+    /**
+     * Neural depth confidence output
+     */
     Output& neuralConfidence{neuralDepth->confidence};
 
-    // /**
-    //  * VPP configuration input
-    //  */
+    /**
+     * VPP configuration input
+     */
     Input& inputVppConfig{vpp->inputConfig};
 
-    // /**
-    //  * StereoDepth configuration input
-    //  */
+    /**
+     * StereoDepth configuration input
+     */
     Input& inputStereoConfig{stereoDepth->inputConfig};
 
-    // /**
-    //  * NeuralDepth configuration input
-    //  */
+    /**
+     * NeuralDepth configuration input
+     */
     Input& inputNeuralConfig{neuralDepth->inputConfig};
 
-    // /**
-    //  * Final depth output from StereoDepth
-    //  */
+    /**
+     * Final depth output from StereoDepth
+     */
     Output& depth{stereoDepth->depth};
 
-    // /**
-    //  * Disparity output from StereoDepth
-    //  */
+    /**
+     * Disparity output from StereoDepth
+     */
     Output& disparity{stereoDepth->disparity};
 #endif
 };
