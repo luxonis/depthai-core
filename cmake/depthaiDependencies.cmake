@@ -187,7 +187,7 @@ else()
     FetchContent_Declare(
         XLink
         GIT_REPOSITORY https://github.com/luxonis/XLink.git
-        GIT_TAG        4b3fc12b0027fcf1c46da2bb33278a1f71a0d857
+        GIT_TAG        0d00d10847e91c15aed4f2d8076e2a0135643c07
     )
 
     FetchContent_MakeAvailable(
