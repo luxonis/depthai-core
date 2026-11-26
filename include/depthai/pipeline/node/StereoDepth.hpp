@@ -261,7 +261,6 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * Computes disparity with sub-pixel interpolation (3 fractional bits by default).
      *
      * Suitable for long range. Can be enabled together with extended disparity.
-     * On RVC2 with the default disparity search, the median filter does not work with both modes enabled.
      * On RVC4, subpixel is always enabled with 4 fractional bits.
      */
     void setSubpixel(bool enable);

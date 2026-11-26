@@ -741,7 +741,6 @@ class StereoDepthConfig : public Buffer {
      * Computes disparity with sub-pixel interpolation (3 fractional bits by default).
      *
      * Suitable for long range. Can be enabled together with extended disparity.
-     * On RVC2 with the default disparity search, the median filter does not work with both modes enabled.
      * On RVC4, subpixel is always enabled with 4 fractional bits.
      */
     StereoDepthConfig& setSubpixel(bool enable);
