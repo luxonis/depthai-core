@@ -1095,7 +1095,7 @@ dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
 set(image_align_host_test_filter "ImageAlign axial depth*,ImageAlign backend preferences*")
 if(DEPTHAI_HAVE_OPENCV_SUPPORT)
     string(PREPEND image_align_host_test_filter
-           "ImageAlign synthetic depth comparison across host backend preferences,ImageAlign synthetic 3D point projections on host,ImageAlign refreshes stride and static-depth caches on host,Fused ImageAlign*,")
+           "ImageAlign synthetic depth comparison across host backend preferences,ImageAlign synthetic 3D point projections on host,ImageAlign refreshes stride and static-depth caches on host,Align rebuilds depth maps after a non-frame message changes the transformation on host,Fused ImageAlign*,")
 endif()
 add_test(NAME image_align_host_test COMMAND image_align_node_test "${image_align_host_test_filter}")
 set_tests_properties(image_align_host_test PROPERTIES LABELS "onhost;ci" ENVIRONMENT "${test_env}")

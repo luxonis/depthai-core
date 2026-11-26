@@ -288,8 +288,12 @@ TEST_CASE("Align rebuilds depth maps after a non-frame message changes the trans
     const std::array<std::array<float, 3>, 3> k = {{{160, 0, 79.5f}, {0, 160, 59.5f}, {0, 0, 1}}};
     const std::vector<std::vector<float>> identity = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
     const auto transform = [&](float baseline) {
-        return dai::ImgTransformation(
-            width, height, k, dai::CameraModel::Perspective, {}, dai::Extrinsics(identity, {baseline, 0, 0}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER));
+        return dai::ImgTransformation(width,
+                                      height,
+                                      k,
+                                      dai::CameraModel::Perspective,
+                                      {},
+                                      dai::Extrinsics(identity, {baseline, 0, 0}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER));
     };
     const auto targetTransform = transform(0), firstSource = transform(75), secondSource = transform(-40);
     std::vector<uint8_t> pixels(width * height * 2);
@@ -313,14 +317,20 @@ TEST_CASE("Align rebuilds depth maps after a non-frame message changes the trans
     auto targets = align->inputAlignTo.createInputQueue();
     auto outputs = align->outputAligned.createOutputQueue();
     pipeline.start();
-    targets->send(makeRuntimeTransformationFrame(targetTransform, dai::CameraBoardSocket::CAM_A, dai::ImgFrame::Type::GRAY8, 0));
+    // Align waits for an alignTo message per input message.
+    const auto sendTarget = [&] {
+        targets->send(makeRuntimeTransformationFrame(targetTransform, dai::CameraBoardSocket::CAM_A, dai::ImgFrame::Type::GRAY8, 0));
+    };
+    sendTarget();
     sources->send(depthFrame(firstSource, 0));
     REQUIRE(outputs->get<dai::ImgFrame>() != nullptr);
     // The non-frame message carries the new calibration but does not rebuild the depth maps itself.
     auto tracklets = std::make_shared<dai::Tracklets>();
     tracklets->setTransformation(secondSource);
+    sendTarget();
     sources->send(tracklets);
     REQUIRE(outputs->get<dai::Tracklets>() != nullptr);
+    sendTarget();
     sources->send(depthFrame(secondSource, 2));
     const auto output = outputs->get<dai::ImgFrame>();
     REQUIRE(output != nullptr);
@@ -618,7 +628,9 @@ std::vector<SyntheticAlignmentFrame> runSyntheticBackendSequence(bool runOnHost,
             if(frame == 0) contiguous = output;
             if(frame == 1 || frame == 3 || frame == 4 || frame == 6) {
                 requireSyntheticPixels(
-                    *contiguous, *output, !runOnHost && !hardwareRemaps && backend == dai::Backend::GPU && deviceHasGpu && (frame == 1 || frame == 3) ? source.get() : nullptr);
+                    *contiguous,
+                    *output,
+                    !runOnHost && !hardwareRemaps && backend == dai::Backend::GPU && deviceHasGpu && (frame == 1 || frame == 3) ? source.get() : nullptr);
             }
             result.push_back({source, output});
             // GPU falls back to CPU on devices without one (e.g. OAK-4-PRO-W).

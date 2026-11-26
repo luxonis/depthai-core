@@ -546,7 +546,8 @@ ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTran
         cv::initUndistortRectifyMap(inputIntrinsicsMat, inputDistortion, rectificationR1, targetCamMatrix, meshSize, CV_32FC1, state.mapX1, state.mapY1);
 
         if(inputIsDepth) {
-            auto tables = detail::depthAlignTables(rectificationR1, targetCamMatrix, meshSize, rotation, alignIntrinsicsMat, translationMat, {alignWidth, alignHeight});
+            auto tables =
+                detail::depthAlignTables(rectificationR1, targetCamMatrix, meshSize, rotation, alignIntrinsicsMat, translationMat, {alignWidth, alignHeight});
             state.rectifiedRayZ = std::move(tables.rectifiedRayZ);
             state.alignedDepthScales = std::move(tables.alignedDepthScales);
             state.alignedDepthOffset = tables.alignedDepthOffset;
