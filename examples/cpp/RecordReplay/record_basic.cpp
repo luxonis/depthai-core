@@ -4,12 +4,60 @@
 
 #include <argparse/argparse.hpp>
 #include <chrono>
+#include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <optional>
+#include <stdexcept>
 #include <string>
+#include <thread>
 
 #include "depthai/depthai.hpp"
-#include "example_util.hpp"
+
+namespace {
+
+std::filesystem::path recordingsDir() {
+    namespace fs = std::filesystem;
+    if(const char* xdg = std::getenv("XDG_CACHE_HOME"); xdg != nullptr && xdg[0] != '\0') {
+        fs::path path = fs::path(xdg) / "depthai" / "recordings";
+        fs::create_directories(path);
+        return path;
+    }
+#if defined(__APPLE__)
+    const char* home = std::getenv("HOME");
+    fs::path root = (home != nullptr && home[0] != '\0') ? fs::path(home) / "Library" / "Caches" : fs::path();
+#elif defined(_WIN32)
+    const char* local = std::getenv("LOCALAPPDATA");
+    fs::path root;
+    if(local != nullptr && local[0] != '\0') {
+        root = fs::path(local);
+    } else {
+        const char* home = std::getenv("USERPROFILE");
+        root = (home != nullptr && home[0] != '\0') ? fs::path(home) / "AppData" / "Local" : fs::path();
+    }
+#else
+    const char* home = std::getenv("HOME");
+    fs::path root = (home != nullptr && home[0] != '\0') ? fs::path(home) / ".cache" : fs::path();
+#endif
+    if(root.empty()) {
+        throw std::runtime_error("Could not resolve the user cache directory");
+    }
+    fs::path path = root / "depthai" / "recordings";
+    fs::create_directories(path);
+    return path;
+}
+
+std::optional<dai::VideoEncoderProperties::Profile> videoEncoderProfile(const std::string& name) {
+    using Profile = dai::VideoEncoderProperties::Profile;
+    if(name == "H264_BASELINE") return Profile::H264_BASELINE;
+    if(name == "H264_HIGH") return Profile::H264_HIGH;
+    if(name == "H264_MAIN") return Profile::H264_MAIN;
+    if(name == "H265_MAIN") return Profile::H265_MAIN;
+    if(name == "MJPEG") return Profile::MJPEG;
+    return std::nullopt;
+}
+
+}  // namespace
 
 int main(int argc, char** argv) {
     argparse::ArgumentParser program("record_basic", "1.0", argparse::default_arguments::help);
@@ -31,36 +79,54 @@ int main(int argc, char** argv) {
 
     std::optional<dai::VideoEncoderProperties::Profile> codec;
     if(codecName != "none") {
-        codec = rr::videoEncoderProfile(codecName);
+        codec = videoEncoderProfile(codecName);
         if(!codec) {
-            std::cout << "Invalid codec " << codecName << " specified. Use one of the following: " << rr::videoEncoderProfileList() << "\n";
+            std::cout << "Invalid codec " << codecName
+                      << " specified. Use one of the following: ['H264_BASELINE', 'H264_HIGH', 'H264_MAIN', 'H265_MAIN', 'MJPEG']\n";
             return 1;
         }
     }
 
     try {
         dai::Pipeline pipeline;
-        rr::StopPipeline stop{pipeline};
-        auto* frames = rr::addCameraNv12(pipeline, fps);
+        auto camera = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
+        auto* frames = camera->requestOutput({640, 480}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, static_cast<float>(fps));
         auto record = pipeline.create<dai::node::RecordVideo>();
         if(!codec) {
             record->setFormat(dai::RecordFormat::RAW_FRAMES);
             frames->link(record->input);
         } else {
-            rr::linkEncoder(pipeline, frames, record, *codec);
+            auto encoder = pipeline.create<dai::node::VideoEncoder>();
+            encoder->setProfile(*codec);
+            frames->link(encoder->input);
+            encoder->out.link(record->input);
         }
-        if(!onDevice) {
-            const auto stem = rr::outputDir() / rr::uniqueName("basic");
-            record->setOutputDirectory(stem);
-            std::cout << "Saving " << (codec ? "video" : "raw frames") << " to \"" << record->getOutputDirectory().string() << "\"\n";
-        }
+
+        const auto directory = recordingsDir();
+        const auto name = std::string("basic_") + dai::makeRecordingTimestamp();
+        record->setOutputDirectory(directory);
+        record->setRecordingName(name);
         record->setKeepOnDevice(onDevice);
         record->setFps(static_cast<unsigned int>(fps));
+        std::cout << "Saving " << (codec ? "video" : "raw frames") << " to \"" << (directory / name).string() << "\"\n";
+        if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC4) {
+            std::cout << "/data/depthai/recordings/" << name << "\n";
+        }
         std::cout << "Starting recording with " << codecName << " for " << duration << "s at " << fps << "fps.\n";
         std::cout << "The recording will be " << (onDevice ? "kept on device" : "transferred to host") << ".\n";
-        // Calls pipeline.start and prints record node status.
-        return rr::recordFor(pipeline, record, std::chrono::seconds(duration));
+
+        pipeline.start();
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(duration);
+        while(std::chrono::steady_clock::now() < deadline && pipeline.isRunning()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        pipeline.stop();
+        if(auto last = record->getStatus()) {
+            std::cout << "frames=" << last->frameCount << " path=" << last->path << "\n";
+        }
     } catch(const std::exception& ex) {
-        return rr::classifyRecordFailure(ex.what());
+        std::cerr << ex.what() << "\n";
+        return 1;
     }
+    return 0;
 }

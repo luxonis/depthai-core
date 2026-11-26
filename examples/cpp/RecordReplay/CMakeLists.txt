@@ -15,7 +15,7 @@ endif()
 
 dai_add_example(replay_video replay_video.cpp OFF OFF)
 
-dai_add_example(replay_to_camera replay_to_camera.cpp OFF OFF)
+dai_add_example(replay_on_camera replay_on_camera.cpp OFF OFF)
 
 dai_add_example(replay_to_processing replay_to_processing.cpp OFF OFF)
 

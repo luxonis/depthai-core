@@ -457,9 +457,9 @@ if(DEPTHAI_BUILD_BETA)
     add_python_example(multi_device_point_cloud PointCloud/multi_device_point_cloud.py)
 endif()
 
-# Replay examples. No CI labels: replay_to_camera needs a device and a recording,
+# Replay examples. No CI labels: replay_on_camera needs a device and a recording,
 # and replay_to_processing needs a recording path.
-add_python_example(replay_to_camera RecordReplay/replay_to_camera.py)
+add_python_example(replay_on_camera RecordReplay/replay_on_camera.py)
 add_python_example(replay_to_processing RecordReplay/replay_to_processing.py)
 
 # Multi-device examples: registered without labels so they never run in CI

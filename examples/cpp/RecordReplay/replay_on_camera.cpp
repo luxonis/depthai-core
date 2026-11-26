@@ -6,7 +6,7 @@
 
 // Replay into a camera node. Requires a connected RVC4 device.
 int main(int argc, char** argv) {
-    argparse::ArgumentParser program("replay_to_camera", "1.0", argparse::default_arguments::help);
+    argparse::ArgumentParser program("replay_on_camera", "1.0", argparse::default_arguments::help);
     program.add_argument("video").help("Video file or frame directory");
     try {
         program.parse_args(argc, argv);

@@ -1,4 +1,3 @@
-#include <argparse/argparse.hpp>
 #include <iostream>
 #include <opencv2/highgui.hpp>
 #include <string>
@@ -14,19 +13,16 @@
 // On RVC2 the recording is extracted and replayed on the host.
 // Video and metadata counts must match. recording.tar from CI does not (119 vs 140).
 int main(int argc, char** argv) {
-    argparse::ArgumentParser program("holistic_replay", "1.0", argparse::default_arguments::help);
-    program.add_argument("-s", "--source").default_value(std::string("recordings/recording.tar")).help("Recording path");
-    try {
-        program.parse_args(argc, argv);
-    } catch(const std::exception& ex) {
-        std::cerr << ex.what() << "\n" << program;
+    if(argc < 2) {
+        std::cout << "usage: holistic_replay <recording>\n";
         return 1;
     }
+    const std::string source = argv[1];
 
     try {
         dai::Pipeline pipeline(true);
         auto device = pipeline.getDefaultDevice();
-        pipeline.enableHolisticReplay(program.get<std::string>("--source"));
+        pipeline.enableHolisticReplay(source);
 
         // Define source and output.
         auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);

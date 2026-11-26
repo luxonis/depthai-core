@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
+import sys
+
 import cv2
 import depthai as dai
-import argparse
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-s", "--source", default="recordings/recording.tar", help="Recording path")
-args = parser.parse_args()
+if len(sys.argv) < 2:
+    print("usage: holistic_replay.py <recording>")
+    raise SystemExit(1)
+source = sys.argv[1]
 
 # On RVC4 the pipeline builds one device ReplayVideo per camera and one
 # ReplayMetadataOnly for the IMU, from a single uploaded recording.
@@ -14,7 +16,7 @@ args = parser.parse_args()
 # Video and metadata counts must match. recording.tar from CI does not (119 vs 140).
 with dai.Pipeline(True) as pipeline:
     device = pipeline.getDefaultDevice()
-    pipeline.enableHolisticReplay(args.source)
+    pipeline.enableHolisticReplay(source)
 
     # Define source and output
     camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
