@@ -1,11 +1,10 @@
 #pragma once
 
 #include <opencv2/core.hpp>
-#include <opencv2/stitching/detail/blenders.hpp>
-#include <opencv2/stitching/detail/exposure_compensate.hpp>
 #include <opencv2/stitching/detail/motion_estimators.hpp>
 #include <vector>
 
+#include "FixedBlender.hpp"
 #include "depthai/pipeline/node/Stitching.hpp"
 
 namespace dai {
@@ -15,9 +14,6 @@ using node::Stitching;
 
 /**
  * Composes a panorama whose registered camera geometry does not change.
- *
- * Projection maps and image regions are prepared once and reused. The compositor can either perform the full seam,
- * exposure, and blending pipeline or directly copy warped inputs into the panorama.
  */
 class FixedPanoramaCompositor {
    public:
@@ -57,14 +53,10 @@ class FixedPanoramaCompositor {
         cv::Size inputSize;
         cv::Size composeInputSize;
         cv::Rect roi;
-        cv::Mat map1;
-        cv::Mat map2;
-        cv::Mat mask;
         cv::Mat seamMask;
     };
 
-    std::vector<cv::Mat> warp(const std::vector<cv::Mat>& images) const;
-    void prepareCompositing(const std::vector<cv::Mat>& warped);
+    std::vector<cv::Mat> composeInputs(const std::vector<cv::Mat>& images) const;
 
     Config config;
     bool prepared = false;
@@ -72,8 +64,7 @@ class FixedPanoramaCompositor {
     double warperScale = 0.0;
     cv::Rect canvas;
     std::vector<Source> sources;
-    cv::Ptr<cv::detail::ExposureCompensator> compensator;
-    cv::Ptr<cv::detail::Blender> blender;
+    FixedBlender blender;
 };
 
 }  // namespace utilities

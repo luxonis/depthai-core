@@ -595,6 +595,7 @@ set(TARGET_OPENCV_SOURCES
 if(DEPTHAI_HAVE_OPENCV_STITCHING)
     list(APPEND TARGET_OPENCV_SOURCES
         src/pipeline/utilities/Stitching/Stitching.cpp
+        src/pipeline/utilities/Stitching/FixedBlender.cpp
         src/pipeline/utilities/Stitching/FixedPanoramaCompositor.cpp
         src/pipeline/utilities/Stitching/PlanarStitcher.cpp
     )

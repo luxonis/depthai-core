@@ -86,11 +86,15 @@ inline cv::Ptr<cv::detail::SeamFinder> createSeamFinder(Stitching::SeamFinder fi
     return cv::makePtr<cv::detail::GraphCutSeamFinder>(cv::detail::GraphCutSeamFinderBase::COST_COLOR);
 }
 
+inline float blendWidth(const cv::Size& panoSize) {
+    return std::sqrt(static_cast<float>(panoSize.area())) * BLEND_STRENGTH / 100.0f;
+}
+
 /**
  * @param panoSizeHint Size the blending width is derived from, the way OpenCV's stitching_detailed sample does it
  */
 inline cv::Ptr<cv::detail::Blender> createBlender(const cv::Size& panoSizeHint) {
-    const float blendWidth = std::sqrt(static_cast<float>(panoSizeHint.area())) * BLEND_STRENGTH / 100.0f;
+    const float blendWidth = stitching::blendWidth(panoSizeHint);
     if(blendWidth < 1.0f) {
         return cv::detail::Blender::createDefault(cv::detail::Blender::NO, false);
     }

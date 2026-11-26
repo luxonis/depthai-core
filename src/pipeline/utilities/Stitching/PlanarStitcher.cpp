@@ -119,7 +119,7 @@ void PlanarStitcher::reset() {
     numInputs = 0;
     preparedTransformations.clear();
     sources.clear();
-    compensator.release();
+    blender = FixedBlender{};
 }
 
 bool PlanarStitcher::isPrepared() const {
@@ -238,7 +238,6 @@ void PlanarStitcher::prepare(const std::vector<ImgTransformation>& transformatio
         source.index = i;
         source.roi = roi;
         source.mask = validity(roi).clone();
-        source.seamMask = source.mask;
         source.imageSize = cv::Size(static_cast<int>(sourceWidth), static_cast<int>(sourceHeight));
         cv::convertMaps(map(roi), cv::noArray(), source.map1, source.map2, CV_16SC2);
         sources.push_back(std::move(source));
@@ -371,105 +370,37 @@ Stitching::VirtualCamera PlanarStitcher::computeView(const std::vector<ImgTransf
     return resolved;
 }
 
-void PlanarStitcher::prepareCompositing(const std::vector<cv::Mat>& warped) {
-    std::vector<cv::Point> corners;
-    std::vector<cv::UMat> images;
-    std::vector<cv::UMat> masks;
-    corners.reserve(sources.size());
-    images.reserve(sources.size());
-    masks.reserve(sources.size());
-    for(size_t i = 0; i < sources.size(); ++i) {
-        corners.push_back(sources[i].roi.tl());
-        images.push_back(warped[i].getUMat(cv::ACCESS_READ));
-        masks.push_back(sources[i].mask.getUMat(cv::ACCESS_READ));
-    }
-
-    compensator = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN_BLOCKS);
-    compensator->feed(corners, images, masks);
-
-    // Seam estimation is the expensive part, so it runs on downscaled images, the way OpenCV's stitcher does
-    const double area = static_cast<double>(view.width) * view.height;
-    const double scale = std::min(1.0, std::sqrt(stitching::SEAM_ESTIMATION_RESOLUTION * 1e6 / area));
-
-    std::vector<cv::Point> seamCorners;
-    std::vector<cv::UMat> seamImages;
-    std::vector<cv::UMat> seamMasks;
-    seamCorners.reserve(sources.size());
-    seamImages.reserve(sources.size());
-    seamMasks.reserve(sources.size());
-    for(size_t i = 0; i < sources.size(); ++i) {
-        cv::Mat image;
-        cv::Mat mask;
-        const cv::Size seamSize(std::max(1, static_cast<int>(std::lround(warped[i].cols * scale))),
-                                std::max(1, static_cast<int>(std::lround(warped[i].rows * scale))));
-        cv::resize(warped[i], image, seamSize, 0, 0, cv::INTER_LINEAR_EXACT);
-        cv::resize(sources[i].mask, mask, image.size(), 0, 0, cv::INTER_NEAREST);
-        image.convertTo(image, CV_32F);
-
-        seamCorners.emplace_back(static_cast<int>(std::lround(sources[i].roi.x * scale)), static_cast<int>(std::lround(sources[i].roi.y * scale)));
-        seamImages.push_back(image.getUMat(cv::ACCESS_READ));
-        seamMasks.push_back(mask.getUMat(cv::ACCESS_RW));
-    }
-
-    stitching::createSeamFinder(config.seamFinder)->find(seamImages, seamCorners, seamMasks);
-
-    for(size_t i = 0; i < sources.size(); ++i) {
-        cv::Mat seamMask;
-        cv::dilate(seamMasks[i].getMat(cv::ACCESS_READ), seamMask, cv::Mat());
-        cv::resize(seamMask, seamMask, sources[i].mask.size(), 0, 0, cv::INTER_LINEAR);
-        sources[i].seamMask = seamMask & sources[i].mask;
-    }
-
-    compositingPrepared = true;
-}
-
 cv::Mat PlanarStitcher::compose(const std::vector<cv::Mat>& images) {
     DAI_CHECK_V(prepared, "The planar projection was not prepared yet");
     DAI_CHECK_V(images.size() == numInputs, "Expected {} images, got {}", numInputs, images.size());
 
-    std::vector<cv::Mat> warped(sources.size());
-    for(size_t i = 0; i < sources.size(); ++i) {
-        const cv::Mat& image = images[sources[i].index];
-        DAI_CHECK_V(image.size() == sources[i].imageSize,
+    std::vector<cv::Mat> sourceImages;
+    sourceImages.reserve(sources.size());
+    for(const auto& source : sources) {
+        const cv::Mat& image = images[source.index];
+        DAI_CHECK_V(image.size() == source.imageSize,
                     "Input {} changed its size from {}x{} to {}x{}",
-                    sources[i].index,
-                    sources[i].imageSize.width,
-                    sources[i].imageSize.height,
+                    source.index,
+                    source.imageSize.width,
+                    source.imageSize.height,
                     image.cols,
                     image.rows);
-        cv::remap(image, warped[i], sources[i].map1, sources[i].map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+        sourceImages.push_back(image);
     }
-
     if(!compositingPrepared) {
-        prepareCompositing(warped);
+        std::vector<FixedBlender::Source> blendSources;
+        for(auto& source : sources) {
+            blendSources.push_back({source.roi.tl(), source.mask, {}, cv::Scalar::all(1.0), std::move(source.map1), std::move(source.map2)});
+        }
+        blender.prepareBlended(cv::Rect(0, 0, static_cast<int>(view.width), static_cast<int>(view.height)),
+                               std::move(blendSources),
+                               sourceImages,
+                               *stitching::createSeamFinder(config.seamFinder),
+                               stitching::SEAM_ESTIMATION_RESOLUTION,
+                               cv::BORDER_CONSTANT);
+        compositingPrepared = true;
     }
-
-    const cv::Size viewSize(static_cast<int>(view.width), static_cast<int>(view.height));
-    auto blender = stitching::createBlender(viewSize);
-    blender->prepare(cv::Rect(0, 0, viewSize.width, viewSize.height));
-
-    for(size_t i = 0; i < sources.size(); ++i) {
-        compensator->apply(static_cast<int>(i), sources[i].roi.tl(), warped[i], sources[i].mask);
-
-        cv::Mat converted;
-        warped[i].convertTo(converted, CV_16S);
-        blender->feed(converted, sources[i].seamMask, sources[i].roi.tl());
-    }
-
-    cv::Mat result;
-    cv::Mat resultMask;
-    blender->blend(result, resultMask);
-    result.convertTo(result, CV_8U);
-
-    // The blender only guarantees the result covers the fed regions, the canvas is the view
-    if(result.size() != viewSize) {
-        cv::Mat canvas = cv::Mat::zeros(viewSize, result.type());
-        const cv::Rect overlap = cv::Rect(0, 0, result.cols, result.rows) & cv::Rect(0, 0, viewSize.width, viewSize.height);
-        result(overlap).copyTo(canvas(overlap));
-        result = canvas;
-    }
-
-    return result;
+    return blender.blend(sourceImages);
 }
 
 }  // namespace utilities

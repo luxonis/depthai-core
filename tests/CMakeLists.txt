@@ -720,6 +720,8 @@ endif()
 if(DEPTHAI_HAVE_OPENCV_STITCHING)
     dai_add_test(planar_stitching_node_test src/onhost_tests/pipeline/node/planar_stitching_node_test.cpp)
     dai_set_test_labels(planar_stitching_node_test onhost ci)
+    dai_add_test(fixed_blender_test src/onhost_tests/pipeline/utilities/fixed_blender_test.cpp)
+    dai_set_test_labels(fixed_blender_test onhost ci)
 endif()
 
 # Remote connection tests
