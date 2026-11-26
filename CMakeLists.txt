@@ -47,8 +47,19 @@ else()
     message(STATUS "DEPTHAI_BOOTSTRAP_VCPKG is OFF")
 endif()
 
-# Minimal supported macOS SDK version for both arm64 and x86_64
-set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0)
+# Minimal supported macOS version. Default: the major version of the macOS that builds, at least 11.0, as Homebrew
+# builds its libraries: a build that links libraries of the system (for example OpenCV of Homebrew) runs only on that
+# macOS anyway. The Python wheels set 11.0 (setup.py). For binaries for older macOS: -D CMAKE_OSX_DEPLOYMENT_TARGET=11.0
+# or the environment variable MACOSX_DEPLOYMENT_TARGET.
+if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET AND "$ENV{MACOSX_DEPLOYMENT_TARGET}" STREQUAL "")
+    execute_process(COMMAND sw_vers -productVersion OUTPUT_VARIABLE _macos_version OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    string(REGEX MATCH "^[0-9]+" _macos_major "${_macos_version}")
+    set(_deployment_target 11.0)
+    if(_macos_major GREATER 11)
+        set(_deployment_target "${_macos_major}.0")
+    endif()
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "${_deployment_target}" CACHE STRING "Minimum macOS version of the build")
+endif()
 
 # Set type to canonicalize relative paths for user-provided toolchain
 set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
@@ -312,6 +323,7 @@ set(TARGET_CORE_SOURCES
     "${DEPTHAI_DEVICE_MANAGER_SOURCES}"
     # sources
     src/common/ModelType.cpp
+    src/common/WorldConstraints.cpp
     src/device/CrashDump.cpp
     src/device/CrashDumpManager.cpp
     src/device/Device.cpp
@@ -560,6 +572,7 @@ endif()
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     list(APPEND TARGET_CORE_SOURCES
         src/pipeline/node/DynamicCalibrationNode.cpp
+        src/pipeline/node/WorldConstraintsValidation.cpp
         src/pipeline/datatype/DynamicCalibrationResults.cpp
         src/pipeline/datatype/DynamicCalibrationControl.cpp
         src/pipeline/node/AutoCalibration.cpp
@@ -933,6 +946,8 @@ include(Depthai/DepthaiVisualizerConfig)    # depthai-visualizer commit/version 
 include(DepthaiDownloader)                  # Depthai device binary downloader
 include(DepthaiBootloaderDownloader)        # Depthai bootloader binary downloader
 include(DepthaiDeviceKbDownloader)          # depthai-device-kb fwp downloader
+include(DepthaiDeviceRvc4LocalFwp)          # local depthai-device-rvc4 fwp in place of the pinned one
+include(DepthaiDeviceRvc4FirmwareBuild)     # depthai-device-rvc4 fwp built from device/rvc4 when no version is set
 include(DepthaiVisualizerDownloader)        # depthai-visualizer downloader
 include(DepthaiVisualizerLicense)           # depthai-visualizer license extraction and verification
 
@@ -1008,25 +1023,47 @@ if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
     list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_KB_RESOURCE_LIST})
 endif()
 
+set(DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET "")
 if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
-    if(DEPTHAI_SANITIZE AND SANITIZE_THREAD)
-        string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-tsan")
-    elseif(DEPTHAI_SANITIZE)
-        string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-asan-ubsan")
-    endif()
+    if(DEPTHAI_DEVICE_RVC4_FWP_PATH)
+        # A local firmware package (for example a build of device/rvc4) in place of the pinned package
+        DepthaiDeviceRvc4LocalFwp(
+            "${DEPTHAI_DEVICE_RVC4_FWP_PATH}"
+            "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
+            DEPTHAI_DEVICE_RVC4_VERSION                       # In: pinned version, out: version of the local package
+            DEPTHAI_DEVICE_RVC4_RESOURCE_LIST                 # List of output resources
+        )
+    elseif("${DEPTHAI_DEVICE_RVC4_VERSION}" STREQUAL "")
+        # No version: build the firmware from device/rvc4 of this checkout at each build
+        DepthaiDeviceRvc4FirmwareBuild(
+            "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
+            DEPTHAI_DEVICE_RVC4_VERSION                       # Out: version of the built package
+            DEPTHAI_DEVICE_RVC4_RESOURCE_LIST                 # List of output resources
+            DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET              # Target that builds the package
+        )
+        add_dependencies(${TARGET_CORE_NAME} "${DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET}")
+    else()
+        if(DEPTHAI_SANITIZE AND SANITIZE_THREAD)
+            string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-tsan")
+        elseif(DEPTHAI_SANITIZE)
+            string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-asan-ubsan")
+        endif()
 
-    # Add device-RVC4 FW
-    DepthaiDeviceDownloader(
-        "depthai-device-rvc4"
-        "luxonis-rvc4-snapshot-local"
-        "luxonis-rvc4-release-local"
-        "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
-        "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
-        DEPTHAI_DEVICE_RVC4_RESOURCE_LIST                 # List of output resources
-        "${DEPTHAI_DEVICE_RVC4_MATURITY}"                # Maturity
-        "${DEPTHAI_DEVICE_RVC4_VERSION}"
-    )
+        # Add device-RVC4 FW
+        DepthaiDeviceDownloader(
+            "depthai-device-rvc4"
+            "luxonis-rvc4-snapshot-local"
+            "luxonis-rvc4-release-local"
+            "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
+            "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
+            DEPTHAI_DEVICE_RVC4_RESOURCE_LIST                 # List of output resources
+            "${DEPTHAI_DEVICE_RVC4_MATURITY}"                # Maturity
+            "${DEPTHAI_DEVICE_RVC4_VERSION}"
+        )
+    endif()
     list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_RVC4_RESOURCE_LIST})
+    set(DEPTHAI_DEVICE_RVC4_EMBEDDED_VERSION "${DEPTHAI_DEVICE_RVC4_VERSION}" CACHE INTERNAL
+        "Version of the RVC4 firmware package that the library embeds (scripts/generate_sbom.py)")
 endif()
 
 
@@ -1060,6 +1097,9 @@ if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
 
     # Link to resource library
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE "${DEPTHAI_RESOURCE_LIBRARY_NAME}")
+    if(DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET)
+        add_dependencies("${DEPTHAI_RESOURCE_LIBRARY_NAME}" "${DEPTHAI_DEVICE_RVC4_FWP_BUILD_TARGET}")
+    endif()
 
     # Bootloader-only resource library for depthai::device-manager, so it does not embed device firmware it cannot use
     if(DEPTHAI_BUILD_DEVICE_MANAGER)

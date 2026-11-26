@@ -139,6 +139,48 @@ TEST_CASE("Sync node runs on host") {
     test_camera_sync(true);
 }
 
+TEST_CASE("Sync retains RGB history for delayed half-rate depth", "[host]") {
+    dai::Pipeline pipeline(false);
+    auto sync = pipeline.create<dai::node::Sync>();
+    sync->setRunOnHost(true);
+    sync->setTimestampSource(dai::node::Sync::TimestampSource::HOST);
+    sync->setSyncThreshold(std::chrono::milliseconds(20));
+    sync->inputs["rgb"].setBlocking(false);
+    sync->inputs["rgb"].setMaxSize(4);
+    sync->inputs["depth_aligned"].setBlocking(false);
+    sync->inputs["depth_aligned"].setMaxSize(1);
+    auto output = sync->out.createOutputQueue(1, false);
+
+    pipeline.start();
+
+    for(int batch = 0; batch < 10; ++batch) {
+        // RGB runs at 25 FPS. Depth arrives after newer RGB frames, at half the rate.
+        // A one-slot RGB queue loses the first matching frame in every batch.
+        for(int frame = 0; frame < 4; ++frame) {
+            const int sequenceNum = batch * 4 + frame;
+            const auto timestamp = steadyMs(sequenceNum * 40);
+            sync->inputs["rgb"].send(makeBuffer(makeTimestamps(sequenceNum, timestamp, timestamp, std::nullopt)));
+        }
+        for(int frame : {1, 3}) {
+            const int sequenceNum = batch * 4 + frame;
+            const auto timestamp = steadyMs(sequenceNum * 40);
+            sync->inputs["depth_aligned"].send(makeBuffer(makeTimestamps(sequenceNum, timestamp, timestamp, std::nullopt)));
+
+            bool timedOut = false;
+            auto group = output->get<dai::MessageGroup>(std::chrono::seconds(1), timedOut);
+            REQUIRE_FALSE(timedOut);
+            REQUIRE(group != nullptr);
+            auto rgb = group->get<dai::Buffer>("rgb");
+            auto depth = group->get<dai::Buffer>("depth_aligned");
+            REQUIRE(rgb != nullptr);
+            REQUIRE(depth != nullptr);
+            REQUIRE(rgb->getSequenceNum() == sequenceNum);
+            REQUIRE(depth->getSequenceNum() == sequenceNum);
+            REQUIRE(rgb->getTimestamp() == depth->getTimestamp());
+        }
+    }
+}
+
 TEST_CASE("Sync node uses host timestamps when selected") {
     test_sync_timestamp_source(dai::node::Sync::TimestampSource::HOST,
                                makeTimestamps(1, steadyMs(100), steadyMs(400), systemMs(700)),

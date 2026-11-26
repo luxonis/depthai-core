@@ -29,6 +29,7 @@
 #include "depthai/utility/RecordingStore.hpp"
 #include "depthai/utility/span.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
+#include "utility/ImgFrameView.hpp"
 #include "utility/RecordReplayImpl.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -351,10 +352,16 @@ struct RecordHostState {
         if(kind == FrameKind::Image) {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             const auto image = std::dynamic_pointer_cast<ImgFrame>(message);
-            auto frame = image->getCvFrame();
+            const cv::Mat source = utility::getCvFrameView(*image);
             const bool grayscale = image->getType() == ImgFrame::Type::GRAY8 || image->getType() == ImgFrame::Type::GRAYF16
                                    || (ImgFrame::Type::RAW16 <= image->getType() && image->getType() <= ImgFrame::Type::RAW8);
-            if(grayscale) cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
+            cv::Mat converted;
+            if(grayscale) {
+                cv::cvtColor(source, converted, cv::COLOR_GRAY2BGR);
+            } else if(!source.isContinuous()) {
+                source.copyTo(converted);
+            }
+            const cv::Mat frame = converted.empty() ? source : converted;
             span<uint8_t> view(frame.data, frame.total() * frame.elemSize());
             video->write(view, static_cast<std::uint32_t>(frame.step));
     #ifdef DEPTHAI_ENABLE_PROTOBUF
