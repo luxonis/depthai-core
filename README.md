@@ -29,10 +29,6 @@ cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
 cmake --build build
 ```
 
-## Detection filtering and calibrated panoramas
-
-Use `dai::node::ImgDetectionsFilter` / `dai.node.ImgDetectionsFilter` to filter detections or combine synchronized camera detections on a calibrated panorama.
-
 ## Beta features
 The `beta` namespace is a staging area for experimental DepthAI features. It
 allows new features to be developed and iterated on quickly before they are
@@ -177,6 +173,29 @@ cmake -S . -B build -D'BUILD_SHARED_LIBS=ON'
 cmake --build build --parallel [num CPU cores]
 ```
 
+## Building the FW
+
+The RVC4 firmware is in [device/rvc4](device/rvc4/README.md). Each build of the library builds it automatically from
+that folder and embeds it, so the firmware always matches the host library of the same commit.
+
+* The firmware compiles in the public build container
+  [`ghcr.io/luxonis/depthai-device-sdk`](https://github.com/luxonis/depthai-core/pkgs/container/depthai-device-sdk).
+  The build pulls it: you need an x86-64 host with bash and a running Docker engine.
+* The firmware links a prebuilt vendor module. Read its End User License Agreement first
+  ([device/rvc4](device/rvc4/README.md#building)), then accept it and the license terms of the Qualcomm AI Runtime SDK:
+
+  ```
+  cmake -S . -B build -D DEPTHAI_ACCEPT_VENDOR_EULA=yes -D DEPTHAI_ACCEPT_QUALCOMM_LICENSE=yes
+  cmake --build build --parallel [num CPU cores]
+  ```
+
+* To skip the firmware build, download a published package with `-D DEPTHAI_DEVICE_RVC4_VERSION=<version>`, use your
+  own with `-D DEPTHAI_DEVICE_RVC4_FWP_PATH=<path>/depthai-device-rvc4-fwp.tar.xz`, or build without the RVC4 firmware
+  with `-D DEPTHAI_ENABLE_DEVICE_RVC4_FW=OFF`.
+* To run another firmware package without a new build, set `DEPTHAI_DEVICE_RVC4_FWP=<path>`
+  (see [Environment variables](#environment-variables)).
+
+
 ## Installation and Integration
 Installation of the DepthAI library is currently only available as a dynamic library. To install the library, use the following command:
 
@@ -275,30 +294,6 @@ In your non-CMake project (new Visual Studio project, ...)
 
 > ℹ️ Check `build/depthai-core-integration.txt` or `build/depthai-opencv-integration.txt` for up to date define options.
 The generated integration file also specifies include paths without requiring installation. -->
-
-## RVC4 device firmware
-
-The device-side firmware of RVC4 devices is part of this repository: see [device/rvc4](device/rvc4/README.md). It
-compiles the node definitions and message types of the same commit as the host library. The firmware package that a
-host build embeds is one of:
-
-* by default, a build of `device/rvc4` of this checkout: each build of the library builds the firmware in its build
-  container, so the build needs bash and Docker ([device/rvc4](device/rvc4/README.md), Building);
-* with `-D DEPTHAI_DEVICE_RVC4_VERSION=<version>`, the package of that version, downloaded from the artifact server
-  (`cmake/Depthai/DepthaiDeviceRVC4Config.cmake` sets no version);
-* with `-D DEPTHAI_DEVICE_RVC4_FWP_PATH=<path>/depthai-device-rvc4-fwp.tar.xz`, a package that you have.
-
-In the default case, each configure step of the library also configures the firmware build in its build container:
-an error of the firmware configuration stops the configure step and not the build
-(`-D DEPTHAI_DEVICE_RVC4_FWP_CONFIGURE=OFF` leaves it to the build). The license agreements of the firmware build
-([device/rvc4](device/rvc4/README.md), Building) are the environment variables or the CMake cache entries
-`DEPTHAI_ACCEPT_VENDOR_EULA` and `DEPTHAI_ACCEPT_QUALCOMM_LICENSE`. The cache entries `DEPTHAI_DEVICE_SDK_IMAGE`,
-`DEPTHAI_DEVICE_RVC4_VENDOR` and `DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR` also go to the firmware build as these
-environment variables, for example from your own preset in `CMakeUserPresets.json` (not committed), which can inherit
-the presets of `CMakePresets.json`. The configure preset `dev-rvc4-fw` of
-`CMakePresets.json` (for example in the CMake Tools extension of VS Code) builds the library, its tests, examples and
-Python bindings in `build/` with this firmware. It sets `DEPTHAI_ACCEPT_VENDOR_EULA=yes`: select it only after you
-read and accept the Luxonis DepthAI Vendor Module End User License Agreement.
 
 ## CMake options
 Many features of the library can be disabled or enabled using CMake options.
