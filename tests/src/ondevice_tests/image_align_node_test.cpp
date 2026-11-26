@@ -479,6 +479,9 @@ std::vector<SyntheticAlignmentFrame> runSyntheticBackendSequence(bool runOnHost,
             deviceHasGpu = device->hasGPU();
             device->setLogLevel(dai::LogLevel::DEBUG);
             device->setLogOutputLevel(dai::LogLevel::WARN);
+            // Test contract: the device ImageAlign node logs "ImageAlign processing <t> ms, backend <cpu|gpu>"
+            // at DEBUG level once per frame, and this callback takes the last word as the backend used.
+            // Rewording that log line in firmware (device ImageAlign.cpp) breaks this test.
             device->addLogCallback([log](const dai::LogMessage& message) {
                 if(message.payload.find("ImageAlign processing ") == std::string::npos) return;
                 std::lock_guard<std::mutex> lock(log->mutex);
