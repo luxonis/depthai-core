@@ -29,6 +29,12 @@ class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode,
     std::string nodeName = ThreadedHostNode::NAME;
 
    public:
+    PyThreadedHostNode() {
+        if(!isCreatingNodeFromPipelineCreate()) {
+            PyErr_WarnEx(PyExc_DeprecationWarning, "Constructing ThreadedHostNode directly is deprecated. Use pipeline.create(...) instead.", 1);
+        }
+    }
+
     const char* getName() const override {
         return nodeName.c_str();
     }
@@ -56,6 +62,12 @@ class PyHostNode : public NodeCRTP<HostNode, PyHostNode, false>, public py::tram
     std::string nodeName = ThreadedHostNode::NAME;
 
    public:
+    PyHostNode() {
+        if(!isCreatingNodeFromPipelineCreate()) {
+            PyErr_WarnEx(PyExc_DeprecationWarning, "Constructing HostNode directly is deprecated. Use pipeline.create(...) instead.", 1);
+        }
+    }
+
     const char* getName() const override {
         return nodeName.c_str();
     }
@@ -94,9 +106,17 @@ namespace detail {
 template <>
 struct process_attribute<AddHostNodeToPipeline> : process_attribute_default<AddHostNodeToPipeline> {
     static void postcall(function_call& call, handle) {
-        // The init factory has installed the smart_holder by this point. Its
-        // shared_ptr conversion now establishes Python-retaining ownership,
-        // including the control block used by Node::shared_from_this().
+        // init_alias leaves holder initialization to the dispatcher, after
+        // postcall. Mirror its constructor-scope lookup and initialize now so
+        // the shared_ptr cast below can establish Python-retaining ownership.
+        // These casts use the same instance/type layout as the dispatcher.
+        auto* self = reinterpret_cast<instance*>(call.init_self.ptr());
+        auto* typeInfo = get_type_info(reinterpret_cast<PyTypeObject*>(call.func.scope.ptr()));
+        auto valueAndHolder = self->get_value_and_holder(typeInfo, true);
+        if(!valueAndHolder.holder_constructed()) {
+            valueAndHolder.type->init_instance(self, nullptr);
+        }
+
         // Register before returning from the base initializer so Python node
         // constructors can immediately use getParentPipeline().
         getImplicitPipeline()->add(py::cast<std::shared_ptr<dai::Node>>(call.init_self));
@@ -107,8 +127,8 @@ struct process_attribute<AddHostNodeToPipeline> : process_attribute_default<AddH
 
 void bind_hostnode(pybind11::module& m, void* pCallstack) {
     // declare upfront
-    auto threadedHostNode = py::class_<ThreadedHostNode, PyThreadedHostNode, ThreadedNode, py::smart_holder>(
-        daiNodeModule, "ThreadedHostNode", DOC(dai, node, ThreadedHostNode));
+    auto threadedHostNode =
+        py::class_<ThreadedHostNode, PyThreadedHostNode, ThreadedNode, py::smart_holder>(daiNodeModule, "ThreadedHostNode", DOC(dai, node, ThreadedHostNode));
     auto hostNode = py::class_<HostNode, PyHostNode, ThreadedHostNode, py::smart_holder>(daiNodeModule, "HostNode", DOC(dai, node, HostNode));
 
     ///////////////////////////////////////////////////////////////////////
@@ -124,14 +144,10 @@ void bind_hostnode(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-    threadedHostNode
-        .def(py::init<>([]() {
-                 if(!isCreatingNodeFromPipelineCreate()) {
-                     PyErr_WarnEx(PyExc_DeprecationWarning, "Constructing ThreadedHostNode directly is deprecated. Use pipeline.create(...) instead.", 1);
-                 }
-                 return std::make_unique<PyThreadedHostNode>();
-             }),
-             AddHostNodeToPipeline{})
+    // init_alias lets smart_holder defer shared_from_this ownership until the
+    // Python-retaining cast in AddHostNodeToPipeline. The pinned pybind11's
+    // unique_ptr factory initializes it with a C++-only owner instead.
+    threadedHostNode.def(py::init_alias<>(), AddHostNodeToPipeline{})
         .def("run", &ThreadedHostNode::run)
         .def("onStart", &ThreadedHostNode::onStart)
         .def("onStop", &ThreadedHostNode::onStop)
@@ -164,14 +180,7 @@ void bind_hostnode(pybind11::module& m, void* pCallstack) {
             py::arg("possibleDatatypes") = Node::OutputDescription{}.types,
             py::keep_alive<1, 0>());
 
-    hostNode
-        .def(py::init([]() {
-                 if(!isCreatingNodeFromPipelineCreate()) {
-                     PyErr_WarnEx(PyExc_DeprecationWarning, "Constructing HostNode directly is deprecated. Use pipeline.create(...) instead.", 1);
-                 }
-                 return std::make_unique<PyHostNode>();
-             }),
-             AddHostNodeToPipeline{})
+    hostNode.def(py::init_alias<>(), AddHostNodeToPipeline{})
         .def("processGroup", &HostNode::processGroup)
         .def_property_readonly(
             "inputs", [](HostNode& node) { return &node.inputs; }, py::return_value_policy::reference_internal)
