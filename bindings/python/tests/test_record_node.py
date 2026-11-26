@@ -367,7 +367,7 @@ def test_py7_device_recordings():
             time.sleep(IDLE_SLEEP_S)
         pipeline.stop()
         pipeline.wait()
-        stopped = take_status(status, 30)
+        stopped = status_after_stop(record)
         assert_stopped(stopped, 0, 5, 0, 4, 0)
         names = [recording.name for recording in device.listRecordings()]
         assert name in names

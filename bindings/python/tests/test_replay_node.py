@@ -248,7 +248,7 @@ def test_p4_gray8():
 
 
 def test_p6_fps_pacing():
-    """P6 mirrors E1: gaps at least 90 ms, mean gap 100 ms within 15%, span 900 ms within 25%."""
+    """P6 mirrors E1: tsDevice gaps at least 90 ms, arrival mean 100 ms within 15%, arrival span 900 ms within 25%."""
     directory = tempfile.TemporaryDirectory(prefix="dai-p6-")
     pipeline = None
     try:
@@ -256,12 +256,15 @@ def test_p6_fps_pacing():
         pipeline, _replay, queue = host_replay(directory.name, fps=10)
         pipeline.start()
         arrivals = []
+        stamps = []
         for sequence in range(10):
             frame = take_frame(queue, timeout_s=10)
             arrivals.append(time.monotonic())
+            stamps.append(timestamp_ms(frame.getTimestampDevice()))
             assert frame.getSequenceNum() == sequence
+        node_gaps = [stamps[index + 1] - stamps[index] for index in range(9)]
+        assert min(node_gaps) >= 90.0
         gaps_ms = [(arrivals[index + 1] - arrivals[index]) * 1000.0 for index in range(9)]
-        assert min(gaps_ms) >= 90.0
         mean_gap = sum(gaps_ms) / len(gaps_ms)
         assert abs(mean_gap - 100.0) <= 15.0
         span_ms = (arrivals[-1] - arrivals[0]) * 1000.0

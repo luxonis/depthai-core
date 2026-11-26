@@ -1,7 +1,5 @@
 #pragma once
 
-// Thin wrappers for the replay-node API. Spec names are proposals; tests call these.
-
 #include <cstdint>
 #include <filesystem>
 #include <memory>

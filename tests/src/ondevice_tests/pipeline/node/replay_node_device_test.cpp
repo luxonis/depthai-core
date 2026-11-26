@@ -182,36 +182,44 @@ TEST_CASE("VA1 three frames upload one source entry", "[replay][device]") {
 
 TEST_CASE("VA2 the second run hits the cache", "[replay][device]") {
     DeviceReplay fx;
-    auto& pipeline = fx.begin();
     const auto dir = makeFrames(fx.dir.path / "src", 64, 48, 3);
-    auto play = addPlay(pipeline, dir, true);
-    pipeline.start();
-    CHECK(takeFrames(play.out, 3).size() == 3);
-    pipeline.stop();
+    {
+        auto& pipeline = fx.begin();
+        auto play = addPlay(pipeline, dir, true);
+        pipeline.start();
+        CHECK(takeFrames(play.out, 3).size() == 3);
+        pipeline.stop();
+    }
+    auto& pipeline = fx.nextPipeline();
     const auto hash = hashDir(dir);
-    const auto* before = entryWith(getReplayCacheInfo(*fx.device), CacheKind::SOURCE, hash);
+    const auto beforeInfo = getReplayCacheInfo(*fx.device);
+    const auto* before = entryWith(beforeInfo, CacheKind::SOURCE, hash);
     REQUIRE(before != nullptr);
     const auto used = before->lastUseMs;
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     const int uploads = fx.devLog.countSubstring("Replay cache upload");
+    auto play = addPlay(pipeline, dir, true);
     pipeline.start();
     CHECK(takeFrames(play.out, 3).size() == 3);
-    pipeline.stop();
-    const auto* after = entryWith(getReplayCacheInfo(*fx.device), CacheKind::SOURCE, hash);
+    const auto afterInfo = getReplayCacheInfo(*fx.device);
+    const auto* after = entryWith(afterInfo, CacheKind::SOURCE, hash);
     REQUIRE(after != nullptr);
     CHECK(after->lastUseMs > used);
     CHECK(fx.devLog.countSubstring("Replay cache hit " + hash) >= 1);
     CHECK(fx.devLog.countSubstring("Replay cache upload") == uploads);
+    pipeline.stop();
 }
 
 TEST_CASE("VA3 a changed frame uploads a new hash", "[replay][device]") {
     DeviceReplay fx;
-    auto& pipeline = fx.begin();
     const auto dir = makeFrames(fx.dir.path / "src", 64, 48, 3);
-    auto play = addPlay(pipeline, dir, true);
-    pipeline.start();
-    CHECK(takeFrames(play.out, 3).size() == 3);
-    pipeline.stop();
+    {
+        auto& pipeline = fx.begin();
+        auto play = addPlay(pipeline, dir, true);
+        pipeline.start();
+        CHECK(takeFrames(play.out, 3).size() == 3);
+        pipeline.stop();
+    }
     const auto first = hashDir(dir);
     auto loaded = record_test::loadImg(dir / "cam_0.dai");
     REQUIRE(loaded != nullptr);
@@ -220,44 +228,58 @@ TEST_CASE("VA3 a changed frame uploads a new hash", "[replay][device]") {
     bytes[0] = static_cast<std::uint8_t>(bytes[0] ^ 0x1u);
     loaded->setData(bytes);
     loaded->save(dir / "cam_0.dai");
+    auto& pipeline = fx.nextPipeline();
+    auto play = addPlay(pipeline, dir, true);
     pipeline.start();
     CHECK(takeFrames(play.out, 3).size() == 3);
-    pipeline.stop();
     const auto second = hashDir(dir);
     CHECK(second != first);
     CHECK(fx.devLog.count(LineLevel::INFO, "Replay cache upload " + second) >= 1);
     CHECK(sourceHashes(fx.device) == std::set<std::string>({first, second}));
+    pipeline.stop();
 }
 
 TEST_CASE("VA4 notes.txt changes the directory hash", "[replay][device]") {
     DeviceReplay fx;
-    auto& pipeline = fx.begin();
     const auto dir = makeFrames(fx.dir.path / "src", 64, 48, 3);
-    auto play = addPlay(pipeline, dir, true);
-    pipeline.start();
-    pipeline.stop();
+    {
+        auto& pipeline = fx.begin();
+        auto play = addPlay(pipeline, dir, true);
+        (void)play;
+        pipeline.start();
+        pipeline.stop();
+    }
     const int uploads = fx.devLog.countSubstring("Replay cache upload");
     std::ofstream(dir / "notes.txt") << "notes";
+    auto& pipeline = fx.nextPipeline();
+    auto play = addPlay(pipeline, dir, true);
+    (void)play;
     pipeline.start();
-    pipeline.stop();
     CHECK(fx.devLog.countSubstring("Replay cache upload") == uploads + 1);
     CHECK(sourceHashes(fx.device).count(hashDir(dir)) == 1);
+    pipeline.stop();
 }
 
 TEST_CASE("VA5 a dot file does not change the hash", "[replay][device]") {
     DeviceReplay fx;
-    auto& pipeline = fx.begin();
     const auto dir = makeFrames(fx.dir.path / "src", 64, 48, 3);
-    auto play = addPlay(pipeline, dir, true);
-    pipeline.start();
-    pipeline.stop();
+    {
+        auto& pipeline = fx.begin();
+        auto play = addPlay(pipeline, dir, true);
+        (void)play;
+        pipeline.start();
+        pipeline.stop();
+    }
     const auto hash = hashDir(dir);
     const int uploads = fx.devLog.countSubstring("Replay cache upload");
     std::ofstream(dir / "._x") << "dot";
+    auto& pipeline = fx.nextPipeline();
+    auto play = addPlay(pipeline, dir, true);
+    (void)play;
     pipeline.start();
-    pipeline.stop();
     CHECK(fx.devLog.countSubstring("Replay cache hit " + hash) >= 1);
     CHECK(fx.devLog.countSubstring("Replay cache upload") == uploads);
+    pipeline.stop();
 }
 
 TEST_CASE("VA6 a tar hash differs from the directory hash", "[replay][device]") {
@@ -522,9 +544,8 @@ TEST_CASE("VA18 the cache limit survives a closed device", "[replay][device]") {
         second.setReplayCacheLimit(3000000);
     }
     dai::Device third;
-    replay_test::CacheGuard guard(third);
+    replay_test::CacheGuard guard(third, saved);
     CHECK(getReplayCacheInfo(third).limitBytes == 3000000);
-    third.setReplayCacheLimit(saved);
 }
 
 TEST_CASE("VA19 lowering the limit does not evict by itself", "[replay][device]") {
@@ -546,8 +567,12 @@ TEST_CASE("VA20 clear removes the uploaded entry", "[replay][device]") {
     auto& pipeline = fx.begin();
     const auto dir = makeFrames(fx.dir.path / "src", 64, 48, 3);
     auto play = addPlay(pipeline, dir, true);
+    (void)play;
     pipeline.start();
+    REQUIRE_FALSE(getReplayCacheInfo(*fx.device).entries.empty());
     pipeline.stop();
+    fx.reopenIfClosed();
+    REQUIRE_FALSE(getReplayCacheInfo(*fx.device).entries.empty());
     clearReplayCache(*fx.device);
     CHECK(getReplayCacheInfo(*fx.device).entries.empty());
 }

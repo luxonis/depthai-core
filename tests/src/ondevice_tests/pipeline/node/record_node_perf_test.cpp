@@ -61,6 +61,49 @@ int rateInWarning(const std::string& text) {
     return std::stoi(match[1].str());
 }
 
+std::shared_ptr<dai::RecordStatus> statusUntilDone(const std::shared_ptr<dai::MessageQueue>& queue, std::chrono::milliseconds timeout) {
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    std::shared_ptr<dai::RecordStatus> status;
+    while(std::chrono::steady_clock::now() < deadline) {
+        const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now());
+        if(left.count() <= 0) break;
+        status = record_test::getFor<dai::RecordStatus>(*queue, std::min(left, std::chrono::milliseconds(5000)));
+        if(status == nullptr) continue;
+        if(status->state == dai::RecordStatus::State::ERROR || status->state == dai::RecordStatus::State::STOPPED) return status;
+    }
+    return status;
+}
+
+int newestIdleFrame(const std::vector<std::string>& lines) {
+    int newest = -1;
+    const std::string marker = "Record idle frame ";
+    for(const auto& text : lines) {
+        const auto at = text.rfind(marker);
+        if(at == std::string::npos) continue;
+        int value = 0;
+        bool digit = false;
+        for(std::size_t index = at + marker.size(); index < text.size(); ++index) {
+            const char ch = text[index];
+            if(ch < '0' || ch > '9') break;
+            digit = true;
+            value = value * 10 + (ch - '0');
+        }
+        if(digit) newest = std::max(newest, value);
+    }
+    return newest;
+}
+
+bool wroteFrame(const std::vector<std::string>& lines, const std::string& exact) {
+    for(const auto& text : lines) {
+        const auto at = text.find(exact);
+        if(at == std::string::npos) continue;
+        const auto after = at + exact.size();
+        if(after < text.size() && text[after] >= '0' && text[after] <= '9') continue;
+        return true;
+    }
+    return false;
+}
+
 }  // namespace
 
 TEST_CASE("VD1 raw 1080p keeps 600 frames", "[record][perf]") {
@@ -93,6 +136,7 @@ TEST_CASE("VD1 raw 1080p keeps 600 frames", "[record][perf]") {
     CHECK(stopped->lastSequenceNum == stopped->firstSequenceNum + 599);
     const auto startedMs = record_test::timestampMs(started->getTimestamp());
     const auto stoppedMs = record_test::timestampMs(stopped->getTimestamp());
+    pipeline.stop();
     const auto bytes = record_test::fileSizeSum(perf.dir.path / name);
     if(stoppedMs > startedMs && bytes > 0) {
         const double rate = static_cast<double>(bytes) / (static_cast<double>(stoppedMs - startedMs) / 1000.0);
@@ -153,7 +197,8 @@ TEST_CASE("VD3 a 12 megapixel frame warns at 540 MB/s or more", "[record][perf]"
     pipeline.start();
     std::this_thread::sleep_for(std::chrono::seconds(1));
     control->send(startControl(-1, 20000));
-    auto stopped = takeStatus(status, std::chrono::seconds(60));
+    auto stopped = statusUntilDone(status, std::chrono::seconds(60));
+    REQUIRE(stopped != nullptr);
     CHECK(stopped->state == dai::RecordStatus::State::STOPPED);
     int warnings = 0;
     int rate = -1;
@@ -191,12 +236,15 @@ TEST_CASE("VD4 the pre-trigger buffer is written without skips", "[record][perf]
     auto control = record->inputControl.createInputQueue();
     pipeline.start();
     std::this_thread::sleep_for(std::chrono::seconds(3));
+    const int newest = std::max(newestIdleFrame(perf.devLog.texts()), newestIdleFrame(perf.hostLog.texts()));
+    REQUIRE(newest >= 0);
     control->send(startControl(-1, 10000));
     auto started = takeStatus(status, std::chrono::seconds(15));
     CHECK(started->state == dai::RecordStatus::State::STARTED);
     const auto marked = std::chrono::steady_clock::now();
-    const bool wrote =
-        perf.devLog.waitFor("Record wrote frame", std::chrono::seconds(1)) || perf.hostLog.waitFor("Record wrote frame", std::chrono::milliseconds(1));
+    const std::string wroteLine = "Record wrote frame " + std::to_string(newest + 1);
+    const bool wrote = record_test::waitUntil([&] { return wroteFrame(perf.devLog.texts(), wroteLine) || wroteFrame(perf.hostLog.texts(), wroteLine); },
+                                              std::chrono::seconds(1));
     const auto elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - marked).count();
     CHECK(wrote);
     CHECK(elapsed <= 1.0);

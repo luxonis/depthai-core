@@ -335,9 +335,7 @@ TEST_CASE("VR2 downloaded frames match the sent rows", "[record][device]") {
         CHECK(loaded->getType() == dai::ImgFrame::Type::NV12);
         CHECK(loaded->fb.stride >= 64);
         CHECK(loaded->getSequenceNum() == index);
-        const auto got = loaded->getData();
-        REQUIRE(got.size() == sent[static_cast<std::size_t>(index)].size());
-        CHECK(std::equal(got.begin(), got.end(), sent[static_cast<std::size_t>(index)].begin()));
+        CHECK(replay_test::pixelsEqual(*loaded, sent[static_cast<std::size_t>(index)], 64, 48, dai::ImgFrame::Type::NV12));
     }
 }
 

@@ -405,8 +405,7 @@ TEST_CASE("VR19 two triggered segments on the device", "[record][device]") {
     checkStopped(*stoppedAgain, 1, 2, 8, 9, 0);
     pipeline.stop();
     downloadRecording(*store.device, name, store.dir.path);
-    expectFiles(store.dir.path / name / "cam",
-                {"cam_00000003.dai", "cam_00000004.dai", "cam_00000005.dai", "cam_00000008.dai", "cam_00000009.dai"});
+    expectFiles(store.dir.path / name / "cam", {"cam_00000003.dai", "cam_00000004.dai", "cam_00000005.dai", "cam_00000008.dai", "cam_00000009.dai"});
 }
 
 TEST_CASE("VR20 a 1920x1080 camera output stays near 30 fps", "[record][device]") {
@@ -455,7 +454,9 @@ TEST_CASE("VR21 a 4000x3000 frame warns about 554 MB/s", "[record][device]") {
     const bool sawRate = store.devLog.waitFor("Record expected write rate 554 MB/s", std::chrono::seconds(15))
                          || store.hostLog.waitFor("Record expected write rate 554 MB/s", std::chrono::seconds(1));
     REQUIRE(sawRate);
-    CHECK(store.devLog.count(LineLevel::WARN, "Record expected write rate 554 MB/s") + store.hostLog.count(LineLevel::WARN, "Record expected write rate 554 MB/s") == 1);
+    CHECK(store.devLog.count(LineLevel::WARN, "Record expected write rate 554 MB/s")
+              + store.hostLog.count(LineLevel::WARN, "Record expected write rate 554 MB/s")
+          == 1);
     pipeline.stop();
 }
 
@@ -664,7 +665,19 @@ TEST_CASE("VV4 H265 video format errors", "[record][device]") {
     encoder->out.link(record->input);
     auto status = record->status.createOutputQueue(16, true);
     pipeline.start();
-    auto error = takeStatus(status);
+    std::shared_ptr<dai::RecordStatus> error;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(15);
+    while(std::chrono::steady_clock::now() < deadline) {
+        const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now());
+        if(left.count() <= 0) break;
+        auto message = record_test::getFor<dai::RecordStatus>(*status, std::min(left, std::chrono::milliseconds(2000)));
+        if(message == nullptr) continue;
+        if(message->state == dai::RecordStatus::State::ERROR || message->state == dai::RecordStatus::State::STOPPED) {
+            error = message;
+            break;
+        }
+    }
+    REQUIRE(error != nullptr);
     CHECK(error->state == dai::RecordStatus::State::ERROR);
     CHECK(error->segment == 0);
     CHECK(error->frameCount == 0);
@@ -762,8 +775,14 @@ TEST_CASE("VH4 holistic video writes one mp4 and mcap per camera", "[record][dev
     pipeline.stop();
     const auto tar = oneTar(store.dir.path);
     const auto names = archiveNames(tar);
-    const std::vector<std::string> expected = {"CameraCAM_A.mcap", "CameraCAM_A.mp4", "CameraCAM_B.mcap", "CameraCAM_B.mp4",
-                                                "CameraCAM_C.mcap", "CameraCAM_C.mp4", "camera_info.json", "record_config.json"};
+    const std::vector<std::string> expected = {"CameraCAM_A.mcap",
+                                               "CameraCAM_A.mp4",
+                                               "CameraCAM_B.mcap",
+                                               "CameraCAM_B.mp4",
+                                               "CameraCAM_C.mcap",
+                                               "CameraCAM_C.mp4",
+                                               "camera_info.json",
+                                               "record_config.json"};
     CHECK(names == expected);
     const auto configBytes = dai::utility::readFileInArchive(tar, "record_config.json");
     const auto parsed = nlohmann::json::parse(configBytes.begin(), configBytes.end());
@@ -786,8 +805,14 @@ TEST_CASE("VH5 video encoding off uses host avi files", "[record][device]") {
     pipeline.stop();
     CHECK(store.hostLog.count(LineLevel::WARN, "Record holistic: video encoding off, host nodes used") == 1);
     const auto names = archiveNames(oneTar(store.dir.path));
-    const std::vector<std::string> expected = {"CameraCAM_A.avi", "CameraCAM_A.mcap", "CameraCAM_B.avi", "CameraCAM_B.mcap",
-                                                "CameraCAM_C.avi", "CameraCAM_C.mcap", "camera_info.json", "record_config.json"};
+    const std::vector<std::string> expected = {"CameraCAM_A.avi",
+                                               "CameraCAM_A.mcap",
+                                               "CameraCAM_B.avi",
+                                               "CameraCAM_B.mcap",
+                                               "CameraCAM_C.avi",
+                                               "CameraCAM_C.mcap",
+                                               "camera_info.json",
+                                               "record_config.json"};
     CHECK(names == expected);
 }
 
@@ -838,8 +863,14 @@ TEST_CASE("VH8 DEPTHAI_RECORD without format records video", "[record][device]")
     store.pipeline.reset();
     store.guard->release();
     const auto names = archiveNames(oneTar(store.dir.path / "out"));
-    const std::vector<std::string> expected = {"CameraCAM_A.mcap", "CameraCAM_A.mp4", "CameraCAM_B.mcap", "CameraCAM_B.mp4",
-                                                "CameraCAM_C.mcap", "CameraCAM_C.mp4", "camera_info.json", "record_config.json"};
+    const std::vector<std::string> expected = {"CameraCAM_A.mcap",
+                                               "CameraCAM_A.mp4",
+                                               "CameraCAM_B.mcap",
+                                               "CameraCAM_B.mp4",
+                                               "CameraCAM_C.mcap",
+                                               "CameraCAM_C.mp4",
+                                               "camera_info.json",
+                                               "record_config.json"};
     CHECK(names == expected);
     const auto configBytes = dai::utility::readFileInArchive(oneTar(store.dir.path / "out"), "record_config.json");
     const auto parsed = nlohmann::json::parse(configBytes.begin(), configBytes.end());
