@@ -1497,8 +1497,6 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
             sensor_register_control[0] = HDR_LOCAL_TONE_WEIGHT_COMMAND;
             sensor_register_control[1] = static_cast<int32_t>((v * 65536));
         } else if(name == "high-conversion-gain") {
-            // Same control as on RVC2: "1"/"true" enables high conversion gain, "0"/"false" disables it.
-            // Only sensor drivers that implement HIGH_CONVERSION_GAIN_COMMAND act on it, the others ignore it.
             const bool enable = value == "1" || value == "true" || value == "on";
             if(!enable && value != "0" && value != "false" && value != "off") {
                 std::cout << "Invalid value for high-conversion-gain: " << value << " (expected 0 or 1)" << std::endl << std::flush;
