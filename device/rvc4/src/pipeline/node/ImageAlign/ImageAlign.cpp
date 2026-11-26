@@ -50,8 +50,9 @@ bool isIdentityIntrinsics(const std::array<std::array<float, 3>, 3>& matrix, flo
     return true;
 }
 
+// The focal lengths are negative in frames that the camera flips or mirrors (Camera image orientation)
 bool hasValidIntrinsics(const std::array<std::array<float, 3>, 3>& matrix) {
-    return !isIdentityIntrinsics(matrix) && std::isfinite(matrix[0][0]) && std::isfinite(matrix[1][1]) && matrix[0][0] > 0.0f && matrix[1][1] > 0.0f
+    return !isIdentityIntrinsics(matrix) && std::isfinite(matrix[0][0]) && std::isfinite(matrix[1][1]) && matrix[0][0] != 0.0f && matrix[1][1] != 0.0f
            && std::isfinite(matrix[2][2]) && matrix[2][2] != 0.0f;
 }
 

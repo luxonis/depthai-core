@@ -278,6 +278,15 @@ std::optional<CameraSensor::MetaCacheItem> CameraSensor::popMetaCache(uint64_t s
     return result;
 }
 
+std::optional<std::pair<bool, bool>> CameraSensor::appliedFlipMirror(dai::CameraImageOrientation orientation) {
+    using Orientation = dai::CameraImageOrientation;
+    if(orientation == Orientation::AUTO || LuxonisSidechannel::getInstance().ops.camera_mode_set_v2 == nullptr) {
+        return std::nullopt;
+    }
+    const bool rotate = orientation == Orientation::ROTATE_180_DEG;
+    return std::make_pair(rotate || orientation == Orientation::VERTICAL_FLIP, rotate || orientation == Orientation::HORIZONTAL_MIRROR);
+}
+
 void CameraSensor::setupRawOutput() {
     hasRaw = true;
     queues.push_back("raw");
@@ -343,6 +352,7 @@ CameraSensor::CameraSensor(const CameraDescription cam,
     this->fsyncMode = fsyncMode;
     logger->info("Camera node on socket {} is a stereo sensor: {}", cameraId, stereoSensor);
     sensorMode = sensorModeIndex;
+    imageOrientation = orientation;
     process_capture_result = processCaptureResultCb;
     notify = notifyCb;
     request_stream_buffers = requestStreamBuffersCb;
@@ -585,7 +595,25 @@ void CameraSensor::build(dai::CameraSensorType type) {
         mode.fsync_mode = fsyncMode;
 #endif
         mode.frame_duration = std::lround(1.0 / (double)curFps * 1.0e9);
-        LuxonisSidechannel::getInstance().setCameraMode(mode);
+        auto& sidechannel = LuxonisSidechannel::getInstance();
+        const auto flipMirror = appliedFlipMirror(imageOrientation);
+        if(flipMirror.has_value()) {
+            lux_sc_camera_mode_set_v2_t modeV2;
+            modeV2.camera_id = mode.camera_id;
+            modeV2.frame_duration = mode.frame_duration;
+            modeV2.fsync_mode = mode.fsync_mode;
+            modeV2.flip = flipMirror->first;
+            modeV2.mirror = flipMirror->second;
+            if(sidechannel.ops.camera_mode_set_v2(modeV2) != 0) {
+                throw std::invalid_argument(fmt::format(
+                    "Sensor {} on socket {} can't flip or mirror its image", cameraDescription.camera.sensorName, toString(cameraDescription.camera.socket)));
+            }
+        } else {
+            if(imageOrientation != dai::CameraImageOrientation::AUTO && imageOrientation != dai::CameraImageOrientation::NORMAL) {
+                logger->warn("Image orientation on socket {} needs a newer OS (sidechannel 2.3), ignoring it", toString(cameraDescription.camera.socket));
+            }
+            sidechannel.setCameraMode(mode);
+        }
     } else {
         logger->info("NOT turning fsync slave mode on as OS is old");
     }
@@ -1102,6 +1130,9 @@ uint32_t CameraSensor::readHfrBatchSize(uint32_t width, uint32_t height) const {
 
 // [xmin, ymin, xmax, ymax, weight] for ANDROID_CONTROL_AF_REGIONS or ANDROID_CONTROL_AE_REGIONS, clamped to the active array.
 // `name` is AutoFocus or AutoExposure, as in the CameraControl setter.
+// The region comes in the device's default orientation (the frames' transformation source). The camera HAL applies it to the sensor
+// readout, which a requested orientation mirrors and/or flips, so the region is mirrored and/or flipped the same way, around
+// the active array's centre (the readout window's centre for a centred sensor mode).
 std::array<int32_t, 5> CameraSensor::toCamxRegion(const dai::CameraControl::RegionParams& region, const char* name) const {
     constexpr int32_t weight = 1000;  // Max priority; CameraControl does not expose the region priority.
     const int32_t right = region.x + region.width, bottom = region.y + region.height;
@@ -1124,7 +1155,21 @@ std::array<int32_t, 5> CameraSensor::toCamxRegion(const dai::CameraControl::Regi
             height,
             name);
     }
-    return {std::min<int32_t>(region.x, width), std::min<int32_t>(region.y, height), std::min(right, width), std::min(bottom, height), weight};
+    int32_t xmin = std::min<int32_t>(region.x, width), ymin = std::min<int32_t>(region.y, height);
+    int32_t xmax = std::min(right, width), ymax = std::min(bottom, height);
+    if(const auto flipMirror = appliedFlipMirror(imageOrientation)) {
+        if(flipMirror->second) {  // mirror
+            const int32_t mirroredMin = width - xmax;
+            xmax = width - xmin;
+            xmin = mirroredMin;
+        }
+        if(flipMirror->first) {  // flip
+            const int32_t flippedMin = height - ymax;
+            ymax = height - ymin;
+            ymin = flippedMin;
+        }
+    }
+    return {xmin, ymin, xmax, ymax, weight};
 }
 
 void CameraSensor::applyCameraControl(dai::CameraControl control) {

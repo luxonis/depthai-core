@@ -76,6 +76,10 @@ class CameraSensor : public camera3_callback_ops_t {
     // Has to be called before run()
     void build(dai::CameraSensorType sensorType);
 
+    // (flip, mirror) the sensor applies on top of the socket's orientation from the OS camera config, which the device
+    // is calibrated in. Empty for AUTO and on an OS without sidechannel 2.3.
+    static std::optional<std::pair<bool, bool>> appliedFlipMirror(dai::CameraImageOrientation orientation);
+
     // This blocks the calling thread until stop() is called.
     void run();
 
@@ -122,6 +126,7 @@ class CameraSensor : public camera3_callback_ops_t {
     bool isToFSensor{false};
     std::shared_ptr<spdlog::async_logger> logger;
     size_t sensorMode;
+    dai::CameraImageOrientation imageOrientation{dai::CameraImageOrientation::AUTO};
     // AF and AE regions are clamped to the active array, read once the camera is opened.
     std::optional<std::pair<int32_t, int32_t>> activeArraySize;
     mutable bool warnedRegionClamped{false};

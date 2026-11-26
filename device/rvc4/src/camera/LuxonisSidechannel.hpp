@@ -9,11 +9,18 @@
 #include "utilities/ErrorMacros.hpp"
 #include "camera/CameraSingleton.hpp"
 
+// shortcut: luxonis_sidechannel_data.h declares this from sidechannel 2.3 on, but the pinned build image
+// (DEPTHAI_DEVICE_RVC4_SDK_IMAGE) has 2.1. Remove it once that image has 2.3.
+#if LUX_SC_VERSION_MAJOR == 2 && LUX_SC_VERSION_MINOR < 3
+typedef int (*lux_sc_camera_mode_set_v2_cb_t)(const lux_sc_camera_mode_set_v2_t& msg);
+#endif
+
 class LuxonisSidechannel {
    public:
     // This can be NULL on old sidechannel version so always check and handle correctly before calling!!!
     struct operations {
         lux_sc_camera_mode_set_cb_t camera_mode_set;
+        lux_sc_camera_mode_set_v2_cb_t camera_mode_set_v2;
         lux_sc_camera_sockets_config_cb_t camera_sockets_config;
         lux_sc_camera_lens_pos_set_cb_t camera_lens_pos_set;
         lux_sc_sensor_register_control_cb_t sensor_register_control;
