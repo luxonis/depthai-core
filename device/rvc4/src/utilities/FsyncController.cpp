@@ -204,6 +204,8 @@ void FsyncController::setExternalFrameSyncRole(dai::ExternalFrameSyncRole role) 
     bool isExplicit = role != ExternalFrameSyncRole::AUTO_DETECT;
     if(isExplicit && m_openErrno) {
         m_roleState = RoleState{role, resolved, DeviceOpenFailure{*m_openErrno}};
+    } else if(isExplicit && m_ioctl_failure) {
+        m_roleState = RoleState{role, resolved, EarlierControllerFailure{}};
     } else {
         m_roleState = RoleState{role, resolved, writeConfig(configFor(resolved))};
     }

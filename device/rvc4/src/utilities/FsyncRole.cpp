@@ -125,6 +125,9 @@ std::optional<std::string> setRoleError(const RoleState& state) {
     if(const auto* failure = std::get_if<DeviceOpenFailure>(&state.result)) {
         return prefix + "the fsync-stm device could not be opened: " + std::strerror(failure->err) + " (" + std::to_string(failure->err) + ").";
     }
+    if(std::holds_alternative<EarlierControllerFailure>(state.result)) {
+        return prefix + "the frame sync controller failed earlier in this session.";
+    }
     return std::nullopt;
 }
 
