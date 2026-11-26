@@ -367,11 +367,11 @@ TEST_CASE("Test Align matches four distorted 3D projections on device") {
     runFourPixelProjectionTest<dai::node::Align>(false);
 }
 
-TEST_CASE("Test ImageAlign matches four distorted 3D projections on host") {
+TEST_CASE("Test ImageAlign matches four distorted 3D projections on host", "[image-align]") {
     runFourPixelProjectionTest<dai::node::ImageAlign>(true);
 }
 
-TEST_CASE("Test ImageAlign matches four distorted 3D projections on device") {
+TEST_CASE("Test ImageAlign matches four distorted 3D projections on device", "[image-align]") {
     runFourPixelProjectionTest<dai::node::ImageAlign>(false);
 }
 
