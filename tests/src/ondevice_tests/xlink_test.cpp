@@ -4,6 +4,8 @@
 #include <depthai/depthai.hpp>
 #include <thread>
 
+#include "camera_socket_requirements.hpp"
+
 using namespace std::chrono_literals;
 
 TEST_CASE("XLinkIn lazy allocation test") {
@@ -39,6 +41,7 @@ TEST_CASE("XLinkBridge fps limit test") {
     constexpr std::chrono::duration<double> TEST_DURATION = 2s;
 
     dai::Pipeline p;
+    dai::test::requireAutoCameraSocket(*p.getDefaultDevice());
     auto cam = p.create<dai::node::Camera>()->build();
 
     auto videoOutput = cam->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, CAMERA_FPS);

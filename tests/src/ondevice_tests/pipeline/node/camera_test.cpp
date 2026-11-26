@@ -7,6 +7,7 @@
 #include <iostream>
 #include <thread>
 
+#include "../../camera_socket_requirements.hpp"
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraFeatures.hpp"
@@ -18,6 +19,7 @@
 TEST_CASE("Test raw camera output") {
     // Create pipeline
     dai::Pipeline p;
+    dai::test::requireAutoCameraSocket(*p.getDefaultDevice());
     auto fpsToRun = GENERATE(10.5, 20.0, 30.0);
     auto camera = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::AUTO, std::nullopt, fpsToRun);
     auto benchmarkIn = p.create<dai::node::BenchmarkIn>();
@@ -44,6 +46,7 @@ TEST_CASE("Test raw camera output") {
 TEST_CASE("Test camera with multiple outputs with different FPS") {
     // Create pipeline
     dai::Pipeline p;
+    dai::test::requireAutoCameraSocket(*p.getDefaultDevice());
     auto camera = p.create<dai::node::Camera>()->build();
     std::map<float, std::shared_ptr<dai::MessageQueue>> fpsToReportQueue;
     bool haveRaw = false;
@@ -117,6 +120,7 @@ TEST_CASE("Test camera with multiple outputs with different FPS") {
 
 TEST_CASE("Multiple outputs") {
     dai::Pipeline p;
+    dai::test::requireAutoCameraSocket(*p.getDefaultDevice());
     auto camera = p.create<dai::node::Camera>()->build();
     auto* camOut1 = camera->requestOutput({500, 300}, dai::ImgFrame::Type::NV12);
     auto* camOut2 = camera->requestOutput({700, 500}, dai::ImgFrame::Type::RGB888i);
@@ -154,6 +158,7 @@ TEST_CASE("Camera start/stop stream") {
     dai::Pipeline p;
     auto isRvc4 = p.getDefaultDevice()->getPlatform() == dai::Platform::RVC4;
 
+    dai::test::requireAutoCameraSocket(*p.getDefaultDevice());
     auto camera = p.create<dai::node::Camera>()->build();
     camera->initialControl.setStopStreaming();
     auto* output = isRvc4 ? camera->requestFullResolutionOutput(dai::ImgFrame::Type::NV12, K_FPS)
@@ -203,6 +208,7 @@ TEST_CASE("Test how default FPS is generated for a specific output") {
     constexpr float FPS_TO_SET = 20.0;
     // Create pipeline
     dai::Pipeline p;
+    dai::test::requireAutoCameraSocket(*p.getDefaultDevice());
     auto camera = p.create<dai::node::Camera>()->build();
     auto benchmarkIn = p.create<dai::node::BenchmarkIn>();
     auto* output1 = camera->requestOutput(std::make_pair(640, 400), std::nullopt);
