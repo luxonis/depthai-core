@@ -738,7 +738,8 @@ class StereoDepthConfig : public Buffer {
     bool getExtendedDisparity() const;
 
     /**
-     * Computes disparity with sub-pixel interpolation. On RVC2, set the number of fractional bits with setSubpixelFractionalBits.
+     * Computes disparity with sub-pixel interpolation (by default 3 fractional bits on RVC2, 4 on RVC4).
+     * On RVC2, set the number of fractional bits with setSubpixelFractionalBits.
      *
      * Suitable for long range.
      * On RVC4, subpixel is always enabled with 4 fractional bits.
