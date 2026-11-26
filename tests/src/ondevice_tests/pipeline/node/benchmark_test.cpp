@@ -1,7 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "../../camera_socket_requirements.hpp"
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
@@ -44,7 +43,6 @@ void testBenchmarkIn(bool benchmarkInRunOnHost, bool benchmarkOutRunOnHost, floa
 
 void testCameraBenchmarking(float fps) {
     dai::Pipeline p;
-    dai::test::requireCameraSockets(*p.getDefaultDevice(), {dai::CameraBoardSocket::CAM_A});
     auto cam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto* output = cam->requestOutput(std::pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, fps);
     REQUIRE(output != nullptr);

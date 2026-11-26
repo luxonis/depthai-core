@@ -7,7 +7,6 @@
 #include <opencv2/videoio.hpp>
 #include <thread>
 
-#include "../../camera_socket_requirements.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
@@ -17,7 +16,6 @@
 TEST_CASE("Cross platform NeuralNetwork API") {
     // Create pipeline
     dai::Pipeline p;
-    dai::test::requireCameraSockets(*p.getDefaultDevice(), {dai::CameraBoardSocket::CAM_A});
     auto camera = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto nn = p.create<dai::node::NeuralNetwork>()->build(camera, dai::NNModelDescription{"yolov6-nano"});
 
@@ -37,7 +35,6 @@ TEST_CASE("Cross platform NeuralNetwork API") {
 TEST_CASE("NNArchive API") {
     // Create pipeline
     dai::Pipeline p;
-    dai::test::requireCameraSockets(*p.getDefaultDevice(), {dai::CameraBoardSocket::CAM_A});
     auto camera = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     std::string platform = p.getDefaultDevice()->getPlatformAsString();
     auto description = dai::NNModelDescription{"yolov6-nano", platform};
@@ -136,7 +133,6 @@ TEST_CASE("RVC4 NeuralNetwork model loading paths", "[rvc4]") {
 
 TEST_CASE("Multi-Input NeuralNetwork API") {
     dai::Pipeline p;
-    dai::test::requireCameraSockets(*p.getDefaultDevice(), {dai::CameraBoardSocket::CAM_A});
     auto camera = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto platformStr = p.getDefaultDevice()->getPlatformAsString();
     auto platform = p.getDefaultDevice()->getPlatform();
@@ -350,7 +346,6 @@ TEST_CASE("NeuralNetwork camera build resize mode with a hub archive that does n
     const auto device = p.getDefaultDevice();
     REQUIRE(device != nullptr);
 
-    dai::test::requireCameraSockets(*device, {dai::CameraBoardSocket::CAM_A});
     const dai::NNModelDescription description{"luxonis/yolov8-nano-pose-estimation:coco-512x288", device->getPlatformAsString()};
     const dai::NNArchive archive{dai::getModelFromZoo(description)};
     REQUIRE_FALSE(archive.getInputResizeMode().has_value());
