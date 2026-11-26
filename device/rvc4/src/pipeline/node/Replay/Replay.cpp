@@ -64,6 +64,8 @@ struct Chain {
     const char* parser;
     const char* decoder;
     bool fullRange;
+    bool mmapOutput = false;
+    const char* linearizer = nullptr;
 };
 
 std::string lowerCopy(std::string text) {
@@ -164,6 +166,34 @@ void ensureGst() {
     std::call_once(once, [] { gst_init(nullptr, nullptr); });
 }
 
+bool capsAreLinearNv12(GstCaps* caps) {
+    if(caps == nullptr || gst_caps_get_size(caps) == 0 || gst_caps_is_any(caps)) return false;
+    GstCapsFeatures* features = gst_caps_get_features(caps, 0);
+    if(features != nullptr && !gst_caps_features_is_any(features)) {
+        const guint count = gst_caps_features_get_size(features);
+        for(guint index = 0; index < count; index++) {
+            const char* name = gst_caps_features_get_nth(features, index);
+            if(name != nullptr && std::strncmp(name, "memory:", 7) == 0 && std::strcmp(name, GST_CAPS_FEATURE_MEMORY_SYSTEM_MEMORY) != 0) return false;
+        }
+    }
+    GstStructure* structure = gst_caps_get_structure(caps, 0);
+    if(structure == nullptr) return false;
+    const char* format = gst_structure_get_string(structure, "format");
+    if(format == nullptr || std::strcmp(format, "NV12") != 0) return false;
+    const char* compression = gst_structure_get_string(structure, "compression");
+    if(compression != nullptr && compression[0] != '\0') {
+        const auto text = lowerCopy(compression);
+        if(text != "none" && text != "linear" && text != "uncompressed") return false;
+    }
+    return true;
+}
+
+bool setIntIfPresent(GstElement* element, const char* name, int value) {
+    if(element == nullptr || g_object_class_find_property(G_OBJECT_GET_CLASS(element), name) == nullptr) return false;
+    g_object_set(element, name, value, nullptr);
+    return true;
+}
+
 class GstPlayer {
    public:
     ~GstPlayer() {
@@ -180,22 +210,32 @@ class GstPlayer {
         GstElement* demux = chain.demux == nullptr ? nullptr : gst_element_factory_make(chain.demux, "demux");
         GstElement* parser = chain.parser == nullptr ? nullptr : gst_element_factory_make(chain.parser, "parser");
         GstElement* decoder = gst_element_factory_make(chain.decoder, "decoder");
-        GstElement* convert = gst_element_factory_make("videoconvert", "convert");
+        GstElement* linearizer = chain.linearizer == nullptr ? nullptr : gst_element_factory_make(chain.linearizer, "linearizer");
+        GstElement* convert = chain.mmapOutput ? nullptr : gst_element_factory_make("videoconvert", "convert");
         GstElement* filter = gst_element_factory_make("capsfilter", "filter");
         appsink = gst_element_factory_make("appsink", "sink");
         // The bin owns every successfully created element, including on a failed open.
-        for(auto* element : {source, demux, parser, decoder, convert, filter, appsink}) {
+        for(auto* element : {source, demux, parser, decoder, linearizer, convert, filter, appsink}) {
             if(element != nullptr) gst_bin_add(GST_BIN(pipeline), element);
         }
-        if(source == nullptr || decoder == nullptr || convert == nullptr || filter == nullptr || appsink == nullptr
-           || (chain.demux != nullptr && demux == nullptr) || (chain.parser != nullptr && parser == nullptr)) {
+        if(source == nullptr || decoder == nullptr || filter == nullptr || appsink == nullptr || (chain.demux != nullptr && demux == nullptr)
+           || (chain.parser != nullptr && parser == nullptr) || (chain.linearizer != nullptr && linearizer == nullptr)
+           || (!chain.mmapOutput && convert == nullptr)) {
             close();
             return false;
         }
+        if(chain.mmapOutput && !setIntIfPresent(decoder, "output-io-mode", 2)) {
+            close();
+            return false;
+        }
+        if(chain.mmapOutput) setIntIfPresent(decoder, "capture-io-mode", 2);
         g_object_set(source, "location", path.string().c_str(), nullptr);
         GstCaps* caps = gst_caps_from_string("video/x-raw,format=NV12");
+        if(caps != nullptr && gst_caps_get_size(caps) > 0) {
+            gst_caps_set_features(caps, 0, gst_caps_features_new(GST_CAPS_FEATURE_MEMORY_SYSTEM_MEMORY, nullptr));
+        }
         g_object_set(filter, "caps", caps, nullptr);
-        gst_caps_unref(caps);
+        if(caps != nullptr) gst_caps_unref(caps);
         g_object_set(appsink, "emit-signals", FALSE, "sync", FALSE, "max-buffers", 1, "drop", FALSE, nullptr);
         GstElement* decodeHead = parser != nullptr ? parser : decoder;
         if(demux != nullptr) {
@@ -212,9 +252,14 @@ class GstPlayer {
             close();
             return false;
         }
-        if(!gst_element_link_many(decoder, convert, filter, appsink, nullptr)) {
-            close();
-            return false;
+        GstElement* previous = decoder;
+        for(GstElement* next : {linearizer, convert, filter, appsink}) {
+            if(next == nullptr) continue;
+            if(!gst_element_link(previous, next)) {
+                close();
+                return false;
+            }
+            previous = next;
         }
         if(gst_element_set_state(pipeline, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
             close();
@@ -224,8 +269,29 @@ class GstPlayer {
         GstMessage* message = gst_bus_timed_pop_filtered(bus, 5 * GST_SECOND, static_cast<GstMessageType>(GST_MESSAGE_ERROR | GST_MESSAGE_ASYNC_DONE));
         bool failed = message != nullptr && GST_MESSAGE_TYPE(message) == GST_MESSAGE_ERROR;
         if(message != nullptr) gst_message_unref(message);
+        GstSample* sample = nullptr;
+        if(!failed) {
+            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+            while(sample == nullptr && std::chrono::steady_clock::now() < deadline) {
+                GstMessage* errorMessage = gst_bus_pop_filtered(bus, GST_MESSAGE_ERROR);
+                if(errorMessage != nullptr) {
+                    gst_message_unref(errorMessage);
+                    failed = true;
+                    break;
+                }
+                sample = gst_app_sink_try_pull_sample(GST_APP_SINK(appsink), 200 * GST_MSECOND);
+                if(sample == nullptr && gst_app_sink_is_eos(GST_APP_SINK(appsink))) break;
+            }
+        }
         gst_object_unref(bus);
-        if(failed) {
+        const bool linear = !failed && sample != nullptr && readGeometry(sample);
+        if(sample != nullptr) gst_sample_unref(sample);
+        if(!linear) {
+            close();
+            return false;
+        }
+        gst_element_set_state(pipeline, GST_STATE_NULL);
+        if(gst_element_set_state(pipeline, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
             close();
             return false;
         }
@@ -268,13 +334,14 @@ class GstPlayer {
     int width = 0;
     int height = 0;
     int stride = 0;
+    int yOffset = 0;
     int uvOffset = 0;
     double fps = 0;
     bool fullRange = false;
 
     bool readGeometry(GstSample* sample) {
         GstCaps* caps = gst_sample_get_caps(sample);
-        if(caps == nullptr) return false;
+        if(!capsAreLinearNv12(caps)) return false;
         GstStructure* structure = gst_caps_get_structure(caps, 0);
         if(!gst_structure_get_int(structure, "width", &width) || !gst_structure_get_int(structure, "height", &height)) return false;
         int numerator = 0;
@@ -285,19 +352,27 @@ class GstPlayer {
         GstVideoInfo info{};
         if(!gst_video_info_from_caps(&info, caps) || GST_VIDEO_INFO_FORMAT(&info) != GST_VIDEO_FORMAT_NV12) return false;
         stride = GST_VIDEO_INFO_PLANE_STRIDE(&info, 0);
+        const auto yPlane = GST_VIDEO_INFO_PLANE_OFFSET(&info, 0);
         const auto offset = GST_VIDEO_INFO_PLANE_OFFSET(&info, 1);
-        if(offset > static_cast<std::size_t>(std::numeric_limits<int>::max())) return false;
+        if(yPlane > static_cast<std::size_t>(std::numeric_limits<int>::max()) || offset > static_cast<std::size_t>(std::numeric_limits<int>::max())) return false;
+        yOffset = static_cast<int>(yPlane);
         uvOffset = static_cast<int>(offset);
         GstBuffer* buffer = gst_sample_get_buffer(sample);
         if(buffer == nullptr) return false;
         if(GstVideoMeta* meta = gst_buffer_get_video_meta(buffer)) {
-            if(meta->n_planes < 2 || meta->offset[1] > static_cast<std::size_t>(std::numeric_limits<int>::max())) return false;
+            if(meta->n_planes < 2 || meta->offset[0] > static_cast<std::size_t>(std::numeric_limits<int>::max())
+               || meta->offset[1] > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+                return false;
             stride = meta->stride[0];
+            yOffset = static_cast<int>(meta->offset[0]);
             uvOffset = static_cast<int>(meta->offset[1]);
         }
-        return width > 0 && height > 0 && stride > 0
-               && static_cast<std::size_t>(stride) >= ((static_cast<std::size_t>(width) + 1) / 2) * 2 && uvOffset >= 0
-               && static_cast<std::size_t>(uvOffset) >= static_cast<std::size_t>(stride) * height;
+        const auto alignedHeight = (static_cast<long long>(height) + 31LL) & ~31LL;
+        const auto linearLimit = static_cast<long long>(stride) * alignedHeight + 4095LL;
+        return width > 0 && height > 0 && stride > 0 && yOffset >= 0 && uvOffset >= yOffset
+               && static_cast<std::size_t>(stride) >= ((static_cast<std::size_t>(width) + 1) / 2) * 2
+               && static_cast<std::size_t>(uvOffset - yOffset) >= static_cast<std::size_t>(stride) * static_cast<std::size_t>(height)
+               && static_cast<long long>(uvOffset - yOffset) <= linearLimit;
     }
 
     int estimatedCount() const {
@@ -506,6 +581,91 @@ std::shared_ptr<ImgFrame> frameFromNv12(const std::uint8_t* nv12,
     return frame;
 }
 
+void copyFrameIdentity(const std::shared_ptr<ImgFrame>& dst, const std::shared_ptr<ImgFrame>& src) {
+    dst->sourceFb = src->sourceFb;
+    dst->cam = src->cam;
+    dst->instanceNum = src->instanceNum;
+    dst->category = src->category;
+    dst->transformation = src->transformation;
+}
+
+std::shared_ptr<ImgFrame> convertDaiFrame(const std::shared_ptr<ImgFrame>& src, ImgFrame::Type outType, int outW, int outH) {
+    const int srcW = static_cast<int>(src->getWidth());
+    const int srcH = static_cast<int>(src->getHeight());
+    if(src->getType() == outType && srcW == outW && srcH == outH) return src;
+    const auto bytes = src->getData();
+    if(bytes.data() == nullptr || srcW <= 0 || srcH <= 0) throw std::runtime_error("ReplayVideo frame decode failed");
+    const int rowStride = src->fb.stride > 0 ? static_cast<int>(src->fb.stride) : srcW;
+    const auto p1 = static_cast<std::size_t>(src->fb.p1Offset);
+    const bool explicitOffsets = src->fb.p1Offset != 0 || src->fb.p2Offset != 0 || src->fb.p3Offset != 0;
+    auto finish = [&](std::shared_ptr<ImgFrame> frame) {
+        copyFrameIdentity(frame, src);
+        return frame;
+    };
+    auto fromNv12 = [&](const std::uint8_t* nv12, int stride, int uvOffset) {
+        return finish(frameFromNv12(nv12, stride, uvOffset, srcW, srcH, outType, outW, outH, true, nullptr));
+    };
+    auto planeFits = [&](std::size_t offset, std::size_t stride, int rows, int cols) {
+        const auto rowBytes = static_cast<std::size_t>(cols);
+        if(rows <= 0 || stride < rowBytes || offset > bytes.size() || rowBytes > bytes.size() - offset) return false;
+        return static_cast<std::size_t>(rows - 1) <= (bytes.size() - offset - rowBytes) / stride;
+    };
+    if(src->getType() == ImgFrame::Type::NV12) {
+        const auto uv = explicitOffsets ? static_cast<std::size_t>(src->fb.p2Offset) : p1 + static_cast<std::size_t>(rowStride) * static_cast<std::size_t>(srcH);
+        if(uv < p1 || !planeFits(p1, static_cast<std::size_t>(rowStride), srcH, srcW)) {
+            throw std::runtime_error("ReplayVideo frame payload is too small or has an invalid plane layout");
+        }
+        const int chromaH = srcH / 2 + srcH % 2;
+        if(!planeFits(uv, static_cast<std::size_t>(rowStride), chromaH, srcW + srcW % 2)) {
+            throw std::runtime_error("ReplayVideo frame payload is too small or has an invalid plane layout");
+        }
+        return fromNv12(bytes.data() + p1, rowStride, static_cast<int>(uv - p1));
+    }
+    if(src->getType() == ImgFrame::Type::GRAY8) {
+        if(!planeFits(p1, static_cast<std::size_t>(rowStride), srcH, srcW)) {
+            throw std::runtime_error("ReplayVideo frame payload is too small or has an invalid plane layout");
+        }
+        const int chromaH = srcH / 2 + srcH % 2;
+        std::vector<std::uint8_t> nv12(static_cast<std::size_t>(rowStride) * static_cast<std::size_t>(srcH + chromaH), 128);
+        for(int row = 0; row < srcH; row++) {
+            std::memcpy(nv12.data() + static_cast<std::size_t>(row) * static_cast<std::size_t>(rowStride),
+                        bytes.data() + p1 + static_cast<std::size_t>(row) * static_cast<std::size_t>(rowStride),
+                        static_cast<std::size_t>(srcW));
+        }
+        return fromNv12(nv12.data(), rowStride, rowStride * srcH);
+    }
+    if(src->getType() == ImgFrame::Type::YUV420p) {
+        const int chromaW = srcW / 2 + srcW % 2;
+        const int chromaH = srcH / 2 + srcH % 2;
+        const int chromaStride = std::max(1, (rowStride + 1) / 2);
+        const auto p2 = explicitOffsets ? static_cast<std::size_t>(src->fb.p2Offset) : p1 + static_cast<std::size_t>(rowStride) * static_cast<std::size_t>(srcH);
+        const auto p3 = explicitOffsets ? static_cast<std::size_t>(src->fb.p3Offset)
+                                        : p2 + static_cast<std::size_t>(chromaStride) * static_cast<std::size_t>(chromaH);
+        if(!planeFits(p1, static_cast<std::size_t>(rowStride), srcH, srcW) || !planeFits(p2, static_cast<std::size_t>(chromaStride), chromaH, chromaW)
+           || !planeFits(p3, static_cast<std::size_t>(chromaStride), chromaH, chromaW)) {
+            throw std::runtime_error("ReplayVideo frame payload is too small or has an invalid plane layout");
+        }
+        const int tightStride = srcW + srcW % 2;
+        std::vector<std::uint8_t> nv12(static_cast<std::size_t>(tightStride) * static_cast<std::size_t>(srcH + chromaH));
+        for(int row = 0; row < srcH; row++) {
+            std::memcpy(nv12.data() + static_cast<std::size_t>(row) * static_cast<std::size_t>(tightStride),
+                        bytes.data() + p1 + static_cast<std::size_t>(row) * static_cast<std::size_t>(rowStride),
+                        static_cast<std::size_t>(srcW));
+        }
+        auto* uv = nv12.data() + static_cast<std::size_t>(tightStride) * static_cast<std::size_t>(srcH);
+        for(int row = 0; row < chromaH; row++) {
+            for(int col = 0; col < chromaW; col++) {
+                uv[static_cast<std::size_t>(row) * static_cast<std::size_t>(tightStride) + static_cast<std::size_t>(col) * 2] =
+                    bytes[p2 + static_cast<std::size_t>(row) * static_cast<std::size_t>(chromaStride) + static_cast<std::size_t>(col)];
+                uv[static_cast<std::size_t>(row) * static_cast<std::size_t>(tightStride) + static_cast<std::size_t>(col) * 2 + 1] =
+                    bytes[p3 + static_cast<std::size_t>(row) * static_cast<std::size_t>(chromaStride) + static_cast<std::size_t>(col)];
+            }
+        }
+        return fromNv12(nv12.data(), tightStride, tightStride * srcH);
+    }
+    throw std::runtime_error("ReplayVideo output type is not supported");
+}
+
 using SamplePtr = std::unique_ptr<GstSample, decltype(&gst_sample_unref)>;
 
 class SampleMapping {
@@ -529,25 +689,42 @@ std::shared_ptr<ImgFrame> frameFromSample(GstPlayer& player, GstSample* sample, 
     if(!player.readGeometry(sample)) throw std::runtime_error("ReplayVideo frame decode failed");
     auto* buffer = gst_sample_get_buffer(sample);
     const auto required = static_cast<std::size_t>(player.uvOffset) + static_cast<std::size_t>(player.stride) * ((static_cast<std::size_t>(player.height) + 1) / 2);
-    if(gst_buffer_get_size(buffer) < required) throw std::runtime_error("ReplayVideo decoded frame is too small");
-    if(type == ImgFrame::Type::NV12 && width == player.width && height == player.height) {
+    if(player.yOffset < 0 || player.uvOffset < player.yOffset || gst_buffer_get_size(buffer) < required) {
+        throw std::runtime_error("ReplayVideo decoded frame is too small");
+    }
+    if(type == ImgFrame::Type::NV12 && width == player.width && height == player.height && player.yOffset == 0) {
         return frameFromNv12(nullptr, player.stride, player.uvOffset, player.width, player.height, type, width, height, player.fullRange,
                              std::make_shared<GstBufferMemory>(buffer));
     }
     const SampleMapping mapping(sample);
-    return frameFromNv12(mapping.map.data, player.stride, player.uvOffset, player.width, player.height, type, width, height, player.fullRange, nullptr);
+    if(mapping.map.size < required || static_cast<std::size_t>(player.yOffset) > mapping.map.size) {
+        throw std::runtime_error("ReplayVideo decoded frame is too small");
+    }
+    return frameFromNv12(mapping.map.data + player.yOffset,
+                         player.stride,
+                         player.uvOffset - player.yOffset,
+                         player.width,
+                         player.height,
+                         type,
+                         width,
+                         height,
+                         player.fullRange,
+                         nullptr);
 }
 
 void saveNv12Sample(GstPlayer& player, GstSample* sample, const std::filesystem::path& path) {
     if(!player.readGeometry(sample)) throw std::runtime_error("ReplayVideo frame decode failed");
     const SampleMapping mapping(sample);
     const auto required = static_cast<std::size_t>(player.uvOffset) + static_cast<std::size_t>(player.stride) * ((static_cast<std::size_t>(player.height) + 1) / 2);
-    if(mapping.map.size < required) throw std::runtime_error("ReplayVideo decoded frame is too small");
+    if(player.yOffset < 0 || player.uvOffset < player.yOffset || mapping.map.size < required || static_cast<std::size_t>(player.yOffset) > mapping.map.size) {
+        throw std::runtime_error("ReplayVideo decoded frame is too small");
+    }
     std::ofstream output;
     output.exceptions(std::ios::failbit | std::ios::badbit);
     output.open(path, std::ios::binary | std::ios::trunc);
+    const auto* y = mapping.map.data + player.yOffset;
     for(int row = 0; row < player.height; ++row) {
-        output.write(reinterpret_cast<const char*>(mapping.map.data + static_cast<std::size_t>(row) * player.stride), player.width);
+        output.write(reinterpret_cast<const char*>(y + static_cast<std::size_t>(row) * player.stride), player.width);
         if(player.width % 2 != 0) output.put(0);
     }
     const auto* uv = mapping.map.data + player.uvOffset;
@@ -619,6 +796,45 @@ std::vector<std::filesystem::path> listFrameFiles(const std::filesystem::path& d
     paths.reserve(frames.size());
     for(const auto& frame : frames) paths.push_back(frame.second);
     return paths;
+}
+
+bool nameEnds(const std::string& name, const char* suffix) {
+    const auto length = std::strlen(suffix);
+    return name.size() >= length && name.compare(name.size() - length, length, suffix) == 0;
+}
+
+bool headerHas(const char* header, std::streamsize got, const char* token) {
+    const auto length = std::strlen(token);
+    if(got < static_cast<std::streamsize>(length)) return false;
+    for(std::streamsize index = 0; index + static_cast<std::streamsize>(length) <= got; index++) {
+        if(std::memcmp(header + index, token, length) == 0) return true;
+    }
+    return false;
+}
+
+void requireReadablePayload(const std::filesystem::path& path, const std::string& name) {
+    if(std::filesystem::is_directory(path)) return;
+    std::error_code error;
+    const auto size = std::filesystem::file_size(path, error);
+    if(error || size == 0) throw std::runtime_error("ReplayVideo source is unreadable: " + path.string());
+    std::ifstream input(path, std::ios::binary);
+    char header[64] = {};
+    input.read(header, sizeof(header));
+    const auto got = input.gcount();
+    if(got <= 0) throw std::runtime_error("ReplayVideo source is unreadable: " + path.string());
+    const bool mp4 = nameEnds(name, ".mp4") || nameEnds(name, ".mov");
+    const bool avi = nameEnds(name, ".avi");
+    const bool jpeg = nameEnds(name, ".jpg") || nameEnds(name, ".jpeg");
+    const bool png = nameEnds(name, ".png");
+    if(mp4 && !headerHas(header, got, "ftyp")) throw std::runtime_error("ReplayVideo source is unreadable: " + path.string());
+    if(avi && (!headerHas(header, got, "RIFF") || !headerHas(header, got, "AVI"))) {
+        throw std::runtime_error("ReplayVideo source is unreadable: " + path.string());
+    }
+    if(jpeg && (got < 2 || static_cast<unsigned char>(header[0]) != 0xff || static_cast<unsigned char>(header[1]) != 0xd8)) {
+        throw std::runtime_error("ReplayVideo source is unreadable: " + path.string());
+    }
+    static const unsigned char pngSig[8] = {0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
+    if(png && (got < 8 || std::memcmp(header, pngSig, 8) != 0)) throw std::runtime_error("ReplayVideo source is unreadable: " + path.string());
 }
 
 std::filesystem::path extractArchive(const std::filesystem::path& archive, const std::string& hash) {
@@ -735,7 +951,13 @@ std::unique_ptr<GstPlayer> openFirst(const std::filesystem::path& path, const st
 
 std::vector<Chain> chainsFor(const std::string& name) {
     if(name.size() >= 4 && (name.rfind(".mp4") != std::string::npos || name.rfind(".mov") != std::string::npos)) {
-        return {{"qtdemux", "h264parse", "qtic2vdec", false}, {"qtdemux", "h265parse", "qtic2vdec", false}, {"qtdemux", nullptr, "avdec_mjpeg", true}};
+        return {{"qtdemux", "h264parse", "avdec_h264", false},
+                {"qtdemux", "h265parse", "avdec_h265", false},
+                {"qtdemux", "h264parse", "v4l2h264dec", false, true, nullptr},
+                {"qtdemux", "h265parse", "v4l2h265dec", false, true, nullptr},
+                {"qtdemux", "h264parse", "qtic2vdec", false, false, "qtivtransform"},
+                {"qtdemux", "h265parse", "qtic2vdec", false, false, "qtivtransform"},
+                {"qtdemux", nullptr, "avdec_mjpeg", true}};
     }
     if(name.size() >= 4 && name.rfind(".avi") != std::string::npos) {
         return {{"avidemux", nullptr, "avdec_ffv1", false}, {"avidemux", nullptr, "avdec_mjpeg", true}};
@@ -860,6 +1082,7 @@ void ReplayVideo::buildStage1() {
         state->dai = lowerCopy(state->frames.front().extension().string()) == ".dai";
         state->compressedImages = !state->dai;
         state->count = static_cast<int>(state->frames.size());
+        for(const auto& frame : state->frames) requireReadablePayload(frame, fileNameOf(frame));
         if(state->dai) {
             bool first = true;
             std::int64_t previousSeq = 0;
@@ -908,6 +1131,7 @@ void ReplayVideo::buildStage1() {
         const auto fromMedia = chainsFor(mediaName);
         const auto chains = !fromMedia.empty() ? fromMedia : chainsFor(originalName);
         if(chains.empty()) throw std::runtime_error("ReplayVideo unknown extension");
+        requireReadablePayload(media, !fromMedia.empty() ? mediaName : originalName);
         state->player = openFirst(media, chains);
         state->fullRange = state->player->fullRange;
         bool eos = false;
@@ -1036,6 +1260,7 @@ void ReplayVideo::run() {
             timing.timestamp = frame->getTimestamp();
             timing.timestampDevice = frame->getTimestampDevice();
             timing.timestampSystem = frame->getTimestampSystem();
+            if(!state->passthrough) frame = convertDaiFrame(frame, state->outType, state->outW, state->outH);
         } else if(state->compressedImages) {
             const auto decoded = decodeImage(state->frames[static_cast<std::size_t>(index)], [this] { return mainLoop() && !state->stopping.load(); });
             if(!decoded.sample) break;
