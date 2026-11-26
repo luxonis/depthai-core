@@ -93,7 +93,9 @@ int main() {
             try {
                 for(const auto& info : device->listRecordings()) deviceBefore.push_back(info.name);
                 haveDeviceList = true;
-            } catch(const std::exception&) {
+            } catch(const std::exception& ex) {
+                std::cerr << "listRecordings: " << ex.what() << "\n";
+                return 1;
             }
         }
 
@@ -104,19 +106,23 @@ int main() {
         pipeline.start();
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
         if(rvc4 && haveDeviceList) {
-            const auto lookUntil = std::chrono::steady_clock::now() + std::chrono::seconds(2);
             bool printed = false;
-            while(!printed && std::chrono::steady_clock::now() < lookUntil && pipeline.isRunning()) {
+            while(!printed && std::chrono::steady_clock::now() < deadline && pipeline.isRunning()) {
                 try {
                     for(const auto& info : device->listRecordings()) {
                         if(containsName(deviceBefore, info.name)) continue;
                         std::cout << "/data/depthai/recordings/" << info.name << "\n";
                         printed = true;
                     }
-                } catch(const std::exception&) {
-                    break;
+                } catch(const std::exception& ex) {
+                    std::cerr << "listRecordings: " << ex.what() << "\n";
+                    return 1;
                 }
                 if(!printed) std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            if(!printed) {
+                std::cerr << "RVC4 recording path was not listed\n";
+                return 1;
             }
         }
         while(std::chrono::steady_clock::now() < deadline && pipeline.isRunning()) {

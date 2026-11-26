@@ -61,8 +61,9 @@ def main():
             try:
                 device_before = {info.name for info in device.listRecordings()}
                 have_device_list = True
-            except Exception:
-                device_before = set()
+            except Exception as ex:
+                print(f"listRecordings: {ex}", file=sys.stderr)
+                return 1
 
         config = dai.RecordConfig()
         config.outputDir = output
@@ -71,19 +72,22 @@ def main():
         pipeline.start()
         deadline = time.monotonic() + 5
         if rvc4 and have_device_list:
-            look_until = time.monotonic() + 2
             printed = False
-            while not printed and time.monotonic() < look_until and pipeline.isRunning():
+            while not printed and time.monotonic() < deadline and pipeline.isRunning():
                 try:
                     for info in device.listRecordings():
                         if info.name in device_before:
                             continue
                         print(f"/data/depthai/recordings/{info.name}")
                         printed = True
-                except Exception:
-                    break
+                except Exception as ex:
+                    print(f"listRecordings: {ex}", file=sys.stderr)
+                    return 1
                 if not printed:
                     time.sleep(0.1)
+            if not printed:
+                print("RVC4 recording path was not listed", file=sys.stderr)
+                return 1
         while time.monotonic() < deadline and pipeline.isRunning():
             time.sleep(0.05)
         pipeline.stop()
