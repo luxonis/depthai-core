@@ -199,41 +199,62 @@ build_images() {
 }
 
 # Downloads the inputs of the tag $1 into the cache and prints the folder: rvc4-public-sysroot.tar.xz and
-# sdk-image-context/ (docker/, LICENSE, REVISION). A folder with all inputs checked is used again.
+# sdk-image-context/ (docker/, LICENSE, REVISION), and 'complete'. The inputs are downloaded, checked and unpacked in a
+# staging folder, and one rename makes it the cache folder: a cache folder never changes after that, also when two
+# fetches of one tag run at the same time, and a failed fetch leaves no folder. The callers run fetch in a command
+# substitution, where bash turns off set -e: each step checks its result.
 fetch() {
-    local tag dir url file want have
-    tag=$(tag_name "${1:-}")
+    local tag dir url file want have stage
+    tag=$(tag_name "${1:-}") || exit 1
     dir="$CACHE_DIR/sdk-image/$tag"
     if [ -f "$dir/complete" ]; then
         echo "$dir"
         return
     fi
-    mkdir -p "$dir"
+    mkdir -p "$CACHE_DIR/sdk-image" || exit 1
+    stage=$(mktemp -d "$CACHE_DIR/sdk-image/.$tag.XXXXXX") || exit 1
+    # shellcheck disable=SC2064 # expand now: the variable is local
+    trap "rm -rf '$stage'" EXIT
     url="$INPUTS_URL/$tag"
     echo "Inputs of $tag: $url" >&2
     for file in rvc4-public-sysroot.tar.xz sdk-image-context.tar.xz; do
-        if ! curl -fsSL --retry 3 -o "$dir/$file.sha256" "$url/$file.sha256"; then
+        if ! curl -fsSL --retry 3 -o "$stage/$file.sha256" "$url/$file.sha256"; then
             echo "error: no $url/$file on the artifact server. The private CI of the vendor module uploads the inputs of a tag (job public-sysroot)." >&2
             exit 1
         fi
-        curl -fsSL --retry 3 -o "$dir/$file" "$url/$file"
-        want=$(cut -d' ' -f1 < "$dir/$file.sha256" | tr -d '[:space:]')
-        have=$(sha256 "$dir/$file")
-        if [ "$want" != "$have" ]; then
-            rm -f "$dir/$file"
-            echo "error: the sha256 of $url/$file is $have, the artifact server gives $want" >&2
+        if ! curl -fsSL --retry 3 -o "$stage/$file" "$url/$file"; then
+            echo "error: cannot download $url/$file" >&2
+            exit 1
+        fi
+        want=$(cut -d' ' -f1 < "$stage/$file.sha256" | tr -d '[:space:]')
+        have=$(sha256 "$stage/$file")
+        if [ -z "$want" ] || [ "$want" != "$have" ]; then
+            echo "error: the sha256 of $url/$file is $have, the artifact server gives ${want:-nothing}" >&2
             exit 1
         fi
     done
-    rm -rf "$dir/sdk-image-context"
-    tar -xJf "$dir/sdk-image-context.tar.xz" -C "$dir"
+    if ! tar -xJf "$stage/sdk-image-context.tar.xz" -C "$stage"; then
+        echo "error: cannot unpack $url/sdk-image-context.tar.xz" >&2
+        exit 1
+    fi
     for file in docker/Dockerfile.sdk LICENSE REVISION; do
-        if [ ! -f "$dir/sdk-image-context/$file" ]; then
+        if [ ! -f "$stage/sdk-image-context/$file" ]; then
             echo "error: $url/sdk-image-context.tar.xz has no sdk-image-context/$file" >&2
             exit 1
         fi
     done
-    touch "$dir/complete"
+    touch "$stage/complete" || exit 1
+    # A cache folder without 'complete' is a leftover (no fetch makes one): replace it. When another fetch makes the
+    # folder first, its folder stays and this staging folder goes (also when it was moved into that folder).
+    if [ -e "$dir" ] && [ ! -f "$dir/complete" ]; then
+        rm -rf "$dir"
+    fi
+    [ -e "$dir" ] || mv "$stage" "$dir" 2>/dev/null || true
+    rm -rf "${dir:?}/$(basename "$stage")"
+    if [ ! -f "$dir/complete" ]; then
+        echo "error: cannot make the cache folder $dir" >&2
+        exit 1
+    fi
     echo "$dir"
 }
 
