@@ -516,7 +516,10 @@ void ImageAlign::run() {
 
         previousShiftFactor = constantShiftFactor;
 
-        if(properties.backend == Backend::GPU && inputIsDepth && staticDepthPlane == 0 && !gpuAttempted) {
+        const bool fusedDepth = inputIsDepth && staticDepthPlane == 0;
+        const bool gpuEligible = fusedDepth && map_x_1.cols <= ImageAlignGPU::kMaxWidth && inputImg->getFrame().isContinuous();
+        // Create the GPU on the first frame that can use it, so pipelines that never can skip the OpenCL setup.
+        if(properties.backend == Backend::GPU && gpuEligible && !gpuAttempted) {
             gpuAttempted = true;
             if(dai::utils::hasGPU()) {
                 try {
@@ -537,8 +540,7 @@ void ImageAlign::run() {
             t1 = steady_clock::now();
         }
 
-        const bool fusedDepth = inputIsDepth && staticDepthPlane == 0;
-        bool useGpu = gpu && fusedDepth && map_x_1.cols <= ImageAlignGPU::kMaxWidth && inputImg->getFrame().isContinuous();
+        bool useGpu = gpu && gpuEligible;
         std::shared_ptr<ImgFrame> warp2Input;
         // First fused CPU stage: remap and shift into cpuShifted. Also the fallback when the GPU fails.
         const auto fusedCpuShift = [&]() {
