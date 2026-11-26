@@ -42,7 +42,10 @@ struct PinUnavailable {
 struct ControllerFailure {
     int err;
 };
-using SetInfoResult = std::variant<Applied, PinUnavailable, ControllerFailure>;
+struct DeviceOpenFailure {
+    int err;
+};
+using SetInfoResult = std::variant<Applied, PinUnavailable, ControllerFailure, DeviceOpenFailure>;
 
 struct RoleState {
     ExternalFrameSyncRole requested;

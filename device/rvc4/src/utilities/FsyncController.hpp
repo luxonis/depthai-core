@@ -70,6 +70,7 @@ class FsyncController {
     std::optional<RoleState> m_roleState;
     std::set<dai::CameraBoardSocket> m_fsyncConsumers;
     int stmFd;
+    std::optional<int> m_openErrno;
     bool m_ioctl_failure;
     bool m_disabled;
     bool m_supportsExternalFrameSyncMode;

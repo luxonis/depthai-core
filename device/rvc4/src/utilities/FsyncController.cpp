@@ -144,6 +144,7 @@ FsyncController::FsyncController()
     auto err = errno;
     if(stmFd < 0) {
         m_ioctl_failure = true;
+        m_openErrno = err;
         DAI_ERROR("Failed to open the fsync-stm device {} (code: {})", strerror(err), err);
     }
 
@@ -200,7 +201,12 @@ void FsyncController::setExternalFrameSyncRole(dai::ExternalFrameSyncRole role) 
         DAI_WARN("External frame sync role set to MASTER.");
     }
 
-    m_roleState = RoleState{role, resolved, writeConfig(configFor(resolved))};
+    bool isExplicit = role != ExternalFrameSyncRole::AUTO_DETECT;
+    if(isExplicit && m_openErrno) {
+        m_roleState = RoleState{role, resolved, DeviceOpenFailure{*m_openErrno}};
+    } else {
+        m_roleState = RoleState{role, resolved, writeConfig(configFor(resolved))};
+    }
     if(auto warning = autoWarning(*m_roleState)) {
         DAI_WARN("{}", *warning);
     }
