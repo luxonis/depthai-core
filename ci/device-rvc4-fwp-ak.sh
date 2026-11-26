@@ -6,7 +6,8 @@
 #       Writes <out dir>/depthai-device-rvc4-fwp.tar.xz, -LICENSE, .spdx.json and .cdx.json.
 #       Exit 0: downloaded and checked. Exit 2: not on the server, or a checksum does not match. Exit 1: other errors.
 #   AK_URL=... AK_TOKEN=... ci/device-rvc4-fwp-ak.sh upload <version> <target> <dir with the four files>
-#       Uploads each of the four files that the server does not have yet. Artifact Keeper makes the .sha256 files and
+#       Uploads each of the four files that the server does not have yet, with 3 attempts for each file. When the server
+#       has all four, it does not install the Artifact Keeper CLI. Artifact Keeper makes the .sha256 files and
 #       keeps the first upload of a snapshot version (409 Conflict), so when two runs upload the same version, the
 #       files of the first one stay.
 #
@@ -19,6 +20,8 @@ NAME="depthai-device-rvc4-fwp"
 EXTENSIONS=(".tar.xz" "-LICENSE" ".spdx.json" ".cdx.json")
 CURLE_FILE_COULDNT_READ_FILE=37
 NO_HTTP_STATUS=000
+UPLOAD_ATTEMPTS=3
+UPLOAD_RETRY_DELAY=30
 
 usage() {
     sed -n '/^# Usage:/,/^# DEPTHAI/p' "$0" >&2
@@ -80,11 +83,22 @@ cmd_download() {
 cmd_upload() {
     : "${AK_URL:?AK_URL must be set}"
     : "${AK_TOKEN:?AK_TOKEN must be set}"
-    local version=$1 target=$2 dir=$3 ext
+    local version=$1 target=$2 dir=$3 ext missing=()
     remote_names "$version" "$target"
     for ext in "${EXTENSIONS[@]}"; do
         [ -f "$dir/$NAME$ext" ] || { echo "Missing: $dir/$NAME$ext" >&2; exit 1; }
     done
+
+    tmp=$(mktemp -d)
+    trap 'rm -rf "$tmp"' EXIT
+    for ext in "${EXTENSIONS[@]}"; do
+        if fetch "$BASE_URL/$AK_REPO/$remote_dir/$remote_stem$ext.sha256" "$tmp/probe"; then
+            echo "On the server already: $remote_dir/$remote_stem$ext"
+        else
+            missing+=("$ext")
+        fi
+    done
+    [ ${#missing[@]} -gt 0 ] || return 0
 
     bash "$(dirname "${BASH_SOURCE[0]}")/setup-ak-cli.sh"
     export AK_NO_INPUT="${AK_NO_INPUT:-true}"
@@ -93,20 +107,31 @@ cmd_upload() {
         ak instance add "$instance" "${AK_URL%/}"
     fi
 
-    tmp=$(mktemp -d)
-    trap 'rm -rf "$tmp"' EXIT
-    for ext in "${EXTENSIONS[@]}"; do
-        local url="$BASE_URL/$AK_REPO/$remote_dir/$remote_stem$ext"
-        if fetch "$url.sha256" "$tmp/probe"; then
-            echo "On the server already: $remote_dir/$remote_stem$ext"
-            continue
-        fi
+    for ext in "${missing[@]}"; do
         echo "Upload: $AK_REPO:$remote_dir/$remote_stem$ext ($(du -sh "$dir/$NAME$ext" | cut -f1))"
-        if ! ak artifact push "$AK_REPO" "$dir/$NAME$ext" --path "$remote_dir/$remote_stem$ext"; then
-            fetch "$url.sha256" "$tmp/probe" || { echo "Upload failed: $remote_dir/$remote_stem$ext" >&2; exit 1; }
-            echo "Another run uploaded it first: $remote_dir/$remote_stem$ext"
+        push_file "$dir/$NAME$ext" "$remote_dir/$remote_stem$ext" || exit 1
+    done
+}
+
+# The CLI sends a file below its chunked upload threshold in one PUT, with no retry. After a failed push the server can
+# have the file: the push stored it before the error, or another run uploaded it first (409 Conflict).
+push_file() {
+    local file=$1 path=$2 attempt
+    for attempt in $(seq "$UPLOAD_ATTEMPTS"); do
+        if ak artifact push "$AK_REPO" "$file" --path "$path"; then
+            return 0
+        fi
+        if fetch "$BASE_URL/$AK_REPO/$path.sha256" "$tmp/probe"; then
+            echo "The server has it already: $path"
+            return 0
+        fi
+        if [ "$attempt" -lt "$UPLOAD_ATTEMPTS" ]; then
+            echo "Upload failed (attempt $attempt of $UPLOAD_ATTEMPTS), next attempt in $UPLOAD_RETRY_DELAY s: $path" >&2
+            sleep "$UPLOAD_RETRY_DELAY"
         fi
     done
+    echo "Upload failed: $path" >&2
+    return 1
 }
 
 [ $# -ge 1 ] || usage

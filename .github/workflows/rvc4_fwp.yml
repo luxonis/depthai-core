@@ -37,10 +37,12 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: ${{ env.ARTIFACT }}
-          path: ${{ runner.temp }}/rvc4-fwp
+          path: ${{ runner.temp }}/rvc4-fwp-out
 
       - name: Checkout
-        if: steps.download.outcome == 'failure'
+        if: steps.download.outcome == 'failure' || env.AK_PUBLISH == 'true'
+        # With the package of this run, the checkout is only for the publish step, which only warns.
+        continue-on-error: ${{ steps.download.outcome == 'success' }}
         uses: actions/checkout@v7
         with:
           fetch-depth: 11
@@ -50,7 +52,6 @@ jobs:
         if: steps.download.outcome == 'failure'
         run: |
           version=$(ci/device-rvc4-fwp-ak.sh version .)
-          echo "version=$version" >> "$GITHUB_OUTPUT"
           status=0
           ci/device-rvc4-fwp-ak.sh download "$version" "$TARGET" "$RUNNER_TEMP/rvc4-fwp-out" || status=$?
           if [ "$status" = 0 ]; then
@@ -106,13 +107,16 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
+      # Also when the package of this run was found: the publish of an earlier attempt can have failed. A re-run of this
+      # job then publishes the files that Artifact Keeper does not have.
       - name: Publish the package on Artifact Keeper
-        if: steps.download.outcome == 'failure' && steps.ak.outputs.downloaded != 'true' && env.AK_PUBLISH == 'true'
+        if: steps.ak.outputs.downloaded != 'true' && env.AK_PUBLISH == 'true'
         continue-on-error: true
         env:
           AK_URL: ${{ secrets.AK_URL }}
           AK_TOKEN: ${{ secrets.AK_TOKEN }}
-          VERSION: ${{ steps.ak.outputs.version }}
         run: |
-          ci/device-rvc4-fwp-ak.sh upload "$VERSION" "$TARGET" "$RUNNER_TEMP/rvc4-fwp-out" ||
-            { echo "::warning::Could not publish $VERSION ($TARGET) on Artifact Keeper"; exit 1; }
+          version=$(ci/device-rvc4-fwp-ak.sh version .) ||
+            { echo "::warning::Could not get the version of the package ($TARGET): not published"; exit 1; }
+          ci/device-rvc4-fwp-ak.sh upload "$version" "$TARGET" "$RUNNER_TEMP/rvc4-fwp-out" ||
+            { echo "::warning::Could not publish $version ($TARGET) on Artifact Keeper"; exit 1; }
