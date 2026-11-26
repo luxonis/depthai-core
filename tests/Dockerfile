@@ -1,3 +1,6 @@
+# (scripts/hil/build_and_push.sh)
+FROM scratch AS rvc4-fwp
+
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -106,6 +109,9 @@ RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     curl -fL --retry 5 --retry-delay 2 \
       https://mirrors.kernel.org/gnu/gperf/gperf-3.1.tar.gz \
       -o /opt/vcpkg-downloads/gperf-3.1.tar.gz
+
+COPY --from=rvc4-fwp / /rvc4-fwp/
+ARG DEPTHAI_DEVICE_RVC4_FWP_PATH=""
 
 RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     --mount=type=cache,target=/opt/vcpkg-bincache \

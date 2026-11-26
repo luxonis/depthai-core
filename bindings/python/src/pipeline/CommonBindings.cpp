@@ -2,6 +2,7 @@
 
 #include <pybind11/detail/common.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/stl/filesystem.h>
 #include <pybind11/stl_bind.h>
 
 #include <array>
@@ -46,6 +47,7 @@
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/common/UsbSpeed.hpp"
+#include "depthai/common/WorldConstraints.hpp"
 #include "depthai/common/YoloDecodingFamily.hpp"
 
 // depthai
@@ -113,6 +115,15 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<RotatedRect> rotatedRect(m, "RotatedRect", DOC(dai, RotatedRect));
     py::class_<Rect> rect(m, "Rect", DOC(dai, Rect));
     py::class_<StereoPair> stereoPair(m, "StereoPair", DOC(dai, StereoPair));
+    py::enum_<ArucoDictionary> arucoDictionary(m, "ArucoDictionary", DOC(dai, ArucoDictionary));
+    py::enum_<MarkerType> markerType(m, "MarkerType", DOC(dai, MarkerType));
+    py::class_<WorldConstraints> worldConstraints(m, "WorldConstraints", DOC(dai, WorldConstraints));
+    py::class_<WorldConstraints::MarkerDistance> markerDistance(worldConstraints, "MarkerDistance", DOC(dai, WorldConstraints, MarkerDistance));
+    py::class_<WorldConstraints::MarkerSocketDistance> markerSocketDistance(
+        worldConstraints, "MarkerSocketDistance", DOC(dai, WorldConstraints, MarkerSocketDistance));
+    py::class_<WorldConstraints::MarkerSize> markerSize(worldConstraints, "MarkerSize", DOC(dai, WorldConstraints, MarkerSize));
+    py::class_<MarkerOutline> markerOutline(m, "MarkerOutline", DOC(dai, MarkerOutline));
+    py::class_<MarkerObservationSet> markerObservationSet(m, "MarkerObservationSet", DOC(dai, MarkerObservationSet));
     py::enum_<CameraExposureOffset> cameraExposureOffset(m, "CameraExposureOffset");
     py::class_<Color> color(m, "Color", DOC(dai, Color));
     py::enum_<Colormap> colormap(m, "Colormap", DOC(dai, Colormap));
@@ -313,6 +324,79 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("y", &Rect::y)
         .def_readwrite("width", &Rect::width)
         .def_readwrite("height", &Rect::height);
+
+    markerType.value("ARUCO", MarkerType::ARUCO).value("LUXONIS", MarkerType::LUXONIS);
+    m.attr("LUXONIS_MARKER_ID_MAX") = kLuxonisMarkerIdMax;
+
+    arucoDictionary.value("DICT_4X4_50", ArucoDictionary::DICT_4X4_50)
+        .value("DICT_4X4_100", ArucoDictionary::DICT_4X4_100)
+        .value("DICT_4X4_250", ArucoDictionary::DICT_4X4_250)
+        .value("DICT_4X4_1000", ArucoDictionary::DICT_4X4_1000)
+        .value("DICT_5X5_50", ArucoDictionary::DICT_5X5_50)
+        .value("DICT_5X5_100", ArucoDictionary::DICT_5X5_100)
+        .value("DICT_5X5_250", ArucoDictionary::DICT_5X5_250)
+        .value("DICT_5X5_1000", ArucoDictionary::DICT_5X5_1000)
+        .value("DICT_6X6_50", ArucoDictionary::DICT_6X6_50)
+        .value("DICT_6X6_100", ArucoDictionary::DICT_6X6_100)
+        .value("DICT_6X6_250", ArucoDictionary::DICT_6X6_250)
+        .value("DICT_6X6_1000", ArucoDictionary::DICT_6X6_1000)
+        .value("DICT_7X7_50", ArucoDictionary::DICT_7X7_50)
+        .value("DICT_7X7_100", ArucoDictionary::DICT_7X7_100)
+        .value("DICT_7X7_250", ArucoDictionary::DICT_7X7_250)
+        .value("DICT_7X7_1000", ArucoDictionary::DICT_7X7_1000)
+        .value("DICT_ARUCO_ORIGINAL", ArucoDictionary::DICT_ARUCO_ORIGINAL)
+        .value("DICT_APRILTAG_16h5", ArucoDictionary::DICT_APRILTAG_16h5)
+        .value("DICT_APRILTAG_25h9", ArucoDictionary::DICT_APRILTAG_25h9)
+        .value("DICT_APRILTAG_36h10", ArucoDictionary::DICT_APRILTAG_36h10)
+        .value("DICT_APRILTAG_36h11", ArucoDictionary::DICT_APRILTAG_36h11);
+
+    markerDistance.def(py::init<>())
+        .def(py::init<int32_t, int32_t, float, LengthUnit>(),
+             py::arg("markerA"),
+             py::arg("markerB"),
+             py::arg("distance"),
+             py::arg("unit") = LengthUnit::METER,
+             "The distance between two markers, given in unit (meters by default) and stored in meters.")
+        .def_readwrite("markerA", &WorldConstraints::MarkerDistance::markerA)
+        .def_readwrite("markerB", &WorldConstraints::MarkerDistance::markerB)
+        .def_readwrite("distance", &WorldConstraints::MarkerDistance::distance, "Meters");
+    markerSocketDistance.def(py::init<>())
+        .def(py::init<int32_t, CameraBoardSocket, float, LengthUnit>(),
+             py::arg("marker"),
+             py::arg("socket"),
+             py::arg("distance"),
+             py::arg("unit") = LengthUnit::METER,
+             "The distance between a marker and a camera socket, given in unit (meters by default) and stored in meters.")
+        .def_readwrite("marker", &WorldConstraints::MarkerSocketDistance::marker)
+        .def_readwrite("socket", &WorldConstraints::MarkerSocketDistance::socket)
+        .def_readwrite("distance", &WorldConstraints::MarkerSocketDistance::distance, "Meters");
+    markerSize.def(py::init<>())
+        .def(py::init<int32_t, float, LengthUnit>(),
+             py::arg("marker"),
+             py::arg("size"),
+             py::arg("unit") = LengthUnit::METER,
+             "The printed size of a marker, given in unit (meters by default) and stored in meters.")
+        .def_readwrite("marker", &WorldConstraints::MarkerSize::marker)
+        .def_readwrite("size", &WorldConstraints::MarkerSize::size, "Meters");
+    worldConstraints.def(py::init<>())
+        .def_readwrite("markerType", &WorldConstraints::markerType, DOC(dai, WorldConstraints, markerType))
+        .def_readwrite("arucoDictionary", &WorldConstraints::arucoDictionary, DOC(dai, WorldConstraints, arucoDictionary))
+        .def_readwrite("markerDistances", &WorldConstraints::markerDistances, DOC(dai, WorldConstraints, markerDistances))
+        .def_readwrite("socketDistances", &WorldConstraints::socketDistances, DOC(dai, WorldConstraints, socketDistances))
+        .def_readwrite("markerSizes", &WorldConstraints::markerSizes, DOC(dai, WorldConstraints, markerSizes))
+        .def_static("fromJson", &WorldConstraints::fromJsonString, py::arg("json"), DOC(dai, WorldConstraints, fromJsonString))
+        .def_static("fromFile", &WorldConstraints::fromFile, py::arg("path"), DOC(dai, WorldConstraints, fromFile))
+        .def(
+            "toJson", [](const WorldConstraints& constraints) { return constraints.toJson().dump(); }, DOC(dai, WorldConstraints, toJson))
+        .def("empty", &WorldConstraints::empty, DOC(dai, WorldConstraints, empty))
+        .def("validate", &WorldConstraints::validate, DOC(dai, WorldConstraints, validate));
+    markerOutline.def(py::init<>())
+        .def_readwrite("corners", &MarkerOutline::corners, DOC(dai, MarkerOutline, corners))
+        .def_readwrite("outerEdge", &MarkerOutline::outerEdge, DOC(dai, MarkerOutline, outerEdge))
+        .def_readwrite("innerEdge", &MarkerOutline::innerEdge, DOC(dai, MarkerOutline, innerEdge));
+    markerObservationSet.def(py::init<>())
+        .def_readwrite("centers", &MarkerObservationSet::centers, DOC(dai, MarkerObservationSet, centers))
+        .def_readwrite("outlines", &MarkerObservationSet::outlines, DOC(dai, MarkerObservationSet, outlines));
 
     stereoPair.def(py::init<>())
         .def_readwrite("left", &StereoPair::left)
@@ -678,14 +762,14 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("boardConf", &EepromData::boardConf)
         .def_readwrite("hardwareConf", &EepromData::hardwareConf)
         .def_readwrite("productName", &EepromData::productName)
-        .def_readwrite("batchName", &EepromData::batchName)
+        .def_readwrite("batchName", &EepromData::batchName, DOC(dai, EepromData, batchName))
         .def_readwrite("deviceName", &EepromData::deviceName)
         .def_readwrite("batchTime", &EepromData::batchTime)
         .def_readwrite("boardOptions", &EepromData::boardOptions)
         .def_readwrite("cameraData", &EepromData::cameraData)
         .def_readwrite("stereoRectificationData", &EepromData::stereoRectificationData)
         .def_readwrite("imuExtrinsics", &EepromData::imuExtrinsics)
-        .def_readwrite("miscellaneousData", &EepromData::miscellaneousData)
+        .def_readwrite("miscellaneousData", &EepromData::miscellaneousData, DOC(dai, EepromData, miscellaneousData))
         .def_readwrite("housingExtrinsics", &EepromData::housingExtrinsics)
         .def_readwrite("stereoUseSpecTranslation", &EepromData::stereoUseSpecTranslation)
         .def_readwrite("stereoEnableDistortionCorrection", &EepromData::stereoEnableDistortionCorrection)

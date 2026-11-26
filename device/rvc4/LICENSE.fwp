@@ -1,0 +1,54 @@
+Luxonis Firmware Package License
+
+Copyright (c) Luxonis Holding Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of Luxonis device-side firmware packages and associated files (the "Firmware"),
+to use, copy, publish, distribute, and otherwise deal in the Firmware, subject
+to the following conditions:
+
+The Firmware may be run only on Luxonis hardware. "Luxonis hardware" means
+hardware products manufactured, sold, or expressly authorized by Luxonis
+Holding Corporation ("Luxonis").
+
+Vendor module. The Firmware contains the Luxonis DepthAI vendor module
+(depthai-device-rvc4-vendor): proprietary software of Luxonis and its
+licensors, in object code. The Luxonis DepthAI Vendor Module End User License
+Agreement covers the vendor module. Its text is in the Firmware
+(legal/DEPTHAI-EULA.txt) and in the license bundle of the Firmware. That
+agreement applies to the vendor module in addition to this license, and where
+the two conflict for the vendor module, that agreement prevails. In
+particular, you may copy, publish, and distribute the vendor module in the
+Firmware only as part of the Firmware, unmodified and not separated from it,
+together with this license and that agreement, and you may not modify,
+decompile, or reverse engineer it. This paragraph does not limit the other
+parts of the Firmware.
+
+Third-party components. The Firmware contains third-party components. Each
+component is licensed under its own terms, which are listed in the license
+bundle of the Firmware, after this license. Those terms apply to that
+component in addition to this license. In particular, the STMicroelectronics
+VD55H1 IPP library (part of the vendor module) is licensed under
+STMicroelectronics license SLA0106: it may be used only in conjunction with
+STMicroelectronics sensors, and it may not be reverse engineered, decompiled,
+disassembled, or used to create a product that competes with it.
+
+Export control. The Firmware is subject to export control laws and
+regulations, including those of the European Union and the United States. You
+may not export, re-export, sell, supply, or transfer the Firmware, directly or
+indirectly, to the Russian Federation, Belarus, or any other sanctioned or
+restricted country, to any person on an applicable restricted party list
+(including the EU lists, the U.S. BIS Entity List, and the BIS Military End
+User List), or for any use in those countries. If you distribute the Firmware,
+you must include terms equivalent to this paragraph.
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Firmware.
+
+THE FIRMWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL
+LUXONIS HOLDING CORPORATION BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM,
+OUT OF, OR IN CONNECTION WITH THE FIRMWARE OR THE USE OR OTHER DEALINGS IN THE
+FIRMWARE.

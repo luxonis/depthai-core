@@ -18,6 +18,9 @@ std::shared_ptr<NeuralDepth> NeuralDepth::build(Output& leftInput, Output& right
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     leftInput.link(left);
     rightInput.link(right);
+#else
+    (void)leftInput;
+    (void)rightInput;
 #endif
     // Set model
     neuralNetwork->setModelFromDeviceZoo(model);

@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
     auto cam = pipeline.create<dai::node::Camera>()->build(alignSocket);
     auto camOut = cam->requestOutput(std::make_pair(CAMERA_SIZE.width, CAMERA_SIZE.height), std::nullopt, dai::ImgResizeMode::CROP, FPS, true);
 
-    auto align = pipeline.create<dai::node::ImageAlign>();
+    auto align = pipeline.create<dai::node::Align>();
     align->setRunOnHost(true);
     tof->depth.link(align->input);
     camOut->link(align->inputAlignTo);

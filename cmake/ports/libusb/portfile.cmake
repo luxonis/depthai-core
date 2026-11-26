@@ -2,9 +2,9 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO luxonis/libusb
-    REF 745c272a2f0305c4ab162b7fb1b2edc7578c6b77
-    SHA512 1ddf278e9f82061f77043400164d98e8e24a6627d1bcf9a1a8e57e9b032b3a183730b2651de1b66ab953cac8b49d1a399e1d3476ee9c07922be9e5a17ee396ff
-    HEAD_REF bugfix/win_claimed_if_corruption
+    REF 6a2cebf82866b593ce97d79b1b70ad08ea19c02b
+    SHA512 875bf257521a9a532dce4c58d0b29db5d4bbc4789eec0b3528ad828e9f6d30726c15253fa56bc5902b86a7dde3480c3cb698f16ec58c30a8b7f59f7c40bbdf5b
+    HEAD_REF fix/macos26-usb-port-number
 )
 
 if(VCPKG_TARGET_IS_WINDOWS)
