@@ -150,17 +150,17 @@ void BasaltVIO::imuCB(std::shared_ptr<ADatatype> imuData) {
     pimpl->imuStarted = true;
 
     for(auto& imuPacket : imuPackets->packets) {
-        basalt::ImuData<double>::Ptr data;
-        data = std::make_shared<basalt::ImuData<double>>();
         auto t = imuPacket.acceleroMeter.getTimestamp();
         int64_t t_ns = std::chrono::time_point_cast<std::chrono::nanoseconds>(t).time_since_epoch().count();
         // Basalt aborts the process on IMU samples that are not strictly increasing in time.
         if(t_ns <= pimpl->lastImuTNs) {
-            ThreadedNode::pimpl->logger->warn("Dropping IMU sample that is {} us older than the previous one", (pimpl->lastImuTNs - t_ns) / 1000);
+            ThreadedNode::pimpl->logger->warn("Dropping IMU sample that is not newer than the previous one ({} us back)", (pimpl->lastImuTNs - t_ns) / 1000);
             continue;
         }
         pimpl->lastImuTNs = t_ns;
 
+        basalt::ImuData<double>::Ptr data;
+        data = std::make_shared<basalt::ImuData<double>>();
         data->t_ns = t_ns;
         data->accel = Eigen::Vector3d(imuPacket.acceleroMeter.x, imuPacket.acceleroMeter.y, imuPacket.acceleroMeter.z);
         data->gyro = Eigen::Vector3d(imuPacket.gyroscope.x, imuPacket.gyroscope.y, imuPacket.gyroscope.z);

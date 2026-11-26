@@ -1,4 +1,3 @@
-#include <atomic>
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <memory>
@@ -103,26 +102,25 @@ TEST_CASE("BasaltVIO: IMU samples that go back in time do not abort", "[vio][bas
     auto odometryQueue = vio->transform.createOutputQueue();
 
     pipeline.start();
-    std::atomic<bool> running{true};
-    std::thread imuFeeder([&] {
-        auto stamp = Clock::now();
-        for(int i = 0; running; ++i) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            // Every 20th sample is stamped 1 ms before the previous one.
-            stamp = i % 20 == 19 ? stamp - std::chrono::milliseconds(1) : Clock::now();
-            dai::IMUPacket packet;
-            packet.acceleroMeter.z = 9.81f;
-            const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(stamp.time_since_epoch()).count();
-            packet.acceleroMeter.timestamp = {ns / 1000000000, ns % 1000000000};
-            packet.gyroscope.timestamp = packet.acceleroMeter.timestamp;
-            auto imuData = std::make_shared<dai::IMUData>();
-            imuData->packets.push_back(packet);
-            imuQueue->send(imuData);
-        }
-    });
-    auto odometry = collectOdometry(*odometryQueue);
-    running = false;
-    imuFeeder.join();
+    std::vector<std::shared_ptr<dai::Odometry>> odometry;
+    auto stamp = Clock::now();
+    const auto deadline = stamp + kOdometryTimeout;
+    // Feed long enough for Basalt to integrate many out-of-order samples, not only until the first odometry.
+    const auto feedUntil = stamp + std::chrono::seconds(5);
+    for(int i = 0; Clock::now() < deadline && (Clock::now() < feedUntil || odometry.size() < kMinOdometryMessages); ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        // Every 20th sample is stamped 1 ms before the previous one.
+        stamp = i % 20 == 19 ? stamp - std::chrono::milliseconds(1) : Clock::now();
+        dai::IMUPacket packet;
+        packet.acceleroMeter.z = 9.81f;
+        const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(stamp.time_since_epoch()).count();
+        packet.acceleroMeter.timestamp = {ns / 1000000000, ns % 1000000000};
+        packet.gyroscope.timestamp = packet.acceleroMeter.timestamp;
+        auto imuData = std::make_shared<dai::IMUData>();
+        imuData->packets.push_back(packet);
+        imuQueue->send(imuData);
+        while(auto msg = odometryQueue->tryGet<dai::Odometry>()) odometry.push_back(msg);
+    }
     REQUIRE(odometry.size() >= kMinOdometryMessages);
 }
 
