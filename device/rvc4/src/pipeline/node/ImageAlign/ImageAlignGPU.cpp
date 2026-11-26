@@ -115,13 +115,13 @@ void ImageAlignGPU::configure(const cv::Mat& x1,
                               const cv::Mat& y2,
                               int inputWidth,
                               int inputHeight,
-                              const float* rays,
+                              const std::vector<float>& rays,
                               const std::vector<float>& scales) {
     CV_Assert(x1.type() == CV_32FC1 && y1.type() == CV_32FC1 && x2.type() == CV_32FC1 && y2.type() == CV_32FC1);
     CV_Assert(!x1.empty() && !x2.empty() && x1.size() == y1.size() && x2.size() == y2.size());
     CV_Assert(x1.cols <= 65535 && x1.total() <= INT_MAX && x2.total() <= INT_MAX);
     CV_Assert(inputWidth > 0 && inputHeight > 0 && int64_t(inputWidth) * inputHeight <= INT_MAX);
-    CV_Assert(rays != nullptr && scales.size() == x2.total());
+    CV_Assert(rays.size() == x1.total() && scales.size() == x2.total());
     auto map1 = indices(x1, y1, inputWidth, inputHeight);
     auto map2 = indices(x2, y2, x1.cols, x1.rows);
     width = x1.cols;
@@ -139,7 +139,7 @@ void ImageAlignGPU::configure(const cv::Mat& x1,
     buffer(destination, outputCount * sizeof(uint16_t), nullptr);
     buffer(firstMap, map1.size() * sizeof(int), map1.data());
     buffer(secondMap, map2.size() * sizeof(int), map2.data());
-    buffer(rayZ, count * sizeof(float), rays);
+    buffer(rayZ, rays.size() * sizeof(float), rays.data());
     buffer(depthScales, scales.size() * sizeof(float), scales.data());
     buffer(winners, count * sizeof(cl_uint), nullptr);
 }

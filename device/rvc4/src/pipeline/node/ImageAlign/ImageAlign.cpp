@@ -233,8 +233,7 @@ void ImageAlign::extractCalibrationData(int depthWidth, int depthHeight) {
 
     if(inputFrameType == ImgFrame::Type::RAW16) {
         auto tables = detail::depthAlignTables(cv_R1, cv_targetCamMatrix, rectifiedSize, cv_R, cv_M2, cv_T, {alignWidth, alignHeight});
-        rectifiedRayZ = AcceleratorMemory::create(tables.rectifiedRayZ.size() * sizeof(float));
-        memcpy(rectifiedRayZ->data(), tables.rectifiedRayZ.data(), tables.rectifiedRayZ.size() * sizeof(float));
+        rectifiedRayZ = std::move(tables.rectifiedRayZ);
         alignedDepthScales = std::move(tables.alignedDepthScales);
         alignedDepthOffset = tables.alignedDepthOffset;
     }
@@ -404,7 +403,6 @@ void ImageAlign::run() {
     cv::Mat cpuShifted;
     std::array<float, 65536> cpuDepthLut{};
     std::vector<std::ptrdiff_t> cpuFirstMap, cpuSecondMap;
-    std::vector<float> cpuRayZ;
     bool cpuConfigurationDirty = true;
     size_t cpuInputStride = 0;
     std::unique_ptr<ImageAlignGPU> gpu;
@@ -548,14 +546,12 @@ void ImageAlign::run() {
             if(cpuConfigurationDirty || cpuInputStride != inputFrame.step1()) {
                 cpuFirstMap = detail::nearestDepthOffsets(map_x_1, map_y_1, inputFrame.size(), inputFrame.step1());
                 cpuSecondMap = detail::nearestDepthOffsets(map_x_2, map_y_2, map_x_1.size(), map_x_1.cols);
-                const auto* rays = reinterpret_cast<const float*>(rectifiedRayZ->data());
-                cpuRayZ.assign(rays, rays + map_x_1.total());
                 detail::fillDepthShiftLut(cpuDepthLut, depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0]);
                 cpuInputStride = inputFrame.step1();
                 cpuConfigurationDirty = false;
             }
             detail::remapAndShiftDepth(
-                inputFrame, cpuShifted, map_x_1.size(), cpuFirstMap, cpuDepthLut, depthToAlignExtrinsics[0][3] > 0, cpuRayZ, cpuExecutor);
+                inputFrame, cpuShifted, map_x_1.size(), cpuFirstMap, cpuDepthLut, depthToAlignExtrinsics[0][3] > 0, rectifiedRayZ, cpuExecutor);
         };
         if(fusedDepth && !useGpu) {
             fusedCpuShift();
@@ -646,14 +642,7 @@ void ImageAlign::run() {
                 gpu,
                 [&](ImageAlignGPU& backend) {
                     if(gpuConfigurationDirty) {
-                        backend.configure(map_x_1,
-                                          map_y_1,
-                                          map_x_2,
-                                          map_y_2,
-                                          inputImg->getWidth(),
-                                          inputImg->getHeight(),
-                                          reinterpret_cast<const float*>(rectifiedRayZ->data()),
-                                          alignedDepthScales);
+                        backend.configure(map_x_1, map_y_1, map_x_2, map_y_2, inputImg->getWidth(), inputImg->getHeight(), rectifiedRayZ, alignedDepthScales);
                         gpuConfigurationDirty = false;
                     }
                     backend.run(inputImg->getFrame(), alignedImg->getFrame(), depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0], alignedDepthOffset);

@@ -12,7 +12,6 @@
 #include "pipeline/Pool.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/node/Warp/rvc4/WarpDispatcherRvc4.hpp"
-#include "utilities/AcceleratorMemory.hpp"
 
 namespace dai {
 namespace gate {
@@ -67,7 +66,7 @@ class ImageAlign : public ::dai::node::ImageAlign {
 
     cv::Mat map_x_1, map_y_1;
     cv::Mat map_x_2, map_y_2;
-    std::shared_ptr<AcceleratorMemory> rectifiedRayZ;
+    std::vector<float> rectifiedRayZ;
     std::vector<float> alignedDepthScales;
     float alignedDepthOffset = 0.0f;
 

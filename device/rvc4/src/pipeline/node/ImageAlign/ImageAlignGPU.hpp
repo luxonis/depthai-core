@@ -20,7 +20,7 @@ class ImageAlignGPU {
                    const cv::Mat& y2,
                    int inputWidth,
                    int inputHeight,
-                   const float* rays,
+                   const std::vector<float>& rays,
                    const std::vector<float>& scales);
     void run(const cv::Mat& input, cv::Mat output, float shift, float offset);
 
