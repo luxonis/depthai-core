@@ -283,6 +283,54 @@ TEST_CASE("ImageAlign synthetic 3D point projections on device") {
 TEST_CASE("Align synthetic 3D point projections on host") {
     requireProjectedDepthPoints<dai::node::Align>(true);
 }
+TEST_CASE("Align rebuilds depth maps after a non-frame message changes the transformation on host") {
+    constexpr int width = 160, height = 120;
+    const std::array<std::array<float, 3>, 3> k = {{{160, 0, 79.5f}, {0, 160, 59.5f}, {0, 0, 1}}};
+    const std::vector<std::vector<float>> identity = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    const auto transform = [&](float baseline) {
+        return dai::ImgTransformation(
+            width, height, k, dai::CameraModel::Perspective, {}, dai::Extrinsics(identity, {baseline, 0, 0}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER));
+    };
+    const auto targetTransform = transform(0), firstSource = transform(75), secondSource = transform(-40);
+    std::vector<uint8_t> pixels(width * height * 2);
+    for(int y = 0; y < height; ++y)
+        for(int x = 0; x < width; ++x) {
+            const auto depth = static_cast<uint16_t>(1000 + 7 * x + 11 * y);
+            pixels[2 * (y * width + x)] = static_cast<uint8_t>(depth);
+            pixels[2 * (y * width + x) + 1] = static_cast<uint8_t>(depth >> 8);
+        }
+    const auto depthFrame = [&](const dai::ImgTransformation& source, int64_t sequence) {
+        auto frame = makeRuntimeTransformationFrame(source, dai::CameraBoardSocket::CAM_B, dai::ImgFrame::Type::RAW16, sequence);
+        frame->setData(pixels);
+        return frame;
+    };
+    const auto expected = alignSyntheticDepth<dai::node::Align>(true, secondSource, targetTransform, pixels);
+
+    dai::Pipeline pipeline(false);
+    auto align = pipeline.create<dai::node::Align>();
+    align->setRunOnHost(true);
+    auto sources = align->input.createInputQueue();
+    auto targets = align->inputAlignTo.createInputQueue();
+    auto outputs = align->outputAligned.createOutputQueue();
+    pipeline.start();
+    targets->send(makeRuntimeTransformationFrame(targetTransform, dai::CameraBoardSocket::CAM_A, dai::ImgFrame::Type::GRAY8, 0));
+    sources->send(depthFrame(firstSource, 0));
+    REQUIRE(outputs->get<dai::ImgFrame>() != nullptr);
+    // The non-frame message carries the new calibration but does not rebuild the depth maps itself.
+    auto tracklets = std::make_shared<dai::Tracklets>();
+    tracklets->setTransformation(secondSource);
+    sources->send(tracklets);
+    REQUIRE(outputs->get<dai::Tracklets>() != nullptr);
+    sources->send(depthFrame(secondSource, 2));
+    const auto output = outputs->get<dai::ImgFrame>();
+    REQUIRE(output != nullptr);
+    pipeline.stop();
+
+    const auto actual = output->getData();
+    const auto reference = expected->getData();
+    REQUIRE(output->getStride() == expected->getStride());
+    REQUIRE(std::equal(actual.begin(), actual.end(), reference.begin(), reference.end()));
+}
 TEST_CASE("Align synthetic 3D point projections on device") {
     requireProjectedDepthPoints<dai::node::Align>(false);
 }
