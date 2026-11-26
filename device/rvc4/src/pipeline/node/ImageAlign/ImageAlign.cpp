@@ -401,7 +401,7 @@ void ImageAlign::run() {
     if(properties.backend != Backend::GPU) logger->info("ImageAlign CPU backend enabled (fused RAW16: 2 threads)");
     ImageAlignCpuExecutor cpuExecutor;
     cv::Mat cpuShifted;
-    std::array<float, 65536> cpuDepthLut{};
+    std::vector<float> cpuDepthLut(detail::kDepthShiftLutSize);  // Heap: 256 KB would overflow the node thread stack
     std::vector<std::ptrdiff_t> cpuFirstMap, cpuSecondMap;
     bool cpuConfigurationDirty = true;
     size_t cpuInputStride = 0;
@@ -538,7 +538,7 @@ void ImageAlign::run() {
         }
 
         const bool fusedDepth = inputIsDepth && staticDepthPlane == 0;
-        bool useGpu = gpu && fusedDepth && map_x_1.cols <= 65535 && inputImg->getFrame().isContinuous();
+        bool useGpu = gpu && fusedDepth && map_x_1.cols <= ImageAlignGPU::kMaxWidth && inputImg->getFrame().isContinuous();
         std::shared_ptr<ImgFrame> warp2Input;
         // First fused CPU stage: remap and shift into cpuShifted. Also the fallback when the GPU fails.
         const auto fusedCpuShift = [&]() {

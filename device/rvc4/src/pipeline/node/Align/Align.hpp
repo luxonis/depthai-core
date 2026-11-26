@@ -10,13 +10,14 @@
 #include <utility>
 #include <vector>
 
+#include "../ImageAlign/ImageAlignCpuExecutor.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/datatype/AlignConfig.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/Align.hpp"
 #include "pipeline/Pool.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
-#include "../ImageAlign/ImageAlignCpuExecutor.hpp"
+#include "pipeline/utilities/Alignment/ImageAlignCpu.hpp"
 
 namespace dai {
 namespace gate {
@@ -88,7 +89,7 @@ class Align : public ::dai::node::Align {
 
     // Fused CPU depth path, shared with ImageAlign. Caches are rebuilt when the maps or input stride change.
     ImageAlignCpuExecutor cpuExecutor;
-    std::array<float, 65536> depthShiftLut{};  // Class member, so it lives on the heap with the node.
+    std::array<float, detail::kDepthShiftLutSize> depthShiftLut{};  // Class member, so it lives on the heap with the node.
     std::vector<std::ptrdiff_t> rectifiedOffsets, alignedOffsets;
     cv::Mat shiftedDepth;
     size_t cachedInputStride = 0;

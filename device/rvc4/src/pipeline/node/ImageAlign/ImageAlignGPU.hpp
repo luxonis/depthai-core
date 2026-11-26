@@ -10,6 +10,9 @@ namespace dai::gate {
 // RAW16 path: fuse the first remap with the shift, and the second with axial-Z conversion.
 class ImageAlignGPU {
    public:
+    // The scatter kernel packs the column into the high 16 bits of its rank.
+    static constexpr int kMaxWidth = 65535;
+
     ImageAlignGPU();
     ~ImageAlignGPU();
     ImageAlignGPU(const ImageAlignGPU&) = delete;

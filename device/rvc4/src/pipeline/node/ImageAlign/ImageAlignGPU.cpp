@@ -119,7 +119,7 @@ void ImageAlignGPU::configure(const cv::Mat& x1,
                               const std::vector<float>& scales) {
     CV_Assert(x1.type() == CV_32FC1 && y1.type() == CV_32FC1 && x2.type() == CV_32FC1 && y2.type() == CV_32FC1);
     CV_Assert(!x1.empty() && !x2.empty() && x1.size() == y1.size() && x2.size() == y2.size());
-    CV_Assert(x1.cols <= 65535 && x1.total() <= INT_MAX && x2.total() <= INT_MAX);
+    CV_Assert(x1.cols <= kMaxWidth && x1.total() <= INT_MAX && x2.total() <= INT_MAX);
     CV_Assert(inputWidth > 0 && inputHeight > 0 && int64_t(inputWidth) * inputHeight <= INT_MAX);
     CV_Assert(rays.size() == x1.total() && scales.size() == x2.total());
     auto map1 = indices(x1, y1, inputWidth, inputHeight);
