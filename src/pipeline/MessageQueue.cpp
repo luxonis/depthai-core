@@ -230,7 +230,13 @@ bool MessageQueue::waitAny(const std::vector<std::reference_wrapper<MessageQueue
         return std::all_of(queues.begin(), queues.end(), [](const std::reference_wrapper<MessageQueue> q) { return q.get().isClosed(); });
     };
     auto checkForMessages = [&]() {
-        return std::any_of(queues.begin(), queues.end(), [](const std::reference_wrapper<MessageQueue> q) { return !q.get().isClosed() && q.get().has(); });
+        return std::any_of(queues.begin(), queues.end(), [](const std::reference_wrapper<MessageQueue> q) {
+            try {
+                return q.get().has();
+            } catch(const QueueException&) {
+                return false;
+            }
+        });
     };
     auto pred = [&]() {
         try {

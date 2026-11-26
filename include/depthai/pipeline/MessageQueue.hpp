@@ -252,11 +252,14 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T>
     bool has() {
-        if(queue.isDestroyed()) {
-            throw QueueException(CLOSED_QUEUE_MESSAGE);
-        }
         std::shared_ptr<ADatatype> val = nullptr;
-        return queue.front(val) && dynamic_cast<T*>(val.get());
+        if(!queue.front(val)) {
+            if(queue.isDestroyed() && queue.empty()) {
+                throw QueueException(CLOSED_QUEUE_MESSAGE);
+            }
+            return false;
+        }
+        return dynamic_cast<T*>(val.get()) != nullptr;
     }
 
     /**
@@ -264,10 +267,11 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      * @returns True if queue isn't empty, false otherwise
      */
     bool has() {
-        if(queue.isDestroyed()) {
+        if(!queue.empty()) return true;
+        if(queue.isDestroyed() && queue.empty()) {
             throw QueueException(CLOSED_QUEUE_MESSAGE);
         }
-        return !queue.empty();
+        return false;
     }
 
     /**
@@ -277,13 +281,13 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T>
     std::shared_ptr<T> tryGet() {
-        if(queue.isDestroyed()) {
-            throw QueueException(CLOSED_QUEUE_MESSAGE);
-        }
         auto getInput = [this]() -> std::shared_ptr<T> {
             std::shared_ptr<ADatatype> val = nullptr;
             if(!this->queue.tryPop(val)) {
-                return nullptr;
+                if(this->queue.isDestroyed() && !this->queue.tryPop(val)) {
+                    throw QueueException(CLOSED_QUEUE_MESSAGE);
+                }
+                if(!val) return nullptr;
             }
             return std::dynamic_pointer_cast<T>(val);
         };
@@ -348,11 +352,13 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T>
     std::shared_ptr<T> front() {
-        if(queue.isDestroyed()) {
-            throw QueueException(CLOSED_QUEUE_MESSAGE);
-        }
         std::shared_ptr<ADatatype> val = nullptr;
-        if(!queue.front(val)) return nullptr;
+        if(!queue.front(val)) {
+            if(queue.isDestroyed() && queue.empty()) {
+                throw QueueException(CLOSED_QUEUE_MESSAGE);
+            }
+            return nullptr;
+        }
         return std::dynamic_pointer_cast<T>(val);
     }
 
@@ -374,9 +380,6 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T, typename Rep, typename Period>
     std::shared_ptr<T> get(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
-        if(queue.isDestroyed()) {
-            throw QueueException(CLOSED_QUEUE_MESSAGE);
-        }
         auto getInput = [&, this]() -> std::shared_ptr<T> {
             std::shared_ptr<ADatatype> val = nullptr;
             if(!this->queue.tryWaitAndPop(val, timeout)) {
@@ -422,16 +425,20 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T>
     std::vector<std::shared_ptr<T>> tryGetAll() {
-        if(queue.isDestroyed()) {
-            throw QueueException(CLOSED_QUEUE_MESSAGE);
-        }
         auto getInput = [this]() -> std::vector<std::shared_ptr<T>> {
             std::vector<std::shared_ptr<T>> messages;
-            this->queue.consumeAll([&messages](std::shared_ptr<ADatatype>& msg) {
+            auto take = [&messages](std::shared_ptr<ADatatype>& msg) {
                 // dynamic pointer cast may return nullptr
                 // in which case that message in vector will be nullptr
                 messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg)));
-            });
+            };
+            this->queue.consumeAll(take);
+            if(messages.empty() && this->queue.isDestroyed()) {
+                this->queue.consumeAll(take);
+                if(messages.empty()) {
+                    throw QueueException(CLOSED_QUEUE_MESSAGE);
+                }
+            }
             return messages;
         };
         if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
@@ -504,9 +511,6 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T, typename Rep, typename Period>
     std::vector<std::shared_ptr<T>> getAll(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
-        if(queue.isDestroyed()) {
-            throw QueueException(CLOSED_QUEUE_MESSAGE);
-        }
         auto getInput = [&, this]() -> std::vector<std::shared_ptr<T>> {
             std::vector<std::shared_ptr<T>> messages;
             hasTimedout = !this->queue.waitAndConsumeAll(
@@ -516,7 +520,9 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
                     messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg)));
                 },
                 timeout);
-
+            if(messages.empty() && this->queue.isDestroyed()) {
+                throw QueueException(CLOSED_QUEUE_MESSAGE);
+            }
             return messages;
         };
         if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {

@@ -43,6 +43,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -224,6 +225,19 @@ bool hasDifferentDistortion(const CalibrationHandler& lhs, const CalibrationHand
     return false;
 }
 #endif
+
+void keepRecordStatusFromBlocking(const std::vector<std::shared_ptr<Node>>& nodes) {
+    constexpr unsigned int noBackpressure = std::numeric_limits<unsigned int>::max();
+    for(const auto& node : nodes) {
+        const auto record = std::dynamic_pointer_cast<node::RecordVideo>(node);
+        if(record == nullptr) continue;
+        for(const auto& connection : record->status.getQueueConnections()) {
+            const auto& statusQueue = connection.queue;
+            if(statusQueue == nullptr || !statusQueue->getBlocking()) continue;
+            if(statusQueue->getMaxSize() < noBackpressure) statusQueue->setMaxSize(noBackpressure);
+        }
+    }
+}
 
 }  // namespace
 
@@ -1959,6 +1973,8 @@ void PipelineImpl::start() {
         onDeviceStateChanged(device.get(), DeviceState::FAILED);
     }
 
+    keepRecordStatusFromBlocking(getAllNodes());
+
     // Starts pipeline, go through all nodes and start them
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {
@@ -2450,6 +2466,8 @@ void PipelineImpl::stop() {
     // Wake transports parked waiting for reconnection before joining them.
     disconnectXLinkHosts();
 
+    keepRecordStatusFromBlocking(getAllNodes());
+
     // Stops the pipeline execution. A node that fails to stop is logged and skipped: the other nodes,
     // the queues and the devices below must still be stopped, or run() and wait() never return
     for(const auto& node : getAllNodes()) {
@@ -2467,13 +2485,13 @@ void PipelineImpl::stop() {
     // Record threads close files and publish the final status before output queues close.
     waitForRecordNodes();
     utility::PipelineImplHelper::packHolisticRecording(this);
-    // Replay threads release cache holds after they leave run().
-    waitForReplayNodes();
 
-    // Close all the output queues
     for(auto& queue : outputQueues) {
         queue->close();
     }
+
+    // Replay threads release cache holds after they leave run().
+    waitForReplayNodes();
 
     // Close the task queue
     tasks.destruct();
