@@ -14,7 +14,7 @@ parser.add_argument("devices", nargs="+", help="At least two device IDs or IP ad
 parser.add_argument("--projection", choices=["Perspective", "Equirectangular", "Cylindrical"], default="Cylindrical")
 parser.add_argument("--average", action="store_true", help="Average duplicate boxes and union their masks instead of NMS")
 parser.add_argument("--blend", action=argparse.BooleanOptionalAction, default=True,
-                    help="Enable per-channel exposure gains and feathered blending (default: on; --no-blend is faster)")
+                    help="Enable exposure compensation and blending (default: on; --no-blend is faster)")
 parser.add_argument("--panorama-scale", type=int, choices=range(1, 5), default=2,
                     help="Stitching resolution multiplier for 640x400 camera views (default: 2)")
 parser.add_argument("--sync-threshold-ms", type=int, default=1000 // FPS,

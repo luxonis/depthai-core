@@ -57,8 +57,8 @@ render onto.
 
 Where inputs overlap, `setSeamFinder()` picks how the seam is found. `SeamFinder::NONE` copies the inputs in order and
 is the fastest; any other value (`VORONOI`, `DP_COLOR`, `DP_COLOR_GRAD`, `GRAPHCUT_COLOR` (default),
-`GRAPHCUT_COLOR_GRAD`) also enables per-channel exposure gains and feathered blending across the seams.
-`setMaxPanoramaSize()` bounds the canvas.
+`GRAPHCUT_COLOR_GRAD`) also enables exposure compensation and blending. `setMaxPanoramaSize()` bounds the
+canvas.
 
 ### Planar projection (`stitching_planar_projection.cpp`)
 

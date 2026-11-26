@@ -137,7 +137,6 @@ std::vector<cv::Mat> FixedPanoramaCompositor::composeInputs(const std::vector<cv
 }
 
 void FixedPanoramaCompositor::prepareDirectCopy() {
-    // Later inputs replace earlier ones: each source's seam region is the part no later source covers, copied without a band
     cv::Mat later = cv::Mat::zeros(canvas.size(), CV_8U);
     for(auto source = sources.rbegin(); source != sources.rend(); ++source) {
         const cv::Rect placed(source->roi.tl() - canvas.tl(), source->roi.size());
@@ -154,7 +153,6 @@ void FixedPanoramaCompositor::prepareBlender(const std::vector<cv::Scalar>& gain
         blendSources.push_back({sources[i].roi.tl(), sources[i].mask, sources[i].seamMask, gains[i], sources[i].map1, sources[i].map2});
     }
     blender.prepare(canvas, blendSources, bandWidth);
-    // The blender keeps the maps cut to the parts it reads
     for(auto& source : sources) {
         source.map1.release();
         source.map2.release();

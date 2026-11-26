@@ -14,10 +14,6 @@ using node::Stitching;
 
 /**
  * Composes a panorama whose registered camera geometry does not change.
- *
- * Projection maps, seams, exposure gains and blending weights are prepared once and reused. The compositor either blends
- * the sources across the seams or directly copies warped inputs into the panorama. Each source is warped only over the
- * part of the panorama it contributes to.
  */
 class FixedPanoramaCompositor {
    public:
@@ -58,12 +54,11 @@ class FixedPanoramaCompositor {
         cv::Size composeInputSize;
         cv::Rect roi;
         cv::Mat mask;
-        cv::Mat seamMask;  ///< Pixels of roi assigned to the source: by the seam finder, or in direct composition the visible ones
-        cv::Mat map1;      ///< Warp maps of the whole roi, handed to the blender and then dropped
+        cv::Mat seamMask;
+        cv::Mat map1;
         cv::Mat map2;
     };
 
-    /// Inputs at the compose resolution, after checking their sizes.
     std::vector<cv::Mat> composeInputs(const std::vector<cv::Mat>& images) const;
     void prepareCompositing(const std::vector<cv::Mat>& warped);
     void prepareDirectCopy();

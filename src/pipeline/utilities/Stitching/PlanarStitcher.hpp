@@ -88,7 +88,7 @@ class PlanarStitcher {
     struct Source {
         /// Index of the input among all the inputs `prepare()` was called with.
         size_t index = 0;
-        /// Fixed point maps of `roi`, sampling the input image, as produced by cv::convertMaps; handed to the blender.
+        /// Fixed point maps of `roi`, sampling the input image, as produced by cv::convertMaps.
         cv::Mat map1;
         cv::Mat map2;
         /// Pixels of `roi` this input contributes to.
@@ -108,7 +108,7 @@ class PlanarStitcher {
     /// Compute a view covering the intersections of all the fields of view with the plane.
     Stitching::VirtualCamera computeView(const std::vector<ImgTransformation>& transformations, const std::vector<SourcePose>& poses) const;
 
-    /// Estimate the exposure gains, the seams and the blending weights, once, from the first group, and hand the maps to the blender.
+    /// Estimate the exposure gains and the seams, once, from the first group.
     void prepareCompositing(const std::vector<cv::Mat>& warped);
 
     Config config;

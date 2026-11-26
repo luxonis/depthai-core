@@ -253,7 +253,6 @@ std::shared_ptr<dai::ImgFrame> runOnce(dai::Pipeline& pipeline, const std::share
 
 const std::vector<SyntheticCamera> RIG = {makeCamera(0.0, -60.0, 0.0), makeCamera(-70.0, -40.0, -35.0), makeCamera(70.0, -40.0, 35.0)};
 
-/// A blender source that warps a flat image onto itself: identity maps, every pixel covered.
 dai::utilities::FixedBlender::Source flatSource(cv::Point tl, const cv::Mat& seamMask) {
     cv::Mat map(seamMask.size(), CV_32FC2);
     map.forEach<cv::Vec2f>([](cv::Vec2f& value, const int* position) { value = cv::Vec2f(static_cast<float>(position[1]), static_cast<float>(position[0])); });
@@ -495,7 +494,6 @@ TEST_CASE("Stitching keeps the planar geometry across frames and rebuilds it on 
 }
 
 TEST_CASE("Fixed blender ramps across an overlap narrower than its band", "[Stitching]") {
-    // Two flat sources overlap by 20 columns, less than the 61 pixel band; the seam is in the middle of the overlap
     const cv::Size size(120, 16);
     cv::Mat leftSeam = cv::Mat::zeros(size, CV_8U);
     leftSeam.colRange(0, 110).setTo(255);
@@ -512,19 +510,16 @@ TEST_CASE("Fixed blender ramps across an overlap narrower than its band", "[Stit
     for(int x = 1; x < result.cols; ++x) {
         largestStep = std::max(largestStep, std::abs(result.at<cv::Vec3b>(8, x)[0] - result.at<cv::Vec3b>(8, x - 1)[0]));
     }
-    // A cut at the edge of either source's coverage would jump by a third of the difference or more
     REQUIRE(largestStep <= 15);
 }
 
 TEST_CASE("Fixed blender samples a source that contributes at both ends of the canvas", "[Stitching]") {
-    // Source 0 spans the canvas but contributes only at both ends, like a camera across the wrap of a 360° panorama
     const cv::Size size(300, 8);
     cv::Mat endsSeam = cv::Mat::zeros(size, CV_8U);
     endsSeam.colRange(0, 50).setTo(255);
     endsSeam.colRange(250, 300).setTo(255);
     const cv::Mat middleSeam = 255 - endsSeam;
 
-    // A ramp shows whether each end samples its own columns of the source
     cv::Mat ramp(size, CV_8UC3);
     for(int x = 0; x < size.width; ++x) ramp.col(x).setTo(cv::Scalar::all(x * 255 / (size.width - 1)));
 

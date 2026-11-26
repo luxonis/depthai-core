@@ -400,7 +400,6 @@ TEST_CASE("Calibrated panorama matches the exposure of overlapping inputs", "[St
     cv::Mat darker;
     cv::multiply(views[1], cv::Scalar(0.6, 0.7, 0.8), darker);
 
-    // Per channel, mean of the right edge over the left edge: there each camera is the only source
     const auto edgeRatio = [](const cv::Mat& panorama) {
         const int edge = panorama.cols * 15 / 100;
         const auto mean = [&](int x) {

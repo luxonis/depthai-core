@@ -392,7 +392,6 @@ void PlanarStitcher::prepareCompositing(const std::vector<cv::Mat>& warped) {
     }
     const cv::Rect viewRect(0, 0, static_cast<int>(view.width), static_cast<int>(view.height));
     blender.prepare(viewRect, blendSources, static_cast<int>(std::lround(stitching::blendWidth(viewRect.size()))));
-    // The blender keeps the maps cut to the parts it reads
     for(auto& source : sources) {
         source.map1.release();
         source.map2.release();
@@ -418,7 +417,6 @@ cv::Mat PlanarStitcher::compose(const std::vector<cv::Mat>& images) {
         sourceImages.push_back(image);
     }
     if(!compositingPrepared) {
-        // The first group is warped in full once to estimate the gains and seams
         std::vector<cv::Mat> warped(sources.size());
         for(size_t i = 0; i < sources.size(); ++i) {
             cv::remap(sourceImages[i], warped[i], sources[i].map1, sources[i].map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
