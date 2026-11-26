@@ -1092,7 +1092,7 @@ dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
 target_include_directories(image_align_node_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
 dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
 add_test(NAME image_align_host_test COMMAND image_align_node_test
-    "ImageAlign synthetic depth comparison across host backend preferences,ImageAlign synthetic 3D point projections on host,Fused ImageAlign*,ImageAlign axial depth*,ImageAlign backend preferences*")
+    "ImageAlign synthetic depth comparison across host backend preferences,ImageAlign synthetic 3D point projections on host,ImageAlign refreshes stride and static-depth caches on host,Fused ImageAlign*,ImageAlign axial depth*,ImageAlign backend preferences*")
 set_tests_properties(image_align_host_test PROPERTIES LABELS "onhost;ci" ENVIRONMENT "${test_env}")
 
 # MDK hardware warp regression tests (camera-independent synthetic frames)
