@@ -251,14 +251,12 @@ class Depth : public DeviceNodeGroup {
 
     static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height);
 
-    // Keep selection independent of a live device and choose FPS limits by device class.
     static Selection selectBackend(Platform platform,
                                    std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                    float targetFps,
                                    const std::vector<Algorithm>& supportedAlgorithms,
                                    const std::vector<DeviceModelZoo>& modelFilter = {},
-                                   bool requireFpsAndResolutionMatch = false,
-                                   bool isLite = false);
+                                   bool requireFpsAndResolutionMatch = false);
 
     void resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline);
 

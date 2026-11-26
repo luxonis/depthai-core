@@ -29,9 +29,8 @@ struct DepthTestAccess {
                                                                     float targetFps,
                                                                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
                                                                     const std::vector<DeviceModelZoo>& modelFilter = {},
-                                                                    bool strict = false,
-                                                                    bool isLite = false) {
-        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter, strict, isLite);
+                                                                    bool strict = false) {
+        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter, strict);
         return {selection.algorithm, selection.config};
     }
 
@@ -257,21 +256,20 @@ TEST_CASE("Depth neural FPS profiles honor every advertised FPS and tensor band"
         INFO("model=" << static_cast<unsigned>(p.model) << " maxFps=" << p.maxFps);
         // Restrict candidates to this supported model so priority cannot mask a bad row.
         const float targetFps = (p.maxFps - 0.05f) / 0.9f;
-        const bool isLite = GENERATE(false, true);
         const uint32_t minW = static_cast<uint32_t>(static_cast<float>(p.width) / 1.4142135f);
         const uint32_t maxW = static_cast<uint32_t>(static_cast<float>(p.width) * 1.4142135f);
         const uint32_t minH = static_cast<uint32_t>(static_cast<float>(p.height) / 1.4142135f);
         const uint32_t maxH = static_cast<uint32_t>(static_cast<float>(p.height) * 1.4142135f);
         for(const auto& resolution : {std::make_pair(minW, minH), std::make_pair(p.width, p.height), std::make_pair(maxW, maxH)}) {
             CAPTURE(resolution.first, resolution.second);
-            const auto selected = dai::node::DepthTestAccess::selectBackend(resolution, targetFps, {Depth::Algorithm::NEURAL}, {p.model}, true, isLite);
+            const auto selected = dai::node::DepthTestAccess::selectBackend(resolution, targetFps, {Depth::Algorithm::NEURAL}, {p.model}, true);
             REQUIRE(selected.first == Depth::Algorithm::NEURAL);
             REQUIRE(std::get<DeviceModelZoo>(selected.second) == p.model);
         }
 
         // Above the tolerated capacity, strict mode must reject this sole available neural row.
         REQUIRE_THROWS(dai::node::DepthTestAccess::selectBackend(
-            std::make_pair(p.width, p.height), (p.maxFps + 0.2f) / 0.9f, {Depth::Algorithm::NEURAL}, {p.model}, true, isLite));
+            std::make_pair(p.width, p.height), (p.maxFps + 0.2f) / 0.9f, {Depth::Algorithm::NEURAL}, {p.model}, true));
     }
 }
 

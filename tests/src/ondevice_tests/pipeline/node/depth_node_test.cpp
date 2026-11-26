@@ -29,9 +29,8 @@ struct DepthTestAccess {
                                                                     float targetFps,
                                                                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
                                                                     const std::vector<DeviceModelZoo>& modelFilter = {},
-                                                                    bool strict = false,
-                                                                    bool isLite = false) {
-        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter, strict, isLite);
+                                                                    bool strict = false) {
+        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter, strict);
         return {selection.algorithm, selection.config};
     }
 
@@ -1002,8 +1001,7 @@ TEST_CASE("Depth: RVC4 AUTO selects neural model from size and fps") {
 
     auto depth = pipeline.create<node::Depth>();
     const auto supported = node::Depth::getSupportedAlgorithms(device);
-    const bool isLite = device->getProductName().find("LITE") != std::string::npos;
-    const auto expected = node::DepthTestAccess::selectBackend(std::make_pair(640u, 400u), 30.f, supported, device->getSupportedDeviceModels(), true, isLite);
+    const auto expected = node::DepthTestAccess::selectBackend(std::make_pair(640u, 400u), 30.f, supported, device->getSupportedDeviceModels(), true);
     REQUIRE(expected.first == node::Depth::Algorithm::NEURAL);
     REQUIRE(std::get<DeviceModelZoo>(expected.second) == DeviceModelZoo::NEURAL_DEPTH_864X540);
 
@@ -1046,8 +1044,7 @@ TEST_CASE("Depth: RVC4 AUTO uses requested output size from existing stereo came
                                                                20.f,
                                                                node::Depth::getSupportedAlgorithms(device),
                                                                device->getSupportedDeviceModels(),
-                                                               false,
-                                                               device->getProductName().find("LITE") != std::string::npos);
+                                                               false);
     REQUIRE(expected.first == node::Depth::Algorithm::NEURAL);
 
     REQUIRE_NOTHROW((void)&depth->depth());
@@ -1103,12 +1100,11 @@ TEST_CASE("Depth FPS profiles wire and stream the selected backend", "[Depth][Fp
         const auto algorithms =
             c.algorithm == node::Depth::Algorithm::AUTO ? node::Depth::getSupportedAlgorithms(device) : std::vector{node::Depth::Algorithm::NEURAL};
         const auto models = device->getSupportedDeviceModels();
-        const auto isLite = device->getProductName().find("LITE") != std::string::npos;
         std::optional<std::pair<node::Depth::Algorithm, node::Depth::Config>> expected;
         std::string selectionError;
         try {
             expected = node::DepthTestAccess::selectBackend(
-                std::make_pair(c.width, c.height), c.fps, algorithms, models, c.algorithm == node::Depth::Algorithm::AUTO, isLite);
+                std::make_pair(c.width, c.height), c.fps, algorithms, models, c.algorithm == node::Depth::Algorithm::AUTO);
         } catch(const std::runtime_error& error) {
             // Pinned AUTO requests must fail rather than silently accept a slower backend.
             selectionError = error.what();
