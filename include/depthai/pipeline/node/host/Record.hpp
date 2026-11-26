@@ -11,6 +11,7 @@
 #include <depthai/pipeline/datatype/RecordStatus.hpp>
 #include <depthai/properties/RecordVideoProperties.hpp>
 #include <depthai/utility/RecordReplay.hpp>
+#include <atomic>
 #include <mutex>
 #include <optional>
 
@@ -76,7 +77,7 @@ class RecordVideo : public DeviceNodeCRTP<DeviceNode, RecordVideo, RecordVideoPr
     RecordVideo& setRecordMetadataFile(const std::filesystem::path& recordFile);
     RecordVideo& setRecordVideoFile(const std::filesystem::path& recordFile);
     RecordVideo& setCompressionLevel(CompressionLevel compressionLevel);
-    /** Frames per second written into the video file. The value is not measured from the stream. */
+    /** Frames per second written into the video file. Unset, the file uses the source rate. */
     RecordVideo& setFps(unsigned int fps);
     /**
      * Fractional frames per second. Holistic record uses this when a camera output is not a whole number.
@@ -86,7 +87,7 @@ class RecordVideo : public DeviceNodeCRTP<DeviceNode, RecordVideo, RecordVideoPr
 
     /** Select VIDEO or RAW_FRAMES. */
     RecordVideo& setFormat(RecordFormat format);
-    /** Directory name of the recording. The default is recording_<local time with milliseconds>. */
+    /** Directory name of the recording. The default is recording_<local time>_<pid>_<counter>. */
     RecordVideo& setRecordingName(const std::string& name);
     /** Host directory that holds the recording, or that receives it at pipeline stop. */
     RecordVideo& setOutputDirectory(const std::filesystem::path& path);
@@ -134,6 +135,7 @@ class RecordVideo : public DeviceNodeCRTP<DeviceNode, RecordVideo, RecordVideoPr
         std::filesystem::path outputDirectory;
         std::string streamName;
         float fps = 30.f;
+        bool fpsExplicit = false;
         CompressionLevel compression = CompressionLevel::DEFAULT;
         bool waitForTrigger = false;
         std::int32_t preTriggerFrames = 60;
@@ -149,9 +151,19 @@ class RecordVideo : public DeviceNodeCRTP<DeviceNode, RecordVideo, RecordVideoPr
     std::optional<RecordStatus> lastStatus;
     std::shared_ptr<MessageQueue> deviceStatusQueue;
     bool rawProducer = false;
+    std::atomic<bool> countInputDrops{false};
+    std::atomic<std::uint64_t> inputQueueDrops{0};
+    std::atomic<bool> controlDropWarned{false};
+    int inputDropCallback = -1;
+    int controlDropCallback = -1;
 
     bool deviceIsRvc4() const;
     void publishStatus(const std::shared_ptr<RecordStatus>& message);
+    void installDropWatchers();
+    struct DropWatchInstall {
+        explicit DropWatchInstall(RecordVideo* self);
+    };
+    DropWatchInstall dropWatchInstall{this};
 };
 
 /**
