@@ -106,6 +106,8 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
      * AUTO is the default: on RVC4 it uses the fused CPU path for depth frames,
      * which is faster than GPU except at high resolution and high frame rate.
      * RVC2 device execution supports only AUTO (hardware remapping and SHAVEs).
+     * The preference applies to RAW16 depth; 8-bit frames use the hardware warp
+     * when the device supports it.
      * This does not change host/device placement; use setRunOnHost() for that.
      * @param backend CPU, GPU or AUTO
      * @return This node for chaining
