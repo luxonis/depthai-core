@@ -8,18 +8,29 @@
 namespace dai {
 namespace impl {
 
-// A remap changes pixel rays, but RAW16 still contains the old camera's axial Z.
-// Cache 1 / (R_destination_to_source * K_destination^-1 * [u,v,1]).z.
-// The disparity shift uses the non-inverted source/rectified Z ratio instead.
-inline std::vector<float> imageAlignDepthScales(int width, int height, const std::array<float, 3>& sourceZFromDestinationPixel, bool invert = true) {
-    std::vector<float> scales(static_cast<size_t>(width) * height);
+// Evaluate z = row . [x, y, 1] per pixel and store f(z); non-finite or non-positive z stores 0.
+template <typename F>
+inline std::vector<float> imageAlignPerPixelZ(int width, int height, const std::array<float, 3>& row, F f) {
+    std::vector<float> values(static_cast<size_t>(width) * height);
     for(int y = 0; y < height; ++y) {
         for(int x = 0; x < width; ++x) {
-            const float z = sourceZFromDestinationPixel[0] * x + sourceZFromDestinationPixel[1] * y + sourceZFromDestinationPixel[2];
-            scales[static_cast<size_t>(y) * width + x] = std::isfinite(z) && z > 1e-6f ? (invert ? 1.0f / z : z) : 0.0f;
+            const float z = row[0] * x + row[1] * y + row[2];
+            values[static_cast<size_t>(y) * width + x] = std::isfinite(z) && z > 1e-6f ? f(z) : 0.0f;
         }
     }
-    return scales;
+    return values;
+}
+
+// Source-camera ray Z per destination pixel: (R_destination_to_source * K_destination^-1 * [u,v,1]).z.
+// Used for the disparity shift, which needs the source/rectified Z ratio itself.
+inline std::vector<float> imageAlignRayZ(int width, int height, const std::array<float, 3>& sourceZFromDestinationPixel) {
+    return imageAlignPerPixelZ(width, height, sourceZFromDestinationPixel, [](float z) { return z; });
+}
+
+// A remap changes pixel rays, but RAW16 still contains the old camera's axial Z.
+// Cache 1 / ray Z (see imageAlignRayZ) to rescale depth into the destination camera.
+inline std::vector<float> imageAlignDepthScales(int width, int height, const std::array<float, 3>& sourceZFromDestinationPixel) {
+    return imageAlignPerPixelZ(width, height, sourceZFromDestinationPixel, [](float z) { return 1.0f / z; });
 }
 
 inline uint16_t imageAlignScaleDepth(uint16_t depth, float scale, float offset = 0.0f) {

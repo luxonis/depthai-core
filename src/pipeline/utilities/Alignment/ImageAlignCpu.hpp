@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <iterator>
@@ -35,6 +36,40 @@ struct ImageAlignCpuParallelFor {
 
 // Number of entries in a depth-shift table: one per RAW16 depth value.
 inline constexpr size_t kDepthShiftLutSize = 65536;
+
+// Fill lut[d] = shift / d for every RAW16 depth d; lut[0] stays 0 for invalid depth.
+template <typename DepthLut>
+inline void fillDepthShiftLut(DepthLut& lut, float shift) {
+    CV_Assert(std::size(lut) == kDepthShiftLutSize);
+    lut[0] = 0.0f;
+    for(size_t depth = 1; depth < kDepthShiftLutSize; ++depth) lut[depth] = shift / static_cast<float>(depth);
+}
+
+struct DepthAlignTables {
+    std::vector<float> rectifiedRayZ;       // Source Z per unit rectified depth, for each rectified pixel
+    std::vector<float> alignedDepthScales;  // Target Z scale for each aligned pixel
+    float alignedDepthOffset = 0.0f;        // (R^T T).z
+};
+
+// Per-pixel tables that convert rectified source depth to target-camera axial Z.
+// R1 is the rectification rotation, R/T (T as a 1x3 row) the source-to-target extrinsics; all CV_32F.
+inline DepthAlignTables depthAlignTables(const cv::Mat& R1,
+                                         const cv::Mat& rectifiedK,
+                                         cv::Size rectifiedSize,
+                                         const cv::Mat& R,
+                                         const cv::Mat& alignK,
+                                         const cv::Mat& T,
+                                         cv::Size alignSize) {
+    const cv::Mat sourceZFromRectifiedPixel = R1.t() * rectifiedK.inv();
+    const cv::Mat sourceZFromAlignedPixel = R.t() * alignK.inv();
+    const cv::Mat sourceTranslation = R.t() * T.t();
+    const auto row2 = [](const cv::Mat& m) { return std::array<float, 3>{m.at<float>(2, 0), m.at<float>(2, 1), m.at<float>(2, 2)}; };
+    DepthAlignTables tables;
+    tables.rectifiedRayZ = impl::imageAlignRayZ(rectifiedSize.width, rectifiedSize.height, row2(sourceZFromRectifiedPixel));
+    tables.alignedDepthScales = impl::imageAlignDepthScales(alignSize.width, alignSize.height, row2(sourceZFromAlignedPixel));
+    tables.alignedDepthOffset = sourceTranslation.at<float>(2);
+    return tables;
+}
 
 // DepthLut is any contiguous float table with kDepthShiftLutSize entries. Callers should keep
 // it off the stack: at 256 KB it overflows small thread stacks (e.g. 512 KB on macOS).

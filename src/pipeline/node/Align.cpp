@@ -29,6 +29,7 @@
     #include <opencv2/core/types.hpp>
     #include <opencv2/imgproc/imgproc.hpp>
 
+    #include "pipeline/utilities/Alignment/ImageAlignCpu.hpp"
     #include "pipeline/utilities/Alignment/RectifiedBounds.hpp"
 #endif
 
@@ -545,21 +546,11 @@ ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTran
         cv::initUndistortRectifyMap(inputIntrinsicsMat, inputDistortion, rectificationR1, targetCamMatrix, meshSize, CV_32FC1, state.mapX1, state.mapY1);
 
         if(inputIsDepth) {
-            cv::Mat sourceZFromRectifiedPixel = rectificationR1.t() * targetCamMatrix.inv();
-            cv::Mat sourceZFromAlignedPixel = rotation.t() * alignIntrinsicsMat.inv();
-            cv::Mat sourceTranslation = rotation.t() * translationMat.t();
-            state.alignedDepthOffset = sourceTranslation.at<float>(2);
-            state.rectifiedRayZ = impl::imageAlignDepthScales(
-                meshSize.width,
-                meshSize.height,
-                {sourceZFromRectifiedPixel.at<float>(2, 0), sourceZFromRectifiedPixel.at<float>(2, 1), sourceZFromRectifiedPixel.at<float>(2, 2)},
-                false);
-            state.alignedDepthScales = impl::imageAlignDepthScales(
-                alignWidth,
-                alignHeight,
-                {sourceZFromAlignedPixel.at<float>(2, 0), sourceZFromAlignedPixel.at<float>(2, 1), sourceZFromAlignedPixel.at<float>(2, 2)});
-            const float shift = state.inputToAlignExtrinsics[0][3] * state.inputIntrinsics[0][0];
-            for(size_t depth = 1; depth < state.depthShiftLut.size(); ++depth) state.depthShiftLut[depth] = shift / static_cast<float>(depth);
+            auto tables = detail::depthAlignTables(rectificationR1, targetCamMatrix, meshSize, rotation, alignIntrinsicsMat, translationMat, {alignWidth, alignHeight});
+            state.rectifiedRayZ = std::move(tables.rectifiedRayZ);
+            state.alignedDepthScales = std::move(tables.alignedDepthScales);
+            state.alignedDepthOffset = tables.alignedDepthOffset;
+            detail::fillDepthShiftLut(state.depthShiftLut, state.inputToAlignExtrinsics[0][3] * state.inputIntrinsics[0][0]);
         }
 
         meshSize = cv::Size(alignWidth, alignHeight);

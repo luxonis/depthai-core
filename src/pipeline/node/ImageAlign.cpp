@@ -230,8 +230,7 @@ void ImageAlign::run() {
             depthToAlignExtrinsics[i][3] = cv_newT.at<float>(i);
         }
 
-        const float shift = depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0];
-        for(size_t i = 1; i < depthShiftLut.size(); ++i) depthShiftLut[i] = shift / static_cast<float>(i);
+        detail::fillDepthShiftLut(depthShiftLut, depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0]);
 
         cv::Mat cv_combinedExtrinsics = cv::Mat::eye(4, 4, CV_32F);
         cv_newR.copyTo(cv_combinedExtrinsics(cv::Rect(0, 0, 3, 3)));
@@ -245,19 +244,10 @@ void ImageAlign::run() {
         cv::initUndistortRectifyMap(cv_targetCamMatrix, cv_dNone, cv_R_back, cv_M2, cv_meshSize, CV_32FC1, map_x_2, map_y_2);
 
         if(inputFrameType == ImgFrame::Type::RAW16) {
-            cv::Mat sourceZFromRectifiedPixel = cv_R1.t() * cv_targetCamMatrix.inv();
-            cv::Mat sourceZFromAlignedPixel = cv_R.t() * cv_M2.inv();
-            cv::Mat sourceTranslation = cv_R.t() * cv_T.t();
-            alignedDepthOffset = sourceTranslation.at<float>(2);
-            rectifiedRayZ = impl::imageAlignDepthScales(
-                rectifiedSize.width,
-                rectifiedSize.height,
-                {sourceZFromRectifiedPixel.at<float>(2, 0), sourceZFromRectifiedPixel.at<float>(2, 1), sourceZFromRectifiedPixel.at<float>(2, 2)},
-                false);
-            alignedDepthScales = impl::imageAlignDepthScales(
-                alignWidth,
-                alignHeight,
-                {sourceZFromAlignedPixel.at<float>(2, 0), sourceZFromAlignedPixel.at<float>(2, 1), sourceZFromAlignedPixel.at<float>(2, 2)});
+            auto tables = detail::depthAlignTables(cv_R1, cv_targetCamMatrix, rectifiedSize, cv_R, cv_M2, cv_T, {alignWidth, alignHeight});
+            rectifiedRayZ = std::move(tables.rectifiedRayZ);
+            alignedDepthScales = std::move(tables.alignedDepthScales);
+            alignedDepthOffset = tables.alignedDepthOffset;
         }
 
         logger->debug("R = {}", matToString(cv_R));

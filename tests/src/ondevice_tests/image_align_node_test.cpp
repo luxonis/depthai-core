@@ -1137,7 +1137,7 @@ TEST_CASE("ImageAlign axial depth conversion preserves holes and padded rows") {
     const float offset = nx * 75.0f + nz * 50.0f;
     const std::array<float, 3> row{nx / 250.0f, 0.0f, nz - nx * 159.5f / 250.0f};
     const auto scales = imageAlignDepthScales(320, 240, row);
-    const auto rayZ = imageAlignDepthScales(320, 240, row, false);
+    const auto rayZ = imageAlignRayZ(320, 240, row);
     for(int y = 0; y < 240; ++y) {
         for(int x = 0; x < 320; ++x) {
             const float expected = (1000.0f + offset) / (nx * (x - 159.5f) / 250.0f + nz);

@@ -232,21 +232,11 @@ void ImageAlign::extractCalibrationData(int depthWidth, int depthHeight) {
     cv::initUndistortRectifyMap(cv_targetCamMatrix, cv_dNone, cv_R_back, cv_M2, cv_meshSize, CV_32FC1, map_x_2, map_y_2);
 
     if(inputFrameType == ImgFrame::Type::RAW16) {
-        cv::Mat sourceZFromRectifiedPixel = cv_R1.t() * cv_targetCamMatrix.inv();
-        cv::Mat sourceZFromAlignedPixel = cv_R.t() * cv_M2.inv();
-        cv::Mat sourceTranslation = cv_R.t() * cv_T.t();
-        alignedDepthOffset = sourceTranslation.at<float>(2);
-        const auto rectifiedDepthScales = impl::imageAlignDepthScales(
-            rectifiedSize.width,
-            rectifiedSize.height,
-            {sourceZFromRectifiedPixel.at<float>(2, 0), sourceZFromRectifiedPixel.at<float>(2, 1), sourceZFromRectifiedPixel.at<float>(2, 2)},
-            false);
-        rectifiedRayZ = AcceleratorMemory::create(rectifiedDepthScales.size() * sizeof(float));
-        memcpy(rectifiedRayZ->data(), rectifiedDepthScales.data(), rectifiedDepthScales.size() * sizeof(float));
-        alignedDepthScales = impl::imageAlignDepthScales(
-            alignWidth,
-            alignHeight,
-            {sourceZFromAlignedPixel.at<float>(2, 0), sourceZFromAlignedPixel.at<float>(2, 1), sourceZFromAlignedPixel.at<float>(2, 2)});
+        auto tables = detail::depthAlignTables(cv_R1, cv_targetCamMatrix, rectifiedSize, cv_R, cv_M2, cv_T, {alignWidth, alignHeight});
+        rectifiedRayZ = AcceleratorMemory::create(tables.rectifiedRayZ.size() * sizeof(float));
+        memcpy(rectifiedRayZ->data(), tables.rectifiedRayZ.data(), tables.rectifiedRayZ.size() * sizeof(float));
+        alignedDepthScales = std::move(tables.alignedDepthScales);
+        alignedDepthOffset = tables.alignedDepthOffset;
     }
 
     logger->debug("R = {}", matToString(cv_R));
@@ -559,8 +549,7 @@ void ImageAlign::run() {
                 cpuSecondMap = detail::nearestDepthOffsets(map_x_2, map_y_2, map_x_1.size(), map_x_1.cols);
                 const auto* rays = reinterpret_cast<const float*>(rectifiedRayZ->data());
                 cpuRayZ.assign(rays, rays + map_x_1.total());
-                const float shift = depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0];
-                for(size_t i = 1; i < cpuDepthLut.size(); ++i) cpuDepthLut[i] = shift / static_cast<float>(i);
+                detail::fillDepthShiftLut(cpuDepthLut, depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0]);
                 cpuInputStride = inputFrame.step1();
                 cpuConfigurationDirty = false;
             }

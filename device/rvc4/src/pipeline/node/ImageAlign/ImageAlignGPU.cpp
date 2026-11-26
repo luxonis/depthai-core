@@ -6,6 +6,7 @@
 #include <string>
 
 #include "pipeline/node/ImageManip/rvc4/gpu/ImageManipGPU.hpp"
+#include "pipeline/utilities/Alignment/ImageAlignCpu.hpp"
 
 namespace dai::gate {
 namespace {
@@ -148,8 +149,8 @@ void ImageAlignGPU::run(const cv::Mat& input, cv::Mat output, float shift, float
     CV_Assert(input.total() == static_cast<size_t>(sourceCount) && output.total() == static_cast<size_t>(outputCount));
     if(!depthLut || cachedShift != shift) {
         // Match the DSP lookup and avoid GPU division rounding at half-pixel boundaries.
-        std::vector<float> shifts(65536, 0);
-        for(size_t i = 1; i < shifts.size(); ++i) shifts[i] = shift / static_cast<float>(i);
+        std::vector<float> shifts(detail::kDepthShiftLutSize);
+        detail::fillDepthShiftLut(shifts, shift);
         if(depthLut) clReleaseMemObject(depthLut);
         cl_int status;
         depthLut = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, shifts.size() * sizeof(float), shifts.data(), &status);

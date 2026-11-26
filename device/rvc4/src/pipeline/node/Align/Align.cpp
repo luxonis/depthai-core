@@ -420,21 +420,11 @@ void Align::extractCalibrationData(const dai::ImgTransformation& inputTransforma
     cv::initUndistortRectifyMap(cv_M1, cv_d1, cv_R1, shiftedProjection, cv_meshSize, CV_32FC1, map_x_1, map_y_1);
 
     if(inputFrameType == ImgFrame::Type::RAW16) {
-        cv::Mat sourceZFromRectifiedPixel = cv_R1.t() * cv_targetCamMatrix.inv();
-        cv::Mat sourceZFromAlignedPixel = cv_R.t() * cv_M2.inv();
-        cv::Mat sourceTranslation = cv_R.t() * cv_T.t();
-        alignedDepthOffset = sourceTranslation.at<float>(2);
-        rectifiedRayZ = impl::imageAlignDepthScales(
-            cv_meshSize.width,
-            cv_meshSize.height,
-            {sourceZFromRectifiedPixel.at<float>(2, 0), sourceZFromRectifiedPixel.at<float>(2, 1), sourceZFromRectifiedPixel.at<float>(2, 2)},
-            false);
-        const float shift = depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0];
-        for(size_t depth = 1; depth < depthShiftLut.size(); ++depth) depthShiftLut[depth] = shift / static_cast<float>(depth);
-        alignedDepthScales = impl::imageAlignDepthScales(
-            outputWidth,
-            outputHeight,
-            {sourceZFromAlignedPixel.at<float>(2, 0), sourceZFromAlignedPixel.at<float>(2, 1), sourceZFromAlignedPixel.at<float>(2, 2)});
+        auto tables = detail::depthAlignTables(cv_R1, cv_targetCamMatrix, cv_meshSize, cv_R, cv_M2, cv_T, {outputWidth, outputHeight});
+        rectifiedRayZ = std::move(tables.rectifiedRayZ);
+        alignedDepthScales = std::move(tables.alignedDepthScales);
+        alignedDepthOffset = tables.alignedDepthOffset;
+        detail::fillDepthShiftLut(depthShiftLut, depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0]);
     }
 
     cv_meshSize = cv::Size(outputWidth, outputHeight);
