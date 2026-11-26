@@ -734,6 +734,9 @@ void Align::run() {
                 warnedAboutDistortion = false;
             }
             updateShiftFactor(runState, latestConfig->staticDepthPlane);
+        } else if(transformChanged) {
+            // Non-frame messages do not use the maps, but the new transforms are stored below; rebuild for the next frame.
+            runStateValid = false;
         }
 
         alignToTransform = newAlignToTransform;
