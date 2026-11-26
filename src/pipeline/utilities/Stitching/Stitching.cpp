@@ -56,30 +56,32 @@ bool isUndistorted(const ImgTransformation& transformation) {
     });
 }
 
-/**
- * Rotate the registered cameras so that the panorama Y axis is the mean camera Y axis.
- * @return The rotation applied to every camera, i.e. from the frame the cameras were expressed in to the panorama frame
- */
-cv::Matx33d alignCamerasToMeanYAxis(std::vector<cv::detail::CameraParams>& cameras) {
-    constexpr double AXIS_EPSILON = 1e-6;
+/// Mean Y axis of the registered cameras, in the frame they are expressed in.
+cv::Vec3d meanCameraYAxis(const std::vector<cv::detail::CameraParams>& cameras) {
     DAI_CHECK_V(!cameras.empty(), "Calibrated panorama needs at least one camera to determine its mean Y axis");
-
     cv::Vec3d meanYAxis(0.0, 0.0, 0.0);
     for(const auto& camera : cameras) {
         cv::Mat rotation;
         camera.R.convertTo(rotation, CV_64F);
         meanYAxis += cv::Vec3d(rotation.at<double>(0, 1), rotation.at<double>(1, 1), rotation.at<double>(2, 1));
     }
-    meanYAxis /= static_cast<double>(cameras.size());
+    return meanYAxis / static_cast<double>(cameras.size());
+}
 
-    const double meanNorm = cv::norm(meanYAxis);
-    DAI_CHECK_V(meanNorm > AXIS_EPSILON, "Calibrated panorama camera Y axes have no well-defined mean direction");
-    meanYAxis /= meanNorm;
+/**
+ * Rotate the registered cameras so that `yAxis`, given in the frame they are expressed in, becomes the panorama Y axis.
+ * @return The rotation applied to every camera, i.e. from the frame the cameras were expressed in to the panorama frame
+ */
+cv::Matx33d alignCamerasToYAxis(std::vector<cv::detail::CameraParams>& cameras, cv::Vec3d yAxis) {
+    constexpr double AXIS_EPSILON = 1e-6;
+    const double norm = cv::norm(yAxis);
+    DAI_CHECK_V(norm > AXIS_EPSILON, "Calibrated panorama camera Y axes have no well-defined mean direction");
+    yAxis /= norm;
 
     const cv::Vec3d panoramaYAxis(0.0, 1.0, 0.0);
-    const cv::Vec3d cross = meanYAxis.cross(panoramaYAxis);
+    const cv::Vec3d cross = yAxis.cross(panoramaYAxis);
     const double sineSquared = cross.dot(cross);
-    const double cosine = meanYAxis.dot(panoramaYAxis);
+    const double cosine = yAxis.dot(panoramaYAxis);
 
     cv::Mat alignment = cv::Mat::eye(3, 3, CV_64F);
     if(sineSquared > AXIS_EPSILON * AXIS_EPSILON) {
@@ -94,9 +96,45 @@ cv::Matx33d alignCamerasToMeanYAxis(std::vector<cv::detail::CameraParams>& camer
         camera.R.convertTo(rotation, CV_64F);
         const cv::Mat aligned = alignment * rotation;
         aligned.convertTo(camera.R, CV_32F);
+        camera.t = alignment * camera.t;
     }
     const cv::Matx33d applied = alignment;
     return applied;
+}
+
+/// Mean of the camera centers, where the panorama's virtual camera is placed.
+cv::Vec3d meanCameraCenter(const std::vector<cv::detail::CameraParams>& cameras) {
+    cv::Vec3d center(0.0, 0.0, 0.0);
+    for(const auto& camera : cameras) center += cv::Vec3d(camera.t.at<double>(0), camera.t.at<double>(1), camera.t.at<double>(2));
+    return center / static_cast<double>(cameras.size());
+}
+
+/**
+ * Rotate the calibrated cameras into the panorama frame. With a plane the panorama is levelled with it and projected onto it,
+ * otherwise a cylindrical panorama is levelled with the mean camera Y axis.
+ * @return The rotation applied to every camera, and the ground in the panorama frame when there is a plane
+ */
+std::pair<cv::Matx33d, std::optional<FixedPanoramaCompositor::Ground>> alignCalibratedPanorama(std::vector<cv::detail::CameraParams>& cameras,
+                                                                                               const StitchingProperties& properties) {
+    if(!properties.plane) {
+        if(properties.cameraModel != CameraModel::Cylindrical) return {cv::Matx33d::eye(), std::nullopt};
+        return {alignCamerasToYAxis(cameras, meanCameraYAxis(cameras)), std::nullopt};
+    }
+    const auto& plane = *properties.plane;
+    const cv::Vec3d point = getDistanceUnitScale(LengthUnit::CENTIMETER, plane.unit) * cv::Vec3d(plane.point.x, plane.point.y, plane.point.z);
+    cv::Vec3d up = cv::normalize(cv::Vec3d(plane.normal.x, plane.normal.y, plane.normal.z));
+    const cv::Vec3d eye = meanCameraCenter(cameras);
+    if(up.dot(eye - point) < 0.0) up = -up;
+    DAI_CHECK_V(up.dot(eye - point) > 0.0, "The panorama ground plane must lie below the cameras");
+    for(const auto& camera : cameras) {
+        const cv::Vec3d offset = cv::Vec3d(camera.t.at<double>(0), camera.t.at<double>(1), camera.t.at<double>(2)) - eye;
+        DAI_CHECK_V(cv::norm(offset - offset.dot(up) * up) < properties.maxRange,
+                    "The panorama wall at {} cm, see setMaxRange(), must be farther from the mean camera center than every camera",
+                    properties.maxRange);
+    }
+    // The panorama Y axis points down, along the ground's downward normal
+    const auto alignment = alignCamerasToYAxis(cameras, -up);
+    return {alignment, FixedPanoramaCompositor::Ground{alignment * point, alignment * up, properties.maxRange, alignment * eye}};
 }
 
 /// 4x4 pose of a camera in a reference frame: `rotation` maps camera directions to reference directions, `center` is the camera position.
@@ -114,18 +152,11 @@ Extrinsics toExtrinsics(const std::array<std::array<float, 4>, 4>& pose, CameraB
 
 /**
  * Extrinsics of the virtual camera of a panorama composed from the input calibration. The panorama frame is the destination frame of the inputs rotated
- * by `alignment`, and since the composition ignores the input translations, the camera is placed at the mean of the input camera centers.
+ * by `alignment`, and the camera is placed at the mean of the camera centers, where a panorama projected onto the ground is seen from.
+ * @param cameras Cameras already rotated by `alignment`
  */
-Extrinsics calibratedPanoramaExtrinsics(const std::vector<ImgTransformation>& transformations, const cv::Matx33d& alignment) {
-    cv::Vec3d center(0.0, 0.0, 0.0);
-    for(const auto& transformation : transformations) {
-        const auto translation = transformation.getExtrinsics().getTranslationVector(false, LengthUnit::CENTIMETER);
-        center += cv::Vec3d(translation[0], translation[1], translation[2]);
-    }
-    center /= static_cast<double>(transformations.size());
-
-    const auto destination = transformations.front().getExtrinsics();
-    return toExtrinsics(toPose(alignment.t(), center), destination.toCameraSocket, destination.toDeviceId);
+Extrinsics calibratedPanoramaExtrinsics(const std::vector<cv::detail::CameraParams>& cameras, const cv::Matx33d& alignment, const Extrinsics& destination) {
+    return toExtrinsics(toPose(alignment.t(), alignment.t() * meanCameraCenter(cameras)), destination.toCameraSocket, destination.toDeviceId);
 }
 
 /**
@@ -360,7 +391,8 @@ class Stitching::Impl {
             for(int row = 0; row < 3; ++row) {
                 for(int column = 0; column < 3; ++column) camera.R.at<float>(row, column) = extrinsics.rotationMatrix[row][column];
             }
-            camera.t = cv::Mat::zeros(3, 1, CV_64F);
+            const auto center = extrinsics.getTranslationVector(false, LengthUnit::CENTIMETER);
+            camera.t = (cv::Mat_<double>(3, 1) << center[0], center[1], center[2]);
             cameras.push_back(std::move(camera));
         }
         return cameras;
@@ -378,8 +410,9 @@ class Stitching::Impl {
             DAI_CHECK_V(isUndistorted(transformations[i])
                             && matrix::mateq(transformations[i].getIntrinsicMatrix(), fixedPanoramaTransformations[i].getIntrinsicMatrix())
                             && matrix::mateq(currentExtrinsics.rotationMatrix, preparedExtrinsics.rotationMatrix)
+                            && currentExtrinsics.getTranslationVector() == preparedExtrinsics.getTranslationVector()
                             && transformations[i].getSize() == fixedPanoramaTransformations[i].getSize(),
-                        "Calibrated panorama input {} became distorted or changed its intrinsics, rotation, or size after preparation",
+                        "Calibrated panorama input {} became distorted or changed its intrinsics, pose, or size after preparation",
                         i);
         }
     }
@@ -392,7 +425,8 @@ class Stitching::Impl {
                               double registrationScale,
                               FixedPanoramaCompositor::Composition composition,
                               const StitchingProperties& properties,
-                              const Extrinsics& extrinsics) {
+                              const Extrinsics& extrinsics,
+                              const std::optional<FixedPanoramaCompositor::Ground>& ground) {
         FixedPanoramaCompositor::Config config;
         config.cameraModel = properties.cameraModel;
         config.seamFinder = properties.seamFinder;
@@ -400,7 +434,7 @@ class Stitching::Impl {
         config.seamEstimationResolution = stitching::SEAM_ESTIMATION_RESOLUTION;
         config.composition = composition;
         fixedPanorama.setConfig(config);
-        fixedPanorama.prepare(images, cameras, registrationScale);
+        fixedPanorama.prepare(images, cameras, registrationScale, ground);
         fixedPanoramaView = panoramaTransformation(fixedPanorama.getCanvas(), fixedPanorama.getWarperScale(), properties.cameraModel, extrinsics);
     }
 
@@ -414,14 +448,16 @@ class Stitching::Impl {
                              stitcher->workScale(),
                              FixedPanoramaCompositor::Composition::BLENDED,
                              properties,
-                             estimatedPanoramaExtrinsics(cameras.front(), referenceInput));
+                             estimatedPanoramaExtrinsics(cameras.front(), referenceInput),
+                             std::nullopt);
     }
 
     /// Geometry the panorama is composed with from the registered cameras, the way cv::Stitcher and FixedPanoramaCompositor derive it.
     PanoramaGeometry panoramaGeometry(const std::vector<cv::Mat>& images,
                                       const std::vector<cv::detail::CameraParams>& cameras,
                                       double registrationScale,
-                                      const StitchingProperties& properties) const {
+                                      const StitchingProperties& properties,
+                                      const std::optional<FixedPanoramaCompositor::Ground>& ground) const {
         DAI_CHECK_V(cameras.size() == images.size(), "Stitching camera and image counts differ");
 
         std::vector<double> focals;
@@ -448,14 +484,15 @@ class Stitching::Impl {
             cv::Mat intrinsics;
             camera.K().convertTo(intrinsics, CV_32F);
             const cv::Size imageSize(cvRound(images[i].cols * composeScale), cvRound(images[i].rows * composeScale));
-            const auto roi = warper->warpRoi(imageSize, intrinsics, camera.R);
+            const auto roi = ground ? FixedPanoramaCompositor::groundRoi(properties.cameraModel, geometry.scale, *ground, camera, imageSize)
+                                    : warper->warpRoi(imageSize, intrinsics, camera.R);
             geometry.canvas = i == 0 ? roi : geometry.canvas | roi;
         }
         return geometry;
     }
 
     PanoramaGeometry estimatedPanoramaGeometry(const std::vector<cv::Mat>& images, const StitchingProperties& properties) const {
-        return panoramaGeometry(images, stitcher->cameras(), stitcher->workScale(), properties);
+        return panoramaGeometry(images, stitcher->cameras(), stitcher->workScale(), properties, std::nullopt);
     }
 
     bool panoramaFits(const cv::Size& size, const StitchingProperties& properties) const {
@@ -582,11 +619,8 @@ void Stitching::run() {
             try {
                 if(!impl->fixedPanorama.isPrepared()) {
                     auto cameras = impl->camerasFromInputCalibration(transformations);
-                    cv::Matx33d alignment = cv::Matx33d::eye();
-                    if(currentProperties.cameraModel == CameraModel::Cylindrical) {
-                        alignment = alignCamerasToMeanYAxis(cameras);
-                    }
-                    const auto geometry = impl->panoramaGeometry(images, cameras, 1.0, currentProperties);
+                    const auto [alignment, ground] = alignCalibratedPanorama(cameras, currentProperties);
+                    const auto geometry = impl->panoramaGeometry(images, cameras, 1.0, currentProperties, ground);
                     if(!impl->panoramaFits(geometry.canvas.size(), currentProperties)) {
                         if(logger) {
                             logger->debug("Stitching rejected a {}x{} calibrated panorama exceeding the configured {}x{} maximum",
@@ -599,7 +633,13 @@ void Stitching::run() {
                     }
                     const auto composition = currentProperties.seamFinder == SeamFinder::NONE ? FixedPanoramaCompositor::Composition::DIRECT
                                                                                               : FixedPanoramaCompositor::Composition::BLENDED;
-                    impl->prepareFixedPanorama(images, cameras, 1.0, composition, currentProperties, calibratedPanoramaExtrinsics(transformations, alignment));
+                    impl->prepareFixedPanorama(images,
+                                               cameras,
+                                               1.0,
+                                               composition,
+                                               currentProperties,
+                                               calibratedPanoramaExtrinsics(cameras, alignment, transformations.front().getExtrinsics()),
+                                               ground);
                     impl->fixedPanoramaTransformations = transformations;
                     for(const auto& output : sourceMaskOutputs) {
                         auto mask = std::make_shared<ImgFrame>();

@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "pipeline/utilities/Alignment/AlignmentUtilities.hpp"
 #include "pipeline/utilities/Stitching/FixedBlender.hpp"
 
 namespace {
@@ -175,6 +176,7 @@ Dataset renderDataset(const std::vector<SyntheticCamera>& cameras) {
         dai::Extrinsics extrinsics;
         extrinsics.setTransformationMatrix(toTransformationMatrix(rotation, translation), dai::LengthUnit::CENTIMETER);
         extrinsics.toCameraSocket = ORIGIN;
+        extrinsics.toDeviceId = "synthetic-rig";
         dataset.transformations.emplace_back(
             CAMERA_WIDTH, CAMERA_HEIGHT, toIntrinsicMatrix(camera.intrinsics), dai::CameraModel::Perspective, std::vector<float>{}, extrinsics);
     }
@@ -199,6 +201,15 @@ cv::Point2d project(const dai::ImgTransformation& transformation, const cv::Vec3
 
     const auto projected = transformation.project3DPoint({static_cast<float>(inCamera[0]), static_cast<float>(inCamera[1]), static_cast<float>(inCamera[2])});
     return {projected.x, projected.y};
+}
+
+/// Where a point of the reference frame lands in a panorama described by `transformation`.
+cv::Point2d projectToPanorama(const dai::ImgTransformation& transformation, const cv::Vec3d& referencePoint) {
+    const auto pose = transformation.getExtrinsics().getTransformationMatrix(false, dai::LengthUnit::CENTIMETER);
+    const cv::Matx33d rotation(pose[0][0], pose[0][1], pose[0][2], pose[1][0], pose[1][1], pose[1][2], pose[2][0], pose[2][1], pose[2][2]);
+    const cv::Vec3d inCamera = rotation.t() * (referencePoint - cv::Vec3d(pose[0][3], pose[1][3], pose[2][3]));
+    const auto pixel = rayToPixel({static_cast<float>(inCamera[0]), static_cast<float>(inCamera[1]), static_cast<float>(inCamera[2])}, transformation);
+    return {pixel.x, pixel.y};
 }
 
 /// Center of the largest blob of `color` in the image, empty when the color is not present.
@@ -528,4 +539,28 @@ TEST_CASE("Fixed blender samples a source that contributes at both ends of the c
     const cv::Mat result = blender.blend({ramp, cv::Mat(size, CV_8UC3, cv::Scalar::all(77))}, cv::BORDER_REFLECT);
     for(const int x : {0, 20, 280, 299}) REQUIRE(result.at<cv::Vec3b>(4, x) == ramp.at<cv::Vec3b>(4, x));
     REQUIRE(result.at<cv::Vec3b>(4, 150) == cv::Vec3b(77, 77, 77));
+}
+
+TEST_CASE("Calibrated panorama projected onto the ground lines up cameras mounted apart", "[Stitching]") {
+    // The rig's cameras are 70 cm apart and 1 m above the markers, far from sharing one center
+    const auto dataset = renderDataset(RIG);
+    for(const auto model : {dai::CameraModel::Equirectangular, dai::CameraModel::Cylindrical}) {
+        dai::Pipeline pipeline(false);
+        auto stitching = pipeline.create<dai::node::Stitching>()->build(dataset.images.size());
+        stitching->setUseInputCalibration(true);
+        stitching->setCameraModel(model);
+        stitching->setPlane(dataset.planePoint(), dataset.planeNormal());
+        stitching->setMaxRange(4.0f, dai::LengthUnit::METER);
+        stitching->setSeamFinder(dai::node::Stitching::SeamFinder::VORONOI);
+        stitching->setSyncThreshold(std::chrono::seconds(1));
+        const auto panorama = runOnce(pipeline, stitching, dataset);
+
+        // Every marker on the ground lands where the panorama's virtual camera sees it
+        const cv::Mat image = panorama->getCvFrame();
+        for(const auto& marker : MARKERS) {
+            const auto found = findMarker(image, marker.color);
+            REQUIRE(found.has_value());
+            REQUIRE(cv::norm(*found - projectToPanorama(panorama->getTransformation(), dataset.toReference(marker.position))) < MARKER_TOLERANCE);
+        }
+    }
 }

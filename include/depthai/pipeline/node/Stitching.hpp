@@ -157,6 +157,11 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
      * The plane is expressed in the common origin frame of the incoming transformations, which is the camera socket
      * their extrinsics are relative to. A plane that all cameras look at from the same side gives the usual bird's-eye
      * view; the plane does not have to be horizontal.
+     *
+     * In `Mode::PANORAMA` with `setUseInputCalibration(true)`, the plane is the ground: the panorama is levelled with it
+     * and projected onto it out to `setMaxRange()` from the mean camera center, and onto a vertical wall beyond. The
+     * camera positions are then used, so that what lies on the ground lines up across cameras mounted apart. Without a
+     * plane, the panorama treats the cameras as sharing one center and everything as far away.
      */
     void setPlane(const Plane& plane);
     void setPlane(const Point3f& point, const Point3f& normal, LengthUnit unit = LengthUnit::CENTIMETER);
@@ -181,7 +186,7 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
     /**
      * Distance from a camera center beyond which the plane is not painted anymore. Bounds the automatic view and cuts
      * off the region around the horizon, where a few pixels are stretched over a large part of the plane. Defaults to
-     * 10 meters.
+     * 10 meters. In a panorama projected onto the ground (see `setPlane()`), it is the distance to the wall.
      */
     void setMaxRange(float range, LengthUnit unit = LengthUnit::CENTIMETER);
     float getMaxRange(LengthUnit unit = LengthUnit::CENTIMETER) const;
