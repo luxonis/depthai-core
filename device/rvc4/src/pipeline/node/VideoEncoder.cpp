@@ -11,9 +11,6 @@
 #include <gst/video/video-info.h>
 
 // libraries
-#include <hardware/gr_priv_handle.h>
-
-#include "camera/CameraPool.hpp"
 #include "camera/CameraSingleton.hpp"
 #include "camera/HalBufferMemory.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"

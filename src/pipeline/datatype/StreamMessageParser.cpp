@@ -470,9 +470,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
         case DatatypeEnum::RecordControl:
-            return parseDatatype<RecordControl>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<RecordControl>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::RecordStatus:
-            return parseDatatype<RecordStatus>(metadataStart, serializedObjectSize, data, fd);
+            return parseDatatype<RecordStatus>(metadataStart, serializedObjectSize, data);
         case DatatypeEnum::COUNT:
             break;
         default:
