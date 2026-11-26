@@ -725,8 +725,10 @@ class StereoDepthConfig : public Buffer {
     bool getLeftRightCheck() const;
 
     /**
-     * Disparity range increased from 95 to 190, combined from full resolution and downscaled images.
-     * Suitable for short range objects
+     * Disparity range increased from 0-95 to 0-190 on RVC2 (0-63 to 0-127 on RVC4),
+     * combined from full resolution and downscaled images.
+     *
+     * Suitable for short range objects. Can be enabled together with sub-pixel disparity.
      */
     StereoDepthConfig& setExtendedDisparity(bool enable);
 
@@ -738,7 +740,9 @@ class StereoDepthConfig : public Buffer {
     /**
      * Computes disparity with sub-pixel interpolation (3 fractional bits by default).
      *
-     * Suitable for long range. Currently incompatible with extended disparity
+     * Suitable for long range. Can be enabled together with extended disparity.
+     * On RVC2 with the default disparity search, the median filter does not work with both modes enabled.
+     * On RVC4, subpixel is always enabled with 4 fractional bits.
      */
     StereoDepthConfig& setSubpixel(bool enable);
 
