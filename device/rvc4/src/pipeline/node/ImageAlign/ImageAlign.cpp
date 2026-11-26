@@ -539,10 +539,11 @@ void ImageAlign::run() {
             t1 = steady_clock::now();
         }
 
-        const bool useGpu = gpu && inputIsDepth && staticDepthPlane == 0 && map_x_1.cols <= 65535 && inputImg->getFrame().isContinuous();
-        const bool fusedCpu = !useGpu && inputIsDepth && staticDepthPlane == 0;
+        const bool fusedDepth = inputIsDepth && staticDepthPlane == 0;
+        bool useGpu = gpu && fusedDepth && map_x_1.cols <= 65535 && inputImg->getFrame().isContinuous();
         std::shared_ptr<ImgFrame> warp2Input;
-        if(fusedCpu) {
+        // First fused CPU stage: remap and shift into cpuShifted. Also the fallback when the GPU fails.
+        const auto fusedCpuShift = [&]() {
             auto inputFrame = inputImg->getFrame();
             if(cpuConfigurationDirty || cpuInputStride != inputFrame.step1()) {
                 cpuFirstMap = detail::nearestDepthOffsets(map_x_1, map_y_1, inputFrame.size(), inputFrame.step1());
@@ -555,6 +556,9 @@ void ImageAlign::run() {
             }
             detail::remapAndShiftDepth(
                 inputFrame, cpuShifted, map_x_1.size(), cpuFirstMap, cpuDepthLut, depthToAlignExtrinsics[0][3] > 0, cpuRayZ, cpuExecutor);
+        };
+        if(fusedDepth && !useGpu) {
+            fusedCpuShift();
         } else if(!useGpu) {
             // warp1
             auto depthImgRectified = up_plgWarpPool1->get();
@@ -633,22 +637,34 @@ void ImageAlign::run() {
             alignedImg->fb.p3Offset = alignedImg->fb.p2Offset + (alignedImg->fb.stride / 2) * (alignedImg->fb.height / 2);
         }
 
-        if(useGpu) {
-            if(gpuConfigurationDirty) {
-                gpu->configure(map_x_1,
-                               map_y_1,
-                               map_x_2,
-                               map_y_2,
-                               inputImg->getWidth(),
-                               inputImg->getHeight(),
-                               reinterpret_cast<const float*>(rectifiedRayZ->data()),
-                               alignedDepthScales);
-                gpuConfigurationDirty = false;
-            }
-            gpu->run(inputImg->getFrame(), alignedImg->getFrame(), depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0], alignedDepthOffset);
-        } else if(fusedCpu) {
+        const auto fusedCpuConvert = [&]() {
             auto outputFrame = alignedImg->getFrame();
             detail::remapAndConvertDepth(cpuShifted, outputFrame, cpuSecondMap, alignedDepthScales, alignedDepthOffset, cpuExecutor);
+        };
+        if(useGpu) {
+            useGpu = detail::runGpuWithCpuFallback(
+                gpu,
+                [&](ImageAlignGPU& backend) {
+                    if(gpuConfigurationDirty) {
+                        backend.configure(map_x_1,
+                                          map_y_1,
+                                          map_x_2,
+                                          map_y_2,
+                                          inputImg->getWidth(),
+                                          inputImg->getHeight(),
+                                          reinterpret_cast<const float*>(rectifiedRayZ->data()),
+                                          alignedDepthScales);
+                        gpuConfigurationDirty = false;
+                    }
+                    backend.run(inputImg->getFrame(), alignedImg->getFrame(), depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0], alignedDepthOffset);
+                },
+                [&]() {
+                    fusedCpuShift();
+                    fusedCpuConvert();
+                },
+                [&](const std::exception& error) { logger->warn("ImageAlign GPU failed; using CPU from this frame on: {}", error.what()); });
+        } else if(fusedDepth) {
+            fusedCpuConvert();
         } else if(hwSupportedFrameType) {
             warp2.Run(warp2Input, alignedImg);
         } else {
@@ -661,7 +677,7 @@ void ImageAlign::run() {
             logger->warn("Align step3 took '{}' ms.", elapsed);
         }
 
-        if(inputIsDepth && !useGpu && !fusedCpu) {
+        if(inputIsDepth && !fusedDepth) {
             auto alignedFrame = alignedImg->getFrame();
             impl::imageAlignConvertDepth(alignedFrame.data, alignWidth, alignHeight, alignedFrame.step, alignedDepthScales.data(), alignedDepthOffset);
         }
@@ -674,9 +690,7 @@ void ImageAlign::run() {
 
         auto tProcessed = steady_clock::now();
         // Keep this wording: image_align_node_test.cpp parses the trailing "cpu"/"gpu" word to check the backend used.
-        logger->debug("ImageAlign processing {} ms, backend {}",
-                      duration<double, std::milli>(tProcessed - tGotInput).count(),
-                      useGpu ? "gpu" : "cpu");
+        logger->debug("ImageAlign processing {} ms, backend {}", duration<double, std::milli>(tProcessed - tGotInput).count(), useGpu ? "gpu" : "cpu");
         auto alignedDistortion = alignedImg->transformation.getDistortionCoefficients();
         alignedImg->transformation.setDistortionCoefficients(std::vector<float>(alignedDistortion.size(), 0.0f));
         {

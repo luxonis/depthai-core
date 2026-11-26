@@ -1176,6 +1176,71 @@ TEST_CASE("Fused ImageAlign depth matches staged remaps with padded input") {
     }
 }
 
+TEST_CASE("Fused ImageAlign GPU failure falls back to CPU for the current and next frame") {
+    // Stands in for ImageAlignGPU: run() allocates, then fails like an OpenCL error after partial setup.
+    struct FakeGpu {
+        int& alive;
+        bool fail;
+        std::vector<uint16_t> buffer;
+        FakeGpu(int& alive, bool fail) : alive(alive), fail(fail) {
+            ++alive;
+        }
+        ~FakeGpu() {
+            --alive;
+        }
+        void run(std::vector<uint16_t>& output) {
+            buffer.assign(output.size(), 0);
+            if(fail) throw std::runtime_error("ImageAlign GPU buffer: OpenCL error -4");
+            std::fill(output.begin(), output.end(), uint16_t{2});
+        }
+    };
+    int alive = 0, gpuFrames = 0, cpuFrames = 0, errors = 0;
+    const auto frame = [&](std::unique_ptr<FakeGpu>& gpu) {
+        std::vector<uint16_t> output(16, 0);
+        const bool usedGpu = dai::detail::runGpuWithCpuFallback(
+            gpu,
+            [&](FakeGpu& backend) {
+                ++gpuFrames;
+                backend.run(output);
+            },
+            [&]() {
+                ++cpuFrames;
+                std::fill(output.begin(), output.end(), uint16_t{1});
+            },
+            [&](const std::exception& error) {
+                ++errors;
+                REQUIRE(std::string(error.what()).find("OpenCL") != std::string::npos);
+            });
+        return std::make_pair(usedGpu, output);
+    };
+
+    SECTION("a GPU failure releases the GPU and the CPU produces this and the next frame") {
+        auto gpu = std::make_unique<FakeGpu>(alive, true);
+        const auto [firstUsedGpu, first] = frame(gpu);
+        REQUIRE_FALSE(firstUsedGpu);
+        REQUIRE(gpu == nullptr);
+        REQUIRE(alive == 0);
+        REQUIRE(errors == 1);
+        REQUIRE(std::all_of(first.begin(), first.end(), [](uint16_t value) { return value == 1; }));
+        const auto [secondUsedGpu, second] = frame(gpu);
+        REQUIRE_FALSE(secondUsedGpu);
+        REQUIRE(gpuFrames == 1);
+        REQUIRE(cpuFrames == 2);
+        REQUIRE(errors == 1);
+        REQUIRE(std::all_of(second.begin(), second.end(), [](uint16_t value) { return value == 1; }));
+    }
+    SECTION("a working GPU keeps its output") {
+        auto gpu = std::make_unique<FakeGpu>(alive, false);
+        for(int i = 0; i < 2; ++i) {
+            const auto [usedGpu, output] = frame(gpu);
+            REQUIRE(usedGpu);
+            REQUIRE(std::all_of(output.begin(), output.end(), [](uint16_t value) { return value == 2; }));
+        }
+        REQUIRE(gpu != nullptr);
+        REQUIRE(cpuFrames == 0);
+        REQUIRE(errors == 0);
+    }
+}
 #endif
 
 TEST_CASE("ImageAlign axial depth conversion preserves holes and padded rows") {

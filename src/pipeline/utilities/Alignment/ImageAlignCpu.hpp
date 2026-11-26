@@ -4,7 +4,9 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <exception>
 #include <iterator>
+#include <memory>
 #include <opencv2/core.hpp>
 #include <vector>
 
@@ -34,6 +36,23 @@ struct ImageAlignCpuParallelFor {
     }
 };
 
+// Produce the frame with gpu if there is one. If runGpu throws, report the error, release the GPU
+// (so later frames stay on the CPU) and produce this frame with runCpu. Returns whether the GPU produced it.
+template <typename Gpu, typename GpuRun, typename CpuRun, typename OnError>
+inline bool runGpuWithCpuFallback(std::unique_ptr<Gpu>& gpu, GpuRun&& runGpu, CpuRun&& runCpu, OnError&& onError) {
+    if(gpu) {
+        try {
+            runGpu(*gpu);
+            return true;
+        } catch(const std::exception& error) {
+            gpu.reset();  // Release first, so a throwing onError cannot leave the failed GPU in use.
+            onError(error);
+        }
+    }
+    runCpu();
+    return false;
+}
+
 // Number of entries in a depth-shift table: one per RAW16 depth value.
 inline constexpr size_t kDepthShiftLutSize = 65536;
 
@@ -53,13 +72,8 @@ struct DepthAlignTables {
 
 // Per-pixel tables that convert rectified source depth to target-camera axial Z.
 // R1 is the rectification rotation, R/T (T as a 1x3 row) the source-to-target extrinsics; all CV_32F.
-inline DepthAlignTables depthAlignTables(const cv::Mat& R1,
-                                         const cv::Mat& rectifiedK,
-                                         cv::Size rectifiedSize,
-                                         const cv::Mat& R,
-                                         const cv::Mat& alignK,
-                                         const cv::Mat& T,
-                                         cv::Size alignSize) {
+inline DepthAlignTables depthAlignTables(
+    const cv::Mat& R1, const cv::Mat& rectifiedK, cv::Size rectifiedSize, const cv::Mat& R, const cv::Mat& alignK, const cv::Mat& T, cv::Size alignSize) {
     const cv::Mat sourceZFromRectifiedPixel = R1.t() * rectifiedK.inv();
     const cv::Mat sourceZFromAlignedPixel = R.t() * alignK.inv();
     const cv::Mat sourceTranslation = R.t() * T.t();
