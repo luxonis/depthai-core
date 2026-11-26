@@ -79,6 +79,7 @@ struct gbm_bo* allocBuffer(int32_t width, int32_t height, int format) {
         {HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, GBM_FORMAT_IMPLEMENTATION_DEFINED},
         {HAL_PIXEL_FORMAT_RAW10, GBM_FORMAT_RAW10},
         {HAL_PIXEL_FORMAT_RAW16, GBM_FORMAT_RAW16},
+        {HAL_PIXEL_FORMAT_RAW_OPAQUE, GBM_FORMAT_RAW8},  // 8-bit MIPI RAW (Seek Eagle wire bytes)
         {HAL_PIXEL_FORMAT_BLOB, GBM_FORMAT_BLOB},
     };
     const auto realFormat = formatMap.find(format);
@@ -88,7 +89,10 @@ struct gbm_bo* allocBuffer(int32_t width, int32_t height, int format) {
     uint32_t gbmUsage = (format == HAL_PIXEL_FORMAT_RAW16 || format == HAL_PIXEL_FORMAT_RAW10)
         ? (GBM_BO_USAGE_CAMERA_WRITE_QTI | GBM_BO_USAGE_CPU_READ_QTI | GBM_BO_USAGE_CPU_WRITE_QTI)
         : (0 | GBM_BO_USAGE_VIDEO_ENCODER_QTI);
-    struct gbm_bo* bo = gbm_bo_create(gbm_device, (uint32_t)width, (uint32_t)height, realFormat->second, gbmUsage);
+    // RAW_OPAQUE: camx writes the rows at its MIPI RAW10 pitch and does not check the size of imported buffers on LE,
+    // so allocate 8-bit rows of exactly that pitch (gbm RAW10 would report stride 1100 for the same 880-byte rows).
+    const int32_t allocWidth = format == HAL_PIXEL_FORMAT_RAW_OPAQUE ? CameraPool::camxRawOpaqueStride(width) : width;
+    struct gbm_bo* bo = gbm_bo_create(gbm_device, (uint32_t)allocWidth, (uint32_t)height, realFormat->second, gbmUsage);
     if(!bo) {
         DAI_ERROR("Couldn't allocate memory on " MEMORY_PATH " for new image buffer.");
         return nullptr;

@@ -269,7 +269,7 @@ std::vector<CameraDescription> CameraDiscovery::forceEnumerateCameras() {
                 desc.camera.height = 800;
             }
             type = dai::CameraSensorType::MONO;
-        } else if(sensorName.find("OG05B1B") != std::string::npos) {
+        } else if(sensorName.find("OG05B1B") != std::string::npos || sensorName.find("OG01A1B") != std::string::npos) {
             type = dai::CameraSensorType::MONO;
         } else if(sensorName.find("SAMSUNG33D") != std::string::npos) {
             type = dai::CameraSensorType::TOF;
@@ -277,6 +277,8 @@ std::vector<CameraDescription> CameraDiscovery::forceEnumerateCameras() {
             type = dai::CameraSensorType::TOF;
         } else if(sensorName.find("VD55H1") != std::string::npos) {
             type = dai::CameraSensorType::TOF;
+        } else if(sensorName.find("EAGLE") != std::string::npos) {
+            type = dai::CameraSensorType::THERMAL;  // Seek Eagle: only the Thermal node streams it
         }
 
         // os < r851.1.1 support
@@ -292,7 +294,17 @@ std::vector<CameraDescription> CameraDiscovery::forceEnumerateCameras() {
             float maxFps;
         };
         std::vector<ModeKey> modeSeen;
+        // Seek Eagle: the 648x492 sensor mode only captures the core's flash passthrough for the Seek SDK (SeekEagle.cpp)
+        const bool eagle = sensorName.find("EAGLE") != std::string::npos;
+        const auto eagleFlashMode = [eagle](const cam_config_t& c) { return eagle && c.width == 648 && c.height == 492; };
         for(const auto& config : camera.configs) {
+            if(!eagle || eagleFlashMode(config)) continue;
+            desc.camera.width = config.width;
+            desc.camera.height = config.height;
+            break;
+        }
+        for(const auto& config : camera.configs) {
+            if(eagleFlashMode(config)) continue;
             dai::CameraSensorConfig sensorConfig;
             sensorConfig.width = config.width;
             sensorConfig.height = config.height;

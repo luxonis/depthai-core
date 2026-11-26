@@ -320,6 +320,7 @@ std::map<int, IspRouteDecision> IspRouteAllocator::allocate(std::vector<IspSenso
     std::map<int, IspRouteDecision> decisions;
     FleetState state;
     std::vector<IspSensorRequest*> autos;
+    std::vector<const IspSensorRequest*> rawOnly;
     bool anyManual = false;
     bool anyWide = false;
 
@@ -350,10 +351,27 @@ std::map<int, IspRouteDecision> IspRouteAllocator::allocate(std::vector<IspSenso
                     state.bpsLoad += sensorLoad(req);
                 }
             }
+        } else if(req.rawOnly) {
+            rawOnly.push_back(&req);
         } else {
             autos.push_back(&req);
             if(req.width > kMaxSingleIfeWidth) {
                 anyWide = true;
+            }
+        }
+    }
+
+    // Raw-only sensors stay on the realtime path, where the camera stack gives them an IFE-lite RDI (an offline pool has
+    // no raw-only usecase); keep a lite out of the pools' ingress for each, lite1 first
+    for(const auto* req : rawOnly) {
+        IspRouteDecision decision;
+        decision.automatic = true;
+        decision.canonical = "realtime";
+        decisions[req->socket] = decision;
+        for(const int slot : {1, 0}) {
+            if(!state.ingressUsed[slot]) {
+                state.ingressUsed[slot] = true;
+                break;
             }
         }
     }

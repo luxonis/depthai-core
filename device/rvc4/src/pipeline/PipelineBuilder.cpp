@@ -64,6 +64,7 @@
 #include "node/Align/Align.hpp"
 #include "node/Camera/Camera.hpp"
 #include "node/ImageAlign/ImageAlign.hpp"
+#include "node/Thermal/Thermal.hpp"
 #include "node/Warp/Warp.hpp"
 #include "node/VideoEncoder.hpp"
 #include "node/XLinkIn.hpp"
@@ -272,6 +273,7 @@ PipelineBuilder::NodeHandler PipelineBuilder::getDefaultNodeHandler() {
     handler[PointCloud::NAME] = nodeHelper<PointCloud>;
     handler[SystemLogger::NAME] = nodeHelper<SystemLogger>;
     handler[Camera::NAME] = nodeHelper<Camera>;
+    handler[Thermal::NAME] = nodeHelper<Thermal>;
     handler[Stitching::NAME] = nodeHelper<Stitching>;
     handler[Sync::NAME] = nodeHelper<Sync>;
     handler[ImageManip::NAME] = nodeHelper<ImageManip>;

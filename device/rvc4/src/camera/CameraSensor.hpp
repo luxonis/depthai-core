@@ -141,6 +141,9 @@ class CameraSensor : public camera3_callback_ops_t {
     dai::CameraControl initialControl;
     std::vector<std::string> queues;
     FrameCallback handleBuffer;
+    // Seek Eagle thermal core: raw wire frames go to the Seek SDK running in this process (SeekEagle.cpp)
+    bool isEagleSensor{false};
+    bool eagleRawLayoutLogged{false};
     struct SensorErrorCallbackEntry {
         SensorErrorStateCallback cb;
     };

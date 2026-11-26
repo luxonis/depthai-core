@@ -4,7 +4,9 @@
 #   lib/libdepthai-device-rvc4-vendor.a   the base archive: one prelinked object, in which only the C interface (and
 #                                  the few symbols that the ToF part uses) are global
 #   tof/lib/, tof/PREBUILT.libraries  the ToF part (one prelinked object too) and its file name, when the build had it
-#   NOTICE.txt, legal/             the legal files of the vendor module, in the layout of the Luxonis OS BSP packages:
+#   seek/libseekcamera.so.5.2      the Seek Thermal SDK library of the Seek Eagle thermal cores, when the build packaged
+#                                  it: not linked, the firmware package has it in seek-eagle/ (DEPTHAI_DEVICE_SEEK_SDK)
+#   NOTICE.txt, legal/            the legal files of the vendor module, in the layout of the Luxonis OS BSP packages:
 #                                  legal/DEPTHAI-EULA.txt (the Luxonis DepthAI Vendor Module EULA, which covers
 #                                  the module), legal/NOTICE.md and legal/licenses/; the license bundle of the
 #                                  firmware package ends with them
@@ -57,7 +59,8 @@ endfunction()
 # Build with the sources of the private module (and so with the Hexagon SDK): writes the input of the export script of
 # the private repository to <dir>: build.json (identity, link interface of the base archive, the roots, the folder
 # DEPTHAI_DEVICE_RVC4_VENDOR_LEGAL_DIR with the legal files of the module),
-# archive-<config>.txt (the base archive) and dsp-<config>.txt (the four files of the DSP offload).
+# archive-<config>.txt (the base archive) and dsp-<config>.txt (the four files of the DSP offload), and seek.txt (the
+# Seek Thermal SDK library) when the build packages it.
 function(depthai_device_rvc4_vendor_prebuilt_describe dir)
     depthai_device_rvc4_vendor_identity()
     set(_json "{}")
@@ -100,6 +103,11 @@ function(depthai_device_rvc4_vendor_prebuilt_describe dir)
         file(GENERATE OUTPUT "${dir}/tof-$<CONFIG>.txt" CONTENT "${_content}")
         string(JOIN "\n" _others ${_others})
         file(WRITE "${dir}/tof-link.txt" "${_others}\n")
+    endif()
+    # The Seek Thermal SDK library of the firmware package (seek.txt): the export copies it into seek/
+    file(REMOVE "${dir}/seek.txt")
+    if(DEPTHAI_DEVICE_SEEK_SDK)
+        file(WRITE "${dir}/seek.txt" "${DEPTHAI_DEVICE_SEEK_SDK_DIR}/libseekcamera.so.5.2\n")
     endif()
 endfunction()
 
