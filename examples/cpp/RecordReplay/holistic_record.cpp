@@ -116,12 +116,14 @@ int main() {
                     }
                 } catch(const std::exception& ex) {
                     std::cerr << "listRecordings: " << ex.what() << "\n";
+                    pipeline.stop();
                     return 1;
                 }
                 if(!printed) std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
             if(!printed) {
                 std::cerr << "RVC4 recording path was not listed\n";
+                pipeline.stop();
                 return 1;
             }
         }
