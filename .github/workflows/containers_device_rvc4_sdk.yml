@@ -1,19 +1,3 @@
-# Public build images of the RVC4 firmware that depthai-core pins (DEPTHAI_DEVICE_RVC4_SDK_IMAGE in
-# cmake/Depthai/DepthaiDeviceRVC4Config.cmake): ghcr.io/luxonis/depthai-device-sdk:os-<Luxonis OS version>-<vendor commit>
-# and the same tag with -dev. The private CI of the vendor module uploads the inputs of these images (the public sysroot
-# of Luxonis OS and the build files) to the artifact server. device/rvc4/docker/sdk-images.sh builds the images from
-# these inputs.
-#
-#   pull request, push to main  Check the pinned images. When the registry does not have them yet, build them in the
-#                               runner from their inputs and check them. No push.
-#   push to develop             Push the pinned images when the registry does not have them. Move os-<OS version> and
-#                               os-<OS version>-dev to them when these tags point to other images.
-#   manual run (any branch)     Push the pinned images of that branch when the registry does not have them. The job
-#                               runs in the environment ghcr: its required reviewers (repository settings, Environments)
-#                               approve each push. It does not move os-<OS version>[-dev].
-#
-# The pushes use GITHUB_TOKEN: the package depthai-device-sdk gives this repository the role Write (package settings,
-# Manage Actions access). A fixed tag is never pushed again (sdk-images.sh publish).
 name: RVC4 device SDK image
 
 on:
@@ -56,7 +40,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    # One push job at a time: two jobs must not push the same fixed tag
     concurrency:
       group: rvc4-sdk-image-push
     steps:
