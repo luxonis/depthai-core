@@ -150,7 +150,7 @@ Luxonis builds and publishes two images from `docker/Dockerfile.sdk`. You pull t
 `<vendor commit>` is the first 12 characters of the commit of the vendor repository that made the public sysroot. The
 labels `com.luxonis.rvc4.vendor-revision` and `com.luxonis.rvc4.sysroot-sha256` of the image give that commit and the
 sha256 of the sysroot. A tag with a vendor commit never moves to another image. The tags `os-<OS version>` and
-`os-<OS version>-dev` are the newest images for that OS version. depthai-core pins the image in
+`os-<OS version>-dev` are the images that the branch `develop` of depthai-core pins. depthai-core pins the image in
 `cmake/Depthai/DepthaiDeviceRVC4Config.cmake` (`DEPTHAI_DEVICE_RVC4_SDK_IMAGE`), and the build scripts use the pinned
 image when `DEPTHAI_DEVICE_SDK_IMAGE` is not set. The OS version of the image is the one of the prebuilt vendor module
 (`DEPTHAI_DEVICE_RVC4_VENDOR_VERSION`): the build compares them.
@@ -183,17 +183,35 @@ wheel, the FastCV headers, the depthai-core files and the public sysroot (`/opt/
 `docker/sdk/write-notices.sh` writes these files when the image is built, and stops the build when a part has no
 license text.
 
-The public sysroot is made in the private CI of the vendor module, from the Luxonis OS SDK image. When the sysroot
-changes, that CI builds both images with `docker/sdk-images.sh`, checks them and pushes them:
+The public sysroot is made in the private CI of the vendor module, from the Luxonis OS SDK image. That CI builds and
+checks both images, and uploads their inputs to the artifact server, in a folder with the name of the fixed tag:
 
-```bash
-docker/sdk-images.sh build rvc4-public-sysroot-<version>.tar.xz   # build, tag and check both images
-docker/sdk-images.sh push rvc4-public-sysroot-<version>.tar.xz    # push the four tags
-docker/sdk-images.sh check                                        # check the pinned images
+```text
+https://artifacts.luxonis.com/artifactory/luxonis-rvc4-snapshot-local/depthai-device-rvc4/sdk-image/os-<OS version>-<vendor commit>/
+  rvc4-public-sysroot.tar.xz   the public sysroot
+  sdk-image-context.tar.xz     the build files of the images: docker/ and LICENSE of depthai-core, and its commit
 ```
 
-The GitHub workflow `containers_device_rvc4_sdk.yml` checks the pinned images when `docker/` or the pin changes. It
-does not build them.
+The images of a tag are always built from these inputs, so a tag stays one vendor commit. To use a new sysroot, set
+`DEPTHAI_DEVICE_RVC4_SDK_IMAGE` to its tag. When the registry does not have the images of the pin yet, the build scripts
+build them on your host from the inputs (about 10 minutes, one time), and `start_dev_shell.sh` gives you a shell in
+them. `docker/sdk-images.sh` does each step:
+
+```bash
+docker/sdk-images.sh ensure [release|dev]   # print the pinned image; pull it, or build it here from its inputs
+docker/sdk-images.sh local [<tag>]          # build and check both images of <tag> here (default: the pinned tag)
+docker/sdk-images.sh fetch [<tag>]          # only download and check the inputs of <tag>
+docker/sdk-images.sh check                  # check the pinned images
+```
+
+The GitHub workflow `containers_device_rvc4_sdk.yml` runs when `docker/` or the pin changes:
+
+* **Pull request, push to `main`**: it checks the pinned images. When the registry does not have them yet, it builds
+  them from their inputs first. It does not push.
+* **Push to `develop`**: it pushes the pinned images when the registry does not have them (`sdk-images.sh publish`),
+  and moves `os-<OS version>[-dev]` to them only when these tags point to other images (`sdk-images.sh promote`).
+* **Manual run** (Actions, "RVC4 device SDK image", Run workflow, on any branch): it pushes the pinned images of that
+  branch when the registry does not have them. The run waits for the approval of a reviewer of the environment `ghcr`.
 
 For iteration, do not rebuild from scratch. Start a shell in the SDK container with `./start_dev_shell.sh rvc4`
 and run an incremental build:
