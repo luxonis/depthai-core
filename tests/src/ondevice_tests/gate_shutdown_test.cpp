@@ -5,6 +5,7 @@
 
 #include "buffer_test_utils.hpp"
 #include "depthai/depthai.hpp"
+#include "depthai/pipeline/node/Gate.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 

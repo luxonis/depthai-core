@@ -57,6 +57,50 @@ struct USBRequest_t {
     uint32_t RequestSize;
 };
 
+namespace {
+class GateTransaction {
+    XLinkGateTransaction* transaction = nullptr;
+    XLinkGateOutcome outcome = XLINK_GATE_ABORTED;
+    int timeout;
+
+   public:
+    GateTransaction(const std::string& name, int timeout) : timeout(timeout) {
+        XLinkGateBegin(name.c_str(), &transaction);
+    }
+    GateTransaction(const GateTransaction&) = delete;
+    GateTransaction& operator=(const GateTransaction&) = delete;
+    ~GateTransaction() {
+        if(transaction) XLinkGateEnd(transaction, outcome);
+    }
+
+    XLinkError_t write(const void* data, size_t size) {
+        if(size > static_cast<size_t>(std::numeric_limits<int>::max())) return X_LINK_ERROR;
+        return XLinkGateTransactionWrite(transaction, data, static_cast<int>(size), timeout);
+    }
+
+    XLinkError_t read(void* data, size_t size) {
+        if(size > static_cast<size_t>(std::numeric_limits<int>::max())) return X_LINK_ERROR;
+        return XLinkGateTransactionRead(transaction, data, static_cast<int>(size), timeout);
+    }
+
+    XLinkError_t readHeader(USBRequest_t& response, bool hasBody, uint32_t maxSize = 1024 * 1024) {
+        if(read(&response, sizeof(response)) != X_LINK_SUCCESS) return X_LINK_ERROR;
+        if(response.RequestNum == RESPONSE_ERROR && response.RequestSize == 0) {
+            complete();
+            return X_LINK_SUCCESS;
+        }
+        if(response.RequestNum != RESPONSE_OK || response.RequestSize > maxSize || (hasBody ? response.RequestSize == 0 : response.RequestSize != 0)) {
+            return X_LINK_ERROR;
+        }
+        return X_LINK_SUCCESS;
+    }
+
+    void complete() {
+        outcome = XLINK_GATE_COMPLETE;
+    }
+};
+}  // namespace
+
 class DeviceGate::HTTPImpl::Impl {
    public:
     Impl() = default;
@@ -150,14 +194,15 @@ bool DeviceGate::HTTPImpl::isOkay() {
 }
 
 bool DeviceGate::USBImpl::isOkay() {
+    GateTransaction transaction(deviceInfo.name, timeout);
     USBRequest_t request;
     request.RequestNum = IS_OKAY;
     request.RequestSize = 0;
-    if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+    if(transaction.write(&request, sizeof(USBRequest_t)) == X_LINK_ERROR) {
         return false;
     }
 
-    if(XLinkGateRead(deviceInfo.name.c_str(), &request, sizeof(request), timeout) == X_LINK_ERROR) {
+    if(transaction.readHeader(request, true) == X_LINK_ERROR) {
         return false;
     }
 
@@ -166,14 +211,14 @@ bool DeviceGate::USBImpl::isOkay() {
     }
 
     std::vector<uint8_t> respBuffer;
-    respBuffer.resize(request.RequestSize + 1);
-    if(XLinkGateRead(deviceInfo.name.c_str(), &respBuffer[0], request.RequestSize, timeout) == X_LINK_ERROR) {
+    respBuffer.resize(request.RequestSize);
+    if(transaction.read(respBuffer.data(), request.RequestSize) == X_LINK_ERROR) {
         return {};
     }
-    respBuffer[request.RequestSize] = '\0';
 
     bool result = nlohmann::json::parse(respBuffer)["status"].get<bool>();
 
+    transaction.complete();
     return result;
 }
 
@@ -191,14 +236,15 @@ Version DeviceGate::HTTPImpl::getVersion() {
 }
 
 Version DeviceGate::USBImpl::getVersion() {
+    GateTransaction transaction(deviceInfo.name, timeout);
     USBRequest_t request;
     request.RequestNum = GET_VERSION;
     request.RequestSize = 0;
-    if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+    if(transaction.write(&request, sizeof(USBRequest_t)) == X_LINK_ERROR) {
         return {0, 0, 0};
     }
 
-    if(XLinkGateRead(deviceInfo.name.c_str(), &request, sizeof(request), timeout) == X_LINK_ERROR) {
+    if(transaction.readHeader(request, true) == X_LINK_ERROR) {
         return {0, 0, 0};
     }
     if(request.RequestNum == RESPONSE_ERROR) {
@@ -206,14 +252,14 @@ Version DeviceGate::USBImpl::getVersion() {
     }
 
     std::vector<uint8_t> respBuffer;
-    respBuffer.resize(request.RequestSize + 1);
-    if(XLinkGateRead(deviceInfo.name.c_str(), &respBuffer[0], request.RequestSize, timeout) == X_LINK_ERROR) {
+    respBuffer.resize(request.RequestSize);
+    if(transaction.read(respBuffer.data(), request.RequestSize) == X_LINK_ERROR) {
         return {0, 0, 0};
     }
-    respBuffer[request.RequestSize] = '\0';
 
     auto result = nlohmann::json::parse(respBuffer)["version_gate"].get<std::string>();
 
+    transaction.complete();
     return Version{result};
 }
 
@@ -235,14 +281,15 @@ DeviceGate::VersionInfo DeviceGate::HTTPImpl::getAllVersion() {
 }
 
 DeviceGate::VersionInfo DeviceGate::USBImpl::getAllVersion() {
+    GateTransaction transaction(deviceInfo.name, timeout);
     USBRequest_t request;
     request.RequestNum = GET_VERSION;
     request.RequestSize = 0;
-    if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+    if(transaction.write(&request, sizeof(USBRequest_t)) == X_LINK_ERROR) {
         return {};
     }
 
-    if(XLinkGateRead(deviceInfo.name.c_str(), &request, sizeof(request), timeout) == X_LINK_ERROR) {
+    if(transaction.readHeader(request, true) == X_LINK_ERROR) {
         return {};
     }
     if(request.RequestNum == RESPONSE_ERROR) {
@@ -250,16 +297,16 @@ DeviceGate::VersionInfo DeviceGate::USBImpl::getAllVersion() {
     }
 
     std::vector<uint8_t> respBuffer;
-    respBuffer.resize(request.RequestSize + 1);
-    if(XLinkGateRead(deviceInfo.name.c_str(), &respBuffer[0], request.RequestSize, timeout) == X_LINK_ERROR) {
+    respBuffer.resize(request.RequestSize);
+    if(transaction.read(respBuffer.data(), request.RequestSize) == X_LINK_ERROR) {
         return {};
     }
-    respBuffer[request.RequestSize] = '\0';
     auto result = nlohmann::json::parse(respBuffer);
 
     VersionInfo info;
     info.gate = result.value("version_gate", "");
     info.os = result.value("version_os", "");
+    transaction.complete();
     return info;
 }
 
@@ -331,6 +378,7 @@ bool DeviceGate::HTTPImpl::createSession(
 
 bool DeviceGate::USBImpl::createSession(
     std::string version, bool exclusive, FirmwarePackage& firmware, std::string& sessionId, std::atomic_bool& sessionCreated) {
+    GateTransaction transaction(deviceInfo.name, timeout);
     lastError.clear();
 
     nlohmann::json createSessionBody = {{"name", "depthai_session"},
@@ -344,14 +392,14 @@ bool DeviceGate::USBImpl::createSession(
     USBRequest_t request;
     request.RequestNum = CREATE_SESSION;
     request.RequestSize = static_cast<uint32_t>(createSessionBodyStr.size());
-    if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+    if(transaction.write(&request, sizeof(USBRequest_t)) == X_LINK_ERROR) {
         return false;
     }
-    if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)createSessionBodyStr.c_str(), createSessionBodyStr.size(), timeout) == X_LINK_ERROR) {
+    if(transaction.write(createSessionBodyStr.c_str(), createSessionBodyStr.size()) == X_LINK_ERROR) {
         return false;
     }
 
-    if(XLinkGateRead(deviceInfo.name.c_str(), &request, sizeof(request), timeout) == X_LINK_ERROR) {
+    if(transaction.readHeader(request, true) == X_LINK_ERROR) {
         return false;
     }
     if(request.RequestNum == RESPONSE_ERROR) {
@@ -361,11 +409,10 @@ bool DeviceGate::USBImpl::createSession(
     }
 
     std::vector<uint8_t> respBuffer;
-    respBuffer.resize(request.RequestSize + 1);
-    if(XLinkGateRead(deviceInfo.name.c_str(), &respBuffer[0], request.RequestSize, timeout) == X_LINK_ERROR) {
+    respBuffer.resize(request.RequestSize);
+    if(transaction.read(respBuffer.data(), request.RequestSize) == X_LINK_ERROR) {
         return false;
     }
-    respBuffer[request.RequestSize] = '\0';
     auto resp = nlohmann::json::parse(respBuffer);
     spdlog::debug("DeviceGate createSession response: {}", resp.dump());
 
@@ -386,24 +433,24 @@ bool DeviceGate::USBImpl::createSession(
 
         request.RequestNum = UPLOAD_FWP;
         request.RequestSize = static_cast<uint32_t>(payloadSize);
-        if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+        if(transaction.write(&request, sizeof(USBRequest_t)) == X_LINK_ERROR) {
             return false;
         }
-        if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)&sessionIdLen, sizeof(sessionIdLen), timeout) == X_LINK_ERROR) {
+        if(transaction.write(&sessionIdLen, sizeof(sessionIdLen)) == X_LINK_ERROR) {
             return false;
         }
         if(sessionIdLen > 0) {
-            if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)sessionId.data(), sessionIdLen, timeout) == X_LINK_ERROR) {
+            if(transaction.write(sessionId.data(), sessionIdLen) == X_LINK_ERROR) {
                 return false;
             }
         }
         if(!package.empty()) {
-            if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)package.data(), package.size(), timeout) == X_LINK_ERROR) {
+            if(transaction.write(package.data(), package.size()) == X_LINK_ERROR) {
                 return false;
             }
         }
 
-        if(XLinkGateRead(deviceInfo.name.c_str(), &request, sizeof(request), timeout) == X_LINK_ERROR) {
+        if(transaction.readHeader(request, false) == X_LINK_ERROR) {
             return false;
         }
         if(request.RequestNum == RESPONSE_ERROR) {
@@ -412,6 +459,7 @@ bool DeviceGate::USBImpl::createSession(
             return false;
         }
     }
+    transaction.complete();
     sessionCreated = true;
     return true;
 }
@@ -443,17 +491,18 @@ bool DeviceGate::HTTPImpl::startSession(std::string sessionId) {
 }
 
 bool DeviceGate::USBImpl::startSession(std::string sessionId) {
+    GateTransaction transaction(deviceInfo.name, timeout);
     USBRequest_t request;
     request.RequestNum = START_SESSION;
     request.RequestSize = sessionId.size();
-    if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+    if(transaction.write(&request, sizeof(USBRequest_t)) == X_LINK_ERROR) {
         return false;
     }
-    if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)sessionId.c_str(), sessionId.size(), timeout) == X_LINK_ERROR) {
+    if(transaction.write(sessionId.c_str(), sessionId.size()) == X_LINK_ERROR) {
         return false;
     }
 
-    if(XLinkGateRead(deviceInfo.name.c_str(), &request, sizeof(request), timeout) == X_LINK_ERROR) {
+    if(transaction.readHeader(request, false) == X_LINK_ERROR) {
         return false;
     }
     if(request.RequestNum == RESPONSE_ERROR) {
@@ -461,6 +510,7 @@ bool DeviceGate::USBImpl::startSession(std::string sessionId) {
         spdlog::debug(lastError);
         return false;
     }
+    transaction.complete();
     spdlog::debug("DeviceGate start fwp successful");
     return true;
 }
@@ -496,23 +546,25 @@ bool DeviceGate::HTTPImpl::stopSession(std::string sessionId) {
 }
 
 bool DeviceGate::USBImpl::stopSession(std::string sessionId) {
+    GateTransaction transaction(deviceInfo.name, timeout);
     USBRequest_t request;
     request.RequestNum = STOP_SESSION;
     request.RequestSize = sessionId.size();
-    if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+    if(transaction.write(&request, sizeof(USBRequest_t)) == X_LINK_ERROR) {
         return false;
     }
-    if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)sessionId.c_str(), sessionId.size(), timeout) == X_LINK_ERROR) {
+    if(transaction.write(sessionId.c_str(), sessionId.size()) == X_LINK_ERROR) {
         return false;
     }
 
-    if(XLinkGateRead(deviceInfo.name.c_str(), &request, sizeof(request), timeout) == X_LINK_ERROR) {
+    if(transaction.readHeader(request, false) == X_LINK_ERROR) {
         return false;
     }
     if(request.RequestNum == RESPONSE_ERROR) {
         spdlog::error("DeviceGate stopSession not successful - got no response");
         return false;
     }
+    transaction.complete();
     spdlog::debug("DeviceGate stopSession successful");
     return true;
 }
@@ -546,23 +598,25 @@ bool DeviceGate::HTTPImpl::destroySession(std::string sessionId) {
 }
 
 bool DeviceGate::USBImpl::destroySession(std::string sessionId) {
+    GateTransaction transaction(deviceInfo.name, timeout);
     USBRequest_t request;
     request.RequestNum = DESTROY_SESSION;
     request.RequestSize = sessionId.size();
-    if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+    if(transaction.write(&request, sizeof(USBRequest_t)) == X_LINK_ERROR) {
         return false;
     }
-    if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)sessionId.c_str(), sessionId.size(), timeout) == X_LINK_ERROR) {
+    if(transaction.write(sessionId.c_str(), sessionId.size()) == X_LINK_ERROR) {
         return false;
     }
 
-    if(XLinkGateRead(deviceInfo.name.c_str(), &request, sizeof(request), timeout) == X_LINK_ERROR) {
+    if(transaction.readHeader(request, false) == X_LINK_ERROR) {
         return false;
     }
     if(request.RequestNum == RESPONSE_ERROR) {
         spdlog::error("DeviceGate destroySession not successful - got no response");
         return false;
     }
+    transaction.complete();
     spdlog::debug("DeviceGate destroySession successful");
     return true;
 }
@@ -591,23 +645,25 @@ bool DeviceGate::HTTPImpl::deleteSession(std::string sessionId) {
 }
 
 bool DeviceGate::USBImpl::deleteSession(std::string sessionId) {
+    GateTransaction transaction(deviceInfo.name, timeout);
     USBRequest_t request;
     request.RequestNum = DELETE_SESSION;
     request.RequestSize = sessionId.size();
-    if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+    if(transaction.write(&request, sizeof(USBRequest_t)) == X_LINK_ERROR) {
         return false;
     }
-    if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)sessionId.c_str(), sessionId.size(), timeout) == X_LINK_ERROR) {
+    if(transaction.write(sessionId.c_str(), sessionId.size()) == X_LINK_ERROR) {
         return false;
     }
 
-    if(XLinkGateRead(deviceInfo.name.c_str(), &request, sizeof(request), timeout) == X_LINK_ERROR) {
+    if(transaction.readHeader(request, false) == X_LINK_ERROR) {
         return false;
     }
     if(request.RequestNum == RESPONSE_ERROR) {
         spdlog::error("DeviceGate deleteSession not successful - got no response");
         return false;
     }
+    transaction.complete();
     spdlog::debug("DeviceGate deleteSession successful");
     return true;
 }
@@ -656,18 +712,19 @@ DeviceGate::SessionState DeviceGate::HTTPImpl::getState(std::string sessionId) {
 }
 
 DeviceGate::SessionState DeviceGate::USBImpl::getState(std::string sessionId) {
+    GateTransaction transaction(deviceInfo.name, timeout);
     auto sessionState = SessionState::CREATED;
     USBRequest_t request;
     request.RequestNum = GET_STATE;
     request.RequestSize = sessionId.size();
-    if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+    if(transaction.write(&request, sizeof(USBRequest_t)) == X_LINK_ERROR) {
         return SessionState::ERROR_STATE;
     }
-    if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)sessionId.c_str(), sessionId.size(), timeout) == X_LINK_ERROR) {
+    if(transaction.write(sessionId.c_str(), sessionId.size()) == X_LINK_ERROR) {
         return SessionState::ERROR_STATE;
     }
 
-    if(XLinkGateRead(deviceInfo.name.c_str(), &request, sizeof(request), timeout) == X_LINK_ERROR) {
+    if(transaction.readHeader(request, true) == X_LINK_ERROR) {
         return SessionState::ERROR_STATE;
     }
     if(request.RequestNum == RESPONSE_ERROR) {
@@ -676,11 +733,10 @@ DeviceGate::SessionState DeviceGate::USBImpl::getState(std::string sessionId) {
     }
 
     std::vector<uint8_t> respBuffer;
-    respBuffer.resize(request.RequestSize + 1);
-    if(XLinkGateRead(deviceInfo.name.c_str(), &respBuffer[0], request.RequestSize, timeout) == X_LINK_ERROR) {
+    respBuffer.resize(request.RequestSize);
+    if(transaction.read(respBuffer.data(), request.RequestSize) == X_LINK_ERROR) {
         return SessionState::ERROR_STATE;
     }
-    respBuffer[request.RequestSize] = '\0';
     auto resp = nlohmann::json::parse(respBuffer);
     spdlog::trace("DeviceGate getState response: {}", resp.dump());
 
@@ -702,6 +758,7 @@ DeviceGate::SessionState DeviceGate::USBImpl::getState(std::string sessionId) {
         sessionState = SessionState::ERROR_STATE;
     }
 
+    transaction.complete();
     return sessionState;
 }
 
@@ -730,17 +787,18 @@ std::optional<std::vector<uint8_t>> DeviceGate::HTTPImpl::getFile(const std::str
 }
 
 std::optional<std::vector<uint8_t>> DeviceGate::USBImpl::getFile(const std::string& fileUrl, std::string& filename) {
+    GateTransaction transaction(deviceInfo.name, timeout);
     USBRequest_t request;
     request.RequestNum = GET_FILE;
     request.RequestSize = fileUrl.size();
-    if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+    if(transaction.write(&request, sizeof(USBRequest_t)) == X_LINK_ERROR) {
         return std::nullopt;
     }
-    if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)fileUrl.c_str(), fileUrl.size(), timeout) == X_LINK_ERROR) {
+    if(transaction.write(fileUrl.c_str(), fileUrl.size()) == X_LINK_ERROR) {
         return std::nullopt;
     }
 
-    if(XLinkGateRead(deviceInfo.name.c_str(), &request, sizeof(request), timeout) == X_LINK_ERROR) {
+    if(transaction.readHeader(request, true, std::numeric_limits<int>::max()) == X_LINK_ERROR) {
         return std::nullopt;
     }
     if(request.RequestNum == RESPONSE_ERROR) {
@@ -749,16 +807,16 @@ std::optional<std::vector<uint8_t>> DeviceGate::USBImpl::getFile(const std::stri
     }
 
     std::vector<uint8_t> respBuffer;
-    respBuffer.resize(request.RequestSize + 1);
-    if(XLinkGateRead(deviceInfo.name.c_str(), &respBuffer[0], request.RequestSize, timeout) == X_LINK_ERROR) {
+    respBuffer.resize(request.RequestSize);
+    if(transaction.read(respBuffer.data(), request.RequestSize) == X_LINK_ERROR) {
         return std::nullopt;
     }
-    respBuffer[request.RequestSize] = '\0';
     auto resp = nlohmann::json::parse(respBuffer);
 
     filename = resp["filename"].get<std::string>();
     std::vector<uint8_t> fileData(resp["data"].get<std::vector<uint8_t>>());
 
+    transaction.complete();
     spdlog::debug("File download successful. Filename: {}", filename);
     return fileData;
 }
@@ -766,7 +824,6 @@ std::optional<std::vector<uint8_t>> DeviceGate::USBImpl::getFile(const std::stri
 void DeviceGate::waitForSessionEnd() {
     while(true) {
         switch(this->getState()) {
-            case SessionState::NOT_CREATED:
             case SessionState::CREATED:
             case SessionState::RUNNING:
             case SessionState::STOPPING:
@@ -777,7 +834,8 @@ void DeviceGate::waitForSessionEnd() {
             case SessionState::STOPPED:
             case SessionState::CRASHED:
             case SessionState::DESTROYED:
-                return;  // Session is destroyed, we can exit
+            case SessionState::NOT_CREATED:
+                return;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
