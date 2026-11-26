@@ -1626,7 +1626,8 @@ endif()
 # Documentation
 ########################
 if (DEPTHAI_BUILD_DOCS)
-    add_subdirectory(docs)
+    include(DepthaiDoxygen)
+    DepthaiDoxygen()
 endif()
 
 ########################
