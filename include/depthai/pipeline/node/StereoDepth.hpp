@@ -260,7 +260,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     /**
      * Computes disparity with sub-pixel interpolation. On RVC2, set the number of fractional bits with setSubpixelFractionalBits.
      *
-     * Suitable for long range. Can be enabled together with extended disparity.
+     * Suitable for long range.
      * On RVC4, subpixel is always enabled with 4 fractional bits.
      */
     void setSubpixel(bool enable);
@@ -278,7 +278,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * Doubles the disparity range, combined from full resolution and downscaled images.
      * The range increases from 0-95 to 0-190 pixels on RVC2 (default disparity search) and from 0-63 to 0-126 pixels on RVC4.
      *
-     * Suitable for short range objects. Can be enabled together with sub-pixel disparity.
+     * Suitable for short range objects.
      */
     void setExtendedDisparity(bool enable);
 
