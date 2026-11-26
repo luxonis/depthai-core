@@ -684,6 +684,7 @@ void ImageAlign::run() {
         alignedImg->transformation = inputAlignToTransform;
 
         auto tProcessed = steady_clock::now();
+        // Keep this wording: image_align_node_test.cpp parses the trailing "cpu"/"gpu" word to check the backend used.
         logger->debug("ImageAlign processing {} ms, backend {}",
                       duration<double, std::milli>(tProcessed - tGotInput).count(),
                       useGpu ? "gpu" : "cpu");
