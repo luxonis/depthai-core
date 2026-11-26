@@ -1,11 +1,10 @@
 #pragma once
 
 #include <opencv2/core.hpp>
-#include <opencv2/stitching/detail/blenders.hpp>
-#include <opencv2/stitching/detail/exposure_compensate.hpp>
 #include <opencv2/stitching/detail/motion_estimators.hpp>
 #include <vector>
 
+#include "FixedBlender.hpp"
 #include "depthai/pipeline/node/Stitching.hpp"
 
 namespace dai {
@@ -16,8 +15,9 @@ using node::Stitching;
 /**
  * Composes a panorama whose registered camera geometry does not change.
  *
- * Projection maps and image regions are prepared once and reused. The compositor can either perform the full seam,
- * exposure, and blending pipeline or directly copy warped inputs into the panorama.
+ * Projection maps, seams, exposure gains and blending weights are prepared once and reused. The compositor either blends
+ * the sources across the seams or directly copies warped inputs into the panorama. Each source is warped only over the
+ * part of the panorama it contributes to.
  */
 class FixedPanoramaCompositor {
    public:
@@ -57,14 +57,17 @@ class FixedPanoramaCompositor {
         cv::Size inputSize;
         cv::Size composeInputSize;
         cv::Rect roi;
-        cv::Mat map1;
-        cv::Mat map2;
         cv::Mat mask;
-        cv::Mat seamMask;
+        cv::Mat seamMask;  ///< Pixels of roi assigned to the source: by the seam finder, or in direct composition the visible ones
+        cv::Mat map1;      ///< Warp maps of the whole roi, handed to the blender and then dropped
+        cv::Mat map2;
     };
 
-    std::vector<cv::Mat> warp(const std::vector<cv::Mat>& images) const;
+    /// Inputs at the compose resolution, after checking their sizes.
+    std::vector<cv::Mat> composeInputs(const std::vector<cv::Mat>& images) const;
     void prepareCompositing(const std::vector<cv::Mat>& warped);
+    void prepareDirectCopy();
+    void prepareBlender(const std::vector<cv::Scalar>& gains, int bandWidth);
 
     Config config;
     bool prepared = false;
@@ -72,8 +75,7 @@ class FixedPanoramaCompositor {
     double warperScale = 0.0;
     cv::Rect canvas;
     std::vector<Source> sources;
-    cv::Ptr<cv::detail::ExposureCompensator> compensator;
-    cv::Ptr<cv::detail::Blender> blender;
+    FixedBlender blender;
 };
 
 }  // namespace utilities

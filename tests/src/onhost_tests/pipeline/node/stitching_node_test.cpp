@@ -80,7 +80,8 @@ std::shared_ptr<dai::ImgFrame> toCalibratedFrame(const cv::Mat& image, double ya
 std::shared_ptr<dai::ImgFrame> composeCalibratedPanorama(const std::vector<cv::Mat>& images,
                                                          const std::vector<double>& yaws,
                                                          const std::vector<double>& pitches,
-                                                         dai::CameraModel cameraModel) {
+                                                         dai::CameraModel cameraModel,
+                                                         dai::node::Stitching::SeamFinder seamFinder = dai::node::Stitching::SeamFinder::NONE) {
     REQUIRE(images.size() == yaws.size());
     REQUIRE(images.size() == pitches.size());
 
@@ -88,7 +89,7 @@ std::shared_ptr<dai::ImgFrame> composeCalibratedPanorama(const std::vector<cv::M
     auto stitching = pipeline.create<dai::node::Stitching>()->build(images.size());
     stitching->setUseInputCalibration(true);
     stitching->setCameraModel(cameraModel);
-    stitching->setSeamFinder(dai::node::Stitching::SeamFinder::NONE);
+    stitching->setSeamFinder(seamFinder);
     stitching->setSyncThreshold(std::chrono::seconds(1));
 
     std::vector<std::shared_ptr<dai::InputQueue>> inputs;
@@ -388,6 +389,39 @@ TEST_CASE("Calibrated panorama blends overlapping inputs when seam finding is en
     const auto center = result.at<cv::Vec3b>(result.rows / 2, result.cols / 2);
     REQUIRE(center != firstColor);
     REQUIRE(center != secondColor);
+}
+
+TEST_CASE("Calibrated panorama matches the exposure of overlapping inputs", "[Stitching]") {
+    const cv::Mat scene = cv::imread(KITCHEN_IMAGE_PATH);
+    REQUIRE(!scene.empty());
+    const std::vector<double> yaws = {-10.0, 10.0};
+    const std::vector<double> pitches = {0.0, 0.0};
+    const std::vector<cv::Mat> views = {renderView(scene, yaws[0]), renderView(scene, yaws[1])};
+    cv::Mat darker;
+    cv::multiply(views[1], cv::Scalar(0.6, 0.7, 0.8), darker);
+
+    // Per channel, mean of the right edge over the left edge: there each camera is the only source
+    const auto edgeRatio = [](const cv::Mat& panorama) {
+        const int edge = panorama.cols * 15 / 100;
+        const auto mean = [&](int x) {
+            const cv::Mat part = panorama(cv::Rect(x, 0, edge, panorama.rows));
+            cv::Mat gray;
+            cv::cvtColor(part, gray, cv::COLOR_BGR2GRAY);
+            return cv::mean(part, gray > 0);
+        };
+        const cv::Scalar left = mean(0);
+        const cv::Scalar right = mean(panorama.cols - edge);
+        return cv::Vec3d(right[0] / left[0], right[1] / left[1], right[2] / left[2]);
+    };
+    const auto compose = [&](const std::vector<cv::Mat>& images) {
+        return composeCalibratedPanorama(images, yaws, pitches, dai::CameraModel::Cylindrical, dai::node::Stitching::SeamFinder::GRAPHCUT_COLOR)->getCvFrame();
+    };
+
+    const cv::Vec3d reference = edgeRatio(compose(views));
+    const cv::Vec3d compensated = edgeRatio(compose({views[0], darker}));
+    for(int channel = 0; channel < 3; ++channel) {
+        REQUIRE_THAT(compensated[channel], WithinRel(reference[channel], 0.05));
+    }
 }
 
 TEST_CASE("Calibrated cylindrical panorama masks inputs crossing the wrap boundary", "[Stitching]") {

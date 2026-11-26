@@ -11,6 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include "pipeline/utilities/Stitching/FixedBlender.hpp"
+
 namespace {
 
 // A virtual rig looking at a textured ground plane: cameras mounted at the same height, pitched down and yawed apart,
@@ -251,6 +253,13 @@ std::shared_ptr<dai::ImgFrame> runOnce(dai::Pipeline& pipeline, const std::share
 
 const std::vector<SyntheticCamera> RIG = {makeCamera(0.0, -60.0, 0.0), makeCamera(-70.0, -40.0, -35.0), makeCamera(70.0, -40.0, 35.0)};
 
+/// A blender source that warps a flat image onto itself: identity maps, every pixel covered.
+dai::utilities::FixedBlender::Source flatSource(cv::Point tl, const cv::Mat& seamMask) {
+    cv::Mat map(seamMask.size(), CV_32FC2);
+    map.forEach<cv::Vec2f>([](cv::Vec2f& value, const int* position) { value = cv::Vec2f(static_cast<float>(position[1]), static_cast<float>(position[0])); });
+    return {tl, cv::Mat(seamMask.size(), CV_8U, cv::Scalar(255)), seamMask, cv::Scalar::all(1.0), map, cv::Mat()};
+}
+
 }  // namespace
 
 TEST_CASE("Stitching validates the planar projection settings", "[Stitching]") {
@@ -483,4 +492,45 @@ TEST_CASE("Stitching keeps the planar geometry across frames and rebuilds it on 
     }
 
     pipeline.stop();
+}
+
+TEST_CASE("Fixed blender ramps across an overlap narrower than its band", "[Stitching]") {
+    // Two flat sources overlap by 20 columns, less than the 61 pixel band; the seam is in the middle of the overlap
+    const cv::Size size(120, 16);
+    cv::Mat leftSeam = cv::Mat::zeros(size, CV_8U);
+    leftSeam.colRange(0, 110).setTo(255);
+    cv::Mat rightSeam = cv::Mat::zeros(size, CV_8U);
+    rightSeam.colRange(10, 120).setTo(255);
+
+    dai::utilities::FixedBlender blender;
+    blender.prepare(cv::Rect(0, 0, 220, 16), {flatSource({0, 0}, leftSeam), flatSource({100, 0}, rightSeam)}, 61);
+    const cv::Mat result = blender.blend({cv::Mat(size, CV_8UC3, cv::Scalar::all(50)), cv::Mat(size, CV_8UC3, cv::Scalar::all(150))}, cv::BORDER_REFLECT);
+
+    REQUIRE(result.at<cv::Vec3b>(8, 0) == cv::Vec3b(50, 50, 50));
+    REQUIRE(result.at<cv::Vec3b>(8, 219) == cv::Vec3b(150, 150, 150));
+    int largestStep = 0;
+    for(int x = 1; x < result.cols; ++x) {
+        largestStep = std::max(largestStep, std::abs(result.at<cv::Vec3b>(8, x)[0] - result.at<cv::Vec3b>(8, x - 1)[0]));
+    }
+    // A cut at the edge of either source's coverage would jump by a third of the difference or more
+    REQUIRE(largestStep <= 15);
+}
+
+TEST_CASE("Fixed blender samples a source that contributes at both ends of the canvas", "[Stitching]") {
+    // Source 0 spans the canvas but contributes only at both ends, like a camera across the wrap of a 360° panorama
+    const cv::Size size(300, 8);
+    cv::Mat endsSeam = cv::Mat::zeros(size, CV_8U);
+    endsSeam.colRange(0, 50).setTo(255);
+    endsSeam.colRange(250, 300).setTo(255);
+    const cv::Mat middleSeam = 255 - endsSeam;
+
+    // A ramp shows whether each end samples its own columns of the source
+    cv::Mat ramp(size, CV_8UC3);
+    for(int x = 0; x < size.width; ++x) ramp.col(x).setTo(cv::Scalar::all(x * 255 / (size.width - 1)));
+
+    dai::utilities::FixedBlender blender;
+    blender.prepare(cv::Rect(0, 0, 300, 8), {flatSource({0, 0}, endsSeam), flatSource({0, 0}, middleSeam)}, 5);
+    const cv::Mat result = blender.blend({ramp, cv::Mat(size, CV_8UC3, cv::Scalar::all(77))}, cv::BORDER_REFLECT);
+    for(const int x : {0, 20, 280, 299}) REQUIRE(result.at<cv::Vec3b>(4, x) == ramp.at<cv::Vec3b>(4, x));
+    REQUIRE(result.at<cv::Vec3b>(4, 150) == cv::Vec3b(77, 77, 77));
 }
