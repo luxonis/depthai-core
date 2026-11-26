@@ -31,6 +31,7 @@ void bind_imgdetectionsfilterconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("overlapMode", &ImgDetectionsFilterConfig::overlapMode, DOC(dai, ImgDetectionsFilterConfig, overlapMode))
         .def_readwrite("overlapIouThreshold", &ImgDetectionsFilterConfig::overlapIouThreshold, DOC(dai, ImgDetectionsFilterConfig, overlapIouThreshold))
         .def_readwrite("reference", &ImgDetectionsFilterConfig::reference, DOC(dai, ImgDetectionsFilterConfig, reference))
+        .def_readwrite("suppressWithinInputs", &ImgDetectionsFilterConfig::suppressWithinInputs, DOC(dai, ImgDetectionsFilterConfig, suppressWithinInputs))
         .def("setConfidenceRange",
              &ImgDetectionsFilterConfig::setConfidenceRange,
              py::arg("min") = 0.0f,

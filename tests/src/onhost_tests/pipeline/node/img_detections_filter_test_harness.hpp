@@ -19,6 +19,7 @@ struct FilterSettings {
     std::optional<Mode> mode;
     std::optional<float> iou;
     std::optional<dai::ImgTransformation> reference;
+    bool suppressWithinInputs = false;
 };
 
 inline std::shared_ptr<dai::ImgDetectionsFilterConfig> makeConfig(const FilterSettings& s) {
@@ -36,6 +37,7 @@ inline std::shared_ptr<dai::ImgDetectionsFilterConfig> makeConfig(const FilterSe
     if(s.mode) c->overlapMode = *s.mode;
     if(s.iou) c->overlapIouThreshold = *s.iou;
     c->reference = s.reference;
+    c->suppressWithinInputs = s.suppressWithinInputs;
     return c;
 }
 
@@ -57,6 +59,7 @@ inline FilterSettings nondefaultSettings() {
     s.mode = Mode::AVERAGE;
     s.iou = .6f;
     s.reference = cropped(transformation(), 4, 8, 256, 256);
+    s.suppressWithinInputs = true;
     return s;
 }
 

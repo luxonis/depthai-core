@@ -14,6 +14,7 @@ namespace node {
 
 /**
  * Filter detections or combine already synchronized camera detections into a reference image.
+ * Enable initialConfig->suppressWithinInputs to remove duplicates within each input, including merged tile detections.
  * Linked keys are consumed once per round in lexicographic order. Use Sync and MessageDemux upstream.
  * Multiple inputs or linked source masks run on the host. One input otherwise runs on RVC4, or on the host for RVC2
  * and device-free pipelines.

@@ -15,7 +15,7 @@ namespace dai {
 /** Configuration shared by all inputs of ImgDetectionsFilter. Runtime messages replace the full configuration. */
 class ImgDetectionsFilterConfig : public Buffer {
    public:
-    /** Duplicate handling between different inputs with the same label. */
+    /** Duplicate handling for detections with the same label. */
     enum class OverlapMode { OFF, NMS, AVERAGE };
 
     /** Only these labels pass; an empty list keeps nothing. */
@@ -36,12 +36,15 @@ class ImgDetectionsFilterConfig : public Buffer {
     std::optional<std::uint32_t> maxDetections = std::nullopt;
     /** Sort by descending confidence, preserving ties. */
     bool sortByConfidence = false;
-    /** Duplicate handling; has no effect with one input. */
+    /** Duplicate handling; one input participates when suppressWithinInputs is enabled. */
     OverlapMode overlapMode = OverlapMode::NMS;
     /** Finite nonnegative threshold; rotated rectangle IoU must be strictly greater. Values above 1 disable suppression. */
     float overlapIouThreshold = 0.4f;
     /** Latched reference, superseded permanently by the first valid inputReference frame. */
     std::optional<ImgTransformation> reference = std::nullopt;
+    /** Allow overlapMode to group multiple detections from each input, including a single input. Requires valid input transformations unless overlapMode is
+     * OFF. */
+    bool suppressWithinInputs = false;
 
     ~ImgDetectionsFilterConfig() override;
     /** Serialize this config and its Buffer timestamps. */
@@ -84,7 +87,8 @@ class ImgDetectionsFilterConfig : public Buffer {
                            sortByConfidence,
                            overlapMode,
                            overlapIouThreshold,
-                           reference);
+                           reference,
+                           suppressWithinInputs);
 };
 
 }  // namespace dai
