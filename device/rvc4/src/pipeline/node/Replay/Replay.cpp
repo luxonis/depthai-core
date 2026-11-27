@@ -1,9 +1,9 @@
 #include "Replay.hpp"
 
-#include <gstreamer-1.0/gst/app/gstappsink.h>
-#include <gstreamer-1.0/gst/gst.h>
 #include <gst/video/gstvideometa.h>
 #include <gst/video/video-info.h>
+#include <gstreamer-1.0/gst/app/gstappsink.h>
+#include <gstreamer-1.0/gst/gst.h>
 
 #include <algorithm>
 #include <atomic>
@@ -14,11 +14,12 @@
 #include <cstring>
 #include <fstream>
 #include <functional>
-#include <mutex>
 #include <limits>
+#include <map>
+#include <mutex>
 #include <optional>
-#include <stdexcept>
 #include <set>
+#include <stdexcept>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -30,11 +31,11 @@
 #include "depthai/utility/ReplayPlayback.hpp"
 #include "utilities/AcceleratorMemory.hpp"
 #include "utilities/GstBufferMemory.hpp"
-#include "utilities/ReplayCacheDevice.hpp"
 #include "utilities/RecordingStoreDevice.hpp"
+#include "utilities/ReplayCacheDevice.hpp"
 #include "utility/RecordReplayImpl.hpp"
-#include "utility/ReplayPacing.hpp"
 #include "utility/ReplayArchive.hpp"
+#include "utility/ReplayPacing.hpp"
 
 namespace dai {
 namespace gate {
@@ -112,7 +113,6 @@ bool isArchiveName(const std::string& name) {
     return name.find(".tar") != std::string::npos || name.find(".tgz") != std::string::npos;
 }
 
-
 bool fpsIsSentinel(bool fpsSet, float fps) {
     return !fpsSet || fps <= 0.f || fps == 1000.f;
 }
@@ -125,7 +125,6 @@ SteadyTime::duration nominalOf(bool fpsSet, float fps, SteadyTime first, SteadyT
     }
     return replay::playbackPeriod(30.0);
 }
-
 
 void offsetRGBDChildren(const std::shared_ptr<Buffer>& buffer,
                         std::int64_t sequenceOffset,
@@ -160,20 +159,122 @@ struct RecordedTiming {
     std::optional<std::chrono::time_point<std::chrono::system_clock>> timestampSystem;
 };
 
+// One clock per pipeline, shared by ReplayVideo and ReplayMetadataOnly.
+// The offset is elapsed / max span from the first run() entry, not this node's pass.
+struct ReplayLoopSlot {
+    std::mutex mutex;
+    SteadyTime::duration maxSpan{};
+    std::int64_t maxSeqStride = 0;
+    int runners = 0;
+    bool started = false;
+    SteadyTime startedAt{};
+};
+
+struct ReplayLoopOffset {
+    std::int64_t loopIndex = 0;
+    SteadyTime::duration maxSpan{};
+    std::int64_t maxSeqStride = 1;
+};
+
+std::shared_ptr<ReplayLoopSlot> replayLoopSlot(dai::Node& node) {
+    static std::mutex mutex;
+    static std::map<const void*, std::weak_ptr<ReplayLoopSlot>> slots;
+    const void* key = node.getParentPipeline().impl();
+    std::lock_guard<std::mutex> lock(mutex);
+    const auto it = slots.find(key);
+    if(it != slots.end()) {
+        if(auto existing = it->second.lock()) return existing;
+        slots.erase(it);
+    }
+    auto created = std::make_shared<ReplayLoopSlot>();
+    slots.emplace(key, created);
+    return created;
+}
+
+SteadyTime::duration replaySpan(int count, SteadyTime deviceFirst, SteadyTime deviceLast, SteadyTime::duration nominal) {
+    if(count < 2) return nominal;
+    return (deviceLast - deviceFirst) + nominal;
+}
+
+std::int64_t replaySeqStride(std::int64_t seqFirst, std::int64_t seqLast) {
+    return std::max<std::int64_t>(seqLast - seqFirst + 1, 1);
+}
+
+void noteReplayLoopEntered(ReplayLoopSlot& slot) {
+    std::lock_guard<std::mutex> lock(slot.mutex);
+    if(slot.runners == 0) {
+        slot.startedAt = SteadyTime::clock::now();
+        slot.started = true;
+    }
+    slot.runners++;
+}
+
+void noteReplayLoopLeft(ReplayLoopSlot& slot) {
+    std::lock_guard<std::mutex> lock(slot.mutex);
+    if(slot.runners > 0) slot.runners--;
+}
+
+class ReplayLoopSession {
+   public:
+    explicit ReplayLoopSession(ReplayLoopSlot& slot) : slot(slot) {
+        noteReplayLoopEntered(slot);
+    }
+    ~ReplayLoopSession() {
+        noteReplayLoopLeft(slot);
+    }
+    ReplayLoopSession(const ReplayLoopSession&) = delete;
+    ReplayLoopSession& operator=(const ReplayLoopSession&) = delete;
+
+   private:
+    ReplayLoopSlot& slot;
+};
+
+ReplayLoopOffset updateReplayLoop(ReplayLoopSlot& slot,
+                                  bool recorded,
+                                  int count,
+                                  std::int64_t seqFirst,
+                                  std::int64_t seqLast,
+                                  SteadyTime deviceFirst,
+                                  SteadyTime deviceLast,
+                                  SteadyTime::duration nominal) {
+    std::lock_guard<std::mutex> lock(slot.mutex);
+    if(recorded) {
+        const auto stride = replaySeqStride(seqFirst, seqLast);
+        if(stride > slot.maxSeqStride) slot.maxSeqStride = stride;
+        // count == 0 means the container length is not known yet. Do not seed max span with one nominal period.
+        if(count > 0) {
+            const auto span = replaySpan(count, deviceFirst, deviceLast, nominal);
+            if(span > slot.maxSpan) slot.maxSpan = span;
+        }
+    }
+    ReplayLoopOffset offset;
+    offset.maxSpan = slot.maxSpan;
+    offset.maxSeqStride = std::max<std::int64_t>(slot.maxSeqStride, 1);
+    if(!slot.started || slot.maxSpan.count() == 0) return offset;
+    const auto elapsed = SteadyTime::clock::now() - slot.startedAt;
+    if(elapsed.count() <= 0) return offset;
+    offset.loopIndex = static_cast<std::int64_t>(elapsed / slot.maxSpan);
+    return offset;
+}
+
+SteadyTime::duration pacedDelta(SteadyTime::duration raw, SteadyTime::duration nominal) {
+    if(nominal.count() > 0) {
+        if(raw > nominal && raw - nominal > nominal) return nominal;
+    } else if(raw.count() > 0) {
+        return nominal;
+    }
+    return raw;
+}
+
 void applyRecorded(const std::shared_ptr<Buffer>& buffer,
                    std::int64_t seqFirst,
-                   std::int64_t seqLast,
                    SteadyTime deviceFirst,
-                   SteadyTime deviceLast,
-                   SteadyTime::duration nominal,
                    const RecordedTiming& recorded,
-                   int pass) {
-    std::int64_t seqOffset = seqFirst;
-    SteadyTime tsOffset = deviceFirst;
-    for(int index = 0; index < pass; index++) {
-        seqOffset += seqLast - seqFirst + 1;
-        tsOffset += (deviceLast - deviceFirst) + nominal;
-    }
+                   std::int64_t loopIndex,
+                   SteadyTime::duration maxSpan,
+                   std::int64_t maxSeqStride) {
+    const auto seqOffset = seqFirst + loopIndex * maxSeqStride;
+    const auto tsOffset = deviceFirst + maxSpan * loopIndex;
     const auto sequence = recorded.sequence - seqFirst + seqOffset;
     const auto deviceOut = recorded.timestampDevice - deviceFirst + tsOffset;
     const auto amount = deviceOut - recorded.timestampDevice;
@@ -390,7 +491,8 @@ class GstPlayer {
         stride = GST_VIDEO_INFO_PLANE_STRIDE(&info, 0);
         const auto yPlane = GST_VIDEO_INFO_PLANE_OFFSET(&info, 0);
         const auto offset = GST_VIDEO_INFO_PLANE_OFFSET(&info, 1);
-        if(yPlane > static_cast<std::size_t>(std::numeric_limits<int>::max()) || offset > static_cast<std::size_t>(std::numeric_limits<int>::max())) return false;
+        if(yPlane > static_cast<std::size_t>(std::numeric_limits<int>::max()) || offset > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+            return false;
         yOffset = static_cast<int>(yPlane);
         uvOffset = static_cast<int>(offset);
         GstBuffer* buffer = gst_sample_get_buffer(sample);
@@ -720,7 +822,8 @@ std::shared_ptr<ImgFrame> convertDaiFrame(const std::shared_ptr<ImgFrame>& src, 
         return static_cast<std::size_t>(rows - 1) <= (bytes.size() - offset - rowBytes) / stride;
     };
     if(src->getType() == ImgFrame::Type::NV12) {
-        const auto uv = explicitOffsets ? static_cast<std::size_t>(src->fb.p2Offset) : p1 + static_cast<std::size_t>(rowStride) * static_cast<std::size_t>(srcH);
+        const auto uv =
+            explicitOffsets ? static_cast<std::size_t>(src->fb.p2Offset) : p1 + static_cast<std::size_t>(rowStride) * static_cast<std::size_t>(srcH);
         if(uv < p1 || !planeFits(p1, static_cast<std::size_t>(rowStride), srcH, srcW)) {
             throw std::runtime_error("ReplayVideo frame payload is too small or has an invalid plane layout");
         }
@@ -747,9 +850,10 @@ std::shared_ptr<ImgFrame> convertDaiFrame(const std::shared_ptr<ImgFrame>& src, 
         const int chromaW = srcW / 2 + srcW % 2;
         const int chromaH = srcH / 2 + srcH % 2;
         const int chromaStride = std::max(1, (rowStride + 1) / 2);
-        const auto p2 = explicitOffsets ? static_cast<std::size_t>(src->fb.p2Offset) : p1 + static_cast<std::size_t>(rowStride) * static_cast<std::size_t>(srcH);
-        const auto p3 = explicitOffsets ? static_cast<std::size_t>(src->fb.p3Offset)
-                                        : p2 + static_cast<std::size_t>(chromaStride) * static_cast<std::size_t>(chromaH);
+        const auto p2 =
+            explicitOffsets ? static_cast<std::size_t>(src->fb.p2Offset) : p1 + static_cast<std::size_t>(rowStride) * static_cast<std::size_t>(srcH);
+        const auto p3 =
+            explicitOffsets ? static_cast<std::size_t>(src->fb.p3Offset) : p2 + static_cast<std::size_t>(chromaStride) * static_cast<std::size_t>(chromaH);
         if(!planeFits(p1, static_cast<std::size_t>(rowStride), srcH, srcW) || !planeFits(p2, static_cast<std::size_t>(chromaStride), chromaH, chromaW)
            || !planeFits(p3, static_cast<std::size_t>(chromaStride), chromaH, chromaW)) {
             throw std::runtime_error("ReplayVideo frame payload is too small or has an invalid plane layout");
@@ -806,12 +910,21 @@ class SampleMapping {
 std::shared_ptr<ImgFrame> frameFromSample(GstPlayer& player, GstSample* sample, ImgFrame::Type type, int width, int height) {
     if(!player.readGeometry(sample)) throw std::runtime_error("ReplayVideo frame decode failed");
     auto* buffer = gst_sample_get_buffer(sample);
-    const auto required = static_cast<std::size_t>(player.uvOffset) + static_cast<std::size_t>(player.stride) * ((static_cast<std::size_t>(player.height) + 1) / 2);
+    const auto required =
+        static_cast<std::size_t>(player.uvOffset) + static_cast<std::size_t>(player.stride) * ((static_cast<std::size_t>(player.height) + 1) / 2);
     if(player.yOffset < 0 || player.uvOffset < player.yOffset || gst_buffer_get_size(buffer) < required) {
         throw std::runtime_error("ReplayVideo decoded frame is too small");
     }
     if(type == ImgFrame::Type::NV12 && width == player.width && height == player.height && player.yOffset == 0) {
-        return frameFromNv12(nullptr, player.stride, player.uvOffset, player.width, player.height, type, width, height, player.fullRange,
+        return frameFromNv12(nullptr,
+                             player.stride,
+                             player.uvOffset,
+                             player.width,
+                             player.height,
+                             type,
+                             width,
+                             height,
+                             player.fullRange,
                              std::make_shared<GstBufferMemory>(buffer));
     }
     const SampleMapping mapping(sample);
@@ -833,7 +946,8 @@ std::shared_ptr<ImgFrame> frameFromSample(GstPlayer& player, GstSample* sample, 
 void saveNv12Sample(GstPlayer& player, GstSample* sample, const std::filesystem::path& path) {
     if(!player.readGeometry(sample)) throw std::runtime_error("ReplayVideo frame decode failed");
     const SampleMapping mapping(sample);
-    const auto required = static_cast<std::size_t>(player.uvOffset) + static_cast<std::size_t>(player.stride) * ((static_cast<std::size_t>(player.height) + 1) / 2);
+    const auto required =
+        static_cast<std::size_t>(player.uvOffset) + static_cast<std::size_t>(player.stride) * ((static_cast<std::size_t>(player.height) + 1) / 2);
     if(player.yOffset < 0 || player.uvOffset < player.yOffset || mapping.map.size < required || static_cast<std::size_t>(player.yOffset) > mapping.map.size) {
         throw std::runtime_error("ReplayVideo decoded frame is too small");
     }
@@ -1025,6 +1139,7 @@ struct ReplayVideo::State {
     SteadyTime deviceFirst{};
     SteadyTime deviceLast{};
     SteadyTime::duration nominal{};
+    std::shared_ptr<ReplayLoopSlot> loopSlot;
     std::vector<std::shared_ptr<ImgFrame>> metadata;
     std::vector<std::filesystem::path> frames;
     std::unique_ptr<GstPlayer> player;
@@ -1052,6 +1167,7 @@ struct ReplayMetadataOnly::State {
     SteadyTime deviceFirst{};
     SteadyTime deviceLast{};
     SteadyTime::duration nominal{};
+    std::shared_ptr<ReplayLoopSlot> loopSlot;
     std::vector<std::unique_ptr<ScratchDirLease>> scratchLeases;
 };
 
@@ -1184,6 +1300,7 @@ void ReplayVideo::buildStage1() {
     if(properties.persistentUpload) replayCacheMarkPersistent(properties.sourceHash, properties.resolvedMetadataPath);
     state = std::make_unique<State>();
     try {
+        state->loopSlot = replayLoopSlot(*this);
         state->hash = properties.sourceHash;
         state->loop = properties.loop;
         state->stopAtEnd = properties.stopPipelineAtEnd;
@@ -1270,7 +1387,8 @@ void ReplayVideo::buildStage1() {
             state->fullRange = state->player->fullRange;
             bool eos = false;
             const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-            SamplePtr sample(pullSample(*state->player, eos, [&] { return std::chrono::steady_clock::now() < deadline && !state->stopping.load(); }), gst_sample_unref);
+            SamplePtr sample(pullSample(*state->player, eos, [&] { return std::chrono::steady_clock::now() < deadline && !state->stopping.load(); }),
+                             gst_sample_unref);
             if(!sample || !state->player->readGeometry(sample.get())) throw std::runtime_error("ReplayVideo frame decode failed: " + media.string());
             sample.reset();
             state->player->restart();
@@ -1360,6 +1478,10 @@ void ReplayVideo::buildStage1() {
             state->player.reset();
             state->compressedImages = false;
         }
+        if(state->loopSlot) {
+            updateReplayLoop(
+                *state->loopSlot, state->recorded, state->count, state->seqFirst, state->seqLast, state->deviceFirst, state->deviceLast, state->nominal);
+        }
         state->recording = std::move(recording);
     } catch(...) {
         state.reset();
@@ -1377,14 +1499,19 @@ void ReplayVideo::stop() {
 
 void ReplayVideo::run() {
     if(state == nullptr) throw std::runtime_error("ReplayVideo source is not prepared");
+    if(state->loopSlot == nullptr) state->loopSlot = replayLoopSlot(*this);
+    [[maybe_unused]] ReplayLoopSession loopSession(*state->loopSlot);
     replayCacheArm(state->hash, properties.resolvedMetadataPath);
     replay::PlaybackPacer pacing(state->fpsSet ? state->fps : 0.f);
     std::optional<SteadyTime> previousDevice;
     bool naturalEnd = false;
     int sent = 0;
+    auto syncLoop = [&]() {
+        return updateReplayLoop(
+            *state->loopSlot, state->recorded, state->count, state->seqFirst, state->seqLast, state->deviceFirst, state->deviceLast, state->nominal);
+    };
     while(mainLoop() && !state->stopping.load()) {
         const int index = state->count > 0 ? sent % state->count : sent;
-        const int pass = state->count > 0 ? sent / state->count : 0;
         if(sent > 0 && index == 0 && state->count > 0) {
             if(!state->loop) {
                 naturalEnd = true;
@@ -1417,7 +1544,10 @@ void ReplayVideo::run() {
                 requireFrameCount(*state, got);
                 if(state->count <= 0) {
                     state->count = got;
-                    if(state->recorded) state->nominal = nominalOf(state->fpsSet, state->fps, state->deviceFirst, state->deviceLast, state->count);
+                    if(state->recorded) {
+                        state->nominal = nominalOf(state->fpsSet, state->fps, state->deviceFirst, state->deviceLast, state->count);
+                        syncLoop();
+                    }
                 } else if(got != state->count) {
                     throw std::runtime_error("ReplayVideo frame decode failed");
                 }
@@ -1432,7 +1562,8 @@ void ReplayVideo::run() {
         } else {
             std::ifstream input(state->frames[static_cast<std::size_t>(index)], std::ios::binary);
             const auto chromaRows = state->srcH / 2 + state->srcH % 2;
-            std::vector<std::uint8_t> bytes(static_cast<std::size_t>(state->predecodedUvOffset) + static_cast<std::size_t>(state->predecodedStride) * chromaRows);
+            std::vector<std::uint8_t> bytes(static_cast<std::size_t>(state->predecodedUvOffset)
+                                            + static_cast<std::size_t>(state->predecodedStride) * chromaRows);
             input.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
             if(!input) throw std::runtime_error("ReplayVideo predecoded frame cannot be read: " + state->frames[static_cast<std::size_t>(index)].string());
             frame = frameFromNv12(bytes.data(),
@@ -1460,7 +1591,8 @@ void ReplayVideo::run() {
             if(metadata->transformation.getSize().first != 0) frame->transformation = metadata->transformation;
         }
         if(state->recorded && timing.present) {
-            applyRecorded(frame, state->seqFirst, state->seqLast, state->deviceFirst, state->deviceLast, state->nominal, timing, pass);
+            const auto offset = syncLoop();
+            applyRecorded(frame, state->seqFirst, state->deviceFirst, timing, offset.loopIndex, offset.maxSpan, offset.maxSeqStride);
         } else {
             frame->setSequenceNum(sent);
             frame->setTimestampSystem(std::nullopt);
@@ -1473,8 +1605,10 @@ void ReplayVideo::run() {
         }
         std::optional<replay::PlaybackClock::duration> recordedInterval;
         if(state->recorded && timing.present) {
-            if(index == 0 && sent > 0) recordedInterval = state->nominal;
-            else if(previousDevice) recordedInterval = timing.timestampDevice - *previousDevice;
+            if(index == 0 && sent > 0)
+                recordedInterval = state->nominal;
+            else if(previousDevice)
+                recordedInterval = pacedDelta(timing.timestampDevice - *previousDevice, state->nominal);
             previousDevice = timing.timestampDevice;
         }
         const auto sendTime = pacing.waitToSend(recordedInterval, [this] { return mainLoop() && !state->stopping.load(); });
@@ -1508,6 +1642,7 @@ void ReplayMetadataOnly::buildStage1() {
     if(properties.persistentUpload) replayCacheMarkPersistent(properties.sourceHash);
     state = std::make_unique<State>();
     try {
+        state->loopSlot = replayLoopSlot(*this);
         state->hash = properties.sourceHash;
         state->loop = properties.loop;
         state->stopAtEnd = properties.stopPipelineAtEnd;
@@ -1553,6 +1688,9 @@ void ReplayMetadataOnly::buildStage1() {
         state->seqLast = previousSeq;
         state->deviceLast = previousDevice;
         state->nominal = nominalOf(state->fpsSet, state->fps, state->deviceFirst, state->deviceLast, state->count);
+        if(state->loopSlot) {
+            updateReplayLoop(*state->loopSlot, true, state->count, state->seqFirst, state->seqLast, state->deviceFirst, state->deviceLast, state->nominal);
+        }
         state->media = media;
         state->recording = std::move(recording);
     } catch(...) {
@@ -1563,6 +1701,8 @@ void ReplayMetadataOnly::buildStage1() {
 
 void ReplayMetadataOnly::run() {
     if(state == nullptr || state->media.empty()) throw std::runtime_error("ReplayMetadataOnly source is not prepared");
+    if(state->loopSlot == nullptr) state->loopSlot = replayLoopSlot(*this);
+    [[maybe_unused]] ReplayLoopSession loopSession(*state->loopSlot);
     replayCacheArm(state->hash);
     utility::BytePlayer player;
     player.init(state->media.string());
@@ -1599,11 +1739,14 @@ void ReplayMetadataOnly::run() {
         timing.timestampSystem = buffer->getTimestampSystem();
         std::optional<replay::PlaybackClock::duration> recordedInterval;
         if(sent > 0) {
-            if(index == 0) recordedInterval = state->nominal;
-            else if(havePrevious) recordedInterval = timing.timestampDevice - previousDevice;
+            if(index == 0)
+                recordedInterval = state->nominal;
+            else if(havePrevious)
+                recordedInterval = pacedDelta(timing.timestampDevice - previousDevice, state->nominal);
         }
-        const int pass = state->count == 0 ? 0 : sent / state->count;
-        applyRecorded(buffer, state->seqFirst, state->seqLast, state->deviceFirst, state->deviceLast, state->nominal, timing, pass);
+        const auto offset =
+            updateReplayLoop(*state->loopSlot, true, state->count, state->seqFirst, state->seqLast, state->deviceFirst, state->deviceLast, state->nominal);
+        applyRecorded(buffer, state->seqFirst, state->deviceFirst, timing, offset.loopIndex, offset.maxSpan, offset.maxSeqStride);
         previousDevice = timing.timestampDevice;
         havePrevious = true;
         if(!pacing.waitToSend(recordedInterval, [this] { return mainLoop(); })) break;
