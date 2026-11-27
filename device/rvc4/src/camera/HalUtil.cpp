@@ -71,38 +71,14 @@ bool HalUtil::getMetaInt32(const camera_metadata_t* meta, uint32_t tag, int32_t&
     return false;
 }
 
-bool HalUtil::getMetaSensorTemperature(const camera_metadata_t* meta, uint32_t tag, float& value) {
+bool HalUtil::getMetaSensorReadOutput(const camera_metadata_t* meta, uint32_t tag, std::array<uint8_t, 2>& bytes) {
     DAI_CHECK_IN(meta);
     camera_metadata_ro_entry_t entry;
     auto suc = find_camera_metadata_ro_entry(meta, tag, &entry);
-    if(suc != 0) {
+    if(suc != 0 || entry.type != TYPE_BYTE || entry.count < bytes.size()) {
         return false;
     }
-
-    switch(entry.type) {
-        case TYPE_BYTE:
-            if(entry.count >= sizeof(uint16_t)) {
-                // Some CAMX builds expose the temperature vendor tag as raw bytes.
-                value = static_cast<float>(static_cast<uint16_t>(entry.data.u8[0]) | (static_cast<uint16_t>(entry.data.u8[1]) << 8));
-                return true;
-            }
-            if(entry.count >= 1) {
-                value = static_cast<float>(entry.data.u8[0]);
-                return true;
-            }
-            break;
-        case TYPE_INT32:
-            value = static_cast<float>(entry.data.i32[0]);
-            return true;
-        case TYPE_INT64:
-            value = static_cast<float>(entry.data.i64[0]);
-            return true;
-        case TYPE_FLOAT:
-            value = entry.data.f[0];
-            return true;
-        default:
-            break;
-    }
-
-    return false;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-union-access)
+    bytes = {entry.data.u8[0], entry.data.u8[1]};
+    return true;
 }

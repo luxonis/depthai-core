@@ -154,6 +154,7 @@ class CameraSensor : public camera3_callback_ops_t {
     std::optional<std::string> tuningOverride;
     CameraDescription cameraDescription;
     std::atomic<bool> streamEnabled{true};
+    std::atomic<bool> sensorTemperatureRead{false};
 
     std::optional<MetaCacheItem> popMetaCache(uint64_t sequenceNumber, const std::string& output);
     void processCaptureResult(const camera3_capture_result_t* result);
