@@ -431,11 +431,16 @@ class DeviceBase::Impl {
     std::string activeTelemetryPipelineId;
     nlohmann::json activeTelemetryImuNode = nlohmann::json::object();
 
-    // Failure types already sent as depthai_imu_error; a failing driver can log in a loop. Log thread only.
+    // Failure types already sent as depthai_imu_error by this device object (one pipeline, as closing the
+    // pipeline closes the device); a failing driver can log in a loop. Log thread only.
     std::set<std::string> sentImuFailures;
 
-    // RVC2 firmware and the RVC4 IMU node report IMU failures to the host only as log messages
+    // RVC2 firmware and the RVC4 IMU node report IMU failures to the host only as log messages, so a
+    // failure below the device log level (warn by default) sends no event
     void reportImuFailure(const DeviceBase& device, const std::string& logMessage) {
+        if(!utility::Telemetry::isTelemetryEnabled()) {
+            return;
+        }
         auto imuFailure = utility::imuFailureTelemetry(logMessage);
         if(imuFailure.is_null() || !sentImuFailures.insert(imuFailure.at("error_type").get<std::string>()).second) {
             return;

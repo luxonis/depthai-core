@@ -7,7 +7,8 @@ namespace dai {
 namespace utility {
 
 nlohmann::json imuFailureTelemetry(const std::string& logMessage) {
-    // Messages of the RVC2 firmware IMU node and of the RVC4 IMU node (device/rvc4/.../IMU.cpp)
+    // Messages of the RVC2 firmware IMU node and of the RVC4 IMU node: a change to the messages in
+    // device/rvc4/src/pipeline/node/IMU/rvc4/IMU.cpp must change this table too
     struct ImuFailure {
         const char* text;
         const char* errorType;
