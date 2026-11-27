@@ -25,7 +25,6 @@
 #include <utility>
 #include <vector>
 
-#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/ImageAlign.hpp"
@@ -52,22 +51,6 @@ constexpr std::array<Square, 2> SQUARES = {{{256, 128, 128, 32}, {896, 448, 128,
 /** Intrinsics for a scaled target, with an optional principal-point offset in target pixels. */
 Matrix intrinsics(float scale = 1.0f, float shiftX = 0.0f, float shiftY = 0.0f) {
     return {{{FOCAL * scale, 0, WIDTH * scale / 2 + shiftX}, {0, FOCAL * scale, HEIGHT * scale / 2 + shiftY}, {0, 0, 1}}};
-}
-
-/** Identity rectification and a 75 mm baseline, local to the pipeline (never EEPROM). */
-dai::CalibrationHandler calibration() {
-    dai::CalibrationHandler result;
-    const std::vector<std::vector<float>> identity = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-    const std::vector<std::vector<float>> k = {{FOCAL, 0, WIDTH / 2.0f}, {0, FOCAL, HEIGHT / 2.0f}, {0, 0, 1}};
-    for(const auto socket : {dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C}) {
-        result.setCameraIntrinsics(socket, k, WIDTH, HEIGHT);
-        result.setDistortionCoefficients(socket, std::vector<float>(14, 0.0f));
-        result.setCameraType(socket, dai::CameraModel::Perspective);
-    }
-    result.setCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, identity, {-BASELINE_CM, 0, 0}, {-BASELINE_CM, 0, 0});
-    result.setStereoLeft(dai::CameraBoardSocket::CAM_B, identity);
-    result.setStereoRight(dai::CameraBoardSocket::CAM_C, identity);
-    return result;
 }
 
 /** Deterministic textured planes rendered into left/right cameras with foreground occlusion. */
@@ -112,7 +95,12 @@ std::shared_ptr<dai::ImgFrame> frame(
     result->setHeight(height);
     result->setStride(width);
     result->setInstanceNum(static_cast<unsigned>(socket));
-    result->setTransformation(dai::ImgTransformation(width, height, k));
+    const std::vector<std::vector<float>> identity = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    const dai::Point3f translation(socket == dai::CameraBoardSocket::CAM_C ? BASELINE_CM : 0.0f, 0, 0);
+    const dai::Extrinsics pose(identity, translation, dai::CameraBoardSocket::CAM_B, dai::LengthUnit::CENTIMETER);
+    dai::ImgTransformation transformation(width, height, k);
+    transformation.setExtrinsics(pose);
+    result->setTransformation(transformation);
     if(padRows) {
         auto data = pixels;
         // RVC4 stereo reads complete 32-row blocks even when the logical image height
@@ -201,8 +189,7 @@ void runAlignment(int decimation, bool right, bool explicitSize, bool fullSize, 
     REQUIRE((platform == dai::Platform::RVC2 || platform == dai::Platform::RVC4));
     const bool rvc4 = platform == dai::Platform::RVC4;
     CAPTURE(platform);
-    // Pipeline-local calibration only: never flash or modify the device's EEPROM.
-    pipeline.setCalibrationData(calibration());
+    // Every input carries its calibration, independently of the device's EEPROM.
     const int divisor = fullSize ? 1 : decimation;
     const float scale = 1.0f / divisor;
     const int width = WIDTH / divisor, height = HEIGHT / divisor;
@@ -217,13 +204,11 @@ void runAlignment(int decimation, bool right, bool explicitSize, bool fullSize, 
     std::shared_ptr<dai::InputQueue> alignQueue;
     std::shared_ptr<dai::MessageQueue> output;
     if(nativeOnly) {
-        if(rvc4) {
-            // Match the StereoDepth examples: choose the rectified perspective
-            // with the enum overload on RVC4, rather than the camera-socket API.
-            using DepthAlign = dai::StereoDepthConfig::AlgorithmControl::DepthAlign;
-            stereo->setDepthAlign(right ? DepthAlign::RECTIFIED_RIGHT : DepthAlign::RECTIFIED_LEFT);
-        } else {
-            stereo->setDepthAlign(socket);
+        using DepthAlign = dai::StereoDepthConfig::AlgorithmControl::DepthAlign;
+        stereo->setDepthAlign(right ? DepthAlign::RECTIFIED_RIGHT : DepthAlign::RECTIFIED_LEFT);
+        if(!rvc4) {
+            // A legacy socket selection must not enable alignment without inputAlignTo.
+            stereo->setDepthAlign(dai::CameraBoardSocket::CAM_A);
         }
         output = stereo->depth.createOutputQueue();
     } else if(rvc4) {
@@ -237,6 +222,8 @@ void runAlignment(int decimation, bool right, bool explicitSize, bool fullSize, 
         if(explicitSize) align->setOutputSize(width, height);
         output = align->outputAligned.createOutputQueue();
     } else {
+        // The linked frame must select the target even when the legacy socket disagrees.
+        stereo->setDepthAlign(dai::CameraBoardSocket::CAM_A);
         alignQueue = stereo->inputAlignTo.createInputQueue();
         output = stereo->depth.createOutputQueue();
     }

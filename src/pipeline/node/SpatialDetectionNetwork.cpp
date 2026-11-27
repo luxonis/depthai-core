@@ -200,6 +200,7 @@ void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<Depth>& depth
 }
 
 void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera) {
+    (void)camera;  // Alignment target comes from the network passthrough output.
     auto device = getDevice();
     if(device) {
         auto platform = device->getPlatform();
@@ -222,7 +223,7 @@ void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<StereoDepth>&
         }
     } else {
         stereo->depth.link(spatialLocationCalculator->inputDepth);
-        stereo->setDepthAlign(camera->getBoardSocket());
+        neuralNetwork->passthrough.link(stereo->inputAlignTo);
     }
 }
 

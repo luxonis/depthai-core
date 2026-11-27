@@ -48,6 +48,7 @@ class StereoDepth : public dai::node::StereoDepth {
     PyrImgDispatcher pyrImg;
     WarpDispatcher warp;
     bool warpInitialized = false;
+    dai::ImgTransformation leftCalibrationTransformation, rightCalibrationTransformation;
 
     std::vector<std::shared_ptr<dai::ImgFrame> > outLeftPyrFrames;
     std::vector<std::shared_ptr<dai::ImgFrame> > outRightPyrFrames;

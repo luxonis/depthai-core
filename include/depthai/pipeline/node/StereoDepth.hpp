@@ -84,7 +84,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
         *this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::StereoDepthConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
-     * Input align to message.
+     * Link the target image stream to enable disparity/depth alignment using its frame calibration.
      * Default queue is non-blocking with size 1.
      */
     Input inputAlignTo{*this, {"inputAlignTo", DEFAULT_GROUP, false, 1, {{DatatypeEnum::ImgFrame, false}}, true}};
@@ -241,9 +241,11 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     void setDepthAlign(Properties::DepthAlign align);
 
     /**
-     * @param camera Set the camera from whose perspective the disparity/depth will be aligned
+     * @deprecated Link the target image stream to inputAlignTo instead.
+     * Selecting a socket alone does not enable alignment.
+     * @param camera Legacy alignment camera socket.
      */
-    void setDepthAlign(CameraBoardSocket camera);
+    [[deprecated("Link the target image stream to inputAlignTo instead")]] void setDepthAlign(CameraBoardSocket camera);
 
     /**
      * Rectify input images or not.

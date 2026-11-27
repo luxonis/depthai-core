@@ -256,8 +256,6 @@ void StereoDepth::_ThreadWarp() {
         }
     }
 
-    uint32_t currentEepromId = getParentPipeline().getEepromId();
-
     while(isRunning() && threadsRunning) {
         auto startTs = std::chrono::steady_clock::now();  // Main loop timing
         auto warpBlock = this->blockEvent(PipelineEvent::Type::CUSTOM, "warp");
@@ -296,12 +294,10 @@ void StereoDepth::_ThreadWarp() {
 
         this->pipelineEventDispatcher->startTrackedEvent(PipelineEvent::Type::LOOP, "_mainLoop", leftIn->sequenceNum, startTs);
 
-        uint32_t latestEepromId = getParentPipeline().getEepromId();
-
-        if(latestEepromId > currentEepromId) {
-            logger->debug("EEPROM data changed (ID: {} -> {}), reconfiguring calibration with latest frames.", currentEepromId, latestEepromId);
+        if(!leftIn->transformation.isEqualTransformation(leftCalibrationTransformation)
+           || !rightIn->transformation.isEqualTransformation(rightCalibrationTransformation)) {
+            logger->debug("Input frame transformations changed, reconfiguring calibration.");
             initCalib(leftIn, rightIn);
-            currentEepromId = latestEepromId;
         }
 
         auto tEndSync = steady_clock::now();
@@ -1138,38 +1134,6 @@ void StereoDepth::setRectifiedTransformations(dai::ImgTransformation& transforma
     transformation.setDistortionModel(distortionModel);
 }
 
-bool isIdentityIntrinsics(const std::array<std::array<float, 3>, 3>& m, float eps = 1e-6f) {
-    for(size_t i = 0; i < 3; ++i) {
-        for(size_t j = 0; j < 3; ++j) {
-            const float expected = (i == j) ? 1.f : 0.f;
-            if(std::abs(m[i][j] - expected) > eps) {
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-std::array<std::array<float, 3>, 3> intrinsicsFromVec(const std::vector<std::vector<float>>& m) {
-    if(m.size() != 3 || m[0].size() != 3 || m[1].size() != 3 || m[2].size() != 3) {
-        throw std::runtime_error("Invalid intrinsics matrix size, expected 3x3.");
-    }
-
-    return {{{m[0][0], m[0][1], m[0][2]}, {m[1][0], m[1][1], m[1][2]}, {m[2][0], m[2][1], m[2][2]}}};
-}
-
-std::array<std::array<float, 3>, 3> getIntrinsicsWithCalibrationFallback(
-    const std::shared_ptr<const dai::ImgFrame>& frame, const CameraBoardSocket socket, CalibrationHandler& calib, uint32_t width, uint32_t height) {
-    if(frame) {
-        auto intrinsics = frame->transformation.getIntrinsicMatrix();
-        if(!isIdentityIntrinsics(intrinsics)) {
-            return intrinsics;
-        }
-    }
-
-    return intrinsicsFromVec(calib.getCameraIntrinsics(socket, width, height));
-}
-
 void StereoDepth::_ThreadPostProcessing() {
     auto depthFramePool = std::make_shared<Pool<ImgFrame>>(properties.numFramesPool, outDisparityFrameSize);
     auto decimatedDisparityFramePool = std::make_shared<Pool<ImgFrame>>(properties.numFramesPool, outDisparityFrameSize);
@@ -1508,43 +1472,30 @@ void StereoDepth::_ThreadPostProcessing() {
 void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, const std::shared_ptr<const dai::ImgFrame>& rightIn) {
     std::cout << "Loading calibration data from socket leftSocket " << (int)leftSocket << " and rightSocket " << (int)rightSocket << std::endl;
 
-    auto pipeline = getParentPipeline();
-
-    bool isCalib = false;
-    CalibrationHandler calib;
-
-    if(pipeline.isCalibrationDataAvailable()) {
-        logger->info("Calibration data available. Reading ...");
-        // TODO: This has to be reviewed why causes the excep.
-        // terminate called after throwing an instance of 'std::out_of_range'
-
-        isCalib = true;
-        calib = pipeline.getCalibrationData();
-    } else {
-        logger->info("No calibration data available.");
-
-        calib = CalibrationHandler();
-        isCalib = false;
-        if(enableRectification) {
-            logger->warn("No calibration data provided!");
-        }
+    if(!leftIn || !rightIn) {
+        throw std::runtime_error("Left or Right ImgFrame is nullptr, cannot initialize calibration.");
+    }
+    const auto& leftTransformation = leftIn->transformation;
+    const auto& rightTransformation = rightIn->transformation;
+    const bool isCalib = leftTransformation.isValid() && rightTransformation.isValid();
+    if(!isCalib && enableRectification) {
+        logger->warn("No stereo calibration provided in input frame transformations!");
     }
 
-    // bool isVertical = properties.verticalStereo;
     bool isVertical = false;
-    int baselineIdx = isVertical ? 1 : 0;
-
     if(isCalib) {
-        try {
-            auto T = calib.getCameraTranslationVector(leftSocket, rightSocket, true);
-            isVertical = std::abs(T[1]) > std::abs(T[0]);
-            baselineIdx = std::abs(T[1]) > std::abs(T[0]);
-        } catch(const std::exception& ex) {
-        }
+        const auto translation = leftTransformation.getTranslationVectorTo(rightTransformation, false, LengthUnit::CENTIMETER);
+        isVertical = std::abs(translation[1]) > std::abs(translation[0]);
     }
 
     if(!enableRectification) isVertical = false;
 
+    outFrameWidth = inWarpWidth;
+    outFrameHeight = inWarpHeight;
+    if(properties.outWidth && properties.outHeight) {
+        outFrameWidth = *properties.outWidth;
+        outFrameHeight = *properties.outHeight;
+    }
     if(isVertical) {
         auto tmp = outFrameWidth;
         outFrameWidth = outFrameHeight;
@@ -1565,9 +1516,13 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
     autoAlignment = dai::StereoDepthConfig::AlgorithmControl::DepthAlign::RECTIFIED_LEFT;
     if(isCalib) {
         try {
-            const auto camATranslationToLeft = calib.getCameraTranslationVector(leftSocket, dai::CameraBoardSocket::CAM_A, false);
-            const auto camATranslationToRight = calib.getCameraTranslationVector(rightSocket, dai::CameraBoardSocket::CAM_A, false);
-            autoAlignment = decideAutoAlignmentFromCamAProximity(camATranslationToLeft, camATranslationToRight);
+            const auto leftExtrinsics = leftTransformation.getExtrinsics();
+            const auto rightExtrinsics = rightTransformation.getExtrinsics();
+            // CAM_A proximity is available only when frame poses use CAM_A as their common origin.
+            if(leftExtrinsics.toCameraSocket == dai::CameraBoardSocket::CAM_A && rightExtrinsics.toCameraSocket == dai::CameraBoardSocket::CAM_A) {
+                autoAlignment = decideAutoAlignmentFromCamAProximity(leftExtrinsics.getTranslationVector(false, LengthUnit::CENTIMETER),
+                                                                   rightExtrinsics.getTranslationVector(false, LengthUnit::CENTIMETER));
+            }
         } catch(const std::exception&) {
         }
     }
@@ -1575,12 +1530,8 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
     const auto requestedAlignment = resolveEffectiveAlignment(properties.initialConfig.algorithmControl.depthAlign, autoAlignment);
 
     alignedSocket = leftSocket;
-    dai::ImgTransformation alignedTransformation = leftIn->transformation;
-    dai::ImgTransformation nonAlignedTransformation = rightIn->transformation;
     if(usesRightPrimaryAlignment(requestedAlignment)) {
         alignedSocket = rightSocket;
-        alignedTransformation = rightIn->transformation;
-        nonAlignedTransformation = leftIn->transformation;
     }
 
     float calib_H1[9] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
@@ -1597,22 +1548,11 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
     if(depthConnected) {
         if(isCalib) {
             try {
-                auto T = calib.getCameraTranslationVector(leftSocket, rightSocket, false);
+                auto T = leftTransformation.getTranslationVectorTo(rightTransformation, false, LengthUnit::CENTIMETER);
                 baseline = translationMagnitudeMeters(T);
-                fov = calib.getFov(alignedSocket, false);
-
-                if(!leftIn || !rightIn) {  // should never trigger
-                    throw std::runtime_error("Left or Right ImgFrame is nullptr, cannot initialize calibration.");
-                }
-
-                std::array<std::array<float, 3>, 3> intrinsicsMatrix;
-                if(rightSocket == alignedSocket) {
-                    intrinsicsMatrix = getIntrinsicsWithCalibrationFallback(rightIn, rightSocket, calib, inWarpWidth, inWarpHeight);
-                } else if(leftSocket == alignedSocket) {
-                    intrinsicsMatrix = getIntrinsicsWithCalibrationFallback(leftIn, leftSocket, calib, inWarpWidth, inWarpHeight);
-                } else {
-                    throw std::runtime_error("Aligned socket does not match left or right socket.");
-                }
+                const auto& alignedTransformation = usesRightPrimaryAlignment(requestedAlignment) ? rightTransformation : leftTransformation;
+                fov = alignedTransformation.getHFov();
+                const auto intrinsicsMatrix = alignedTransformation.getIntrinsicMatrix();
 
                 baselineIndex = std::abs(T[0]) > std::abs(T[1]) ? 0 : 1;
                 focal = intrinsicsMatrix[baselineIndex][baselineIndex];
@@ -1680,37 +1620,21 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
             WarpDispatcher::ParseMeshResourceData(meshResource, meshWidth, meshHeight, rightRawGridX, rightRawGridY);
 
         } else if(isCalib) {
-            if(!leftIn || !rightIn) {  // should never trigger
-                throw std::runtime_error("Left or Right ImgFrame is nullptr, cannot initialize calibration.");
-            }
-
-            auto M1 = getIntrinsicsWithCalibrationFallback(leftIn, leftSocket, calib, inWarpWidth, inWarpHeight);
-            auto M2 = getIntrinsicsWithCalibrationFallback(rightIn, rightSocket, calib, inWarpWidth, inWarpHeight);
+            auto M1 = leftTransformation.getIntrinsicMatrix();
+            auto M2 = rightTransformation.getIntrinsicMatrix();
 
             auto cv_M1 = vecToCvMat(3, 3, CV_32FC1, matrix::matrix3x3ToVectorMatrix(M1));
             auto cv_M2 = vecToCvMat(3, 3, CV_32FC1, matrix::matrix3x3ToVectorMatrix(M2));
 
-            /**
-             * (aljazkonec) Need to robustly handle calibration updates and missing metadata:
-             * - ImgTransformations need to save EEPROM ID from which they were created. If EEPROM ID updates in both ImgFrames, recompute the rectification
-             * mesh.
-             * - (holistic) record & replay can record frames without metadata, which causes the transformations to have empty extrinsics.
-             * This is the reason we use calibration handler for getting intrinsics, extrinsics and distortion, instead of relying on the transformations.
-             */
-            // auto d1 = alignedTransformation.getDistortionCoefficients();
-            // auto d2 = nonAlignedTransformation.getDistortionCoefficients();
-            auto d1 = calib.getDistortionCoefficients(leftSocket);
-            auto d2 = calib.getDistortionCoefficients(rightSocket);
+            auto d1 = leftTransformation.getDistortionCoefficients();
+            auto d2 = rightTransformation.getDistortionCoefficients();
 
             auto cv_d1 = vecToCvMat(1, d1.size(), CV_32FC1, d1);
             auto cv_d2 = vecToCvMat(1, d2.size(), CV_32FC1, d2);
 
-            // std::vector<std::vector<float>> R = matrix::matrix3x3ToVectorMatrix(alignedTransformation.getRotationMatrixTo(nonAlignedTransformation));
-            std::vector<std::vector<float>> R = calib.getCameraRotationMatrix(leftSocket, rightSocket);
-
+            auto R = matrix::matrix3x3ToVectorMatrix(leftTransformation.getRotationMatrixTo(rightTransformation));
             auto cv_R = vecToCvMat(3, 3, CV_32FC1, R);
-            // auto T = alignedTransformation.getTranslationVectorTo(nonAlignedTransformation);
-            auto T = calib.getCameraTranslationVector(leftSocket, rightSocket, false);
+            auto T = leftTransformation.getTranslationVectorTo(rightTransformation, false, LengthUnit::CENTIMETER);
             auto cv_T = vecToCvMat(1, 3, CV_32FC1, {T[0], T[1], T[2]});
 
             cv::Size imageSize = cv::Size(inWarpWidth, inWarpHeight);
@@ -1855,6 +1779,8 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
 
         outRectifiedFrameSize = warp.getMinOutImgSize();
     }
+    leftCalibrationTransformation = leftTransformation;
+    rightCalibrationTransformation = rightTransformation;
 }
 
 void StereoDepth::buildStage1() {

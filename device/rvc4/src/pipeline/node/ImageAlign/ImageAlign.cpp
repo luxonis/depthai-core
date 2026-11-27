@@ -195,7 +195,7 @@ void ImageAlign::extractCalibrationData(int depthWidth, int depthHeight) {
     dai::CameraModel cameraModel = dai::CameraModel::Perspective;  // todo
 
     auto cv_targetCamMatrix = cv_M1.clone();
-    const auto bounds = detail::rectifiedBounds(imageSize, cv_M1, cv_d1, cv_R1, {alignWidth, alignHeight}, cv_M2, cv_R2, logger.get());
+    const auto bounds = detail::rectifiedBounds(imageSize, cv_M1, cv_d1, cv_R1, {alignWidth, alignHeight}, cv_M2, cv_R2);
     auto rectifiedSize = bounds.size();
     if(inputFrameType == ImgFrame::Type::NV12 || inputFrameType == ImgFrame::Type::YUV420p) {
         rectifiedSize.width += rectifiedSize.width % 2;
