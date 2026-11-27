@@ -50,10 +50,12 @@ bool isIdentityIntrinsics(const std::array<std::array<float, 3>, 3>& matrix, flo
     return true;
 }
 
-// The focal lengths are negative in frames that the camera flips or mirrors (Camera image orientation)
-bool hasValidIntrinsics(const std::array<std::array<float, 3>, 3>& matrix) {
-    return !isIdentityIntrinsics(matrix) && std::isfinite(matrix[0][0]) && std::isfinite(matrix[1][1]) && matrix[0][0] != 0.0f && matrix[1][1] != 0.0f
-           && std::isfinite(matrix[2][2]) && matrix[2][2] != 0.0f;
+// Calibrated: the source intrinsics aren't the identity placeholder of a frame without calibration. A flip changes only the
+// frame's intrinsics, whose focal lengths are then negative (Camera image orientation).
+bool hasValidIntrinsics(const ImgTransformation& transformation) {
+    const auto matrix = transformation.getIntrinsicMatrix();
+    return !isIdentityIntrinsics(transformation.getSourceIntrinsicMatrix()) && std::isfinite(matrix[0][0]) && std::isfinite(matrix[1][1])
+           && matrix[0][0] != 0.0f && matrix[1][1] != 0.0f && std::isfinite(matrix[2][2]) && matrix[2][2] != 0.0f;
 }
 
 cv::Mat vecToCvMat(int rows, int cols, int type, const std::vector<float>& orig) {
@@ -429,8 +431,7 @@ void ImageAlign::run() {
                 inputAlignToImg = inputAlignTo.get<ImgFrame>();
             }
 
-            if(!hasValidIntrinsics(inputImg->transformation.getIntrinsicMatrix())
-               || !hasValidIntrinsics(inputAlignToImg->transformation.getIntrinsicMatrix())) {
+            if(!hasValidIntrinsics(inputImg->transformation) || !hasValidIntrinsics(inputAlignToImg->transformation)) {
                 throw std::runtime_error("ImageAlign requires valid intrinsics on both input and inputAlignTo frames.");
             }
 
