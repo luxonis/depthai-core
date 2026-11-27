@@ -308,8 +308,10 @@ void SpatialDetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, 
 
 void SpatialDetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getModelType() == model::ModelType::DLC || nnArchive.getModelType() == model::ModelType::OTHER, "NNArchive type is not DLC or OTHER");
-    detectionParser->setNNArchive(nnArchive);
+    // The network rejects an archive before it changes anything, so set it first:
+    // a rejected archive then leaves the parser unchanged too.
     neuralNetwork->setNNArchive(nnArchive);
+    detectionParser->setNNArchive(nnArchive);
 }
 
 void SpatialDetectionNetwork::setBlobPath(const std::filesystem::path& path) {

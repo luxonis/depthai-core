@@ -13,7 +13,9 @@
 
 #include "../../../../src/nn_archive/v1/Generators.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
+#include "depthai/pipeline/node/DetectionNetwork.hpp"
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
+#include "depthai/pipeline/node/SpatialDetectionNetwork.hpp"
 
 namespace {
 using Catch::Matchers::ContainsSubstring;
@@ -217,6 +219,44 @@ TEST_CASE("A UDO package needs a DSP implementation") {
     REQUIRE_FALSE(network->getNNArchive().has_value());
     REQUIRE(assetKeys(*network) == std::set<std::string>{"__model"});
     REQUIRE(network->getAssetManager().get("__model")->getData() == std::vector<uint8_t>{1, 2, 3});
+}
+
+TEST_CASE("Detection networks keep their parser settings when the network rejects an archive") {
+    const auto detectionConfig = [](const std::vector<std::string>& classes, double threshold, const json& runtimeDependencies) {
+        auto metadata = config(runtimeDependencies);
+        metadata["model"]["heads"] = {
+            {{"parser", "SSD"},
+             {"metadata", {{"classes", classes}, {"n_classes", classes.size()}, {"conf_threshold", threshold}, {"iou_threshold", threshold}}}}};
+        return metadata;
+    };
+    ArchiveFixture acceptedFixture(detectionConfig({"person"}, 0.25, dependencies()));
+    acceptedFixture.addLibraries();
+    acceptedFixture.close();
+    const dai::NNArchive accepted(acceptedFixture.path);
+
+    auto withoutDsp = dependencies();
+    withoutDsp["snpe_udo"][0]["implementations"] = {{{"runtime", "cpu"}, {"path", CPU_IMPLEMENTATION}}};
+    ArchiveFixture rejectedFixture(detectionConfig({"car", "bus"}, 0.75, withoutDsp));
+    rejectedFixture.add(REGISTRATION, "registration");
+    rejectedFixture.add(CPU_IMPLEMENTATION, "cpu implementation");
+    rejectedFixture.close();
+    const dai::NNArchive rejected(rejectedFixture.path);
+
+    const auto check = [&](const auto& network) {
+        network->setNNArchive(accepted);
+        REQUIRE_THROWS_WITH(network->setNNArchive(rejected), ContainsSubstring("has no implementation for the SNPE DSP runtime"));
+        // The parser must not keep the classes and thresholds of the rejected archive.
+        REQUIRE(network->getClasses().value_or(std::vector<std::string>{}) == std::vector<std::string>{"person"});
+        REQUIRE(network->getConfidenceThreshold() == 0.25f);
+        REQUIRE(network->detectionParser->getIouThreshold() == 0.25f);
+        REQUIRE(network->neuralNetwork->properties.udoPackages.size() == 1);
+    };
+    SECTION("DetectionNetwork") {
+        check(dai::node::DetectionNetwork::create(std::shared_ptr<dai::Device>{}));
+    }
+    SECTION("SpatialDetectionNetwork") {
+        check(dai::node::SpatialDetectionNetwork::create(std::shared_ptr<dai::Device>{}));
+    }
 }
 
 TEST_CASE("The DSP runtime name is case-insensitive") {

@@ -37,6 +37,21 @@ std::vector<uint8_t> unloadableElf(bool dsp) {
     return bytes;
 }
 
+// A library cut short: its program segment ends after the file does. The device
+// rejects it before dlopen, which crashes with SIGBUS on a real library cut short.
+std::vector<uint8_t> truncatedElf(bool dsp) {
+    auto bytes = unloadableElf(dsp);
+    const auto headerSize = bytes.size();
+    const std::size_t entrySize = dsp ? 32 : 56;
+    bytes.resize(headerSize + entrySize);
+    bytes[dsp ? 28 : 32] = static_cast<uint8_t>(headerSize);  // e_phoff
+    bytes[dsp ? 42 : 54] = static_cast<uint8_t>(entrySize);   // e_phentsize
+    bytes[dsp ? 44 : 56] = 1;                                 // e_phnum
+    bytes[headerSize] = 1;                                    // p_type PT_LOAD, p_offset 0
+    bytes[headerSize + (dsp ? 16 : 32) + 1] = 0x10;           // p_filesz 4 KiB
+    return bytes;
+}
+
 // Writes an RVC4 NNArchive whose DLC and UDO libraries are placeholders. Each
 // "dsp" implementation is a Hexagon library, or an AArch64 one if requested.
 std::filesystem::path writeUdoArchive(const std::map<std::string, bool>& implementationIsAarch64) {
@@ -210,6 +225,12 @@ TEST_CASE("RVC4 NNArchive UDO libraries reach SNPE registration", "[rvc4][udo]")
         implementations = {{"runtime/libStereoDepthDsp_skel.so", false}};
         expectedError = "conflicts with the device library";
     }
+    SECTION("name of an OS DSP library in a cdsp subdirectory") {
+        // The OS ships the Hexagon C++ runtime as /dsp/cdsp/libc++.so.1. fastrpc
+        // searches the cdsp subdirectory of each DSP search path directory first.
+        implementations = {{"runtime/libc++.so.1", false}};
+        expectedError = "conflicts with the device library /dsp/cdsp/libc++.so.1";
+    }
     const auto archivePath = writeUdoArchive(implementations);
     const dai::NNArchive archive(archivePath);
     std::filesystem::remove(archivePath);
@@ -251,9 +272,20 @@ TEST_CASE("RVC4 NNArchive UDO errors identify invalid runtime assets", "[rvc4][u
         network->properties.udoLibraryUris["libReg.so"] = library->getRelativeUri();
         expectedError = "not a compatible AArch64 ELF shared library";
     }
-    const auto setLibrary = [&](const std::string& path, bool hexagon) {
-        network->properties.udoLibraryUris[path] = network->getAssetManager().set(path, unloadableElf(hexagon))->getRelativeUri();
+    const auto setLibrary = [&](const std::string& path, bool hexagon, bool truncated = false) {
+        const auto bytes = truncated ? truncatedElf(hexagon) : unloadableElf(hexagon);
+        network->properties.udoLibraryUris[path] = network->getAssetManager().set(path, bytes)->getRelativeUri();
     };
+    SECTION("truncated registration library") {
+        setLibrary("libReg.so", false, true);
+        setLibrary("libImpl.so", true);
+        expectedError = "NNArchive UDO library libReg.so is truncated or damaged";
+    }
+    SECTION("truncated DSP library") {
+        setLibrary("libReg.so", false);
+        setLibrary("libImpl.so", true, true);
+        expectedError = "NNArchive UDO library libImpl.so is truncated or damaged";
+    }
     SECTION("AArch64 DSP library without the _AltPrep name") {
         setLibrary("libReg.so", false);
         setLibrary("libImpl.so", false);

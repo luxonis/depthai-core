@@ -175,8 +175,10 @@ void DetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int num
 }
 
 void DetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
-    detectionParser->setNNArchive(nnArchive);
+    // The network rejects an archive before it changes anything, so set it first:
+    // a rejected archive then leaves the parser unchanged too.
     neuralNetwork->setNNArchive(nnArchive);
+    detectionParser->setNNArchive(nnArchive);
 }
 
 void DetectionNetwork::setBlobPath(const std::filesystem::path& path) {

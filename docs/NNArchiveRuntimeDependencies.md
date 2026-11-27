@@ -79,9 +79,11 @@ The libraries must match the device's SNPE SDK version. Qualcomm requires DSP
 V68 and later UDOs to use the same SNPE release they were compiled against; see
 [Qualcomm's UDO compatibility documentation](https://docs.qualcomm.com/nav/home/udo_overview.html?product=924033590759186372).
 The device checks that the registration and `_AltPrep` libraries are AArch64
-ELF shared objects and that the other DSP implementations are Hexagon ones.
-SNPE reports other incompatibilities when it registers the package or builds
-the network.
+ELF shared objects and that the other DSP implementations are Hexagon ones. It
+also checks that each library file contains all its ELF program segments, so a
+truncated or damaged library fails with "is truncated or damaged" instead of
+crashing the device. SNPE reports other incompatibilities when it registers
+the package or builds the network.
 
 ## Library names and lifetime
 
@@ -98,9 +100,13 @@ prefixing the model name. Different libraries with the same file name fail:
 - in two archives used in one session, the second network fails with
   "Conflicting NNArchive UDO library name";
 - if the device already has a different library with that name on its DSP
-  search path, such as a firmware, SNPE or LENS library, or on
-  `LD_LIBRARY_PATH` for an `_AltPrep` library, the network fails with
-  "conflicts with the device library". Identical copies are allowed.
+  search path, such as a firmware, SNPE, LENS or OS library (for example
+  `/dsp/cdsp/libc++.so.1`), or on `LD_LIBRARY_PATH` for an `_AltPrep`
+  library, the network fails with "conflicts with the device library".
+  Identical copies are allowed. The DSP search path is every
+  `ADSP_LIBRARY_PATH` directory and the default directories `/usr/lib/rfsa/adsp`
+  and `/dsp`, each with its `cdsp` subdirectory, and the firmware's working
+  directory.
 
 The UDO package name declared inside the registration library must also be
 unique. SNPE cannot register two different registration libraries that declare
