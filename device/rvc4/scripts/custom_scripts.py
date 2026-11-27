@@ -131,7 +131,31 @@ def on_start():
     if led_matches(DEFAULT_LED, current_led):
         turn_on_led(*GREEN_LED)
 
-    return shell_source(str(current_dir / './env_set.sh'))
+    env = shell_source(str(current_dir / './env_set.sh'))
+    add_udo_prepare_directory(env)
+    return env
+
+
+def add_udo_prepare_directory(env):
+    """Create an empty directory for NNArchive UDO online-prepare libraries and add it to LD_LIBRARY_PATH.
+
+    SNPE loads the AArch64 "<DSP library>_AltPrep.so" of a UDO package through the
+    dynamic loader, which reads LD_LIBRARY_PATH only when the firmware starts. The
+    firmware stages those libraries here (UdoRuntime.hpp); on_destroy.sh removes it.
+    """
+    import shutil
+
+    prepare_dir = current_dir.parent / '.depthai-udo-prepare'
+    try:
+        # Libraries of an earlier session that ended without on_destroy.
+        shutil.rmtree(prepare_dir, ignore_errors=True)
+        prepare_dir.mkdir(mode=0o700)
+    except OSError as e:
+        # The firmware reports the missing directory if an archive needs it.
+        print(f"Cannot create {prepare_dir}: {e}")
+        return
+    library_path = env.get('LD_LIBRARY_PATH', '')
+    env['LD_LIBRARY_PATH'] = f"{library_path}:{prepare_dir}" if library_path else str(prepare_dir)
 
 
 def on_stop():

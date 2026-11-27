@@ -40,6 +40,7 @@
 // libraries
 #include "XLink/XLink.h"
 #include "pipeline/node/NeuralNetwork/NeuralNetwork.hpp"
+#include "pipeline/node/NeuralNetwork/rvc4/UdoRuntime.hpp"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
 
@@ -909,6 +910,9 @@ int main(int argc, char** args) {
             std::cout << "Set ADSP_LIBRARY_PATH to: " << appParentFolderFullPath << '\n';
         }
     }
+    // Add the NNArchive UDO staging directory to ADSP_LIBRARY_PATH next to the
+    // setenv above: before any pipeline is built, so no DSP session exists yet.
+    dai::gate::UdoRuntime::get();
 
     printf("=== DepthAI Device RVC4 ===\n");
 

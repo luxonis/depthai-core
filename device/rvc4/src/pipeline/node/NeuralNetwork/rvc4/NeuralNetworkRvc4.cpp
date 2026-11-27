@@ -18,7 +18,6 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
-#include <unordered_set>
 #include <variant>
 
 // shared
@@ -28,6 +27,7 @@
 #include "DlSystem/UserBufferMap.hpp"
 #include "SNPE/SNPEFactory.hpp"
 #include "SNPE/SNPEUtil.h"
+#include "UdoRuntime.hpp"
 #include "depthai/common/TensorInfo.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -173,20 +173,9 @@ void registerModelUdoPackage(const std::string& modelPath) {
             throw std::runtime_error("Missing LENS UDO library for " + modelPath + ": " + path.string());
         }
     }
-    const auto registrationPath = package->registration.string();
-
     // SNPE packages are process-wide, even when different NN nodes select them.
-    // Retain successful registrations if a later package fails and is retried.
-    static std::mutex registrationMutex;
-    static std::unordered_set<std::string> registeredPaths;
-    std::lock_guard<std::mutex> lock(registrationMutex);
-    if(registeredPaths.count(registrationPath) != 0) return;
-
-    if(!Snpe_Util_AddOpPackage(registrationPath.c_str())) {
-        const char* error = Snpe_Util_GetLastError();
-        throw std::runtime_error("Could not register UDO package " + registrationPath + ": " + (error ? error : "Unknown SNPE error"));
-    }
-    registeredPaths.insert(registrationPath);
+    // Share the registry with NNArchive packages, which may bundle the same package.
+    dai::gate::UdoRuntime::get().registerSystemPackage(package->registration);
 }
 
 }  // namespace
@@ -412,6 +401,18 @@ void NeuralNetwork::buildStage1() {
         throw std::runtime_error("No model data loaded.");
     }
     registerModelUdoPackage(selectedModelPath);
+    if(!properties.udoPackages.empty()) {
+        // SNPEBackendBuild runs unknown runtime names on the DSP too.
+        const auto configuredRuntime = properties.backendProperties.find("runtime");
+        if(configuredRuntime != properties.backendProperties.end()) {
+            const auto selected = zdl::DlSystem::RuntimeList::stringToRuntime(configuredRuntime->second.c_str());
+            if(selected != zdl::DlSystem::Runtime_t::DSP && selected != zdl::DlSystem::Runtime_t::UNSET) {
+                throw std::runtime_error("NNArchive UDOs support only the SNPE DSP runtime, not " + configuredRuntime->second);
+            }
+        }
+        UdoRuntime::get().registerArchivePackages(
+            properties.udoPackages, properties.udoLibraryUris, [this](const std::string& uri) { return loadResource(uri); });
+    }
     if(modelDataView != nullptr) {
         SNPEBackendBuild(modelDataView, modelDataViewSize);
     } else {
@@ -426,8 +427,10 @@ void NeuralNetwork::buildStage1() {
     for(int i = 0; i < numInferenceThreads; i++) {
         models.push_back(setBuilderOptions(container, runtime, runtimeList, performanceProfile, executionPriorityHint, true, platformConfig, false, false));
         if(!models.back()) {
-            logger->error("Couldn't build the model.");
-            return;
+            const auto lastError = Snpe_Util_GetLastError();
+            const std::string error = lastError && *lastError ? lastError : "SNPE gave no reason";
+            throw std::runtime_error("Could not build SNPE model (check DLC/UDO compatibility with SNPE "
+                                     + zdl::SNPE::SNPEFactory::getLibraryVersion().toString() + "): " + error);
         }
     }
 
@@ -1499,7 +1502,7 @@ void NeuralNetwork::SNPEBackendBuild(const uint8_t* modelData, std::size_t model
         }
     } catch(const std::exception& ex) {
         logger->info("Crash exception: {}", ex.what());
-        abort();
+        throw;
     }
 }
 
