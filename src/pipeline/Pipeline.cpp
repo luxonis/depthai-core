@@ -43,7 +43,6 @@
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
-#include <limits>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -225,19 +224,6 @@ bool hasDifferentDistortion(const CalibrationHandler& lhs, const CalibrationHand
     return false;
 }
 #endif
-
-void keepRecordStatusFromBlocking(const std::vector<std::shared_ptr<Node>>& nodes) {
-    constexpr unsigned int noBackpressure = std::numeric_limits<unsigned int>::max();
-    for(const auto& node : nodes) {
-        const auto record = std::dynamic_pointer_cast<node::RecordVideo>(node);
-        if(record == nullptr) continue;
-        for(const auto& connection : record->status.getQueueConnections()) {
-            const auto& statusQueue = connection.queue;
-            if(statusQueue == nullptr || !statusQueue->getBlocking()) continue;
-            if(statusQueue->getMaxSize() < noBackpressure) statusQueue->setMaxSize(noBackpressure);
-        }
-    }
-}
 
 }  // namespace
 
@@ -1973,8 +1959,6 @@ void PipelineImpl::start() {
         onDeviceStateChanged(device.get(), DeviceState::FAILED);
     }
 
-    keepRecordStatusFromBlocking(getAllNodes());
-
     // Starts pipeline, go through all nodes and start them
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {
@@ -2466,8 +2450,6 @@ void PipelineImpl::stop() {
     // Wake transports parked waiting for reconnection before joining them.
     disconnectXLinkHosts();
 
-    keepRecordStatusFromBlocking(getAllNodes());
-
     // Stops the pipeline execution. A node that fails to stop is logged and skipped: the other nodes,
     // the queues and the devices below must still be stopped, or run() and wait() never return
     for(const auto& node : getAllNodes()) {
@@ -2482,8 +2464,31 @@ void PipelineImpl::stop() {
         }
     }
 
+    // The user's max size stays. One slot releases a status send already blocked in push.
+    // The second releases the final STOPPED or ERROR from onPipelineStop(). connectedInputs
+    // includes a Node::Input linked to status, not only queues from getQueueConnections().
+    constexpr unsigned statusOverflowSends = 2;
+    for(const auto& node : getAllNodes()) {
+        const auto record = std::dynamic_pointer_cast<node::RecordVideo>(node);
+        if(record == nullptr || !record->runOnHost()) continue;
+        for(MessageQueue* statusQueue : record->status.connectedInputs) {
+            if(statusQueue == nullptr || !statusQueue->getBlocking()) continue;
+            for(unsigned slot = 0; slot < statusOverflowSends; ++slot) {
+                statusQueue->allowOneOverflow();
+            }
+        }
+    }
+
     // Record threads close files and publish the final status before output queues close.
     waitForRecordNodes();
+    for(const auto& node : getAllNodes()) {
+        const auto record = std::dynamic_pointer_cast<node::RecordVideo>(node);
+        if(record == nullptr || !record->runOnHost()) continue;
+        for(MessageQueue* statusQueue : record->status.connectedInputs) {
+            if(statusQueue == nullptr) continue;
+            statusQueue->clearOverflow();
+        }
+    }
     utility::PipelineImplHelper::packHolisticRecording(this);
 
     for(auto& queue : outputQueues) {

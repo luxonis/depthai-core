@@ -63,6 +63,14 @@ void MessageQueue::setMaxSize(unsigned int maxSize) {
     queue.setMaxSize(maxSize);
 }
 
+void MessageQueue::allowOneOverflow() {
+    queue.allowOneOverflow();
+}
+
+void MessageQueue::clearOverflow() {
+    queue.clearOverflow();
+}
+
 unsigned int MessageQueue::getMaxSize() const {
     return queue.getMaxSize();
 }

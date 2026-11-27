@@ -28,13 +28,16 @@ class LockingQueue {
         this->maxSize = maxSize;
         this->blocking = blocking;
     }
-    LockingQueue(const LockingQueue& obj) : maxSize(obj.maxSize), blocking(obj.blocking), queue(obj.queue), destructed(obj.destructed){};
-    LockingQueue(LockingQueue&& obj) noexcept : maxSize(obj.maxSize), blocking(obj.blocking), queue(std::move(obj.queue)), destructed(obj.destructed){};
+    LockingQueue(const LockingQueue& obj)
+        : maxSize(obj.maxSize), blocking(obj.blocking), queue(obj.queue), destructed(obj.destructed), overflowSlots(obj.overflowSlots){};
+    LockingQueue(LockingQueue&& obj) noexcept
+        : maxSize(obj.maxSize), blocking(obj.blocking), queue(std::move(obj.queue)), destructed(obj.destructed), overflowSlots(obj.overflowSlots){};
     LockingQueue& operator=(const LockingQueue& obj) {
         maxSize = obj.maxSize;
         blocking = obj.blocking;
         queue = obj.queue;
         destructed = obj.destructed;
+        overflowSlots = obj.overflowSlots;
         return *this;
     }
     LockingQueue& operator=(LockingQueue&& obj) noexcept {
@@ -42,6 +45,7 @@ class LockingQueue {
         blocking = obj.blocking;
         queue = std::move(obj.queue);
         destructed = obj.destructed;
+        overflowSlots = obj.overflowSlots;
         return *this;
     }
 
@@ -81,6 +85,18 @@ class LockingQueue {
         // Lock first
         std::unique_lock<std::mutex> lock(guard);
         return blocking;
+    }
+
+    // Let one later push enqueue while size >= maxSize. maxSize itself is unchanged.
+    void allowOneOverflow() {
+        std::unique_lock<std::mutex> lock(guard);
+        ++overflowSlots;
+        signalPop.notify_all();
+    }
+
+    void clearOverflow() {
+        std::unique_lock<std::mutex> lock(guard);
+        overflowSlots = 0;
     }
 
     void destruct() {
@@ -163,23 +179,19 @@ class LockingQueue {
                 }
                 return true;
             }
-            if(!blocking) {
-                // if non blocking, remove as many oldest elements as necessary, so next one will fit
-                // necessary if maxSize was changed
-                while(queue.size() >= maxSize) {
-                    queue.pop();
-                }
-            } else {
-                if(queue.size() >= maxSize) {
-                    callback(LockingQueueState::BLOCKED, queue.size());
-                }
-                signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed || !blocking; });
-                if(destructed) return false;
-                if(!blocking) {
-                    while(queue.size() >= maxSize) {
-                        queue.pop();
-                    }
-                }
+            if(blocking && queue.size() >= maxSize) {
+                callback(LockingQueueState::BLOCKED, queue.size());
+            }
+            bool cancelled = false;
+            if(!preparePush(
+                   lock,
+                   [this](std::unique_lock<std::mutex>& held) {
+                       signalPop.wait(held, [this]() { return queue.size() < maxSize || destructed || !blocking || overflowSlots > 0; });
+                       return true;
+                   },
+                   cancelled)) {
+                if(cancelled) callback(LockingQueueState::CANCELLED, queue.size());
+                return false;
             }
 
             queue.push(data);
@@ -201,23 +213,19 @@ class LockingQueue {
                 }
                 return true;
             }
-            if(!blocking) {
-                // if non blocking, remove as many oldest elements as necessary, so next one will fit
-                // necessary if maxSize was changed
-                while(queue.size() >= maxSize) {
-                    queue.pop();
-                }
-            } else {
-                if(queue.size() >= maxSize) {
-                    callback(LockingQueueState::BLOCKED, queue.size());
-                }
-                signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed || !blocking; });
-                if(destructed) return false;
-                if(!blocking) {
-                    while(queue.size() >= maxSize) {
-                        queue.pop();
-                    }
-                }
+            if(blocking && queue.size() >= maxSize) {
+                callback(LockingQueueState::BLOCKED, queue.size());
+            }
+            bool cancelled = false;
+            if(!preparePush(
+                   lock,
+                   [this](std::unique_lock<std::mutex>& held) {
+                       signalPop.wait(held, [this]() { return queue.size() < maxSize || destructed || !blocking || overflowSlots > 0; });
+                       return true;
+                   },
+                   cancelled)) {
+                if(cancelled) callback(LockingQueueState::CANCELLED, queue.size());
+                return false;
             }
 
             queue.push(std::move(data));
@@ -241,28 +249,19 @@ class LockingQueue {
                 }
                 return true;
             }
-            if(!blocking) {
-                // if non blocking, remove as many oldest elements as necessary, so next one will fit
-                // necessary if maxSize was changed
-                while(queue.size() >= maxSize) {
-                    queue.pop();
-                }
-            } else {
-                if(queue.size() >= maxSize) {
-                    callback(LockingQueueState::BLOCKED, queue.size());
-                }
-                // First checks predicate, then waits
-                bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed || !blocking; });
-                if(!pred) {
-                    callback(LockingQueueState::CANCELLED, queue.size());
-                }
-                if(!pred) return false;
-                if(destructed) return false;
-                if(!blocking) {
-                    while(queue.size() >= maxSize) {
-                        queue.pop();
-                    }
-                }
+            if(blocking && queue.size() >= maxSize) {
+                callback(LockingQueueState::BLOCKED, queue.size());
+            }
+            bool cancelled = false;
+            const auto deadline = std::chrono::steady_clock::now() + timeout;
+            if(!preparePush(
+                   lock,
+                   [this, deadline](std::unique_lock<std::mutex>& held) {
+                       return signalPop.wait_until(held, deadline, [this]() { return queue.size() < maxSize || destructed || !blocking || overflowSlots > 0; });
+                   },
+                   cancelled)) {
+                if(cancelled) callback(LockingQueueState::CANCELLED, queue.size());
+                return false;
             }
 
             queue.push(data);
@@ -286,28 +285,19 @@ class LockingQueue {
                 }
                 return true;
             }
-            if(!blocking) {
-                // if non blocking, remove as many oldest elements as necessary, so next one will fit
-                // necessary if maxSize was changed
-                while(queue.size() >= maxSize) {
-                    queue.pop();
-                }
-            } else {
-                // First checks predicate, then waits
-                if(queue.size() >= maxSize) {
-                    callback(LockingQueueState::BLOCKED, queue.size());
-                }
-                bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed || !blocking; });
-                if(!pred) {
-                    callback(LockingQueueState::CANCELLED, queue.size());
-                }
-                if(!pred) return false;
-                if(destructed) return false;
-                if(!blocking) {
-                    while(queue.size() >= maxSize) {
-                        queue.pop();
-                    }
-                }
+            if(blocking && queue.size() >= maxSize) {
+                callback(LockingQueueState::BLOCKED, queue.size());
+            }
+            bool cancelled = false;
+            const auto deadline = std::chrono::steady_clock::now() + timeout;
+            if(!preparePush(
+                   lock,
+                   [this, deadline](std::unique_lock<std::mutex>& held) {
+                       return signalPop.wait_until(held, deadline, [this]() { return queue.size() < maxSize || destructed || !blocking || overflowSlots > 0; });
+                   },
+                   cancelled)) {
+                if(cancelled) callback(LockingQueueState::CANCELLED, queue.size());
+                return false;
             }
 
             queue.push(std::move(data));
@@ -383,6 +373,33 @@ class LockingQueue {
     }
 
    private:
+    // Caller holds guard. Returns false when the queue is destroyed or the wait times out.
+    // A true return means one element may be enqueued. One overflow slot is consumed only
+    // when the queue is still blocking and already at maxSize.
+    template <typename WaitFn>
+    bool preparePush(std::unique_lock<std::mutex>& lock, WaitFn waitFn, bool& cancelled) {
+        cancelled = false;
+        while(true) {
+            if(destructed) return false;
+            if(!blocking) {
+                while(queue.size() >= maxSize) {
+                    queue.pop();
+                }
+                return true;
+            }
+            if(queue.size() < maxSize) return true;
+            if(overflowSlots > 0) {
+                --overflowSlots;
+                return true;
+            }
+            if(!waitFn(lock)) {
+                if(destructed || !blocking || queue.size() < maxSize || overflowSlots > 0) continue;
+                cancelled = true;
+                return false;
+            }
+        }
+    }
+
     unsigned maxSize = std::numeric_limits<unsigned>::max();
     bool blocking = true;
     std::queue<T> queue;
@@ -390,6 +407,7 @@ class LockingQueue {
     bool destructed{false};
     std::condition_variable signalPop;
     std::condition_variable signalPush;
+    unsigned overflowSlots{0};
 };
 
 }  // namespace dai

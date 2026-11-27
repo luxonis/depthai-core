@@ -15,6 +15,8 @@
 // shared
 namespace dai {
 
+class PipelineImpl;
+
 /**
  * Thread safe queue to send messages between nodes
  */
@@ -44,6 +46,11 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     CallbackId uniqueCallbackId{0};
 
    private:
+    friend class PipelineImpl;
+    // One push may enqueue while the queue is already at maxSize. The user's max size stays.
+    void allowOneOverflow();
+    void clearOverflow();
+
     void callCallbacks(const std::shared_ptr<ADatatype>& msg);
     void notifyListeners();
     utility::PipelineEventDispatcherInterface* pipelineEventDispatcher = nullptr;
