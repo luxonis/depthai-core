@@ -44,8 +44,8 @@ extern "C" {
 #include "depthai/pipeline/node/ToF.hpp"
 #include "depthai/properties/CameraProperties.hpp"
 #include "luxonis_sidechannel_data.h"
-#include "pipeline/MultiDeviceCalibrationStore.hpp"
 #include "pipeline/NodeTiming.hpp"
+#include "pipeline/MultiDeviceCalibrationStore.hpp"
 #include "utilities/AcceleratorMemory.hpp"
 #include "utilities/CameraDiscovery.hpp"
 #include "utilities/ClockOffset.hpp"
@@ -585,11 +585,11 @@ Camera::SensorConfig Camera::decideSensorConfig() {
     if(requestedFps > 0.0f) {
         modes = filterByFps(modes, requestedFps);
     }
-    // Find which sensor mode can satisfy us. We prefer bigger because sensor scaling is worse then ISP scaling - That is why we sorted modes by area.
+    // Find which sensor mode can satisfy us. We prefer bigger because sensor scaling is worse then IPE scaling - That is why we sorted modes by area.
     // Our other preferences by priority are:
     // - never upscale !!!
     // - fullFOV, so we see it all
-    // - cheap on the ISP image processing instances (area <= 5000 * 4000) // TODO(jakgra) get their cost per sensor mode to be more exact here
+    // - cheap on IPE instances (area <= 5000 * 4000) // TODO(jakgra) get IPE (spectra / titan HW) cost per sensor mode to be more exact here
     // - fallback on non fullFOV is allowed
     auto lowestSatisfyingSensorSize = getLowestSatisfyingSensorSize();
     enum Condition {
@@ -1337,7 +1337,7 @@ void Camera::buildStage2() {
                     logger->info("Falling back to hardcoded FSYNC pin.");
                 } else {
                     logger->error("Could not get the FSYNC pin for socket " + toString(properties.boardSocket)
-                                  + ". Check the camera device tree and the camera HAL configuration.");
+                                  + ". Check camera device tree and camx camera configuration.");
                     logger->warn("Falling back to hardcoded FSYNC pin.");
                 }
             }
