@@ -106,13 +106,13 @@ class ThermalConfig : public Buffer {
         /// Constant added to every pixel of the temperature output, in degrees Celsius.
         std::optional<float> temperatureOffset;
         DEPTHAI_SERIALIZE_DECL(ThermalAmbientParams,
-                          distance,
-                          reflectionTemperature,
-                          atmosphericTemperature,
-                          targetEmissivity,
-                          atmosphericTransmittance,
-                          gainMode,
-                          temperatureOffset);
+                               distance,
+                               reflectionTemperature,
+                               atmosphericTemperature,
+                               targetEmissivity,
+                               atmosphericTransmittance,
+                               gainMode,
+                               temperatureOffset);
     };
 
     struct ThermalFFCParams {
@@ -150,16 +150,16 @@ class ThermalConfig : public Buffer {
         std::optional<bool> triggerFFC;
 
         DEPTHAI_SERIALIZE_DECL(ThermalFFCParams,
-                          autoFFC,
-                          minFFCInterval,
-                          maxFFCInterval,
-                          autoFFCTempThreshold,
-                          fallProtection,
-                          minShutterInterval,
-                          closeManualShutter,
-                          antiFallProtectionThresholdHighGainMode,
-                          antiFallProtectionThresholdLowGainMode,
-                          triggerFFC);
+                               autoFFC,
+                               minFFCInterval,
+                               maxFFCInterval,
+                               autoFFCTempThreshold,
+                               fallProtection,
+                               minShutterInterval,
+                               closeManualShutter,
+                               antiFallProtectionThresholdHighGainMode,
+                               antiFallProtectionThresholdLowGainMode,
+                               triggerFFC);
     };
 
     struct ThermalImageParams {
@@ -190,15 +190,15 @@ class ThermalConfig : public Buffer {
         /// Image processing pipeline.
         std::optional<ThermalPipelineMode> pipelineMode;
         DEPTHAI_SERIALIZE_DECL(ThermalImageParams,
-                          timeNoiseFilterLevel,
-                          spatialNoiseFilterLevel,
-                          digitalDetailEnhanceLevel,
-                          brightnessLevel,
-                          contrastLevel,
-                          orientation,
-                          colorPalette,
-                          gradientCorrection,
-                          pipelineMode);
+                               timeNoiseFilterLevel,
+                               spatialNoiseFilterLevel,
+                               digitalDetailEnhanceLevel,
+                               brightnessLevel,
+                               contrastLevel,
+                               orientation,
+                               colorPalette,
+                               gradientCorrection,
+                               pipelineMode);
     };
 
     /**
@@ -238,17 +238,17 @@ class ThermalConfig : public Buffer {
         /// Histogram region of interest, in pixels or normalized to the output size.
         std::optional<Rect> roi;
         DEPTHAI_SERIALIZE_DECL(ThermalHistEqParams,
-                          plateau,
-                          plateauRedistributionMode,
-                          gainLimit,
-                          gainLimitFactorMode,
-                          gainLimitFactorYMin,
-                          gainLimitFactorXMax,
-                          alphaTimeSeconds,
-                          trimLeft,
-                          trimRight,
-                          roiEnable,
-                          roi);
+                               plateau,
+                               plateauRedistributionMode,
+                               gainLimit,
+                               gainLimitFactorMode,
+                               gainLimitFactorYMin,
+                               gainLimitFactorXMax,
+                               alphaTimeSeconds,
+                               trimLeft,
+                               trimRight,
+                               roiEnable,
+                               roi);
     };
 
     /**
