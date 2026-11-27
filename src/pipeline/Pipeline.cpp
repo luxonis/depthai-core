@@ -11,6 +11,7 @@
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/pipeline/node/AutoCalibration.hpp"
 #endif
+#include "depthai/pipeline/node/IMU.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
@@ -1756,13 +1757,25 @@ void PipelineImpl::start() {
     }
     // Add pointer to the pipeline to every device before device-side startup, so that a
     // disconnect during another device's (slow) startup still finds the pipeline for
-    // reconnection. Device-side telemetry gets a copy of the pipeline telemetry ID: it runs on
-    // device threads, which must not own the pipeline.
+    // reconnection. Device-side telemetry gets a copy of the pipeline telemetry ID and of the
+    // device's IMU node config: it runs on device threads, which must not own the pipeline.
     {
         const auto weak = std::weak_ptr<PipelineImpl>(shared_from_this());
         for(const auto& device : pipelineDevices) {
             device->pipelinePtr = weak;
-            device->setActiveTelemetryPipelineId(telemetryPipelineId);
+            auto imuNode = nlohmann::json::object();
+            for(const auto& node : getAllNodes()) {
+                const auto imu = std::dynamic_pointer_cast<node::IMU>(node);
+                if(imu && imu->getDevice() == device) {
+                    std::vector<int> sensorIds;
+                    for(const auto& sensor : imu->properties.imuSensors) {
+                        sensorIds.push_back(static_cast<int>(sensor.sensorId));
+                    }
+                    imuNode = {
+                        {"node_id", imu->id}, {"enable_firmware_update", imu->properties.enableFirmwareUpdate.value_or(false)}, {"sensor_ids", sensorIds}};
+                }
+            }
+            device->setActiveTelemetryPipeline(telemetryPipelineId, std::move(imuNode));
         }
     }
 

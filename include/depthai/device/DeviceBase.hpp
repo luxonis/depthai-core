@@ -1426,8 +1426,9 @@ class DeviceBase {
     // Reconnection attempts and pointer to reset connections
     int maxReconnectionAttempts = 1;
     std::weak_ptr<PipelineImpl> pipelinePtr;
-    // Keeps a copy of the telemetry ID of the started pipeline, for getActiveTelemetryPipelineId()
-    void setActiveTelemetryPipelineId(std::string telemetryPipelineId);
+    // Keeps a copy of the telemetry ID of the started pipeline, for getActiveTelemetryPipelineId(), and of
+    // its IMU node on this device, for IMU failure telemetry
+    void setActiveTelemetryPipeline(std::string telemetryPipelineId, nlohmann::json imuNode);
     // Last state reported to the pipeline (RUNNING while connected)
     std::atomic<DeviceState> pipelineDeviceState{DeviceState::RUNNING};
     std::atomic<bool> crashDumpHandled{false};

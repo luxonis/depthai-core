@@ -459,6 +459,7 @@ set(TARGET_CORE_SOURCES
     src/utility/McapImpl.cpp
     src/utility/Compression.cpp
     src/utility/Telemetry.cpp
+    src/utility/ImuFailureTelemetry.cpp
     src/utility/Uuid.cpp
     src/utility/matrixOps.cpp
     src/utility/EepromDataParser.cpp
