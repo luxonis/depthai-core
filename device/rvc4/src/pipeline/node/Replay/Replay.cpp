@@ -181,6 +181,12 @@ std::shared_ptr<ReplayLoopSlot> replayLoopSlot(dai::Node& node) {
     static std::map<const void*, std::weak_ptr<ReplayLoopSlot>> slots;
     const void* key = node.getParentPipeline().impl();
     std::lock_guard<std::mutex> lock(mutex);
+    for(auto sweep = slots.begin(); sweep != slots.end();) {
+        if(sweep->second.expired())
+            sweep = slots.erase(sweep);
+        else
+            ++sweep;
+    }
     const auto it = slots.find(key);
     if(it != slots.end()) {
         if(auto existing = it->second.lock()) return existing;
