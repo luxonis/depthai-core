@@ -1902,6 +1902,20 @@ ExternalFrameSyncRole DeviceBase::getExternalFrameSyncRole() {
     return pimpl->rpcCallChecked<ExternalFrameSyncRole>("getExternalFrameSyncRole");
 }
 
+nlohmann::json DeviceBase::getPeerLinkInfo() {
+    return pimpl->rpcCallChecked<nlohmann::json>("getPeerLinkInfo");
+}
+
+std::string DeviceBase::probePeer(const std::string& host, std::uint16_t port, std::chrono::milliseconds timeout) {
+    // The device waits up to `timeout` for the probe, the RPC itself needs some slack on top
+    const auto rpcTimeout = timeout + std::chrono::milliseconds(2000);
+    return pimpl->rpcCallChecked<std::string>(rpcTimeout, "probePeer", host, port, static_cast<std::uint32_t>(timeout.count()));
+}
+
+void DeviceBase::setPeerLinkEndpoints(const std::string& streamName, const std::vector<std::string>& endpoints) {
+    pimpl->rpcCallCheckedVoid("setPeerLinkEndpoints", streamName, endpoints);
+}
+
 std::tuple<bool, std::string> DeviceBase::setExternalStrobeRelativeLimits(float min, float max) {
     return pimpl->rpcCallChecked<std::tuple<bool, std::string>>("setExternalStrobeRelativeLimits", min, max);
 }

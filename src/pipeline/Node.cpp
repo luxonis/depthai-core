@@ -811,6 +811,10 @@ std::shared_ptr<dai::node::internal::XLinkOutBridge> Node::Output::getXLinkBridg
     return xLinkBridge;
 }
 
+std::vector<std::shared_ptr<dai::node::internal::PeerLinkBridge>> Node::Output::getPeerLinkBridges() const {
+    return peerLinkBridges;
+}
+
 std::shared_ptr<Device> Node::Input::getSourceDevice() const {
     auto pipeline = parent.get().parent.lock();
     if(pipeline == nullptr) {

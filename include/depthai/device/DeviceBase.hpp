@@ -1354,6 +1354,13 @@ class DeviceBase {
     };
     void monitorCallback(std::chrono::milliseconds watchdogTimeout, const PrevInfo& prev);
     void collectAndLogCrashDump(DeviceBase* device = nullptr);
+    // Direct links between devices, used by PipelineImpl::build(). Both throw when the firmware does not support them.
+    // Peer-link listener of this device: protocol version, port, addresses and listener id
+    nlohmann::json getPeerLinkInfo();
+    // Asks this device whether a peer-link listener answers at host:port; returns its listener id, empty when none answers
+    std::string probePeer(const std::string& host, std::uint16_t port, std::chrono::milliseconds timeout);
+    // Gives the PeerLinkIn of the stream on this device new producer endpoints
+    void setPeerLinkEndpoints(const std::string& streamName, const std::vector<std::string>& endpoints);
     void waitForRebootAndCollectCrashDump();
     void waitForGateAndCollectCrashDump();
     CrashDumpRVC2::CrashReportCollection getCrashReportCollectionRVC2(bool clear = true);

@@ -529,6 +529,26 @@ dai_set_test_labels(xlink_in_host_test onhost ci)
 dai_add_test(multi_device_pipeline_test src/onhost_tests/pipeline/multi_device_pipeline_test.cpp)
 dai_set_test_labels(multi_device_pipeline_test onhost)
 
+# Direct device-to-device links: planner, API and properties (host only)
+dai_add_test(cross_device_link_planner_test src/onhost_tests/pipeline/cross_device_link_planner_test.cpp)
+dai_set_test_labels(cross_device_link_planner_test onhost ci)
+
+# Direct device-to-device links: transport over loopback sockets (POSIX only, like the transport)
+if(NOT WIN32)
+    dai_add_test(peer_link_transport_test src/onhost_tests/peerlink/peer_link_transport_test.cpp)
+    dai_set_test_labels(peer_link_transport_test onhost ci)
+
+    # The peer-link nodes in the RVC4 firmware, with the host as the other device. Add 'ci' with the RVC4
+    # firmware that has the nodes.
+    dai_add_test(peer_link_device_test src/ondevice_tests/pipeline/node/peer_link_device_test.cpp)
+    dai_set_test_labels(peer_link_device_test ondevice rvc4 noreplayci)
+endif()
+
+# Links between two devices, direct and relayed (two RVC4 devices, or an RVC2 and an RVC4). Runs on the
+# PTP testbed (three RVC4 devices). Add 'ci' with the RVC4 firmware that has the peer-link nodes.
+dai_add_test(cross_device_link_test src/ondevice_tests/pipeline/cross_device_link_test.cpp)
+dai_set_test_labels(cross_device_link_test ondevice rvc4ptp noreplayci)
+
 # Node::stopPipeline() test (host only)
 dai_add_test(stop_pipeline_test src/onhost_tests/pipeline/stop_pipeline_test.cpp)
 dai_set_test_labels(stop_pipeline_test onhost ci)

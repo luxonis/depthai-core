@@ -77,7 +77,16 @@ camB.requestOutput((640, 400)).link(sync.inputs["b"])
 Key behaviors:
 
 - **Device-to-device links.** Linking an output on device A to an input on device B
-  inserts a host relay automatically at build time.
+  sends the messages directly from A to B when both are RVC4 devices whose firmware
+  supports it and B reaches A over the network (B connects to TCP port 11494 on A).
+  Otherwise the host relays them: it receives every message from A and sends it to B.
+  `pipeline.setCrossDeviceLinkMode(...)` selects `AUTO` (default: direct when possible,
+  relay otherwise), `DIRECT` (build fails when a link cannot be direct) or `HOST_RELAY`;
+  the environment variable `DEPTHAI_CROSS_DEVICE_LINK=auto|direct|relay` overrides it.
+  The build logs for each link whether it is direct or relayed, and why. A direct link
+  sends A's output once per consuming input, so an output that also goes to the host
+  or to several inputs is sent once per receiver. `output.getPeerLinkBridges()` returns
+  the direct links of an output after build (`getXLinkBridge()` the relay).
 - **Partial operation.** Losing one device leaves its streams idle while the rest of
   the pipeline keeps running; the lost device reconnects on its own. Observe this via
   `pipeline.getDeviceState(device)` and `pipeline.setDeviceStateCallback(...)`. The

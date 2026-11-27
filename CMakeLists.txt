@@ -334,6 +334,8 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/internal/PipelineStateMerge.cpp
     src/pipeline/node/internal/XLinkIn.cpp
     src/pipeline/node/internal/XLinkOut.cpp
+    src/pipeline/node/internal/PeerLinkIn.cpp
+    src/pipeline/node/internal/PeerLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
     src/pipeline/node/Camera.cpp
     src/pipeline/node/Thermal.cpp
@@ -466,6 +468,20 @@ list(APPEND TARGET_CORE_SOURCES
     src/pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.cpp
     src/pipeline/node/ImgDetectionsFilter.cpp
 )
+
+# Direct device-to-device links: the host plans them on every platform, the sockets are used by the
+# device firmware and the on-host tests (POSIX only)
+list(APPEND TARGET_CORE_SOURCES
+    src/peerlink/PeerLinkProtocol.cpp
+    src/pipeline/CrossDeviceLinkPlanner.cpp
+)
+if(NOT WIN32)
+    list(APPEND TARGET_CORE_SOURCES
+        src/peerlink/PeerLinkSocket.cpp
+        src/peerlink/PeerLinkListener.cpp
+        src/peerlink/PeerLinkClient.cpp
+    )
+endif()
 
 if(DEPTHAI_BUILD_BETA)
     list(APPEND TARGET_CORE_SOURCES

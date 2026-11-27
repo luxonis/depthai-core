@@ -44,6 +44,18 @@ enum class PipelineAutoCalibrationMode : int {
     CONTINUOUS = 2,
 };
 
+/**
+ * How Pipeline::build() carries a link between nodes on two different devices
+ */
+enum class CrossDeviceLinkMode : int {
+    /// Directly between the devices when both support it and one reaches the other, otherwise relayed through the host
+    AUTO = 0,
+    /// Directly between the devices; building the pipeline fails when a link cannot be direct
+    DIRECT = 1,
+    /// Relayed through the host: the host receives every message from one device and sends it to the other
+    HOST_RELAY = 2,
+};
+
 namespace utility {
 class Telemetry;
 }  // namespace utility
@@ -144,6 +156,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setSippDmaBufferSize(int sizeBytes);
     void setBoardConfig(const BoardConfig& board);
     void setAutoCalibrationMode(PipelineAutoCalibrationMode mode);
+    void setCrossDeviceLinkMode(CrossDeviceLinkMode mode);
+    CrossDeviceLinkMode getCrossDeviceLinkMode() const;
     std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> getStereoPair(const std::shared_ptr<Device>& device) const;
     bool hasDynamicCalibration() const;
     PipelineAutoCalibrationMode getAutoCalibrationMode() const;
@@ -212,6 +226,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // World constraints handed to the implicit AutoCalibration node, see Pipeline::setAutoCalibrationWorldConstraints().
     std::optional<WorldConstraints> autoCalibrationWorldConstraints;
 
+    // How links between nodes on two different devices are carried, see Pipeline::setCrossDeviceLinkMode()
+    CrossDeviceLinkMode crossDeviceLinkMode = CrossDeviceLinkMode::AUTO;
+    bool crossDeviceLinkModeSetByApi = false;
+
     // Output queues
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;
 
@@ -275,6 +293,18 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Devices that consume other devices' streams (B side of a relay feeding a device
     // node); losing one of these for good stops the pipeline. Derived at build().
     std::unordered_set<const Device*> fatalDevices;
+    // Direct device-to-device links, derived at build(). When a producing device reconnects, possibly at other
+    // addresses (a new DHCP lease), its links are planned again and the consumers get the new addresses.
+    struct DirectDeviceLink {
+        std::shared_ptr<Device> producer;
+        std::shared_ptr<Device> consumer;
+        std::shared_ptr<node::internal::PeerLinkIn> peerLinkIn;
+    };
+    std::vector<DirectDeviceLink> directDeviceLinks;
+    // The mode the direct links were planned with (DEPTHAI_CROSS_DEVICE_LINK applied)
+    CrossDeviceLinkMode plannedCrossDeviceLinkMode = CrossDeviceLinkMode::AUTO;
+    // Plans the direct links of a reconnected producing device again and updates their consumers
+    void updateDirectDeviceLinks(DeviceBase* producer);
     // When set, losing any device that carries a node stops the pipeline (strict mode).
     // Off by default: a lost device only idles its streams (permissive mode).
     AtomicBool stopOnDeviceLoss{false};
@@ -460,6 +490,7 @@ class Pipeline {
 
    public:
     using AutoCalibrationMode = PipelineAutoCalibrationMode;
+    using CrossDeviceLinkMode = dai::CrossDeviceLinkMode;
 
     PipelineImpl* impl() {
         return pimpl.get();
@@ -771,6 +802,27 @@ class Pipeline {
     /// Gets implicit automatic calibration policy for this pipeline.
     AutoCalibrationMode getAutoCalibrationMode() const {
         return impl()->getAutoCalibrationMode();
+    }
+
+    /**
+     * Sets how a link between nodes on two different devices is carried. Set it before the pipeline is built.
+     *
+     * AUTO (default) sends the messages directly from one device to the other when both devices support it
+     * and the consuming device reaches the producing one over the network; otherwise the host relays them.
+     * DIRECT makes building the pipeline fail when a link cannot be direct. HOST_RELAY always relays through
+     * the host. The environment variable DEPTHAI_CROSS_DEVICE_LINK (auto, direct or relay) overrides this setting.
+     *
+     * Direct links need RVC4 devices whose firmware supports them; the producing device accepts them on TCP port 11494.
+     *
+     * @param mode How to carry links between devices
+     */
+    void setCrossDeviceLinkMode(CrossDeviceLinkMode mode) {
+        impl()->setCrossDeviceLinkMode(mode);
+    }
+
+    /// Gets the mode set with setCrossDeviceLinkMode(); DEPTHAI_CROSS_DEVICE_LINK, when set, overrides it at build
+    CrossDeviceLinkMode getCrossDeviceLinkMode() const {
+        return impl()->getCrossDeviceLinkMode();
     }
 
     /**

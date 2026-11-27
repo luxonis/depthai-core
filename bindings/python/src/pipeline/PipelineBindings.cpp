@@ -134,6 +134,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<NodeStateApi> nodeStateApi(m, "NodeStateApi", DOC(dai, NodeStateApi));
     py::class_<Pipeline> pipeline(m, "Pipeline", DOC(dai, Pipeline, 2));
     py::enum_<Pipeline::AutoCalibrationMode> pipelineAutoCalibrationMode(pipeline, "AutoCalibrationMode");
+    py::enum_<Pipeline::CrossDeviceLinkMode> pipelineCrossDeviceLinkMode(pipeline, "CrossDeviceLinkMode", DOC(dai, CrossDeviceLinkMode));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -151,6 +152,10 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     pipelineAutoCalibrationMode.value("OFF", Pipeline::AutoCalibrationMode::OFF)
         .value("ON_START", Pipeline::AutoCalibrationMode::ON_START)
         .value("CONTINUOUS", Pipeline::AutoCalibrationMode::CONTINUOUS);
+
+    pipelineCrossDeviceLinkMode.value("AUTO", Pipeline::CrossDeviceLinkMode::AUTO, DOC(dai, CrossDeviceLinkMode, AUTO))
+        .value("DIRECT", Pipeline::CrossDeviceLinkMode::DIRECT, DOC(dai, CrossDeviceLinkMode, DIRECT))
+        .value("HOST_RELAY", Pipeline::CrossDeviceLinkMode::HOST_RELAY, DOC(dai, CrossDeviceLinkMode, HOST_RELAY));
 
     // Bind global properties
     globalProperties.def(py::init<>())
@@ -463,6 +468,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, Pipeline, getBoardConfig, 2))
         .def("setAutoCalibrationMode", &Pipeline::setAutoCalibrationMode, py::arg("mode"))
         .def("getAutoCalibrationMode", &Pipeline::getAutoCalibrationMode)
+        .def("setCrossDeviceLinkMode", &Pipeline::setCrossDeviceLinkMode, py::arg("mode"), DOC(dai, Pipeline, setCrossDeviceLinkMode))
+        .def("getCrossDeviceLinkMode", &Pipeline::getCrossDeviceLinkMode, DOC(dai, Pipeline, getCrossDeviceLinkMode))
         .def("setAutoCalibrationWorldConstraints",
              &Pipeline::setAutoCalibrationWorldConstraints,
              py::arg("constraints"),

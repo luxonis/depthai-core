@@ -41,6 +41,8 @@
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "depthai/properties/VppProperties.hpp"
 #include "depthai/properties/WarpProperties.hpp"
+#include "depthai/properties/internal/PeerLinkInProperties.hpp"
+#include "depthai/properties/internal/PeerLinkOutProperties.hpp"
 #include "depthai/properties/internal/PipelineEventAggregationProperties.hpp"
 #include "depthai/properties/internal/XLinkInProperties.hpp"
 #include "depthai/properties/internal/XLinkOutProperties.hpp"
@@ -141,6 +143,8 @@ DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, UVCProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, VideoEncoderProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, VppProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, WarpProperties)
+DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai::internal, PeerLinkInProperties)
+DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai::internal, PeerLinkOutProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai::internal, XLinkInProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai::internal, XLinkOutProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai::beta, ToFStereoFusionProperties)

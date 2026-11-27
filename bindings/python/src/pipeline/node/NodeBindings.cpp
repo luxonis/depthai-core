@@ -10,6 +10,8 @@
 #include "depthai/pipeline/NodeGroup.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedNode.hpp"
+#include "depthai/pipeline/node/internal/PeerLinkIn.hpp"
+#include "depthai/pipeline/node/internal/PeerLinkOut.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
@@ -366,6 +368,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         daiNodeInternalModule, "XLinkInBridge", DOC(dai, node, internal, XLinkInBridge));
     py::class_<dai::node::internal::XLinkOutBridge, std::shared_ptr<dai::node::internal::XLinkOutBridge>> pyXLinkOutBridge(
         daiNodeInternalModule, "XLinkOutBridge", DOC(dai, node, internal, XLinkOutBridge));
+    py::class_<dai::node::internal::PeerLinkBridge, std::shared_ptr<dai::node::internal::PeerLinkBridge>> pyPeerLinkBridge(
+        daiNodeInternalModule, "PeerLinkBridge", DOC(dai, node, internal, PeerLinkBridge));
 
     // Properties
     py::class_<Node, py::smart_holder> pyNode(m, "Node", DOC(dai, Node));
@@ -431,20 +435,23 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("descendants", &Node::DatatypeHierarchy::descendants);
 
     // XLink internal node bindings
-    py::class_<node::internal::XLinkIn, DeviceNode, py::smart_holder> pyXLinkIn(
-        daiNodeInternalModule, "XLinkIn", DOC(dai, node, internal, XLinkIn));
-    py::class_<node::internal::XLinkOut, DeviceNode, py::smart_holder> pyXLinkOut(
-        daiNodeInternalModule, "XLinkOut", DOC(dai, node, internal, XLinkOut));
-    py::class_<node::internal::XLinkInHost, Node, py::smart_holder> pyXLinkInHost(
-        daiNodeInternalModule, "XLinkInHost", DOC(dai, node, internal, XLinkInHost));
+    py::class_<node::internal::XLinkIn, DeviceNode, py::smart_holder> pyXLinkIn(daiNodeInternalModule, "XLinkIn", DOC(dai, node, internal, XLinkIn));
+    py::class_<node::internal::XLinkOut, DeviceNode, py::smart_holder> pyXLinkOut(daiNodeInternalModule, "XLinkOut", DOC(dai, node, internal, XLinkOut));
+    py::class_<node::internal::XLinkInHost, Node, py::smart_holder> pyXLinkInHost(daiNodeInternalModule, "XLinkInHost", DOC(dai, node, internal, XLinkInHost));
     py::class_<node::internal::XLinkOutHost, Node, py::smart_holder> pyXLinkOutHost(
         daiNodeInternalModule, "XLinkOutHost", DOC(dai, node, internal, XLinkOutHost));
+    py::class_<node::internal::PeerLinkOut, DeviceNode, py::smart_holder> pyPeerLinkOut(
+        daiNodeInternalModule, "PeerLinkOut", DOC(dai, node, internal, PeerLinkOut));
+    py::class_<node::internal::PeerLinkIn, DeviceNode, py::smart_holder> pyPeerLinkIn(
+        daiNodeInternalModule, "PeerLinkIn", DOC(dai, node, internal, PeerLinkIn));
 
     // XLink bridge bindings
     pyXLinkInBridge.def_readonly("xLinkOutHost", &dai::node::internal::XLinkInBridge::xLinkOutHost, DOC(dai, node, internal, XLinkInBridge, xLinkOutHost))
         .def_readonly("xLinkIn", &dai::node::internal::XLinkInBridge::xLinkIn, DOC(dai, node, internal, XLinkInBridge, xLinkIn));
     pyXLinkOutBridge.def_readonly("xLinkOut", &dai::node::internal::XLinkOutBridge::xLinkOut, DOC(dai, node, internal, XLinkOutBridge, xLinkOut))
         .def_readonly("xLinkInHost", &dai::node::internal::XLinkOutBridge::xLinkInHost, DOC(dai, node, internal, XLinkOutBridge, xLinkInHost));
+    pyPeerLinkBridge.def_readonly("peerLinkOut", &dai::node::internal::PeerLinkBridge::peerLinkOut, DOC(dai, node, internal, PeerLinkBridge, peerLinkOut))
+        .def_readonly("peerLinkIn", &dai::node::internal::PeerLinkBridge::peerLinkIn, DOC(dai, node, internal, PeerLinkBridge, peerLinkIn));
 
     // Bind XLink node methods
     pyXLinkIn.def("setStreamName", &node::internal::XLinkIn::setStreamName, py::arg("name"), DOC(dai, node, internal, XLinkIn, setStreamName))
@@ -475,6 +482,22 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     pyXLinkOutHost.def("setStreamName", &node::internal::XLinkOutHost::setStreamName, py::arg("name"), DOC(dai, node, internal, XLinkOutHost, setStreamName))
         .def_readonly("in", &node::internal::XLinkOutHost::in, DOC(dai, node, internal, XLinkOutHost, in));
+
+    // Peer-link (direct device-to-device) node methods
+    pyPeerLinkOut.def("setStreamName", &node::internal::PeerLinkOut::setStreamName, py::arg("name"), DOC(dai, node, internal, PeerLinkOut, setStreamName))
+        .def("getStreamName", &node::internal::PeerLinkOut::getStreamName, DOC(dai, node, internal, PeerLinkOut, getStreamName))
+        .def("setFpsLimit", &node::internal::PeerLinkOut::setFpsLimit, py::arg("fps"), DOC(dai, node, internal, PeerLinkOut, setFpsLimit))
+        .def("getFpsLimit", &node::internal::PeerLinkOut::getFpsLimit, DOC(dai, node, internal, PeerLinkOut, getFpsLimit))
+        .def_readonly("input", &node::internal::PeerLinkOut::input, DOC(dai, node, internal, PeerLinkOut, input));
+
+    pyPeerLinkIn.def("setStreamName", &node::internal::PeerLinkIn::setStreamName, py::arg("name"), DOC(dai, node, internal, PeerLinkIn, setStreamName))
+        .def("getStreamName", &node::internal::PeerLinkIn::getStreamName, DOC(dai, node, internal, PeerLinkIn, getStreamName))
+        .def("setProducerEndpoints",
+             &node::internal::PeerLinkIn::setProducerEndpoints,
+             py::arg("endpoints"),
+             DOC(dai, node, internal, PeerLinkIn, setProducerEndpoints))
+        .def("getProducerEndpoints", &node::internal::PeerLinkIn::getProducerEndpoints, DOC(dai, node, internal, PeerLinkIn, getProducerEndpoints))
+        .def_readonly("out", &node::internal::PeerLinkIn::out, DOC(dai, node, internal, PeerLinkIn, out));
 
     // Node::Input bindings
     nodeInputType.value("SReceiver", Node::Input::Type::SReceiver).value("MReceiver", Node::Input::Type::MReceiver);
@@ -587,7 +610,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("send", &Node::Output::send, py::arg("msg"), DOC(dai, Node, Output, send), py::call_guard<py::gil_scoped_release>())
         .def("getName", &Node::Output::getName, DOC(dai, Node, Output, getName))
         .def("trySend", &Node::Output::trySend, py::arg("msg"), py::call_guard<py::gil_scoped_release>(), DOC(dai, Node, Output, trySend))
-        .def("getXLinkBridge", &Node::Output::getXLinkBridge, DOC(dai, Node, Output, getXLinkBridge));
+        .def("getXLinkBridge", &Node::Output::getXLinkBridge, DOC(dai, Node, Output, getXLinkBridge))
+        .def("getPeerLinkBridges", &Node::Output::getPeerLinkBridges, DOC(dai, Node, Output, getPeerLinkBridges));
 
     nodeConnection.def_readwrite("outputId", &Node::Connection::outputId, DOC(dai, Node, Connection, outputId))
         .def_readwrite("outputName", &Node::Connection::outputName, DOC(dai, Node, Connection, outputName))

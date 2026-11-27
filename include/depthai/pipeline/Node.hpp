@@ -45,6 +45,8 @@ class XLinkIn;
 class XLinkOut;
 class XLinkInHost;
 class XLinkOutHost;
+class PeerLinkIn;
+class PeerLinkOut;
 
 /**
  * @brief XLink bridge structure for host-to-device communication
@@ -62,6 +64,15 @@ struct XLinkInBridge {
 struct XLinkOutBridge {
     std::shared_ptr<dai::node::internal::XLinkOut> xLinkOut;
     std::shared_ptr<dai::node::internal::XLinkInHost> xLinkInHost;
+};
+
+/**
+ * @brief Direct link from a device output to another device, without the host
+ * Contains pointers to the PeerLinkOut node on the producing device and the PeerLinkIn node on the consuming device
+ */
+struct PeerLinkBridge {
+    std::shared_ptr<dai::node::internal::PeerLinkOut> peerLinkOut;
+    std::shared_ptr<dai::node::internal::PeerLinkIn> peerLinkIn;
 };
 }  // namespace internal
 }  // namespace node
@@ -168,6 +179,7 @@ class Node : public std::enable_shared_from_this<Node> {
         OutputDescription desc;
         utility::PipelineEventDispatcherInterface* pipelineEventDispatcher = nullptr;
         std::shared_ptr<dai::node::internal::XLinkOutBridge> xLinkBridge;
+        std::vector<std::shared_ptr<dai::node::internal::PeerLinkBridge>> peerLinkBridges;
 
        public:
         // std::vector<Capability> possibleCapabilities;
@@ -335,6 +347,14 @@ class Node : public std::enable_shared_from_this<Node> {
          * @return std::shared_ptr<dai::node::internal::XLinkOutBridge>: pointer to the XLink bridge or nullptr if not applicable
          */
         std::shared_ptr<dai::node::internal::XLinkOutBridge> getXLinkBridge() const;
+
+        /**
+         * @brief Get the direct device-to-device links of this output, one per input on another device (only valid for device outputs after pipeline build)
+         *
+         * Links between devices that are relayed through the host use getXLinkBridge() instead.
+         * @return The direct links, empty if the output has none
+         */
+        std::vector<std::shared_ptr<dai::node::internal::PeerLinkBridge>> getPeerLinkBridges() const;
     };
 
     struct PairHash {

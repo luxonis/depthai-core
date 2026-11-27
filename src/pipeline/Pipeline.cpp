@@ -11,10 +11,13 @@
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/pipeline/node/AutoCalibration.hpp"
 #endif
+#include "depthai/pipeline/node/internal/PeerLinkIn.hpp"
+#include "depthai/pipeline/node/internal/PeerLinkOut.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "depthai/pipeline/node/internal/XLinkOutHost.hpp"
+#include "pipeline/CrossDeviceLinkPlanner.hpp"
 #include "properties/GlobalProperties.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
@@ -38,8 +41,11 @@
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
+#include <functional>
+#include <map>
 #include <memory>
 #include <mutex>
+#include <random>
 #include <stdexcept>
 #include <string_view>
 #include <thread>
@@ -218,6 +224,92 @@ bool hasDifferentDistortion(const CalibrationHandler& lhs, const CalibrationHand
     return false;
 }
 #endif
+
+// Plans the links between devices of one pipeline build (see Pipeline::setCrossDeviceLinkMode()). Asks each
+// device for its peer-link listener at most once and plans each device pair once.
+class CrossDeviceLinks {
+   public:
+    // Long enough for a reachable device on a LAN, short enough to not slow down a build much
+    static constexpr std::chrono::milliseconds PROBE_TIMEOUT{300};
+
+    // The RPCs are private to DeviceBase, PipelineImpl (a friend) passes them in
+    using PeerLinkInfoQuery = std::function<nlohmann::json(Device&)>;
+    using PeerProbeQuery = std::function<std::string(Device&, const std::string&, std::uint16_t, std::chrono::milliseconds)>;
+
+    // The mode is resolved on the first link between two devices, so a single-device build logs nothing about it
+    using ModeResolver = std::function<CrossDeviceLinkMode()>;
+
+    CrossDeviceLinks(ModeResolver resolveMode, PeerLinkInfoQuery queryPeerLinkInfo, PeerProbeQuery queryProbe)
+        : resolveMode(std::move(resolveMode)), queryPeerLinkInfo(std::move(queryPeerLinkInfo)), queryProbe(std::move(queryProbe)) {
+        std::random_device random;
+        for(auto& byte : token) {
+            byte = static_cast<std::uint8_t>(random());
+        }
+    }
+
+    const CrossDeviceLinkPlan& plan(const std::shared_ptr<Device>& producer, const std::shared_ptr<Device>& consumer) {
+        const auto key = std::make_pair(producer.get(), consumer.get());
+        const auto it = plans.find(key);
+        if(it != plans.end()) {
+            return it->second;
+        }
+        const auto probe = [this, &consumer](const std::string& host, std::uint16_t port) -> std::optional<std::string> {
+            try {
+                auto listenerId = queryProbe(*consumer, host, port, PROBE_TIMEOUT);
+                if(listenerId.empty()) return std::nullopt;
+                return listenerId;
+            } catch(const std::exception& ex) {
+                Logging::getInstance().logger.debug("Peer-link probe of {} from device {} failed: {}",
+                                                    peerlink::formatEndpoint(host, port),
+                                                    consumer->getDeviceInfo().getDeviceId(),
+                                                    ex.what());
+                return std::nullopt;
+            }
+        };
+        return plans.emplace(key, planCrossDeviceLink(getMode(), describe(producer), describe(consumer), probe)).first->second;
+    }
+
+    const peerlink::Token& getToken() const {
+        return token;
+    }
+
+    CrossDeviceLinkMode getMode() {
+        if(!mode) mode = resolveMode();
+        return *mode;
+    }
+
+   private:
+    const CrossDeviceLinkDevice& describe(const std::shared_ptr<Device>& device) {
+        const auto it = devices.find(device.get());
+        if(it != devices.end()) {
+            return it->second;
+        }
+        CrossDeviceLinkDevice info;
+        const auto deviceInfo = device->getDeviceInfo();
+        info.deviceId = deviceInfo.getDeviceId();
+        info.platform = device->getPlatform();
+        if(deviceInfo.protocol == X_LINK_TCP_IP || deviceInfo.protocol == X_LINK_TCP_IP_OR_LOCAL_SHDMEM) {
+            info.hostAddress = hostOfDeviceName(deviceInfo.name);
+        }
+        // Only RVC4 firmware can have the RPC, and a forced relay needs no device information
+        if(getMode() != CrossDeviceLinkMode::HOST_RELAY && info.platform == Platform::RVC4) {
+            try {
+                info.peerLink = peerlink::peerLinkInfoFromJson(queryPeerLinkInfo(*device));
+            } catch(const std::exception& ex) {
+                info.peerLinkError = ex.what();
+            }
+        }
+        return devices.emplace(device.get(), std::move(info)).first->second;
+    }
+
+    const ModeResolver resolveMode;
+    std::optional<CrossDeviceLinkMode> mode;
+    const PeerLinkInfoQuery queryPeerLinkInfo;
+    const PeerProbeQuery queryProbe;
+    peerlink::Token token{};
+    std::unordered_map<const Device*, CrossDeviceLinkDevice> devices;
+    std::map<std::pair<const Device*, const Device*>, CrossDeviceLinkPlan> plans;
+};
 
 }  // namespace
 
@@ -848,6 +940,16 @@ PipelineAutoCalibrationMode PipelineImpl::getAutoCalibrationMode() const {
     return autoCalibrationMode;
 }
 
+void PipelineImpl::setCrossDeviceLinkMode(CrossDeviceLinkMode mode) {
+    DAI_CHECK_V(!isBuilt(), "Cannot change the cross-device link mode once the pipeline is built.");
+    crossDeviceLinkMode = mode;
+    crossDeviceLinkModeSetByApi = true;
+}
+
+CrossDeviceLinkMode PipelineImpl::getCrossDeviceLinkMode() const {
+    return crossDeviceLinkMode;
+}
+
 void PipelineImpl::setAutoCalibrationWorldConstraints(const WorldConstraints& constraints) {
     DAI_CHECK_V(!isBuilt(), "Cannot change the auto calibration world constraints once the pipeline is built.");
     constraints.validate();
@@ -1397,6 +1499,29 @@ void PipelineImpl::build() {
     std::unique_lock<std::mutex> lock(pipelineBuildMutex);
     if(isBuild) return;
 
+    // Links between nodes on two devices: direct or relayed through the host. The links the user made are planned
+    // before build() changes anything, so in DIRECT mode a link that cannot be direct fails the build before the
+    // build stages run. A link that a build stage adds is planned when its bridge is inserted.
+    CrossDeviceLinks crossDeviceLinks(
+        [this]() {
+            return resolveCrossDeviceLinkMode(
+                crossDeviceLinkMode, crossDeviceLinkModeSetByApi, utility::getEnvAs<std::string>(CROSS_DEVICE_LINK_ENV, "", false));
+        },
+        [](Device& device) { return device.getPeerLinkInfo(); },
+        [](Device& device, const std::string& host, std::uint16_t port, std::chrono::milliseconds timeout) { return device.probePeer(host, port, timeout); });
+    if(buildingOnHost) {
+        for(const auto& connection : getConnectionsInternal()) {
+            const auto inNode = connection.inputNode.lock();
+            const auto outNode = connection.outputNode.lock();
+            if(!inNode || !outNode || outNode->runOnHost() || inNode->runOnHost()) continue;
+            const auto outDevice = getAssignedDevice(outNode);
+            const auto inDevice = getAssignedDevice(inNode);
+            if(outDevice != nullptr && inDevice != nullptr && outDevice != inDevice) {
+                crossDeviceLinks.plan(outDevice, inDevice);
+            }
+        }
+    }
+
     // Replay setup can update runtime calibration, so run it before deriving AutoCalibration defaults.
     utility::PipelineImplHelper::setupHolisticRecordAndReplay(shared_from_this());
 
@@ -1578,6 +1703,7 @@ void PipelineImpl::build() {
     xlinkBridges.clear();
     bridgeHostDevices.clear();
     fatalDevices.clear();
+    directDeviceLinks.clear();
     for(auto& connection : getConnectionsInternal()) {
         auto inNode = connection.inputNode.lock();
         auto outNode = connection.outputNode.lock();
@@ -1592,6 +1718,48 @@ void PipelineImpl::build() {
                 throw std::runtime_error("Device-to-device connection found with an unassigned device");
             }
             if(outDevice != inDevice) {
+                // Planned at the start of build(), unless a build stage added this link
+                const auto& linkPlan = crossDeviceLinks.plan(outDevice, inDevice);
+                if(linkPlan.direct) {
+                    // Device A -> device B directly: a PeerLinkOut on A and a PeerLinkIn on B for each input, so
+                    // a slow input on B only slows its own link, as with the relay
+                    auto bridge = std::make_shared<dai::node::internal::PeerLinkBridge>();
+                    bridge->peerLinkOut = create<node::internal::PeerLinkOut>(shared_from_this(), outDevice);
+                    bridge->peerLinkIn = create<node::internal::PeerLinkIn>(shared_from_this(), inDevice);
+                    // Node ids are unique in the pipeline, so is the stream name on the producing device
+                    const auto streamName = fmt::format("__p_{}", bridge->peerLinkOut->id);
+                    bridge->peerLinkOut->setStreamName(streamName);
+                    bridge->peerLinkOut->properties.token = crossDeviceLinks.getToken();
+                    bridge->peerLinkIn->setStreamName(streamName);
+                    bridge->peerLinkIn->properties.token = crossDeviceLinks.getToken();
+                    bridge->peerLinkIn->setProducerEndpoints(linkPlan.producerEndpoints);
+                    bridge->peerLinkIn->properties.producerListenerId = linkPlan.producerListenerId;
+                    // Same policy as the relay: drop rather than block when the consuming device lags
+                    bridge->peerLinkOut->input.setBlocking(false);
+                    bridge->peerLinkOut->input.setMaxSize(8);
+                    connection.out->unlink(*connection.in);
+                    connection.out->link(bridge->peerLinkOut->input);
+                    bridge->peerLinkIn->out.link(*connection.in);
+                    xlinkBridges.push_back({bridge->peerLinkOut->id, bridge->peerLinkIn->id});
+                    connection.out->peerLinkBridges.push_back(bridge);
+                    directDeviceLinks.push_back({outDevice, inDevice, bridge->peerLinkIn});
+                    plannedCrossDeviceLinkMode = crossDeviceLinks.getMode();
+                    // The consuming device depends on another device's stream - losing it
+                    // for good stops the pipeline (see onDeviceStateChanged)
+                    fatalDevices.insert(inDevice.get());
+                    std::string endpoints;
+                    for(const auto& endpoint : linkPlan.producerEndpoints) {
+                        endpoints += (endpoints.empty() ? "" : ", ") + endpoint;
+                    }
+                    Logging::getInstance().logger.info("Inserted direct device link '{}' for '{}' of node {}: device {} -> device {} ({})",
+                                                       streamName,
+                                                       connection.outputName,
+                                                       outNode->id,
+                                                       outDevice->getDeviceInfo().getDeviceId(),
+                                                       inDevice->getDeviceInfo().getDeviceId(),
+                                                       endpoints);
+                    continue;
+                }
                 // Device A -> device B: relay through the host. A-side bridge is shared
                 // with any direct host consumers of the same output, B-side with any
                 // host producers into the same input.
@@ -1646,12 +1814,13 @@ void PipelineImpl::build() {
                 // The consuming device depends on another device's stream - losing it
                 // for good stops the pipeline (see onDeviceStateChanged)
                 fatalDevices.insert(inDevice.get());
-                Logging::getInstance().logger.info("Inserted host relay '__x_{}_{}_{}': device {} -> device {}",
+                Logging::getInstance().logger.info("Inserted host relay '__x_{}_{}_{}': device {} -> device {} (relay: {})",
                                                    outNode->id,
                                                    connection.outputGroup,
                                                    connection.outputName,
                                                    outDevice->getDeviceInfo().getDeviceId(),
-                                                   inDevice->getDeviceInfo().getDeviceId());
+                                                   inDevice->getDeviceInfo().getDeviceId(),
+                                                   linkPlan.reason);
             }
         } else if(!outNode->runOnHost() && inNode->runOnHost()) {
             auto outDevice = getAssignedDevice(outNode);
@@ -2008,6 +2177,54 @@ void PipelineImpl::resetConnections(DeviceBase* device) {
             if(device == nullptr || assignedDevice.get() == device) {
                 assignedDevice->startPipeline(Pipeline(shared_from_this()));
             }
+        }
+    }
+
+    // A reconnected producer may be at other addresses now; its consumers keep running and need them
+    if(device != nullptr) {
+        updateDirectDeviceLinks(device);
+    }
+}
+
+void PipelineImpl::updateDirectDeviceLinks(DeviceBase* producer) {
+    std::optional<CrossDeviceLinks> plans;
+    for(const auto& link : directDeviceLinks) {
+        if(link.producer.get() != producer) continue;
+        const auto streamName = link.peerLinkIn->getStreamName();
+        const auto producerId = link.producer->getDeviceInfo().getDeviceId();
+        const auto consumerId = link.consumer->getDeviceInfo().getDeviceId();
+        try {
+            if(!plans) {
+                // Fresh answers from the devices, with the mode the links were built with
+                plans.emplace([mode = plannedCrossDeviceLinkMode]() { return mode; },
+                              [](Device& device) { return device.getPeerLinkInfo(); },
+                              [](Device& device, const std::string& host, std::uint16_t port, std::chrono::milliseconds timeout) {
+                                  return device.probePeer(host, port, timeout);
+                              });
+            }
+            const auto& plan = plans->plan(link.producer, link.consumer);
+            if(!plan.direct) {
+                Logging::getInstance().logger.warn("Direct device link '{}': device {} reconnected, but device {} cannot use it now ({}); the link stays idle",
+                                                   streamName,
+                                                   producerId,
+                                                   consumerId,
+                                                   plan.reason);
+                continue;
+            }
+            if(plan.producerEndpoints == link.peerLinkIn->getProducerEndpoints()) continue;
+            {
+                // A consumer that reconnects later gets the new endpoints with its pipeline
+                std::lock_guard<std::mutex> lock(serializeMtx);
+                link.peerLinkIn->setProducerEndpoints(plan.producerEndpoints);
+            }
+            link.consumer->setPeerLinkEndpoints(streamName, plan.producerEndpoints);
+            std::string endpoints;
+            for(const auto& endpoint : plan.producerEndpoints) endpoints += (endpoints.empty() ? "" : ", ") + endpoint;
+            Logging::getInstance().logger.info(
+                "Direct device link '{}': device {} reconnected at {}, device {} follows", streamName, producerId, endpoints, consumerId);
+        } catch(const std::exception& ex) {
+            Logging::getInstance().logger.warn(
+                "Direct device link '{}': cannot update device {} after device {} reconnected: {}", streamName, consumerId, producerId, ex.what());
         }
     }
 }
