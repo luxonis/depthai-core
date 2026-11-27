@@ -31,24 +31,6 @@ PPTextDetectionParser::Properties& PPTextDetectionParser::getProperties() {
     return properties;
 }
 
-namespace {
-
-/**
- * Predictions tensor values in NCHW orientation together with the tensor shape.
- */
-using NchwTensorData = utilities::ClassificationUtils::ShapedTensorData;
-
-/**
- * Retrieve a tensor from NNData as dequantized FP32 values in NCHW orientation, matching the
- * source parser's output.getTensor(name, StorageOrder.NCHW, dequantize=True). The tensor's
- * stored order is honored; the data is permuted to NCHW, not just re-labeled.
- */
-NchwTensorData getNchwTensorData(dai::NNData& nnData, const std::string& tensorName) {
-    return utilities::ClassificationUtils::getShapedTensorData(nnData, tensorName, TensorInfo::StorageOrder::NCHW);
-}
-
-}  // namespace
-
 NNArchive PPTextDetectionParser::createNNArchive(NNModelDescription& modelDesc) {
     // Download model from zoo
     if(modelDesc.platform.empty()) {
@@ -235,7 +217,7 @@ void PPTextDetectionParser::run() {
             DAI_CHECK_V(layerNames.size() == 1, "Expected 1 output layer, got {} layers. Please provide the output_layer_name.", layerNames.size());
             resolvedOutputLayerName = layerNames.front();
         }
-        auto predictions = getNchwTensorData(*nnData, resolvedOutputLayerName);
+        auto predictions = utilities::ClassificationUtils::getNchwTensorData(*nnData, resolvedOutputLayerName);
 
         // Compute. The probability map height/width are derived from the tensor shape.
         const auto detections = utilities::PPTextUtils::parsePaddleDetectionOutputs(

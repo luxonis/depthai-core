@@ -105,47 +105,23 @@ void KeypointParser::setConfig(const dai::nn_archive::v1::Head& head) {
     // parameters.
     const auto& extraParams = head.metadata.extraParams;
 
-    if(extraParams.is_object() && extraParams.contains("scale_factor") && !extraParams.at("scale_factor").is_null()) {
-        const auto& scaleFactorJson = extraParams.at("scale_factor");
-        DAI_CHECK(scaleFactorJson.is_number(), "scale_factor must be a number.");
-        setScaleFactor(scaleFactorJson.get<float>());
+    if(const auto scaleFactor = utilities::KeypointsUtils::readFloatParam(extraParams, "scale_factor")) {
+        setScaleFactor(*scaleFactor);
     }
     if(head.metadata.nKeypoints.has_value()) {
         setNumKeypoints(*head.metadata.nKeypoints);
     }
-    if(extraParams.is_object() && extraParams.contains("score_threshold") && !extraParams.at("score_threshold").is_null()) {
-        const auto& scoreThresholdJson = extraParams.at("score_threshold");
-        DAI_CHECK(scoreThresholdJson.is_number(), "score_threshold must be a number.");
-        setScoreThreshold(scoreThresholdJson.get<float>());
+    if(const auto scoreThreshold = utilities::KeypointsUtils::readFloatParam(extraParams, "score_threshold")) {
+        setScoreThreshold(*scoreThreshold);
     }
-    if(extraParams.is_object() && extraParams.contains("keypoint_labels") && !extraParams.at("keypoint_labels").is_null()) {
-        const auto& keypointLabelsJson = extraParams.at("keypoint_labels");
-        DAI_CHECK(keypointLabelsJson.is_array(), "keypoint_labels must be a list.");
-        std::vector<std::string> headLabelNames;
-        headLabelNames.reserve(keypointLabelsJson.size());
-        for(const auto& labelJson : keypointLabelsJson) {
-            DAI_CHECK(labelJson.is_string(), "All keypoint labels must be strings.");
-            headLabelNames.push_back(labelJson.get<std::string>());
-        }
-        setLabelNames(headLabelNames);
+    if(const auto labelNames = utilities::KeypointsUtils::readKeypointLabelsParam(extraParams)) {
+        setLabelNames(*labelNames);
     }
-    if(extraParams.is_object() && extraParams.contains("skeleton_edges") && !extraParams.at("skeleton_edges").is_null()) {
-        const auto& skeletonEdgesJson = extraParams.at("skeleton_edges");
-        DAI_CHECK(skeletonEdgesJson.is_array(), "skeleton_edges must be a list.");
-        std::vector<Edge> headEdges;
-        headEdges.reserve(skeletonEdgesJson.size());
-        for(const auto& edgeJson : skeletonEdgesJson) {
-            DAI_CHECK(edgeJson.is_array() && edgeJson.size() == 2, "All skeleton edges must be pairs of keypoint indices.");
-            DAI_CHECK(edgeJson.at(0).is_number_integer() && edgeJson.at(1).is_number_integer() && edgeJson.at(0).get<std::int64_t>() >= 0
-                          && edgeJson.at(1).get<std::int64_t>() >= 0,
-                      "All skeleton edge indices must be non-negative integers.");
-            headEdges.push_back(Edge{edgeJson.at(0).get<std::uint32_t>(), edgeJson.at(1).get<std::uint32_t>()});
-        }
-        // An empty edge list does not overwrite explicitly configured edges, mirroring the source
-        // parser behavior.
-        if(!headEdges.empty()) {
-            setEdges(headEdges);
-        }
+    // An empty edge list does not overwrite explicitly configured edges, mirroring the source
+    // parser behavior.
+    const auto edges = utilities::KeypointsUtils::readSkeletonEdgesParam(extraParams);
+    if(!edges.empty()) {
+        setEdges(edges);
     }
 }
 
