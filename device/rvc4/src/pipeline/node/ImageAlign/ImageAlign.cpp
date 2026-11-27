@@ -574,6 +574,12 @@ void ImageAlign::run() {
             config.depthSourceIntrinsics = depthSourceIntrinsics;
             config.alignSourceIntrinsics = alignSourceIntrinsics;
             config.depthToAlignExtrinsics = depthToAlignExtrinsics;
+            // The DSP shifts depth by shiftX * fx / depth but picks its traversal direction from the sign of shiftX alone. fx is
+            // negative in a mirrored frame (Camera image orientation), so pass |fx| and give shiftX the sign of the product.
+            if(config.depthSourceIntrinsics[0][0] < 0.0f) {
+                config.depthSourceIntrinsics[0][0] = -config.depthSourceIntrinsics[0][0];
+                config.depthToAlignExtrinsics[0][3] = -config.depthToAlignExtrinsics[0][3];
+            }
             config.width = shiftedOutput->fb.width;
             config.height = shiftedOutput->fb.height;
             config.stride = shiftedOutput->fb.stride;
