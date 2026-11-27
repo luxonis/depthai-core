@@ -55,6 +55,7 @@
 #include "node/SpatialLocationCalculator.hpp"
 #include "node/StereoDepth/StereoDepth.hpp"
 #include "node/Stitching/Stitching.hpp"
+#include "node/AutoCalibration/AutoCalibration.hpp"
 #include "node/DynamicCalibration/DynamicCalibration.hpp"
 #include "node/Sync/Sync.hpp"
 #include "node/SystemLogger.hpp"
@@ -158,6 +159,7 @@ decltype(GPUStereo::NAME) constexpr GPUStereo::NAME;
 decltype(Gate::NAME) constexpr Gate::NAME;
 decltype(Stitching::NAME) constexpr Stitching::NAME;
 decltype(DynamicCalibration::NAME) constexpr DynamicCalibration::NAME;
+decltype(AutoCalibration::NAME) constexpr AutoCalibration::NAME;
 
 decltype(ToFBase::NAME) constexpr ToFBase::NAME;
 
@@ -266,6 +268,7 @@ PipelineBuilder::NodeHandler PipelineBuilder::getDefaultNodeHandler() {
     handler[Camera::NAME] = nodeHelper<Camera>;
     handler[Stitching::NAME] = nodeHelper<Stitching>;
     handler[DynamicCalibration::NAME] = nodeHelper<DynamicCalibration>;
+    handler[AutoCalibration::NAME] = nodeHelper<AutoCalibration>;
     handler[Sync::NAME] = nodeHelper<Sync>;
     handler[ImageManip::NAME] = nodeHelper<ImageManip>;
     handler[IMU::NAME] = nodeHelper<IMU>;

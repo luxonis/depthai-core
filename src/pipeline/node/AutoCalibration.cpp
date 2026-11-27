@@ -9,8 +9,11 @@
 #include <stdexcept>
 
 #include "depthai/device/Device.hpp"
+#include "depthai/device/Platform.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
+#include "utility/ErrorMacros.hpp"
 #include "utility/Telemetry.hpp"
 #include "utility/WorldConstraintsUtils.hpp"
 
@@ -65,8 +68,7 @@ constexpr int GATE_FPS_DEFAULT = 5;
 constexpr int BYTES_PER_SECOND_LIMIT_DEFAULT = GATE_FPS_DEFAULT * 1280 * 800 * 2;
 constexpr int PACKET_SIZE_DEFAULT = 100000;
 
-bool areLensesWide(const std::shared_ptr<Device>& device) {
-    auto handler = device->getCalibration();
+bool areLensesWide(const CalibrationHandler& handler) {
     auto eepromData = handler.getEepromData();
     const auto& hardwareConf = eepromData.hardwareConf;
     size_t start = 0;
@@ -138,6 +140,8 @@ void AutoCalibration::logConfig() const {
     logger->info("Max Images/Recalib:     {}", initialConfig->maxImagesPerRecalibration);
     logger->info("Validation Set Size:    {}", initialConfig->validationSetSize);
     logger->info("Flash Calibration:      {}", initialConfig->flashCalibration ? "Yes" : "No");
+    // Inside the firmware the DynamicCalibration node is a separate pipeline node that logs its own constraints.
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     if(const auto constraints = dynamicCalibration->getWorldConstraints()) {
         logger->info("Marker Constraints:     {} markers, {} marker distances, {} socket distances ({})",
                      utility::referencedMarkerIds(*constraints).size(),
@@ -147,6 +151,7 @@ void AutoCalibration::logConfig() const {
     } else {
         logger->info("Marker Constraints:     none");
     }
+#endif
     logger->info("===========================================");
 }
 
@@ -158,6 +163,10 @@ AutoCalibration::~AutoCalibration() {
 }
 
 AutoCalibration::Properties& AutoCalibration::getProperties() {
+    // initialConfig is edited through the shared pointer; a node that runs on the device starts from the serialized copy.
+    if(!runOnHost()) {
+        properties.initialConfig = *initialConfig;
+    }
     return properties;
 }
 
@@ -194,6 +203,27 @@ void AutoCalibration::recordAggregateCycle(double elapsedSeconds) {
     telemetryAggregateState->cyclesCompleted += 1;
     telemetryAggregateState->cycleDurationSum += elapsedSeconds;
     telemetryAggregateState->latestCycleDuration = elapsedSeconds;
+}
+
+void AutoCalibration::recordAggregateRecalibrationTriggered() {
+    if(!telemetryAggregateState) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(telemetryAggregateState->mutex);
+    telemetryAggregateState->recalibrationTriggered += 1;
+}
+
+void AutoCalibration::recordAggregateOutput(bool calibrationUpdated) {
+    if(!telemetryAggregateState) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(telemetryAggregateState->mutex);
+    if(calibrationUpdated) {
+        telemetryAggregateState->calibrationUpdated += 1;
+    }
+    telemetryAggregateState->outputSent += 1;
 }
 
 void AutoCalibration::recordAggregateRecalibration(bool passed, double elapsedSeconds) {
@@ -239,7 +269,29 @@ void AutoCalibration::recordAggregateRotationDifference(
 }
 
 void AutoCalibration::setRunOnHost(bool runOnHost) {
+    // The dynamic calibration library is shipped only in the RVC4 firmware.
+    DAI_CHECK_V(runOnHost || !device || device->getPlatform() == Platform::RVC4, "AutoCalibration: running on device is supported only on RVC4");
     runOnHostVar = runOnHost;
+    // The DynamicCalibration subnode (and its Sync) follows the node, otherwise the gated frames would still cross the link.
+    dynamicCalibration->setRunOnHost(runOnHost);
+}
+
+CalibrationHandler AutoCalibration::readCurrentCalibration() {
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    // Read on every call: the DynamicCalibration node or a host setCalibration() may replace it at any time.
+    return getParentPipeline().getCalibrationData();
+#else
+    return device->getCalibration();
+#endif
+}
+
+int AutoCalibration::gateFps() const {
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    // The firmware node has no gate subnode; build() sets the host gate to this rate.
+    return GATE_FPS_DEFAULT;
+#else
+    return gate->initialConfig->fps;
+#endif
 }
 
 void addPoolsForAutoCalibration(const std::shared_ptr<Camera>& camera, int additionalPools) {
@@ -294,6 +346,11 @@ bool AutoCalibration::runOnHost() const {
 }
 
 void AutoCalibration::postBuildStage() {
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    // On the device the gated frames never cross the link: nothing to throttle.
+    if(!runOnHost()) {
+        return;
+    }
     auto xlinkBridge = gate->output.getXLinkBridge();
     if(!xlinkBridge || !xlinkBridge->xLinkOut) {
         logger->warn("AutoCalibration: missing XLink bridge; skipping output throttling setup.");
@@ -303,17 +360,26 @@ void AutoCalibration::postBuildStage() {
     xlinkBridge->xLinkOut->setPacketSize(PACKET_SIZE_DEFAULT);
     xlinkBridge->xLinkOut->input.setMaxSize(1);
     xlinkBridge->xLinkOut->input.setBlocking(false);
+#endif
+}
+
+void AutoCalibration::discardQueuedFrames() {
+    // Drop frames that passed the gate before it closed. Inside the firmware the next ResetData does this, so after
+    // loadData() one frame can carry over into the recalibration that follows.
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
+#endif
 }
 
 void AutoCalibration::loadData(unsigned int numImages) {
-    gateControlQueue.send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
+    gateControlQueue.send(dai::GateControl::openGate(-1, gateFps()));
     coverageQueue.tryGetAll<dai::CoverageData>();
     for(unsigned int i = 0; i < numImages; i++) {
         dynamicCalibrationCommandQueue.send(DCC::loadImage());
         coverageQueue.get<dai::CoverageData>();  // wait until the data are loaded
     }
     gateControlQueue.send(dai::GateControl::closeGate());
-    dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
+    discardQueuedFrames();
 }
 
 std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(const std::shared_ptr<dai::CalibrationHandler>& calibration) {
@@ -322,6 +388,10 @@ std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(const std::
 }
 
 void AutoCalibration::buildInternal() {
+    setUp();
+}
+
+void AutoCalibration::setUp() {
     logger = pimpl->logger;
     telemetryAggregateState = std::make_shared<TelemetryAggregateState>();
     auto telemetryState = telemetryAggregateState;
@@ -329,8 +399,13 @@ void AutoCalibration::buildInternal() {
         std::lock_guard<std::mutex> lock(telemetryState->mutex);
         appendTelemetryAggregateProperties(properties, *telemetryState);
     });
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    if(!device) {
+        return;
+    }
+#endif
     if(initialConfig->dataConfidenceThreshold < 0.0) {
-        initialConfig->dataConfidenceThreshold = areLensesWide(device) ? 0.65 : 0.85;
+        initialConfig->dataConfidenceThreshold = areLensesWide(readCurrentCalibration()) ? 0.65 : 0.85;
     }
 }
 
@@ -358,12 +433,8 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
     auto startTime = std::chrono::steady_clock::now();                   // Start timer
     dynamicCalibrationQueue.tryGetAll<dai::DynamicCalibrationResult>();  // Drain: validation consumes only coverage, so stale results can stay queued
     coverageQueue.tryGetAll<dai::CoverageData>();
-    gateControlQueue.send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
-    {
-        auto& state = *telemetryAggregateState;
-        std::lock_guard<std::mutex> lock(state.mutex);
-        state.recalibrationTriggered += 1;
-    }
+    gateControlQueue.send(dai::GateControl::openGate(-1, gateFps()));
+    recordAggregateRecalibrationTriggered();
     std::shared_ptr<CoverageData> coverage;
     for(unsigned int i = 0; i < maxNumIteration; i++) {
         logger->info("=== AutoCalibration: START recalib {}/{}", i + 1, maxNumIteration);
@@ -383,7 +454,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
             if(dynCalibrationResult->calibrationData) {
                 if(dynCalibrationResult->calibrationData.value().dataConfidence > initialConfig->dataConfidenceThreshold) {
                     gateControlQueue.send(dai::GateControl::closeGate());
-                    dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
+                    discardQueuedFrames();
                     dynamicCalibrationCommandQueue.send(DCC::resetData());
                     report.numIterationPerRecalibration = i + 1;
                     report.numImagesLoadedForSuccessfulRecalibration = numLoadedImages + 1;
@@ -413,7 +484,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
     report.recalibrationPassed = false;
     report.numIterationPerRecalibration = maxNumIteration;
     gateControlQueue.send(dai::GateControl::closeGate());
-    dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
+    discardQueuedFrames();
     auto endTime = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = endTime - startTime;
     report.elapsedRecalibrationSeconds = elapsed.count();
@@ -441,12 +512,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
                 dynamicCalibrationCommandQueue.send(DCC::applyCalibration(*newCalibration, initialConfig->flashCalibration));
                 auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., true, *newCalibration);
                 output.send(resultOutput);
-                {
-                    auto& state = *telemetryAggregateState;
-                    std::lock_guard<std::mutex> lock(state.mutex);
-                    state.calibrationUpdated += 1;
-                    state.outputSent += 1;
-                }
+                recordAggregateOutput(true);
                 report.calibrationUpdated = true;
                 auto endTime = std::chrono::steady_clock::now();
                 std::chrono::duration<double> elapsed = endTime - startTime;
@@ -466,12 +532,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
                     dynamicCalibrationCommandQueue.send(DCC::applyCalibration(*calibration, initialConfig->flashCalibration));
                     auto resultOutput = std::make_shared<AutoCalibrationResult>(metrics->dataConfidence, metrics->calibrationConfidence, true, *calibration);
                     output.send(resultOutput);
-                    {
-                        auto& state = *telemetryAggregateState;
-                        std::lock_guard<std::mutex> lock(state.mutex);
-                        state.calibrationUpdated += 1;
-                        state.outputSent += 1;
-                    }
+                    recordAggregateOutput(true);
                     report.calibrationUpdated = true;
                     auto endTime = std::chrono::steady_clock::now();
                     std::chrono::duration<double> elapsed = endTime - startTime;
@@ -496,11 +557,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
     if(mainLoop() && calibration) {
         auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., false, *calibration);
         output.send(resultOutput);
-        {
-            auto& state = *telemetryAggregateState;
-            std::lock_guard<std::mutex> lock(state.mutex);
-            state.outputSent += 1;
-        }
+        recordAggregateOutput(false);
     }
     return false;
 }
@@ -508,7 +565,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
 void AutoCalibration::runContinuousMode() {
     while(mainLoop()) {
         auto startTime = std::chrono::steady_clock::now();
-        const auto passed = updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
+        const auto passed = updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(readCurrentCalibration()));
         auto endTime = std::chrono::steady_clock::now();
         std::chrono::duration<double> elapsed = endTime - startTime;
         recordAggregateCycle(elapsed.count());
@@ -526,7 +583,7 @@ void AutoCalibration::runContinuousMode() {
 
 void AutoCalibration::runOnStartMode() {
     auto startTime = std::chrono::steady_clock::now();
-    const auto passed = updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
+    const auto passed = updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(readCurrentCalibration()));
     auto endTime = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = endTime - startTime;
     recordAggregateCycle(elapsed.count());
@@ -541,7 +598,7 @@ bool AutoCalibration::validateIncomingData() {
     bool timedout = true;
 
     while(mainLoop()) {
-        gateControlQueue.send(dai::GateControl::openGate(1, gate->initialConfig->fps));
+        gateControlQueue.send(dai::GateControl::openGate(1, gateFps()));
         auto messageGroup = gateOutput.get<MessageGroup>(waitingTime, timedout);
 
         if(!timedout && messageGroup) {
@@ -577,7 +634,13 @@ bool AutoCalibration::validateIncomingData() {
 }
 
 void AutoCalibration::run() {
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    // The firmware constructs the node without buildInternal().
+    setUp();
+    logger->info("{} running on device.", this->getName());
+#else
     logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
+#endif
     logger->info("AutoCalibration started to work!");
     if(!validateIncomingData()) {
         return;

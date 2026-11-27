@@ -10,6 +10,7 @@
 
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/AutoCalibration.hpp"
+#include "depthai/utility/Serialization.hpp"
 
 namespace dai::node {
 
@@ -41,6 +42,14 @@ struct AutoCalibrationTestAccess {
 
     static bool hasPendingResult(AutoCalibration& node) {
         return node.dynamicCalibrationQueue.has();
+    }
+
+    static AutoCalibrationProperties& properties(AutoCalibration& node) {
+        return node.getProperties();
+    }
+
+    static bool dynamicCalibrationRunsOnHost(AutoCalibration& node) {
+        return node.dynamicCalibration->runOnHost();
     }
 };
 
@@ -144,4 +153,50 @@ TEST_CASE("AutoCalibration starts recalibration with fresh result and coverage m
     REQUIRE(result.coverages.size() == 1);
     REQUIRE(result.coverages.front().first == Catch::Approx(0.75f));
     REQUIRE(result.coverages.front().second == Catch::Approx(0.9f));
+}
+
+// The RVC4 firmware constructs the node from these properties and starts from their config; the construction itself
+// needs the firmware build (no subnodes) and is covered by the on-device auto_calibration_test.
+TEST_CASE("AutoCalibration on the device serializes its current config in the properties", "[AutoCalibration]") {
+    const auto type = GENERATE(dai::SerializationType::LIBNOP, dai::SerializationType::JSON, dai::SerializationType::JSON_MSGPACK);
+    CAPTURE(static_cast<int>(type));
+
+    dai::Pipeline pipeline{false};
+    auto node = pipeline.create<dai::node::AutoCalibration>();
+    // Replace the config after create(), as the Python property and the pipeline's implicit node setup do, and
+    // edit it once more through the pointer.
+    node->initialConfig = std::make_shared<dai::AutoCalibrationConfig>(dai::AutoCalibrationConfig::CONTINUOUS, 7, 0.8, 0.6, 3, 4, 2, false);
+    node->initialConfig->maxIterations = 9;
+    node->setRunOnHost(false);
+
+    std::vector<std::uint8_t> data;
+    Access::properties(*node).serialize(data, type);
+    dai::AutoCalibrationProperties decoded;
+    REQUIRE(dai::utility::deserialize(data, decoded, type));
+
+    const auto& config = decoded.initialConfig;
+    REQUIRE(config.mode == dai::AutoCalibrationConfig::CONTINUOUS);
+    REQUIRE(config.sleepingTime == 7);
+    REQUIRE(config.calibrationConfidenceThreshold == Catch::Approx(0.8));
+    REQUIRE(config.dataConfidenceThreshold == Catch::Approx(0.6));
+    REQUIRE(config.maxIterations == 9);
+    REQUIRE(config.maxImagesPerRecalibration == 4);
+    REQUIRE(config.validationSetSize == 2);
+    REQUIRE_FALSE(config.flashCalibration);
+}
+
+TEST_CASE("AutoCalibration runs on the host by default and its DynamicCalibration follows", "[AutoCalibration]") {
+    dai::Pipeline pipeline{false};
+    auto node = pipeline.create<dai::node::AutoCalibration>();
+    REQUIRE(node->runOnHost());
+    REQUIRE(Access::dynamicCalibrationRunsOnHost(*node));
+
+    // Without a device the DynamicCalibration subnode checks the platform when the pipeline is built.
+    node->setRunOnHost(false);
+    REQUIRE_FALSE(node->runOnHost());
+    REQUIRE_FALSE(Access::dynamicCalibrationRunsOnHost(*node));
+
+    node->setRunOnHost(true);
+    REQUIRE(node->runOnHost());
+    REQUIRE(Access::dynamicCalibrationRunsOnHost(*node));
 }

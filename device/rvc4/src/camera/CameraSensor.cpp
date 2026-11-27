@@ -1474,9 +1474,19 @@ void CameraSensor::processCaptureResult(const camera3_capture_result_t* result) 
             static const auto sensorTemperatureTag =
                 HalUtil::tryGetVendorTag("org.codeaurora.qcamera3.sensorreadoutput.SensorReadOutput");
             if(sensorTemperatureTag.has_value()) {
-                float sensorTemperature = 0.0f;
-                if(HalUtil::getMetaSensorTemperature(result->result, *sensorTemperatureTag, sensorTemperature)) {
-                    sensorTemperatureC = sensorTemperature;
+                std::array<uint8_t, 2> sensorTemperatureBytes{};
+                if(HalUtil::getMetaSensorReadOutput(result->result, *sensorTemperatureTag, sensorTemperatureBytes)) {
+                    // The camera HAL publishes the tag zeroed until it first reads the sensor's temperature register, and
+                    // always for sensors without a temperature read, so a reading counts only once it was non-zero.
+                    if(sensorTemperatureBytes != std::array<uint8_t, 2>{}) {
+                        sensorTemperatureRead = true;
+                    }
+                    if(sensorTemperatureRead) {
+                        // Byte 0 is the signed integer part in Celsius, byte 1 the fraction in 1/256 Celsius; the camera
+                        // HAL converts each sensor's register format to this.
+                        const auto value = static_cast<int16_t>((sensorTemperatureBytes[0] << 8) | sensorTemperatureBytes[1]);
+                        sensorTemperatureC = static_cast<float>(value) / 256.0f;
+                    }
                 } else if(warnMissing) {
                     logger->trace(
                         "seqNum: {}, Couldn't find org.codeaurora.qcamera3.sensorreadoutput.SensorReadOutput meta on frame meta.",
@@ -1513,6 +1523,7 @@ void CameraSensor::processCaptureResult(const camera3_capture_result_t* result) 
                         earlier->iso = item.iso;
                         earlier->lensPosition = item.lensPosition;
                         earlier->correlatedColorTemperature = item.correlatedColorTemperature;
+                        earlier->sensorTemperatureC = item.sensorTemperatureC;
                         earlier->hasSettings = true;
                     }
                 }
