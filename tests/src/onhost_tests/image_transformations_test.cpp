@@ -211,6 +211,19 @@ int testRotation(dai::Point2f inPoint,
     return 0;
 }
 
+TEST_CASE("A mirrored and flipped frame keeps its field of view") {
+    // fx = fy = 500 at 640x480. A mirror and a flip make both focal lengths negative but don't change the field of view.
+    const dai::ImgTransformation upright(640, 480, std::array<std::array<float, 3>, 3>{{{500.0f, 0.0f, 320.0f}, {0.0f, 500.0f, 240.0f}, {0.0f, 0.0f, 1.0f}}});
+    dai::ImgTransformation rotated = upright;
+    rotated.addFlipHorizontal().addFlipVertical();
+    REQUIRE(rotated.getIntrinsicMatrix()[0][0] < 0.0f);
+    REQUIRE(rotated.getIntrinsicMatrix()[1][1] < 0.0f);
+    CHECK_THAT(rotated.getHFov(), Catch::Matchers::WithinAbs(upright.getHFov(), 1e-4));
+    CHECK_THAT(rotated.getVFov(), Catch::Matchers::WithinAbs(upright.getVFov(), 1e-4));
+    CHECK_THAT(rotated.getDFov(), Catch::Matchers::WithinAbs(upright.getDFov(), 1e-4));
+    CHECK_THAT(upright.getHFov(), Catch::Matchers::WithinAbs(65.24, 0.01));
+}
+
 TEST_CASE("testCropping") {
     testCropping();
 }
