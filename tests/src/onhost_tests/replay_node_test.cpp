@@ -142,6 +142,8 @@ std::vector<std::shared_ptr<dai::ImgFrame>> collect(const std::filesystem::path&
     replay->setFps(fps);
     replay->setLoop(loop);
     replay->setStopPipelineAtEnd(stopAtEnd);
+    // The default keeps the cache entry. These helpers check playback, so drop it at stop.
+    replay->setPersistentUpload(false);
     auto queue = replay->out.createOutputQueue(8, true);
     pipeline.start();
     std::vector<std::shared_ptr<dai::ImgFrame>> frames;
@@ -246,9 +248,10 @@ TEST_CASE("S1 dai stream with gaps") {
 TEST_CASE("S2 loop metadata") {
     resetCache();
     const auto source = writeStream("s2", 64, 48, {{10, 10, 1000, 10}, {11, 11, 1100, 20}, {12, 12, 1300, 30}});
+    // fps 1000 sends the repeat before the shared span elapses, so the first pass is played again.
     auto frames = collect(source, 7, 1000.f, true, true);
-    const std::vector<std::int64_t> sequences{10, 11, 12, 13, 14, 15, 16};
-    const std::vector<int> times{1000, 1100, 1300, 1450, 1550, 1750, 1900};
+    const std::vector<std::int64_t> sequences{10, 11, 12, 10, 11, 12, 10};
+    const std::vector<int> times{1000, 1100, 1300, 1000, 1100, 1300, 1000};
     for(int index = 0; index < 7; index++) {
         REQUIRE(frames[static_cast<std::size_t>(index)]->getSequenceNum() == sequences[static_cast<std::size_t>(index)]);
         const auto millis =
@@ -257,18 +260,24 @@ TEST_CASE("S2 loop metadata") {
         REQUIRE(frames[static_cast<std::size_t>(index)]->getTimestampDevice() == frames[static_cast<std::size_t>(index)]->getTimestamp());
     }
 
+    // 20 fps paces the 200 ms gap down to 50 ms. Four frames finish inside the 350 ms span, so the repeat is unshifted.
     auto paced = collect(source, 4, 20.f, true, true);
-    REQUIRE(paced[3]->getSequenceNum() == 13);
-    const auto pacedMs = std::chrono::duration_cast<std::chrono::milliseconds>(paced[3]->getTimestamp().time_since_epoch()).count();
-    REQUIRE(pacedMs == 1350);
+    const std::vector<std::int64_t> pacedSeq{10, 11, 12, 10};
+    const std::vector<int> pacedTimes{1000, 1100, 1300, 1000};
+    for(int index = 0; index < 4; index++) {
+        REQUIRE(paced[static_cast<std::size_t>(index)]->getSequenceNum() == pacedSeq[static_cast<std::size_t>(index)]);
+        const auto pacedMs =
+            std::chrono::duration_cast<std::chrono::milliseconds>(paced[static_cast<std::size_t>(index)]->getTimestamp().time_since_epoch()).count();
+        REQUIRE(pacedMs == pacedTimes[static_cast<std::size_t>(index)]);
+    }
 }
 
 TEST_CASE("S2b S1 data looped at fps 1000") {
     resetCache();
     const auto source = writeStream("s2b", 64, 48, {{0, 0, 0, 10}, {1, 1, 100, 20}, {2, 2, 200, 30}, {5, 5, 500, 40}, {7, 7, 700, 50}});
     auto frames = collect(source, 10, 1000.f, true, true);
-    const std::vector<std::int64_t> pass1{8, 9, 10, 13, 15};
-    const std::vector<int> times{875, 975, 1075, 1375, 1575};
+    const std::vector<std::int64_t> pass1{0, 1, 2, 5, 7};
+    const std::vector<int> times{0, 100, 200, 500, 700};
     for(int index = 0; index < 5; index++) {
         REQUIRE(frames[static_cast<std::size_t>(index + 5)]->getSequenceNum() == pass1[static_cast<std::size_t>(index)]);
         const auto millis =
@@ -947,12 +956,20 @@ TEST_CASE("A later false persistence setter removes this start's cache entries",
     REQUIRE_FALSE(metadata->getPersistentUpload());
 }
 
-TEST_CASE("Only exactly 1000 uses recorded gaps at a loop boundary", "[spec-quick]") {
+TEST_CASE("A fast fps repeats recorded timestamps inside the shared span", "[spec-quick]") {
     resetCache();
     const auto source = writeStream("sentinel-neighbor", 64, 48, {{0, 0, 0, 50}, {1, 1, 100, 90}});
+    const auto stamp = [](const std::shared_ptr<dai::ImgFrame>& frame) {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(frame->getTimestampDevice().time_since_epoch()).count();
+    };
+    // 999.95 sends the repeat before the shared span elapses, so the third frame is the first frame again.
     const auto frames = collect(source, 3, 999.95f, true, false);
-    const auto gap = std::chrono::duration<double>(frames[2]->getTimestampDevice() - frames[1]->getTimestampDevice()).count();
-    REQUIRE(gap == Catch::Approx(1.0 / 999.95).margin(0.00001));
+    REQUIRE(frames[0]->getSequenceNum() == 0);
+    REQUIRE(frames[1]->getSequenceNum() == 1);
+    REQUIRE(frames[2]->getSequenceNum() == 0);
+    REQUIRE(stamp(frames[0]) == 0);
+    REQUIRE(stamp(frames[1]) == 100);
+    REQUIRE(stamp(frames[2]) == 0);
 }
 
 TEST_CASE("A failed host cache begin can be retried", "[spec-quick]") {
@@ -992,6 +1009,9 @@ TEST_CASE("Interleaved pipeline preparation keeps separate cache leases", "[spec
     auto first = add(creator);
     auto middle = add(other);
     auto last = add(creator);
+    first->setPersistentUpload(false);
+    middle->setPersistentUpload(false);
+    last->setPersistentUpload(false);
     auto firstQueue = first->out.createOutputQueue();
     auto middleQueue = middle->out.createOutputQueue();
     auto lastQueue = last->out.createOutputQueue();

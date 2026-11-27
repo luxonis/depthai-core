@@ -1583,6 +1583,8 @@ void ReplayVideo::run() {
     throw std::runtime_error("ReplayVideo node requires protobuf support");
 #else
     auto& logger = pimpl->logger;
+    // Stop releases the prepare, and a later start does not build the pipeline again.
+    if((!prepared || runtime == nullptr) && runOnHost()) buildStage1();
     if(!prepared || runtime == nullptr) throw std::runtime_error("ReplayVideo source is not prepared");
     if(!runtime->onHost) throw std::runtime_error("ReplayVideo device execution is running on the device");
     if(runtime->loopJoined) noteLoopStart(runtime->pipelineKey);
@@ -1911,6 +1913,8 @@ void ReplayMetadataOnly::run() {
     throw std::runtime_error("ReplayMetadataOnly node requires protobuf support");
 #else
     auto& logger = pimpl->logger;
+    // Stop releases the prepare, and a later start does not build the pipeline again.
+    if((!prepared || runtime == nullptr) && runOnHost()) buildStage1();
     if(!prepared || runtime == nullptr || runtime->mcapPath.empty()) throw std::runtime_error("ReplayMetadataOnly source is not prepared");
     if(!runtime->onHost) throw std::runtime_error("ReplayMetadataOnly device execution is running on the device");
     if(runtime->loopJoined) noteLoopStart(runtime->pipelineKey);

@@ -94,7 +94,7 @@ Play addPlay(dai::Pipeline& pipeline, const std::filesystem::path& source, bool 
     setLoop(*play.node, false);
     setStopPipelineAtEnd(*play.node, false);
     setFps(*play.node, 1000.f);
-    if(persistent) setPersistentUpload(*play.node, true);
+    setPersistentUpload(*play.node, persistent);
     play.out = play.node->out.createOutputQueue(16, true);
     return play;
 }
@@ -716,11 +716,18 @@ TEST_CASE("VA30 a relative device source errors at start", "[replay][device]") {
     requireStart(pipeline);
 }
 
-TEST_CASE("VA32 the default upload drops the entry at stop", "[replay][device]") {
+TEST_CASE("VA32 the default upload keeps the entry at stop", "[replay][device]") {
     DeviceReplay fx;
     auto& pipeline = fx.begin();
     const auto dir = makeFrames(fx.dir.path / "src", 64, 48, 3);
-    auto play = addPlay(pipeline, dir, false);
+    Play play;
+    play.node = pipeline.create<dai::node::ReplayVideo>();
+    record_test::watchNode(*play.node);
+    setSource(*play.node, dir, Location::HOST);
+    setLoop(*play.node, false);
+    setStopPipelineAtEnd(*play.node, false);
+    setFps(*play.node, 1000.f);
+    play.out = play.node->out.createOutputQueue(16, true);
     pipeline.start();
     REQUIRE(takeFrames(play.out, 1).size() == 1);
     const auto during = getReplayCacheInfo(*fx.device);
@@ -728,7 +735,7 @@ TEST_CASE("VA32 the default upload drops the entry at stop", "[replay][device]")
     REQUIRE(live != nullptr);
     CHECK(live->inUse);
     pipeline.stop();
-    CHECK(getReplayCacheInfo(*fx.device).entries.empty());
+    CHECK(sourceHashes(fx.device).count(hashDir(dir)) == 1);
     CHECK(fx.devLog.countSubstring("Replay cache upload") == 1);
 }
 
@@ -780,7 +787,7 @@ TEST_CASE("VA35 one persistent node keeps the shared entry", "[replay][device]")
     CHECK(sourceHashes(fx.device).size() == 1);
 }
 
-TEST_CASE("VA36 an error with the default upload drops the entry", "[replay][device]") {
+TEST_CASE("VA36 an error with a non-persistent upload drops the entry", "[replay][device]") {
     DeviceReplay fx;
     auto& pipeline = fx.begin();
     const auto dir = fx.dir.path / "src";
