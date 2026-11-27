@@ -5,7 +5,6 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/datatype/AutoCalibrationResult.hpp"
 
@@ -22,9 +21,6 @@ void bind_auto_calibration_result(pybind11::module& m, void* pCallstack) {
         .def_readwrite("passed", &AutoCalibrationResult::passed)
         .def_readwrite("calibration", &AutoCalibrationResult::calibration);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling (standard pattern for DepthAI bindings)
-    ///////////////////////////////////////////////////////////////////////
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();

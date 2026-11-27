@@ -46,7 +46,6 @@
 #include "depthai/properties/internal/XLinkOutProperties.hpp"
 #include "utility/serialization/SerializationDefine.hpp"
 
-// RVC2_FW does not need these properties
 #ifndef RVC2_FW
     #include "depthai/properties/ImageFiltersProperties.hpp"
 
@@ -89,8 +88,7 @@ DEPTHAI_SERIALIZE_EXT_DEFINE(StitchingProperties::VirtualCamera)
 
 }  // namespace dai
 
-// ToFStereoFusion is built also without DEPTHAI_BUILD_BETA (CMakeLists.txt), so its properties and config are not in the beta block.
-namespace dai {
+namespace dai {  // ToFStereoFusion builds also without DEPTHAI_BUILD_BETA, so it is not in the beta block
 namespace beta {
 
 DEPTHAI_SERIALIZE_EXT_DEFINE(ToFStereoFusionConfig)
@@ -145,7 +143,6 @@ DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai::internal, XLinkInProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai::internal, XLinkOutProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai::beta, ToFStereoFusionProperties)
 
-// RVC2_FW does not need these properties
 #ifndef RVC2_FW
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, ImageFiltersProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, ToFDepthConfidenceFilterProperties)

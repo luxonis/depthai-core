@@ -10,7 +10,6 @@ ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 SUMMARY_RE = re.compile(
     r"^\[(?P<config>[^\]]+)\]\s+\d+% tests passed,\s+(?P<failed>\d+) tests failed out of (?P<total>\d+)"
 )
-# Items of the "The following tests FAILED:" / "The following tests did not run:" lists at the end of a ctest run
 LIST_ITEM_RE = re.compile(
     r"^\[(?P<config>[^\]]+)\]\s+(?P<num>\d+)\s*-\s*(?P<name>.+?)"
     r"(?:\s+\((?P<cause>[^)]+)\))?\s*$"
@@ -21,24 +20,16 @@ TEST_OUTPUT_RE = re.compile(
     r"^\[(?P<config>[^\]]+)\]\s+(?P<num>\d+):\s*(?P<text>.*)$"
 )
 START_RE = re.compile(
-    #         Start 229: py_camera_max_resolution
     r"^\[(?P<config>[^\]]+)\]\s+Start\s+(?P<num>\d+):\s+(?P<name>.+?)\s*$"
 )
 RESULT_RE = re.compile(
-    # matches the per-test result line of every outcome, e.g.:
-    # 103/172 Test #185: gpu_stereo ...............................   Passed   58.15 sec
-    #   1/178 Test  #37: camera_stream_restart_test ...............***Failed   29.20 sec
-    #  51/172 Test #107: april_tags ...............................***Skipped  33.29 sec
-    #  27/177 Test  #90: fsync_test ...............................***Timeout 1000.08 sec
     r"^\[(?P<config>[^\]]+)\]\s+\d+/(?P<planned>\d+)\s+Test\s+#(?P<num>\d+):\s+(?P<name>.+?)\s+\.*\s*"
     r"(?P<status>Passed|\*\*\*.+?)\s+(?P<seconds>\d+(?:\.\d+)?)\s+sec\s*$"
 )
 TESTSUITE_RE = re.compile(
-    # print(f"Running tests for configuration: linux_rvc2_test / RVC2 - POE, on platform: RVC4, on protocol: POE, with labels: {labels if labels is not None else ""}")
     r"^(Running tests for configuration: )(?P<name>.+?), on platform: (?P<platform>.+?), on protocol: (?P<protocol>.+?), with labels:\s*(?P<labels>.*)$"
 )
 TESTBED_RE = re.compile(
-    # [INFO] Using testbed: slo304-4d
     r"^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[INFO\]\s+Using\s+testbed:\s+(?P<name>.+?)\s*$"
 )
 
@@ -76,7 +67,6 @@ def parse_log(log_path: Path):
     started = {}
     planned = {}
     testbedId = None
-    # Config whose "The following tests FAILED:" / "did not run:" list is being read, and which list it is
     list_config = None
     list_kind = None
 
@@ -138,8 +128,7 @@ def parse_log(log_path: Path):
                 ensure_config(config)
                 started[config][start_match.group("num")] = normalize_name(start_match.group("name"))
 
-            # Every test gets a result line, also when the run is cancelled before the final summary
-            result_match = RESULT_RE.search(line)
+            result_match = RESULT_RE.search(line)  # ctest prints a result line also when the run is cancelled
             if result_match:
                 config = result_match.group("config").strip()
                 ensure_config(config)
@@ -162,8 +151,7 @@ def parse_log(log_path: Path):
                 ensure_config(list_config)
                 continue
 
-            # Only accept list items directly below a list header, other "[cfg] N - text" lines are test output
-            item_match = LIST_ITEM_RE.search(line) if list_config is not None else None
+            item_match = LIST_ITEM_RE.search(line) if list_config is not None else None  # Other lines: test output
             if item_match and item_match.group("config").strip() == list_config:
                 num = item_match.group("num").strip()
                 name = normalize_name(item_match.group("name"))
@@ -182,7 +170,6 @@ def parse_log(log_path: Path):
                 if testbedMatch:
                     testbedId = testbedMatch.group("name")
 
-    # Tests that started but have no result line: the run was cancelled or the log is truncated
     unfinished = {}
     for config in order:
         unfinished[config] = OrderedDict(
@@ -274,14 +261,12 @@ def write_junit(
         parsed_unfinished = unfinished.get(config, OrderedDict())
         finished_count = len(parsed_passes) + len(parsed_skips) + len(parsed_failures) - len(parsed_unfinished)
 
-        # An announced configuration can crash before any tests start.
-        incomplete = summary is None and (
+        incomplete = summary is None and (  # A configuration can crash before any test starts
             description["name"] != "null" or finished_count > 0 or len(parsed_unfinished) > 0
         )
         written_failures = len(parsed_failures) + (1 if incomplete else 0)
 
-        # Counts come from the per-test result lines; ctest's own "passed" count includes skipped tests
-        suite_failures = max(summary[1] if summary else 0, written_failures)
+        suite_failures = max(summary[1] if summary else 0, written_failures)  # ctest's passed count includes skips
         suite_passes = len(parsed_passes)
         suite_skips = len(parsed_skips)
         suite_name = f"{context} / {config}" if context else config

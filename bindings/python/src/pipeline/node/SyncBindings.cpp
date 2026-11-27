@@ -9,23 +9,14 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Node and Properties declare upfront
     py::class_<SyncProperties> syncProperties(m, "SyncProperties", DOC(dai, SyncProperties));
     py::enum_<SyncProperties::TimestampSource> tsSource(syncProperties, "TimestampSource");
     auto sync = ADD_NODE(Sync);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     tsSource.value("DEFAULT", SyncProperties::TimestampSource::DEFAULT)
         .value("DEVICE", SyncProperties::TimestampSource::DEVICE)
@@ -34,13 +25,11 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
 
     sync.attr("TimestampSource") = tsSource;
 
-    // Properties
     syncProperties.def_readwrite("syncThresholdNs", &SyncProperties::syncThresholdNs, DOC(dai, SyncProperties, syncThresholdNs))
         .def_readwrite("syncAttempts", &SyncProperties::syncAttempts, DOC(dai, SyncProperties, syncAttempts))
         .def_readwrite("processor", &SyncProperties::processor, DOC(dai, SyncProperties, processor))
         .def_readwrite("timestampSource", &SyncProperties::timestampSource, DOC(dai, SyncProperties, timestampSource));
 
-    // Node
     sync.def_readonly("out", &Sync::out, DOC(dai, node, Sync, out))
         .def_readonly("inputs", &Sync::inputs, DOC(dai, node, Sync, inputs))
         .def("setSyncThreshold", &Sync::setSyncThreshold, py::arg("syncThreshold"), DOC(dai, node, Sync, setSyncThreshold))

@@ -135,18 +135,8 @@ bool Extrinsics::isEqualExtrinsics(const Extrinsics& other, float epsilon) const
 }
 
 bool Extrinsics::hasCompatibleCoordinateSystem(const Extrinsics& to) const {
-    // transformation A  |  transforamtion B    |    sameTargetDevice
-    //        ""           |       ""           |      true
-    //        ""           |       "x"          |      false
-    //        "x"          |       ""           |      false
-    //        "x"          |       "x"          |      true
     const bool sameTargetDevice = toDeviceId == to.toDeviceId;  // XNOR
 
-    // transformation A  |  transforamtion B    |    compatibleTargetSockets
-    //        AUTO       |       AUTO           |      true
-    //        AUTO       |        A             |      true
-    //         A         |       AUTO           |      true
-    //         A         |        B             |      false
     const bool compatibleTargetSockets =
         toCameraSocket == CameraBoardSocket::AUTO || to.toCameraSocket == CameraBoardSocket::AUTO || toCameraSocket == to.toCameraSocket;
     return sameTargetDevice && compatibleTargetSockets;
@@ -163,9 +153,7 @@ std::array<std::array<float, 4>, 4> Extrinsics::getExtrinsicsTransformationTo(co
                                  + ". Destination target: " + describeTarget(to) + ".");
     }
 
-    // this -> Common
     auto thisTransformationMatrix = this->getTransformationMatrix(useSpecTranslation, sourceUnit);
-    // inv(to -> Common) == Common -> to
     auto toInverseTransformationMatrix = to.getInverseTransformationMatrix(useSpecTranslation, sourceUnit);
     auto thisToTransformationMatrix = matrix::matMul(toInverseTransformationMatrix, thisTransformationMatrix);
 

@@ -12,13 +12,10 @@ void bind_beta_keypoints(pybind11::module& m, void* pCallstack) {
     py::class_<beta::Keypoints, Py<beta::Keypoints>, Buffer, Transformable, py::smart_holder> keypoints(
         betaModule, "Keypoints", DOC(dai, beta, Keypoints));
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     keypoints.def(py::init<>())
         .def("__repr__", &beta::Keypoints::str)

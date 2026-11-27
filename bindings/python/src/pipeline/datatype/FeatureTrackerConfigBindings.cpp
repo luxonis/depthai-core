@@ -4,20 +4,14 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // py::class_<RawFeatureTrackerConfig, RawBuffer, std::shared_ptr<RawFeatureTrackerConfig>> rawFeatureTrackerConfig(m, "RawFeatureTrackerConfig", DOC(dai,
-    // RawFeatureTrackerConfig));
     py::class_<FeatureTrackerConfig, Py<FeatureTrackerConfig>, Buffer, py::smart_holder> featureTrackerConfig(
         m, "FeatureTrackerConfig", DOC(dai, FeatureTrackerConfig));
     py::class_<FeatureTrackerConfig::CornerDetector> cornerDetector(featureTrackerConfig, "CornerDetector", DOC(dai, FeatureTrackerConfig, CornerDetector));
@@ -31,26 +25,10 @@ void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack) {
     py::class_<FeatureTrackerConfig::FeatureMaintainer> featureMaintainer(
         featureTrackerConfig, "FeatureMaintainer", DOC(dai, FeatureTrackerConfig, FeatureMaintainer));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-
-    // // Metadata / raw
-    // rawFeatureTrackerConfig
-    //     .def(py::init<>())
-    //     .def_readwrite("cornerDetector", &FeatureTrackerConfig::cornerDetector, DOC(dai, FeatureTrackerConfig, cornerDetector))
-    //     .def_readwrite("motionEstimator", &FeatureTrackerConfig::motionEstimator, DOC(dai, FeatureTrackerConfig, motionEstimator))
-    //     .def_readwrite("featureMaintainer", &FeatureTrackerConfig::featureMaintainer, DOC(dai, FeatureTrackerConfig, featureMaintainer))
-    //     ;
 
     cornerDetectorType.value("HARRIS", FeatureTrackerConfig::CornerDetector::Type::HARRIS)
         .value("SHI_THOMASI", FeatureTrackerConfig::CornerDetector::Type::SHI_THOMASI);
@@ -115,13 +93,11 @@ void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack) {
                        &FeatureTrackerConfig::FeatureMaintainer::trackedFeatureThreshold,
                        DOC(dai, FeatureTrackerConfig, FeatureMaintainer, trackedFeatureThreshold));
 
-    // Message
     featureTrackerConfig.def(py::init<>())
         .def_readwrite("cornerDetector", &dai::FeatureTrackerConfig::cornerDetector, DOC(dai, FeatureTrackerConfig, cornerDetector))
         .def_readwrite("featureMaintainer", &dai::FeatureTrackerConfig::featureMaintainer, DOC(dai, FeatureTrackerConfig, featureMaintainer))
         .def_readwrite("motionEstimator", &dai::FeatureTrackerConfig::motionEstimator, DOC(dai, FeatureTrackerConfig, motionEstimator))
         .def("__repr__", &FeatureTrackerConfig::str)
-        // .def(py::init<std::shared_ptr<FeatureTrackerConfig>>())
 
         .def("setCornerDetector",
              static_cast<FeatureTrackerConfig& (FeatureTrackerConfig::*)(dai::FeatureTrackerConfig::CornerDetector::Type)>(
@@ -165,11 +141,8 @@ void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack) {
              py::arg("numTargetFeatures"),
              DOC(dai, FeatureTrackerConfig, setNumTargetFeatures))
 
-        // .def("set", &FeatureTrackerConfig::set, py::arg("config"), DOC(dai, FeatureTrackerConfig, set))
-        // .def("get", &FeatureTrackerConfig::get, DOC(dai, FeatureTrackerConfig, get))
         ;
 
-    // add aliases
     m.attr("FeatureTrackerConfig").attr("CornerDetector") = m.attr("FeatureTrackerConfig").attr("CornerDetector");
     m.attr("FeatureTrackerConfig").attr("MotionEstimator") = m.attr("FeatureTrackerConfig").attr("MotionEstimator");
     m.attr("FeatureTrackerConfig").attr("FeatureMaintainer") = m.attr("FeatureTrackerConfig").attr("FeatureMaintainer");

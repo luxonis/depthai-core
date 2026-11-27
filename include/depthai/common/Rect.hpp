@@ -1,6 +1,5 @@
 #pragma once
 
-// libraries
 #include <algorithm>
 #include <cmath>
 
@@ -17,7 +16,6 @@ namespace dai {
  * Can be either normalized [0,1] or absolute representation.
  */
 struct Rect {
-    // default constructor
     Rect() = default;
     /**
      * Construct Rectangle from (x, y) coordinates of the top-left corner, width and height.
@@ -150,7 +148,6 @@ struct Rect {
         return Rect(x / srcWidth, y / srcHeight, width / srcWidth, height / srcHeight, true);
     }
 
-    // order of declaration must be x, y, width, height for constructor initializer lists
     float x = 0.0f;       // x coordinate of the top-left corner
     float y = 0.0f;       // y coordinate of the top-left corner
     float width = 0.0f;   // width of the rectangle

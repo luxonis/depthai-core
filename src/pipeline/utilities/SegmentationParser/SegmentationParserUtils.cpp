@@ -34,71 +34,11 @@ inline T loadT(const uint8_t* p) noexcept {
 template <typename T>
 T getQuantizedThreshold(const dai::SegmentationParserConfig& config, const dai::TensorInfo& tensorInfo) {
     if(config.confidenceThreshold < 0) {
-        // Minimum possible value for int8 and uint8 quantizations
         return tensorInfo.dataType == dai::TensorInfo::DataType::I8 ? static_cast<T>(-128) : static_cast<T>(0);
     }
     return static_cast<T>((config.confidenceThreshold / tensorInfo.qpScale) + tensorInfo.qpZp);
 }
 
-/*
- * @brief Optimized argmax function for NHWC tensors with aligned and typed channel strides.
- * Data looks like [h1w1c1, h1w1c2, ..., h1w1cC, h1w2c1, h1w2c2, ..., h1w2cC, ..., hHwWcC]
- */
-// Vectorized implementation if performance is needed.
-// template <typename T, bool backgroundClass>
-// void argmaxNHWCVectorizedTensor(span<uint8_t> dst,
-//                                 const span<const uint8_t> tensorBase,
-//                                 const dai::TensorInfo& tensorInfo,
-//                                 const dai::SegmentationParserConfig& config) {
-//     const int channels = tensorInfo.getChannels();
-//     const int width = tensorInfo.getWidth();
-//     const int height = tensorInfo.getHeight();
-
-//     const size_t strideC = tensorInfo.getChannelStride() / sizeof(T);
-//     const size_t strideH = tensorInfo.getHeightStride() / sizeof(T);
-//     const size_t strideW = tensorInfo.getWidthStride() / sizeof(T);
-//     const int step = static_cast<int>(config.stepSize);
-//     const int dstWidth = width / step;
-
-//     const T* tensorPtr = castPtr<T>(tensorBase.data());
-
-//     int outY = 0;
-//     uint8_t bestClass = 255;
-//     T quantizedThreshold = getQuantizedThreshold<T>(config, tensorInfo);
-//     T bestVal = quantizedThreshold;
-//     const int cStart = backgroundClass ? 1 : 0;
-
-//     for(int h = 0; h < height; h += step, ++outY) {
-//         const size_t rowBase = strideH * static_cast<size_t>(h);
-//         const int rowOffset = outY * dstWidth;
-
-//         int outX = 0;
-//         for(int w = 0; w < width; w += step, ++outX) {
-//             const size_t pixelBase = rowBase + (strideW * static_cast<size_t>(w));
-
-//             bestClass = 255;
-//             if constexpr(backgroundClass) {
-//                 bestVal = std::max(tensorPtr[pixelBase], quantizedThreshold);
-//             } else {
-//                 bestVal = quantizedThreshold;
-//             }
-//             for(int c = cStart; c < channels; ++c) {
-//                 const size_t idx = pixelBase + (strideC * static_cast<size_t>(c));
-//                 T v = tensorPtr[idx];
-//                 if(v > bestVal) {
-//                     bestVal = v;
-//                     bestClass = static_cast<uint8_t>(c);
-//                 }
-//             }
-//             dst[rowOffset + outX] = bestClass;
-//         }
-//     }
-// }
-
-/*
- * @brief Parse NHWC formatted tensor to compute segmentation mask.
- * Data looks like [h1w1c1, h1w1c2, ..., h1w1cC, h1w2c1, h1w2c2, ..., h1w2cC, ..., hHwWcC]
- */
 template <typename T, bool backgroundClass>
 void parseNHWCTensor(span<uint8_t> dst, const span<const uint8_t> tensorBase, const dai::TensorInfo& tensorInfo, const dai::SegmentationParserConfig& config) {
     const uint8_t* tensorPtr = tensorBase.data();
@@ -173,11 +113,6 @@ void fillBestVals(std::vector<T>& bestValues, const uint8_t* tensorPtr, const da
     }
 }
 
-/*
- * @brief Optimized argmax function over NCHW formatted tensor.
- * Data looks like [h1w1c1, h1w2c1, ..., hMwNc1, h1w1c2, h1w2c2, ..., hMwNcC]
- */
-
 template <typename T, bool backgroundClass>
 void parseNCHWTensor(span<uint8_t> dst, const span<const uint8_t> tensorBase, const dai::TensorInfo& tensorInfo, const dai::SegmentationParserConfig& config) {
     const int channels = tensorInfo.getChannels();
@@ -221,9 +156,6 @@ void tensorArgmax(span<std::uint8_t> dstData,
                   const dai::TensorInfo& tensorInfo,
                   const dai::SegmentationParserConfig& config,
                   std::shared_ptr<spdlog::async_logger>& logger) {
-    /*
-     * Should be moved to GPU.
-     */
     const bool isNHWC = (tensorInfo.order == dai::TensorInfo::StorageOrder::NHWC || tensorInfo.order == dai::TensorInfo::StorageOrder::HWC);
     if(isNHWC) {
         logger->trace("Using NHWC segmentation mask parsing.");

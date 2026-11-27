@@ -1,15 +1,11 @@
 #include "depthai/pipeline/node/Camera.hpp"
 
-// std
 #include <memory>
 #include <stdexcept>
 #include <utility>
 
-// depthai
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
-
-// depthai internal utilities
 #include "utility/ErrorMacros.hpp"
 #include "utility/RecordReplayImpl.hpp"
 
@@ -79,7 +75,6 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket,
     }
 
     auto cameraFeaturesVector = device->getConnectedCameraFeatures();
-    // First handle the case if the boardSocket is set to AUTO
     if(boardSocket == CameraBoardSocket::AUTO) {
         auto defaultSockets = {CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_C};
         for(auto socket : defaultSockets) {
@@ -97,7 +92,6 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket,
         }
     }
 
-    // Check if the board socket is valid
     bool found = false;
     for(const auto& cf : cameraFeaturesVector) {
         if(cf.socket == boardSocket) {
@@ -107,7 +101,6 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket,
         }
     }
     auto fps = sensorFps.value_or(-1.0f);
-    // Check if the sensor resolution is valid, if specified
     if(sensorResolution.has_value()) {
         if(static_cast<int32_t>(sensorResolution->first) > cameraFeatures.width || static_cast<int32_t>(sensorResolution->second) > cameraFeatures.height) {
             throw std::runtime_error("Invalid sensor resolution specified, maximum supported resolution is " + std::to_string(cameraFeatures.width) + "x"
@@ -165,7 +158,6 @@ Camera::Properties& Camera::getProperties() {
     return properties;
 }
 
-// Get current board socket
 CameraBoardSocket Camera::getBoardSocket() const {
     if(!isBuilt) {
         throw std::runtime_error("Camera node must be built before calling getBoardSocket()");
@@ -201,9 +193,7 @@ Node::Output* Camera::requestFullResolutionOutput(std::optional<ImgFrame::Type> 
     } else {
         int32_t maxWidth = 0;
         int32_t maxHeight = 0;
-        // Loop over all the configs and find the highest resolution that is not higher than 5000x4000
         for(const auto& config : cameraFeatures.configs) {
-            // Only consider the full FOV configurations
             auto denormalizedFov = config.fov.denormalize(cameraFeatures.width, cameraFeatures.height);
             if((static_cast<int>(denormalizedFov.width) != cameraFeatures.width) || (static_cast<int>(denormalizedFov.height) != cameraFeatures.height)
                || denormalizedFov.x != 0 || denormalizedFov.y != 0) {
@@ -288,7 +278,6 @@ Camera& Camera::setMockIsp(ReplayVideo& replay) {
         properties.mockIspHeight = height;
         properties.mockIspFps = fps;
 
-        // Pick the frame type for the platform of the device this camera runs on (falls back to the pipeline default device when the node has none)
         auto mockDevice = device ? device : getParentPipeline().getDefaultDevice();
         if(mockDevice) {
             if(mockDevice->getPlatform() == Platform::RVC2) {

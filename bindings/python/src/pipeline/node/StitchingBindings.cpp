@@ -9,7 +9,6 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Node and Properties declare upfront
     py::class_<StitchingProperties> stitchingProperties(m, "StitchingProperties", DOC(dai, StitchingProperties));
     auto stitchingNode = ADD_NODE(Stitching);
     py::enum_<StitchingProperties::Mode> stitchingMode(stitchingNode, "Mode", DOC(dai, StitchingProperties, Mode));
@@ -17,18 +16,10 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
     py::class_<StitchingProperties::Plane> stitchingPlane(stitchingNode, "Plane", DOC(dai, StitchingProperties, Plane));
     py::class_<StitchingProperties::VirtualCamera> stitchingVirtualCamera(stitchingNode, "VirtualCamera", DOC(dai, StitchingProperties, VirtualCamera));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     stitchingMode.value("PANORAMA", StitchingProperties::Mode::PANORAMA).value("PLANAR_PROJECTION", StitchingProperties::Mode::PLANAR_PROJECTION);
 
@@ -75,8 +66,7 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
     stitchingNode
         .def_property_readonly(
             "sync",
-            // Subnode<Sync> has no Python type; hand out the Sync node it wraps
-            [](Stitching& node) { return std::static_pointer_cast<dai::node::Sync>(node.sync->shared_from_this()); },
+            [](Stitching& node) { return std::static_pointer_cast<dai::node::Sync>(node.sync->shared_from_this()); },  // Subnode<Sync> has no Python type
             DOC(dai, node, Stitching, sync))
         .def_property_readonly(
             "inputs", [](Stitching& node) { return &node.inputs; }, py::return_value_policy::reference_internal, DOC(dai, node, Stitching, inputs))

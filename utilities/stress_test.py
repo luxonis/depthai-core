@@ -241,20 +241,16 @@ def build_pipeline(
         n_manips = 2
         n_networks = 3
         full_resolution_color = True
-        # An encoder takes the largest configuration that the sensor gives.
-        forced_video_size = None
+        forced_video_size = None  # None: the encoder takes the largest configuration of the sensor
     else:
-        # RVC2 has much less compute, so it keeps a small number of nodes.
         camera_fps = 20.0
         encoder_fps = 10.0
         n_encoders = 1
         n_manips = 0
         n_networks = 1
         full_resolution_color = False
-        # A larger encoder input starves the other nodes of ISP bandwidth here.
-        forced_video_size = CAMERA_SIZE
+        forced_video_size = CAMERA_SIZE  # A larger encoder input starves the other nodes of ISP bandwidth
 
-    # The command line replaces the values for the platform.
     if args.camera_fps is not None:
         camera_fps = args.camera_fps
     if args.encoder_fps is not None:
@@ -315,11 +311,7 @@ def build_pipeline(
             sensorFps=camera_fps,
         )
 
-        # Every camera runs at its full resolution. The color sensor gives
-        # frames that are too large for the host, so an ImageManip node on the
-        # device makes them smaller. requestFullResolutionOutput keeps away
-        # from configurations over 5000x4000, which other nodes cannot share.
-        full_output: Optional[dai.Node.Output] = None
+        full_output: Optional[dai.Node.Output] = None  # requestFullResolutionOutput avoids configs over 5000x4000
         if sensor_type == dai.CameraSensorType.MONO:
             camera_output = camera.requestFullResolutionOutput(fps=camera_fps)
         elif full_color:
@@ -336,16 +328,7 @@ def build_pipeline(
         if sensor_type == dai.CameraSensorType.COLOR and color_camera is None:
             color_camera = camera
 
-        # The VideoEncoder accepts only NV12 and GRAY8 frames. A mono camera
-        # gives GRAY8, but a color camera gives YUV420p, so ask for a second
-        # output in NV12 format. It is also the largest output that an encoder
-        # can take, which puts more load on the ISP and on the encoder.
-        # An output with no consumer stops the pipeline from starting, so ask
-        # for the encoder input only when there is an encoder to take it.
-        # Every output of a camera is requested at the rate of the sensor. Two
-        # outputs of one sensor at different rates make RVC2 deliver about one
-        # frame every five seconds on all of them.
-        encoder_frame_rate = min(encoder_fps, camera_fps)
+        encoder_frame_rate = min(encoder_fps, camera_fps)  # One rate per sensor: mixed rates stall RVC2 to 1 frame/5 s
         video_size = forced_video_size or pick_video_size(feature)
         if n_encoders <= 0:
             encoder_input = None
@@ -394,8 +377,6 @@ def build_pipeline(
         right_entry = cameras.get(pair.right)
         if left_entry is not None and right_entry is not None:
             if is_rvc4:
-                # NeuralDepth rectifies the pair itself and has no depth
-                # alignment, so it needs no more configuration.
                 stereo = pipeline.create(dai.node.NeuralDepth).build(
                     left_entry[1],
                     right_entry[1],
@@ -414,11 +395,7 @@ def build_pipeline(
                 color_sockets = [socket for socket, entry in cameras.items() if entry[2] == dai.CameraSensorType.COLOR]
                 align_socket = color_sockets[0] if color_sockets else pair.left
                 stereo.setDepthAlign(align_socket)
-                # Aligned depth takes the size of the color frame, and its
-                # width must be a multiple of 16. Some sensors, for example the
-                # IMX214 with its smallest configuration of 2104x1560, do not
-                # give such a width, so the size is set here.
-                stereo.setOutputSize(*CAMERA_SIZE)
+                stereo.setOutputSize(*CAMERA_SIZE)  # Aligned depth width must be a multiple of 16 (IMX214: 2104 wide)
             streams.append(Stream("stereo depth", stereo.depth.createOutputQueue(maxSize=2, blocking=False), "depth"))
         else:
             print(f"Stereo pair {pair.left}/{pair.right} is not available as a camera output; skipping depth")
@@ -431,11 +408,7 @@ def build_pipeline(
         archive = load_nn_archive(device, args.nn_model)
         color_output = cameras[color_camera.getBoardSocket()][1]
         frame_type = nn_input_type(device, archive)
-        # The network takes frames at the rate of the sensor, for the same
-        # reason as the encoders.
-        for index in range(n_networks):
-            # Only the first network gets the depth. The others are there to
-            # keep the inference engines busy.
+        for index in range(n_networks):  # Sensor rate, as for the encoders: mixed rates on one sensor stall RVC2
             first_with_depth = index == 0 and stereo is not None
             if index > 0:
                 network = add_network(pipeline, color_output, archive, frame_type)

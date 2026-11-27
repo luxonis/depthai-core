@@ -26,11 +26,9 @@ static void clearPipe(int fd) {
         count = read(fd, buffer, sizeof(buffer));
         if(count == -1) {
             if(errno == EAGAIN) {
-                // pipe is empty
                 break;
             } else {
                 std::cerr << "Failed while emptying the pipe: " << strerror(errno) << "\n";
-                // non fatal error continue
                 break;
             }
         }
@@ -63,7 +61,6 @@ LuxonisSidechannel::LuxonisSidechannel(void* camxDlopenHandle) {
     this->camxDlopenHandle = camxDlopenHandle;
     auto scVersionGet = (lux_sc_version_get_cb_t)dlsym(camxDlopenHandle, "lux_sc_version_get");
     if(scVersionGet != nullptr) {
-        // This version supports direct calling
         protocolVersion = scVersionGet();
         std::cout << "Running CAMX sidechannel shared library version: " << protocolVersion->major << "." << protocolVersion->minor
                   << " and depthai-device build container version: " << LUX_SC_VERSION_MAJOR << "." << LUX_SC_VERSION_MINOR << "\n"
@@ -88,8 +85,7 @@ LuxonisSidechannel::LuxonisSidechannel(void* camxDlopenHandle) {
         ops.sensor_err_cb_add = (lux_sc_sensor_err_cb_add_t)dlsym(camxDlopenHandle, "lux_sc_sensor_err_cb_add");
         ops.sensor_err_cb_rm = (lux_sc_sensor_err_cb_rm_t)dlsym(camxDlopenHandle, "lux_sc_sensor_err_cb_rm");
     } else {
-        // Note: do not put this in a initializer list, since the thread will start before the object is fully constructed
-        sidechannelThread = std::thread(&LuxonisSidechannel::listenToLuxonisSidechannel, this);
+        sidechannelThread = std::thread(&LuxonisSidechannel::listenToLuxonisSidechannel, this);  // Not in the initializer list: thread would start too early
     }
 }
 
@@ -131,7 +127,6 @@ void LuxonisSidechannel::listenToLuxonisSidechannel() {
                 close(fd);
                 break;
             }
-            // printf("Got message type: %d\n", msgType);
             if(msgType == LUX_SC_EXPOSURE_UPDATE) {
                 lux_sc_exposure_update_t msg;
                 auto suc = readMessageAfterHeaderRead(msg, fd);
@@ -143,14 +138,6 @@ void LuxonisSidechannel::listenToLuxonisSidechannel() {
                 if (dai::gate::FsyncController::getInstance().isOk()) {
                     dai::gate::FsyncController::getInstance().updatelCameraExposure(msg.exposure_ns, msg.camera_id);
                 }
-                /*
-                std::cout << "Read a exposure update message that said:\n"
-                          << "timestamp: " << msg.timestamp.tv_sec << "s " << msg.timestamp.tv_nsec << "ns\n"
-                          << "camera: " << msg.camera_id << "\n"
-                          << "exposure: " << msg.exposure_ns << "ns\n"
-                          << "previous exposure: " << msg.previous_exposure_ns << "ns\n"
-                          << std::flush;
-                          */
             } else if(msgType == LUX_SC_VERSION_RESULT) {
                 lux_sc_version_result_t msg;
                 auto suc = readMessageAfterHeaderRead(msg, fd);
@@ -174,9 +161,7 @@ void LuxonisSidechannel::listenToLuxonisSidechannel() {
                           << std::flush;
                 sendMessage(versionResultMsg);
             } else {
-                // This is pretty bad because we didn't read the whole message but read
-                // the header so clear the message / whole pipe
-                clearPipe(fd);
+                clearPipe(fd);  // Only the header was read, so clear the whole pipe
                 spdlog::debug("Got unknown message type");
                 close(fd);
                 break;
@@ -186,11 +171,8 @@ void LuxonisSidechannel::listenToLuxonisSidechannel() {
 };
 
 void LuxonisSidechannel::initializeFifo() {
-    // if protocol version < 2 it is normal that we first have to sendMessage() to query the version
     if(protocolVersion.has_value()) {
-        // LuxonisSidechannel::sendMessage() or LuxonisSidechannel::initializeFifo() should never be called on sidechannel version 2.0+
-        // as we don't use named pipes anymore but dlopen() and dlsym() to communicate between CAMX and depthai-device
-        DAI_CHECK_IN(protocolVersion->major < 2);
+        DAI_CHECK_IN(protocolVersion->major < 2);  // Sidechannel 2.0+ uses dlsym() calls, not named pipes: never call this there
     }
     std::lock_guard lock(fifoFdLock);
     if(fifoFd == std::nullopt) {
@@ -227,15 +209,7 @@ void LuxonisSidechannel::initialize(void* camxDlopenHandle) {
 }
 
 void LuxonisSidechannel::handleExposureUpdate(const lux_sc_exposure_update_t& msg) {
-    /*
-    std::cout << "Read a exposure update message V2 that said:\n"
-              << "timestamp: " << msg.timestamp.tv_sec << "s " << msg.timestamp.tv_nsec << "ns\n"
-              << "camera: " << msg.camera_id << "\n"
-              << "exposure: " << msg.exposure_ns << "ns\n"
-              << "previous exposure: " << msg.previous_exposure_ns << "ns\n"
-              << std::flush;
-              */
-    if (dai::gate::FsyncController::getInstance().isOk()) {
+    if(dai::gate::FsyncController::getInstance().isOk()) {
         dai::gate::FsyncController::getInstance().updatelCameraExposure(msg.exposure_ns, msg.camera_id);
     }
 }

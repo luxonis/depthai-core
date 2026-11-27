@@ -98,7 +98,6 @@ std::string calculateSHA1(const std::string& input) {
 #ifdef DEPTHAI_ENABLE_CURL
 bool sendLogsToServer(const std::optional<FileWithSHA1>& pipelineData, const std::optional<FileWithSHA1>& crashDumpData, const dai::DeviceInfo& deviceInfo) {
     (void)deviceInfo;  // Unused for now
-    // At least one of the files must be present
     if(!pipelineData && !crashDumpData) {
         logger::error("Incorrect usage of sendLogsToServer, at least one of the files must be present");
         return false;
@@ -145,7 +144,6 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Cra
         return;
     }
     namespace fs = std::filesystem;
-    // Check if the varialbe points to a directory
     std::string dirToStoreCrashDumps;
     if(!crashDumpEnvVar.empty()) {
         fs::path crashDumpPath(crashDumpEnvVar);
@@ -156,7 +154,6 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Cra
         }
     }
 
-    // Create the crash dump object
     FileWithSHA1 crashDumpData;
     auto bytes = crashDump.toBytes();
     crashDumpData.content = std::string(reinterpret_cast<const char*>(bytes.data()), bytes.size());
@@ -183,7 +180,6 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Cra
 
     crashDump.toTar(crashDumpPathLocal);
     logger::error(errorString);
-    // Send logs to the server if possible
 #ifdef DEPTHAI_ENABLE_CURL
 
     std::optional<FileWithSHA1> pipelineData;
@@ -195,14 +191,11 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Cra
         pipelineData->sha1Hash = std::move(pipelineSHA1);
     }
 
-    // Keep backward compatibility with the older global feedback switch while supporting
-    // the crashdump-specific switch introduced on this branch.
-    auto loggingDisabledLegacy = !utility::getEnvAs<std::string>("DEPTHAI_DISABLE_FEEDBACK", "").empty();
+    auto loggingDisabledLegacy = !utility::getEnvAs<std::string>("DEPTHAI_DISABLE_FEEDBACK", "").empty();  // Legacy switch, kept for compatibility
     auto loggingDisabledCrashdump = utility::getEnvAs<bool>("DEPTHAI_DISABLE_CRASHDUMP_COLLECTION", false);
     if(!loggingDisabledLegacy && !loggingDisabledCrashdump) {
         logger::info("Logging enabled");
         if(!sendLogsToServer(pipelineData, crashDumpData, deviceInfo)) {
-            // Keep at info level to not spam in case of no internet connection
             logger::warn("Failed to send crash dump logs to the server.");
         } else {
             logger::info("Crash dump logs sent to server");

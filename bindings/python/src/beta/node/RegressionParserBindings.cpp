@@ -9,13 +9,10 @@ void bind_beta_regressionparser(pybind11::module& m, void* pCallstack) {
 
     auto regressionParser = ADD_BETA_NODE_DERIVED(RegressionParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     regressionParser.def_readonly("input", &RegressionParser::input, DOC(dai, beta, node, RegressionParser, input))
         .def_readonly("out", &RegressionParser::out, DOC(dai, beta, node, RegressionParser, out))

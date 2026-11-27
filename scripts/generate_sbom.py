@@ -44,7 +44,6 @@ def always(cache: Cache) -> bool:
     return True
 
 
-# vcpkg manifest feature -> CMake configuration that enables it (cmake/depthaiVcpkgFeatures.cmake)
 FEATURE_CMAKE = {
     "opencv-support": "DEPTHAI_OPENCV_SUPPORT=ON and DEPTHAI_VCPKG_INTERNAL_ONLY=OFF",
     "opencv-gui": "DEPTHAI_OPENCV_SUPPORT=ON, DEPTHAI_BUILD_EXAMPLES=ON and DEPTHAI_VCPKG_INTERNAL_ONLY=OFF",
@@ -79,8 +78,7 @@ LICENSE_FROM_COPYRIGHT = {
     "libarchive": ("BSD-2-Clause", "Main license; some files are BSD-3-Clause, public domain or CC0-1.0 OR OpenSSL OR Apache-2.0"),
 }
 
-# FetchContent dependency -> (license, supplier, source-mode scope, enabled by, build-mode condition)
-FETCHCONTENT = {
+FETCHCONTENT = {  # name -> (license, supplier, source-mode scope, enabled by, build-mode condition)
     "XLink": ("Apache-2.0", "Luxonis", "required", "Always, unless DEPTHAI_XLINK_LOCAL is set",
               lambda cache: not cache.get("DEPTHAI_XLINK_LOCAL")),
     "libnop": ("Apache-2.0", None, "required", "DEPTHAI_LIBNOP_EXTERNAL=OFF",
@@ -96,8 +94,7 @@ FETCHCONTENT = {
 }
 FETCHCONTENT_FILES = ("cmake/depthaiDependencies.cmake", "tests/CMakeLists.txt")
 
-# Submodule path -> (name, license, supplier, source-mode scope, enabled by, build-mode condition)
-SUBMODULES = {
+SUBMODULES = {  # path -> (name, license, supplier, source-mode scope, enabled by, build-mode condition)
     "shared/depthai-bootloader-shared": ("depthai-bootloader-shared", "MIT", "Luxonis", "required", "Always", always),
     "shared/depthai_boards": ("depthai-boards", None, "Luxonis", "required", "DEPTHAI_GENERATE_HOUSING_COORDS=ON",
                               lambda cache: on(cache, "DEPTHAI_GENERATE_HOUSING_COORDS")),
@@ -116,8 +113,7 @@ SUBMODULES = {
     ),
 }
 
-# Code copied into the tree: (path, name, (version file, regex), license, upstream, source-mode scope, enabled by, condition)
-VENDORED = (
+VENDORED = (  # (path, name, (version file, regex), license, upstream, source-mode scope, enabled by, condition)
     ("include/3rdparty/mcap", "mcap", ("include/3rdparty/mcap/types.hpp", r'#define MCAP_LIBRARY_VERSION "([^"]+)"'),
      "MIT", "https://github.com/foxglove/mcap", "required", "Always", always),
     ("include/3rdparty/nanorpc", "nanorpc", None, "MIT", "https://github.com/tdv/nanorpc", "required", "Always", always),
@@ -129,9 +125,7 @@ VENDORED = (
      "optional", "DEPTHAI_BUILD_PYTHON=ON", lambda cache: on(cache, "DEPTHAI_BUILD_PYTHON")),
 )
 
-# Luxonis prebuilt artifacts: (name, type, config file, version var, maturity var, license, license file,
-#                              source-mode scope, enabled by, CMake option)
-ARTIFACTS = (
+ARTIFACTS = (  # (name, type, config file, version var, maturity var, license, license file, scope, enabled by, option)
     ("depthai-device-rvc2", "firmware", "DepthaiDeviceSideConfig.cmake", "DEPTHAI_DEVICE_SIDE_COMMIT",
      "DEPTHAI_DEVICE_SIDE_MATURITY", "LicenseRef-Luxonis-Firmware-Package", "notices/depthai-device-RVC2-LICENSE",
      "required", "DEPTHAI_ENABLE_DEVICE_FW=ON (default)", "DEPTHAI_ENABLE_DEVICE_FW"),
@@ -152,29 +146,21 @@ ARTIFACTS = (
      "optional", "DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT=ON (default)", "DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT"),
 )
 
-# Custom licenses: readable names. The SBOM does not repeat their full text; it is in the notices/ files that
-# ship with depthai-core (linked with seeAlso at the exact commit).
 CUSTOM_LICENSE_NAMES = {
     "LicenseRef-Luxonis-Firmware-Package": "Luxonis Firmware Package License",
     "LicenseRef-Luxonis-Visualizer": "Luxonis Proprietary Software License (depthai-visualizer)",
     "LicenseRef-Luxonis-Dynamic-Calibration": "Luxonis Dynamic Calibration License",
 }
 
-# How a component relates to its parent. "test" and "build-tool" are not shipped.
 SCOPE_OF_RELATION = {"depends": "required", "contains": "required", "optional": "optional",
                      "test": "excluded", "build-tool": "excluded", "unused": "excluded"}
 
 
-# ---------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------
 def run(cmd: list[str], cwd: Path | None = None) -> str:
     return subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True, capture_output=True, text=True).stdout
 
 
-# The checkout can belong to another user (for example in a manylinux container job), and git then
-# refuses to read it. The SBOM only reads the repositories of this build.
-GIT = ["git", "-c", "safe.directory=*"]
+GIT = ["git", "-c", "safe.directory=*"]  # Checkout can belong to another user (container jobs); git then refuses it
 
 
 def git(path: Path, *args: str) -> str | None:
@@ -198,7 +184,6 @@ def read_cmake_cache(build_dir: Path) -> Cache:
 
 
 def read_cmake_set(path: Path, var: str) -> str | None:
-    # set(VAR "value") or set(VAR "value" CACHE <type> "<doc>")
     match = re.search(rf'^\s*set\({var}\s+"([^"]*)"', path.read_text(encoding="utf-8"), re.M)
     return match.group(1) if match else None
 
@@ -242,9 +227,6 @@ def component(ref: str, name: str, relation: str, **fields: Any) -> dict[str, An
     return entry
 
 
-# ---------------------------------------------------------------------
-# vcpkg
-# ---------------------------------------------------------------------
 def read_vcpkg_status(install_root: Path, triplet: str) -> dict[str, dict[str, Any]]:
     """Installed packages of one triplet: version, port version, features and dependencies."""
     database = install_root / "vcpkg"
@@ -300,8 +282,7 @@ def read_port_spdx(share_dir: Path) -> dict[str, Any]:
         for package in packages
         if package.get("SPDXID", "").startswith("SPDXRef-resource-")
         and package.get("downloadLocation") not in (None, "", NOASSERTION, "NONE")
-        # Some ports write an unexpanded variable (for example ${VERSION}) into their SPDX file
-        and "${" not in package["downloadLocation"]
+        and "${" not in package["downloadLocation"]  # Some ports write an unexpanded ${VERSION} here
     ]
     return {
         "license": license_expression,
@@ -466,7 +447,6 @@ def vcpkg_from_build(repo: Path, build_dir: Path, cache: Cache, inventory: dict[
             inventory["edges"].setdefault(f"vcpkg-{name}", set()).update(child_refs)
         if name in direct or name not in linked:
             inventory["edges"]["root"].add(f"vcpkg-{name}")
-    # A linked package that no edge reaches from a direct dep still belongs to the root
     reached = set()
     for ref in list(inventory["edges"]["root"]):
         stack = [ref]
@@ -520,7 +500,6 @@ def vcpkg_from_source(repo: Path, vcpkg_root: Path, triplet: str, inventory: dic
         full = dry_run([f"--x-feature={feature}" for feature in features])
         full = {name: entry for name, entry in full.items() if not name.startswith("vcpkg-")}
 
-        # Classic mode (no manifest in the working directory) on the baseline ports gives the dependency edges
         ports_root = export_baseline_ports(vcpkg_root, inventory["properties"]["vcpkg:baseline"], Path(scratch))
         specs = [f"{name}[{','.join(entry['features'])}]:{entry['triplet']}" for name, entry in sorted(full.items())]
         dot = run([str(vcpkg), "depend-info", *specs, f"--x-builtin-ports-root={ports_root}",
@@ -571,9 +550,6 @@ def vcpkg_from_source(repo: Path, vcpkg_root: Path, triplet: str, inventory: dic
             inventory["edges"]["root"].add(f"vcpkg-{name}")
 
 
-# ---------------------------------------------------------------------
-# Non-vcpkg components
-# ---------------------------------------------------------------------
 def add_fetchcontent(repo: Path, build_dir: Path | None, cache: Cache | None, inventory: dict[str, Any]) -> None:
     pattern = re.compile(r"FetchContent_Declare\(\s*(\w+)\s+GIT_REPOSITORY\s+(\S+)\s+GIT_TAG\s+(\S+)", re.S)
     for cmake_file in FETCHCONTENT_FILES:
@@ -672,16 +648,13 @@ def add_artifacts(repo: Path, build_dir: Path | None, cache: Cache | None, inven
             if license_file not in files:
                 files.append(license_file)
         if name == "depthai-device-rvc4" and version is None:
-            # No version: the host build builds the firmware from device/rvc4 (cmake/DepthaiDeviceRvc4FirmwareBuild.cmake)
             entry["properties"]["depthai:source"] = "device/rvc4 of this tree"
         if name == "depthai-device-rvc4" and build_dir is not None:
-            # The package that the library embeds: the pinned version with its sanitizer variant, or a local package
             embedded = cache.get("DEPTHAI_DEVICE_RVC4_EMBEDDED_VERSION")
             if embedded:
                 version = embedded
                 entry["version"] = version
-            # CMakeLists.txt appends the sanitizer variant to the firmware version
-            elif version and on(cache, "DEPTHAI_SANITIZE"):
+            elif version and on(cache, "DEPTHAI_SANITIZE"):  # CMakeLists.txt appends this variant to the version
                 version += "-tsan" if on(cache, "SANITIZE_THREAD") else "-asan-ubsan"
                 entry["version"] = version
             link_firmware_sbom(build_dir, version, entry, inventory, output_dir)
@@ -758,9 +731,6 @@ def add_python_requirements(repo: Path, inventory: dict[str, Any]) -> None:
         inventory["edges"]["root"].add(entry["ref"])
 
 
-# ---------------------------------------------------------------------
-# Writers
-# ---------------------------------------------------------------------
 def custom_license(inventory: dict[str, Any], license_id: str) -> tuple[str, list[str]]:
     """Readable name and URLs (the notices file at the commit) of a custom LicenseRef."""
     name = CUSTOM_LICENSE_NAMES.get(license_id, license_id[len("LicenseRef-"):])
@@ -954,9 +924,6 @@ def to_cyclonedx(inventory: dict[str, Any], generated_at: str) -> dict[str, Any]
     }
 
 
-# ---------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("mode", choices=("build", "source"))
@@ -1047,6 +1014,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except subprocess.CalledProcessError as error:
-        # run() captures the output, and vcpkg writes its errors to stdout
-        print(f"{error.stdout or ''}{error.stderr or ''}", file=sys.stderr)
+        print(f"{error.stdout or ''}{error.stderr or ''}", file=sys.stderr)  # vcpkg writes its errors to stdout
         raise

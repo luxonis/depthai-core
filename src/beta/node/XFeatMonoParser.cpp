@@ -28,7 +28,6 @@ XFeatMonoParser::Properties& XFeatMonoParser::getProperties() {
 }
 
 NNArchive XFeatMonoParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -99,10 +98,6 @@ void XFeatMonoParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
 
     setConfig(xfeatHead);
 
-    // When the head metadata carries no input size, it is derived from the model input's
-    // declared shape and layout. All known XFeat archives carry the input_size metadata key,
-    // which then takes precedence like in the source parser; a head alone carries no model
-    // input metadata, so this fallback is only possible on the full-archive path.
     if(!utilities::XFeatUtils::readSizeParam(xfeatHead.metadata.extraParams, "input_size").has_value()) {
         const auto modelInputSize = utilities::XFeatUtils::getModelInputSize(configV1.model.inputs, NAME);
         setInputSize(modelInputSize.first, modelInputSize.second);
@@ -114,10 +109,6 @@ void XFeatMonoParser::setConfig(const dai::nn_archive::v1::Head& head) {
 
     const std::size_t numOutputs = head.outputs.has_value() ? head.outputs->size() : 0;
     DAI_CHECK_V(numOutputs == 3, "Only three output layers supported for XFeat, got {} layers.", numOutputs);
-    // The layers are assigned by substring: a layer whose name contains "feats" is the feature
-    // map layer, otherwise one containing "keypoints" is the keypoint logit layer and otherwise
-    // one containing "heatmaps" is the reliability heat map layer, mirroring the source parser.
-    // A layer matching none keeps the corresponding configured name.
     for(const auto& layer : *head.outputs) {
         if(layer.find("feats") != std::string::npos) {
             setOutputLayerFeats(layer);
@@ -128,9 +119,6 @@ void XFeatMonoParser::setConfig(const dai::nn_archive::v1::Head& head) {
         }
     }
 
-    // The XFeat-specific keys without typed metadata fields live in the head metadata extra
-    // parameters. Missing keys keep the already configured values, mirroring the source parser
-    // behavior.
     const auto& extraParams = head.metadata.extraParams;
 
     if(const auto headOriginalSize = utilities::XFeatUtils::readSizeParam(extraParams, "original_size")) {
@@ -218,11 +206,9 @@ void XFeatMonoParser::run() {
     DAI_CHECK(!properties.outputLayerKeypoints.empty(), "Output layer containing keypoints must be specified!");
     DAI_CHECK(!properties.outputLayerHeatmaps.empty(), "Output layer containing heatmaps must be specified!");
 
-    // The resize rates are computed once before the loop, like the source run().
     const double resizeRateW = static_cast<double>(properties.originalSize->first) / static_cast<double>(properties.inputSize.first);
     const double resizeRateH = static_cast<double>(properties.originalSize->second) / static_cast<double>(properties.inputSize.second);
 
-    // The reference result the current frame's keypoints are matched against, None initially.
     std::optional<utilities::XFeatUtils::XFeatResult> previousResult;
 
     while(mainLoop()) {
@@ -255,11 +241,9 @@ void XFeatMonoParser::run() {
         auto tGotInput = std::chrono::steady_clock::now();
         const XFeatMonoParserConfig configSnapshot = config;
 
-        // Extract
         auto tensors =
             utilities::XFeatUtils::extractXFeatTensors(*nnData, properties.outputLayerFeats, properties.outputLayerKeypoints, properties.outputLayerHeatmaps);
 
-        // Compute
         const auto result = utilities::XFeatUtils::detectAndCompute(tensors.feats,
                                                                     tensors.keypoints,
                                                                     tensors.heatmaps,
@@ -269,10 +253,7 @@ void XFeatMonoParser::run() {
                                                                     properties.inputSize.second,
                                                                     configSnapshot.maxKeypoints);
 
-        // Emit
         if(!result.has_value()) {
-            // No keypoint candidates: an empty message; the reference and a pending trigger
-            // stay untouched, mirroring the source emit()'s early return.
             auto message = std::make_shared<dai::TrackedFeatures>();
             message->setBufferMetadataFrom(nnData);
             logger->debug("XFeatMonoParser: no keypoints found, sending empty TrackedFeatures message");
@@ -291,7 +272,6 @@ void XFeatMonoParser::run() {
             const auto matchedPoints = utilities::XFeatUtils::matchResults(*previousResult, *result);
             message = utilities::XFeatUtils::createTrackedFeaturesMessage(matchedPoints);
         } else {
-            // No reference stored yet: an empty message.
             message = std::make_shared<dai::TrackedFeatures>();
         }
         message->setBufferMetadataFrom(nnData);
@@ -302,7 +282,6 @@ void XFeatMonoParser::run() {
             out.send(message);
         }
 
-        // The reference updates after the emission, consuming a pending trigger.
         if(trigger.exchange(false)) {
             previousResult = *result;
         }

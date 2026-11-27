@@ -17,7 +17,6 @@ namespace {
 
 constexpr double PARALLEL_EPS = 1e-9;
 constexpr double DEPTH_EPS = 1e-6;
-/// Samples taken along every edge of an image when its footprint on the plane is traced.
 constexpr int FOOTPRINT_SAMPLES_PER_EDGE = 64;
 constexpr uint32_t MIN_VIEW_SIZE = 16;
 
@@ -154,8 +153,7 @@ void PlanarStitcher::prepare(const std::vector<ImgTransformation>& transformatio
     planeNormal = normalized(toVec(config.plane->normal));
     DAI_CHECK_V(cv::norm(planeNormal) > 0.5, "The plane normal must not be a zero vector");
 
-    // Orient the normal towards the cameras, so that "in front of the plane" is well defined
-    double cameraSide = 0.0;
+    double cameraSide = 0.0;  // Orient the normal towards the cameras so "in front of the plane" is defined
     for(size_t i = 0; i < poses.size(); ++i) {
         const double signedDistance = planeNormal.dot(poses[i].center - planePoint);
         DAI_CHECK_V(std::abs(signedDistance) > PARALLEL_EPS, "Input {} camera center lies on the plane, so the plane cannot be projected onto", i);
@@ -192,13 +190,11 @@ void PlanarStitcher::prepare(const std::vector<ImgTransformation>& transformatio
         const auto sourceWidth = sourceSize.first;
         const auto sourceHeight = sourceSize.second;
 
-        // Mutable copy: prime the crop cache before the parallel read-only lookups below.
-        ImgTransformation cachedTransformation = transformations[i];
+        ImgTransformation cachedTransformation = transformations[i];  // Mutable copy: prime the crop cache before the parallel read-only lookups
         cachedTransformation.getDstMaskPt(0, 0);
         cv::parallel_for_(cv::Range(0, height), [&](const cv::Range& rows) {
             for(int y = rows.start; y < rows.end; ++y) {
                 for(int x = 0; x < width; ++x) {
-                    // Ray of the virtual camera, in the reference frame
                     const cv::Vec3d direction = viewRotation * (viewIntrinsicsInv * cv::Vec3d(x, y, 1.0));
                     const double denominator = planeNormal.dot(direction);
                     if(std::abs(denominator) < PARALLEL_EPS) continue;
@@ -209,8 +205,7 @@ void PlanarStitcher::prepare(const std::vector<ImgTransformation>& transformatio
                     const cv::Vec3d toPoint = point - poses[i].center;
                     const double rangeSquared = toPoint.dot(toPoint);
                     if(rangeSquared > maxRangeSquared) continue;
-                    // Rays grazing the plane stretch a couple of pixels over a large part of it
-                    if(std::abs(planeNormal.dot(toPoint)) < minIncidenceSine * std::sqrt(rangeSquared)) continue;
+                    if(std::abs(planeNormal.dot(toPoint)) < minIncidenceSine * std::sqrt(rangeSquared)) continue;  // Grazing rays smear pixels over the plane
 
                     const cv::Vec3d inCamera = poses[i].rotation.t() * toPoint;
                     if(inCamera[2] <= DEPTH_EPS) continue;
@@ -221,7 +216,6 @@ void PlanarStitcher::prepare(const std::vector<ImgTransformation>& transformatio
                        || projected.y > static_cast<float>(sourceHeight) - 1.0f) {
                         continue;
                     }
-                    // Regions the input image does not cover, e.g. the padding of a letterboxed frame
                     if(!cachedTransformation.getDstMaskPt(static_cast<size_t>(projected.x), static_cast<size_t>(projected.y))) continue;
 
                     map.at<cv::Vec2f>(y, x) = cv::Vec2f(projected.x, projected.y);
@@ -271,9 +265,7 @@ void PlanarStitcher::validateTransformations(const std::vector<ImgTransformation
 }
 
 Stitching::VirtualCamera PlanarStitcher::computeView(const std::vector<ImgTransformation>& transformations, const std::vector<SourcePose>& poses) const {
-    // In-plane axes of the rendered image: the reference frame looks "up" in the image, i.e. the optical axis of the
-    // reference camera, projected onto the plane, points towards the top of the image
-    cv::Vec3d heading = cv::Vec3d(0, 0, 1) - planeNormal.dot(cv::Vec3d(0, 0, 1)) * planeNormal;
+    cv::Vec3d heading = cv::Vec3d(0, 0, 1) - planeNormal.dot(cv::Vec3d(0, 0, 1)) * planeNormal;  // Projected reference optical axis points to the image top
     if(cv::norm(heading) < 1e-3) {
         heading = cv::Vec3d(1, 0, 0) - planeNormal.dot(cv::Vec3d(1, 0, 0)) * planeNormal;
     }
@@ -292,8 +284,7 @@ Stitching::VirtualCamera PlanarStitcher::computeView(const std::vector<ImgTransf
         const auto [width, height] = transformations[i].getSize();
         longestSide = std::max(longestSide, static_cast<uint32_t>(std::max(width, height)));
 
-        // Trace the border of the image, the footprint of a convex field of view is bounded by it
-        std::vector<dai::Point2f> border;
+        std::vector<dai::Point2f> border;  // The border suffices: it bounds the footprint of a convex field of view
         border.reserve(static_cast<size_t>(4) * FOOTPRINT_SAMPLES_PER_EDGE);
         for(int sample = 0; sample < FOOTPRINT_SAMPLES_PER_EDGE; ++sample) {
             const float alpha = static_cast<float>(sample) / FOOTPRINT_SAMPLES_PER_EDGE;
@@ -315,7 +306,6 @@ Stitching::VirtualCamera PlanarStitcher::computeView(const std::vector<ImgTransf
             const double distance = planeNormal.dot(planePoint - poses[i].center) / denominator;
             if(distance <= 0.0) continue;
 
-            // Forward intersections past the configured range are clamped before being projected onto the plane.
             const cv::Vec3d point = poses[i].center + std::min(distance, static_cast<double>(config.maxRange)) * direction;
             const cv::Vec3d toPoint = point - poses[i].center;
             const double rangeSquared = toPoint.dot(toPoint);
@@ -335,7 +325,6 @@ Stitching::VirtualCamera PlanarStitcher::computeView(const std::vector<ImgTransf
     const double extentV = std::max(maxV - minV, 1.0);
     const cv::Vec3d center = planePoint + 0.5 * (minU + maxU) * axisU + 0.5 * (minV + maxV) * axisV;
 
-    // Keep the ground sampling distance of the inputs, within the configured bounds
     double width = longestSide;
     double height = width * extentV / extentU;
     if(height > width) {
@@ -353,14 +342,11 @@ Stitching::VirtualCamera PlanarStitcher::computeView(const std::vector<ImgTransf
     resolved.height = std::max(MIN_VIEW_SIZE, static_cast<uint32_t>(std::lround(height)));
     resolved.unit = LengthUnit::CENTIMETER;
 
-    // Any distance renders the same image as long as the focal length follows it, so the camera is placed the way a
-    // real one framing the area would be
-    const double distance = std::max(extentU, extentV);
+    const double distance = std::max(extentU, extentV);  // Any distance gives the same image if focal follows; placed like a real camera
     const double focal = resolved.width * distance / extentU;
     resolved.intrinsics = {
         {{static_cast<float>(focal), 0.0f, 0.5f * (resolved.width - 1)}, {0.0f, static_cast<float>(focal), 0.5f * (resolved.height - 1)}, {0.0f, 0.0f, 1.0f}}};
 
-    // Looking straight at the plane, with the in-plane axes as the image axes
     const cv::Vec3d position = center + distance * planeNormal;
     const cv::Vec3d axisZ = -planeNormal;
     resolved.pose = {{{static_cast<float>(axisU[0]), static_cast<float>(axisV[0]), static_cast<float>(axisZ[0]), static_cast<float>(position[0])},
@@ -387,8 +373,7 @@ void PlanarStitcher::prepareCompositing(const std::vector<cv::Mat>& warped) {
     compensator = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN_BLOCKS);
     compensator->feed(corners, images, masks);
 
-    // Seam estimation is the expensive part, so it runs on downscaled images, the way OpenCV's stitcher does
-    const double area = static_cast<double>(view.width) * view.height;
+    const double area = static_cast<double>(view.width) * view.height;  // Seams on downscaled images (expensive), as OpenCV's stitcher does
     const double scale = std::min(1.0, std::sqrt(stitching::SEAM_ESTIMATION_RESOLUTION * 1e6 / area));
 
     std::vector<cv::Point> seamCorners;
@@ -461,8 +446,7 @@ cv::Mat PlanarStitcher::compose(const std::vector<cv::Mat>& images) {
     blender->blend(result, resultMask);
     result.convertTo(result, CV_8U);
 
-    // The blender only guarantees the result covers the fed regions, the canvas is the view
-    if(result.size() != viewSize) {
+    if(result.size() != viewSize) {  // The blender only covers the fed regions; the canvas is the view
         cv::Mat canvas = cv::Mat::zeros(viewSize, result.type());
         const cv::Rect overlap = cv::Rect(0, 0, result.cols, result.rows) & cv::Rect(0, 0, viewSize.width, viewSize.height);
         result(overlap).copyTo(canvas(overlap));

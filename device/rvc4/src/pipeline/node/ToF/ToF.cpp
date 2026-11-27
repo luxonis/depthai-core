@@ -39,10 +39,8 @@ void ToFBase::run() {
     auto bleedingFilter = std::make_unique<BleedingFilter>(BleedingFilter::Parameters{});
     bool enableBleedingFilter = properties.initialConfig.profile != ToFConfig::Profile::LOW_RANGE;
     std::vector<uint8_t> amplitudeScratch;
-    // The bleeding filter needs amplitude even without a connected output.
     auto amplitudeLut = tofVD55H1::makeFloat16ToUint8Log1pLut(49.32f, 1.0f);
-    // FP32 amplitudes overflowing FP16 must still saturate to white, not zero.
-    amplitudeLut[0x7c00] = 255;
+    amplitudeLut[0x7c00] = 255;  // FP32 amplitudes overflowing FP16 must saturate to white, not zero
     uint64_t seqDepth = 0;
     bool initialized = false;
     bool wantAmplitude = false;
@@ -52,9 +50,7 @@ void ToFBase::run() {
     std::optional<tofVD55H1::Float16ToUint8Lut> intensityLut;
     cv::Mat undistortMapX;
     cv::Mat undistortMapY;
-    // localTransform targets this device's local calibration origin; outputTransform is what frames carry,
-    // rebased to the multi-device origin whenever a graph is installed.
-    dai::ImgTransformation localTransform;
+    dai::ImgTransformation localTransform;  // Frames carry outputTransform, rebased to the multi-device origin; localTransform is device-local
     dai::ImgTransformation outputTransform;
     std::shared_ptr<Camera> sourceCamera;
     void* sensorErrorCbHandle = nullptr;
@@ -132,8 +128,7 @@ void ToFBase::run() {
             logger->debug("ToF: processFrame seq={} size={}", inImage->getSequenceNum(), inImage->getData().size());
             int rawFd = -1;
             const auto memory = ConvertedOffsetMemory::convert(inImage->data);
-            // The IPP import starts at the allocation base and cannot represent an offset.
-            if(memory && memory->getOffset() == 0) {
+            if(memory && memory->getOffset() == 0) {  // The IPP import starts at the allocation base and cannot represent an offset
                 const auto hal = ConvertedOffsetMemory::cast<HalBufferMemory>(memory);
                 if(hal && hal->privHnd && hal->getData().data() == rawPtr) rawFd = hal->privHnd->fd;
             }
@@ -144,8 +139,7 @@ void ToFBase::run() {
 
             if(sourceCamera) {
                 const auto nextExposureNs = vd55h1->getNextExposureTimeNs();
-                // The wrapper uses 15 ms as a fallback; valid VD55H1 AE predictions are at most 0.35 ms.
-                if(nextExposureNs > 0 && nextExposureNs <= 350000) {
+                if(nextExposureNs > 0 && nextExposureNs <= 350000) {  // The wrapper falls back to 15 ms; valid VD55H1 AE predictions are at most 0.35 ms
                     const auto exposureUs = static_cast<uint32_t>((nextExposureNs + 500) / 1000);
                     const auto iso = inImage->cam.sensitivityIso > 0 ? static_cast<uint32_t>(inImage->cam.sensitivityIso) : 100u;
                     sourceCamera->setToFExposure(exposureUs, iso);
@@ -181,9 +175,7 @@ void ToFBase::run() {
                 return frame;
             };
 
-            // Filtering needs amplitude even without a connected output. Reuse the conversion
-            // and, when connected, the output buffer; keep both planes distorted until filtered.
-            std::shared_ptr<ImgFrame> amplitudeFrame;
+            std::shared_ptr<ImgFrame> amplitudeFrame;  // Filtering needs amplitude even without a connected output; keep planes distorted until filtered
             uint8_t* amplitudeData = nullptr;
             if(wantAmplitude) {
                 amplitudeFrame = makeOutputFrame(u8PlaneSizeB, ImgFrame::Type::RAW8);
@@ -288,7 +280,6 @@ bool ToFBase::initialize(const std::shared_ptr<ImgFrame>& inImage,
     const uint32_t outW = vd55h1->getDepthHeight();
     const uint32_t outH = vd55h1->getDepthWidth();
     const auto socket = static_cast<dai::CameraBoardSocket>(inImage->getInstanceNum());
-    // The caller stamps the device identity and applies the multi-device bridge (see refreshOutputTransform in run()).
     auto setOutputTransform = [&](dai::ImgTransformation transform) { localTransform = std::move(transform); };
 
     if(!getParentPipeline().isCalibrationDataAvailable()) {

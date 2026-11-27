@@ -1,12 +1,8 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
-
-// standard
-#include <fstream>
-
-// shared
 #include <depthai/properties/EdgeDetectorProperties.hpp>
+#include <fstream>
 
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 

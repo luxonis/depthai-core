@@ -2,14 +2,13 @@
 
 #include <fmt/std.h>
 
-#include "spdlog/fmt/fmt.h"
-#include "utility/spdlog-fmt.hpp"
-
-// std
 #include <algorithm>
 #include <array>
 #include <fstream>
 #include <limits>
+
+#include "spdlog/fmt/fmt.h"
+#include "utility/spdlog-fmt.hpp"
 
 namespace dai {
 
@@ -116,7 +115,6 @@ void AssetManager::setRootPath(const std::string& rootPath) {
 }
 
 std::string AssetManager::getRelativeKey(const std::string& key) const {
-    // Check if asset key is absolute or relative
     std::string relativeKey = "";
     if(key.size() == 0) {
         return relativeKey;
@@ -143,7 +141,6 @@ std::shared_ptr<dai::Asset> AssetManager::set(Asset asset) {
 }
 
 std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, Asset asset) {
-    // Rename the asset with supplied key and store
     Asset a(key);
     std::lock_guard<std::mutex> lock(*asset.dataMutex);
     a.data = std::move(asset.data);
@@ -172,7 +169,6 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std:
 std::shared_ptr<dai::Asset> AssetManager::setLazy(const std::string& key, const std::filesystem::path& path, int alignment) {
     const auto absolutePath = std::filesystem::absolute(path);
 
-    // Load binary file at path
     std::ifstream stream(absolutePath, std::ios::in | std::ios::binary);
     if(!stream.is_open()) {
         // Throw an error
@@ -180,29 +176,23 @@ std::shared_ptr<dai::Asset> AssetManager::setLazy(const std::string& key, const 
         throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", absolutePath));
     }
 
-    // Create an asset
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;
     binaryAsset.setFile(absolutePath, static_cast<std::size_t>(std::filesystem::file_size(absolutePath)));
-    // Store asset
     return set(std::move(binaryAsset));
 }
 
 std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std::vector<std::uint8_t>& data, int alignment) {
-    // Create an asset
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;
     binaryAsset.setData(data);
-    // Store asset
     return set(std::move(binaryAsset));
 }
 
 std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, std::vector<std::uint8_t>&& data, int alignment) {
-    // Create an asset
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;
     binaryAsset.setData(std::move(data));
-    // Store asset
     return set(std::move(binaryAsset));
 }
 
@@ -223,7 +213,6 @@ std::shared_ptr<Asset> AssetManager::get(const std::string& key) {
 }
 
 void AssetManager::addExisting(const std::vector<std::shared_ptr<Asset>>& assets) {
-    // make sure that key doesn't exist already
     for(const auto& asset : assets) {
         if(assetMap.count(asset->key) > 0) throw std::logic_error("An Asset with the key: " + asset->key + " already exists.");
         std::string key = asset->key;
@@ -273,7 +262,6 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
             const auto assetSize = a.path.empty() ? a.data.size() : (a.dataLoaded ? a.lazyData.size() : a.size);
             const auto assetStorageStart = storage.size();
 
-            // Calculate additional bytes needed to offset to alignment.
             std::size_t toAdd = 0;
             if(a.alignment > 1 && storage.size() % a.alignment != 0) {
                 toAdd = a.alignment - (storage.size() % a.alignment);
@@ -281,10 +269,8 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
 
             getSerializedEndOffset(storage.size(), a.alignment, assetSize);
 
-            // calculate offset
             std::uint32_t offset = static_cast<uint32_t>(storage.size()) + toAdd;
 
-            // Add alignment bytes
             storage.resize(storage.size() + toAdd);
 
             if(!a.path.empty() && !a.dataLoaded) {
@@ -317,7 +303,6 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
                 storage.insert(storage.end(), assetData.begin(), assetData.end());
             }
 
-            // Add to map the currently added asset
             mutableAssets.set(prefix + a.key, offset, static_cast<uint32_t>(assetSize), a.alignment);
         }
     } catch(...) {

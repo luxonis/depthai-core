@@ -35,7 +35,6 @@ RFDETRParser::Properties& RFDETRParser::getProperties() {
 }
 
 NNArchive RFDETRParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -106,10 +105,6 @@ void RFDETRParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
 
     setConfig(rfdetrHead);
 
-    // The input size is derived from the first model input's declared shape and layout,
-    // mirroring the source build(). It stays unchanged when the shape or the layout is not
-    // declared. A head carries no model input metadata, so this is only possible on the
-    // full-archive path.
     if(!configV1.model.inputs.empty()) {
         const auto& modelInput = configV1.model.inputs.front();
         const std::string layout = modelInput.layout.value_or("");
@@ -146,10 +141,7 @@ void RFDETRParser::setConfig(const dai::nn_archive::v1::Head& head) {
         setMaskConfidence(maskConfJson.get<float>());
     }
 
-    // The head output layers replace the configured output layer names, positionally (boxes,
-    // class logits, optional mask logits), mirroring the source build() including its output
-    // count validation.
-    const std::vector<std::string> headOutputs = head.outputs.value_or(std::vector<std::string>{});
+    const std::vector<std::string> headOutputs = head.outputs.value_or(std::vector<std::string>{});  // Positional: boxes, class logits, optional mask logits
     DAI_CHECK_V(headOutputs.empty() || headOutputs.size() == 2 || headOutputs.size() == 3,
                 "RFDETRParser expects 2 outputs for detection or 3 outputs for segmentation, got {} outputs: [{}].",
                 headOutputs.size(),
@@ -253,9 +245,6 @@ void RFDETRParser::run() {
 
         const RFDETRParserConfig config = activeConfig;
 
-        // Extract: the configured output layer names or, when not configured, all layer names
-        // of the incoming NNData in their reported order; positionally boxes, class logits and
-        // the optional mask logits, mirroring the source extract().
         const std::vector<std::string> layerNames = properties.outputLayerNames.empty() ? nnData->getAllLayerNames() : properties.outputLayerNames;
         DAI_CHECK_V(layerNames.size() >= 2 && layerNames.size() <= 3,
                     "Expected 2 or 3 output layers (boxes, logits, optional masks), got {} layers.",
@@ -268,7 +257,6 @@ void RFDETRParser::run() {
             masksTensor = utilities::ClassificationUtils::getShapedTensorData(*nnData, layerNames[2]);
         }
 
-        // Compute
         const auto detections = utilities::RFDETRUtils::computeRfDetrDetections(boxesTensor,
                                                                                 logitsTensor,
                                                                                 masksTensor,
@@ -282,14 +270,13 @@ void RFDETRParser::run() {
                          detections.ignoredInstances);
         }
 
-        // Emit
         auto message = utilities::DetectionUtils::createDetectionMessage(detections.bboxes,
                                                                          detections.scores,
-                                                                         /*angles=*/{},
+                                                                         {},
                                                                          detections.labels,
                                                                          detections.labelNames,
-                                                                         /*keypoints=*/{},
-                                                                         /*keypointEdges=*/{},
+                                                                         {},
+                                                                         {},
                                                                          detections.segmentationMask,
                                                                          detections.maskWidth,
                                                                          detections.maskHeight);

@@ -1,9 +1,7 @@
 #pragma once
 
-// std
 #include <cstdint>
 
-// project
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {

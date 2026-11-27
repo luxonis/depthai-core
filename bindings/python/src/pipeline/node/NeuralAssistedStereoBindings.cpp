@@ -10,20 +10,11 @@ void bind_neuralassistedstereo(pybind11::module& m, void* pCallstack) {
 
     auto node = ADD_NODE(NeuralAssistedStereo);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Node
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     node.def_property_readonly(
             "left",
@@ -109,7 +100,4 @@ void bind_neuralassistedstereo(pybind11::module& m, void* pCallstack) {
             py::return_value_policy::reference_internal,
             DOC(dai, node, NeuralAssistedStereo, stereoDepth));
 #endif
-
-    // // ALIAS
-    // daiNodeModule.attr("NeuralAssistedStereo").attr("Properties") = properties;
 }

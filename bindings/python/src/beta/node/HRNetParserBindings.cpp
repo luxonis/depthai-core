@@ -11,13 +11,10 @@ void bind_beta_hrnetparser(pybind11::module& m, void* pCallstack) {
     py::class_<beta::HRNetParserProperties> properties(betaModule, "HRNetParserProperties");
     auto hrnetParser = ADD_BETA_NODE_DERIVED(HRNetParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     properties.def_readwrite("initialConfig", &beta::HRNetParserProperties::initialConfig)
         .def_readwrite("outputLayerName", &beta::HRNetParserProperties::outputLayerName)

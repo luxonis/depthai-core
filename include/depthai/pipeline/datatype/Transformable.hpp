@@ -39,13 +39,7 @@ class Transformable {
 template <class Derived>
 class TransformableCRTP : public Transformable {
    public:
-    /*
-     * Returns a new message that has been transformed into the target image transformation. The source transformation is taken from the message itself, and an
-     * error is thrown if it is not set.
-     *
-     * The Derived class is expected to override the transformToInternal function, which performs the actual transformation of the message data.
-     */
-    Derived transformTo(const ImgTransformation& target) const {
+    Derived transformTo(const ImgTransformation& target) const {  // Throws if the message has no source transformation
         Derived out(static_cast<const Derived&>(*this));
         out.transformToInternal(target);
         return out;

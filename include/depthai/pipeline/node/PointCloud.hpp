@@ -70,34 +70,25 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
 
         void setLogger(const std::shared_ptr<::spdlog::logger>& log);
 
-        // Compute DENSE point cloud (width * height points, includes invalid z=0 or negative) on the CPU or through Kompute
-        void computePointCloudDense(const uint8_t* depthData, std::vector<Point3f>& points);
+        void computePointCloudDense(const uint8_t* depthData, std::vector<Point3f>& points);  // width*height points, invalid ones (z <= 0) included
 
-        // Compute DENSE colored point cloud from aligned depth+color (like RGBD node) on the CPU
         void computePointCloudDenseColored(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points);
 
-        // Dense points computed by the platform GPU backend, in backend-owned memory valid until the next compute call;
-        // nullptr when this Impl does not compute through a backend. The extrinsics are already applied, so
-        // applyTransformation must not be called on them.
-        const Point3f* computeDenseOnGpu(const uint8_t* depthData, const std::shared_ptr<Memory>& depthMemory);
+        const Point3f* computeDenseOnGpu(const uint8_t* depthData, const std::shared_ptr<Memory>& depthMemory);  // Extrinsics applied; valid until next call
         const Point3fRGBA* computeDenseColoredOnGpu(const uint8_t* depthData,
                                                     const std::shared_ptr<Memory>& depthMemory,
                                                     const uint8_t* colorData,
                                                     const std::shared_ptr<Memory>& colorMemory);
 
-        // Copy dense points into `points`: all of them (organized) or only the valid ones (z > 0), in order
         template <typename PointT>
         static void gatherPoints(const PointT* dense, size_t count, bool organized, std::vector<PointT>& points);
 
-        // Remove invalid points (z <= 0) in place, keeping the order and the capacity of the vector
         template <typename PointT>
         static void compactValidPoints(std::vector<PointT>& points);
 
-        // Apply extrinsic transformation to points
         template <typename PointT>
         void applyTransformation(std::vector<PointT>& points);
 
-        // Filter dense points to sparse (only z > 0)
         template <typename PointT>
         std::vector<PointT> filterValidPoints(const std::vector<PointT>& densePoints);
 
@@ -114,7 +105,6 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         void setExtrinsics(const std::vector<std::vector<float>>& transformMatrix);
         void clearExtrinsics();
 
-        // Whether this Impl computes on the GPU
         bool usesGPU() const;
 
         LengthUnit targetLengthUnit = LengthUnit::MILLIMETER;
@@ -168,10 +158,8 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         std::vector<std::vector<float>> extrinsics;
         bool hasExtrinsics = false;
 
-        // Platform GPU backend (useGPU)
         std::shared_ptr<internal::PointCloudGpuBackend> gpuBackend;
         internal::PointCloudGpuBackend::Geometry gpuGeometry() const;
-        // Give up on the backend after a runtime failure and continue on the CPU
         void dropGpuBackend(const std::string& reason);
         uint64_t raysVersion = 0;
 
@@ -415,25 +403,18 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
    private:
     Pimpl<Impl> pimplPointCloud;
 
-    /// Private input receiving synced MessageGroup from Sync subnode
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
 
-    /// Per depth stream state. The default stream uses pimplPointCloud, additional streams own an Impl configured alike.
-    struct DepthStream {
+    struct DepthStream {  // The default stream uses pimplPointCloud; others own an Impl
         std::unique_ptr<Impl> impl;
         bool initialized = false;
-        // Cached frame transformation — used to detect intrinsic/extrinsic/size changes at runtime
         std::optional<ImgTransformation> lastTransformation;
-        // Extrinsics to set on the output PointCloudData after coordinate transformation
         std::optional<Extrinsics> targetExtrinsics;
-        // Coordinate system of the transformed points (the frame reference unless a target is configured)
         Extrinsics outputCoordinateSystem;
-        // Scratch buffers reused across frames so that no large allocation (and page faulting) happens per frame
-        std::vector<Point3f> points;
+        std::vector<Point3f> points;  // Reused across frames to avoid large allocations and page faults per frame
         std::vector<Point3fRGBA> coloredPoints;
     };
 
-    /// Depth frame (and optional color frame) of one stream inside a synced group
     struct StreamFrames {
         std::string name;
         std::shared_ptr<ImgFrame> depth;
@@ -441,9 +422,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     };
 
     void run() override;
-    /// Entry `key` of syncInputs, created (non-blocking, queue of 4) when it does not exist yet
     Input& getSyncInput(const std::string& key);
-    /// Apply properties.computeMethod to an Impl, falling back to the CPU when the GPU is unavailable
     void applyComputeSettings(Impl& impl);
     DepthStream& getDepthStream(const std::string& name);
     Impl& getImpl(DepthStream& stream);
@@ -454,37 +433,25 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     bool haveCommonTargetCoordinateSystem(const std::vector<StreamFrames>& frames);
     CalibrationHandler getCalibrationFor(const std::string& deviceId);
 
-    // Helper methods for initialize()
     void setIntrinsicsFromFrame(Impl& impl, const ImgFrame& frame);
     void setCoordinateTransformation(DepthStream& stream, const ImgFrame& depthFrame, const PointCloudConfig& config);
-    /// Device that owns the reference camera of a depth frame (the node's device when the frame does not say)
     std::string getReferenceDeviceId(const Extrinsics& frameExtrinsics);
-    /// Transformation from the reference camera of a depth frame to the local calibration origin of another device (4x4, in `unit`)
-    std::vector<std::vector<float>> getReferenceToDeviceOrigin(const std::string& referenceDeviceId,
+    std::vector<std::vector<float>> getReferenceToDeviceOrigin(const std::string& referenceDeviceId,  // 4x4 matrix in `unit`
                                                                CameraBoardSocket referenceSocket,
                                                                const std::string& targetDeviceId,
                                                                CameraBoardSocket& targetOriginSocket,
                                                                LengthUnit unit);
 
-    // Processing methods for the two code paths; overwrite `points` (a scratch buffer reused across frames) with the points of one stream
     void computeDepthOnly(Impl& impl, const ImgFrame& depthFrame, bool organized, std::vector<Point3f>& points);
     bool canColorize(const ImgFrame& depthFrame, const ImgFrame& colorFrame);
     void computeColorized(Impl& impl, const ImgFrame& depthFrame, const ImgFrame& colorFrame, bool organized, std::vector<Point3fRGBA>& points);
 
-    /**
-     * Compute the points of every stream of a synced group and store them, in stream order, as the data of
-     * `output`. On the host the streams are computed concurrently (one thread per additional stream, each
-     * stream has its own Impl and scratch buffer); on device and with GPU compute they are processed one
-     * after another.
-     * @returns Number of points stored
-     */
-    template <typename PointT>
+    template <typename PointT>  // Host: one thread per extra stream; device and GPU: sequential. Returns point count
     size_t computeStreams(const std::vector<StreamFrames>& frames, bool organized, PointCloudData& output);
 
     bool runOnHostVar = true;
     bool coordinateSystemMismatchWarned = false;
     bool initializationFailedWarned = false;
-    // Compute time of the merged groups, reported at debug level every COMPUTE_TIME_LOG_INTERVAL groups
     static constexpr unsigned COMPUTE_TIME_LOG_INTERVAL = 30;
     double computeTimeSum = 0.0;
     unsigned computeTimeCount = 0;

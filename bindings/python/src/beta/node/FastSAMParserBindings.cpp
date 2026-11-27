@@ -11,13 +11,10 @@ void bind_beta_fastsamparser(pybind11::module& m, void* pCallstack) {
     py::class_<beta::FastSAMParserProperties> properties(betaModule, "FastSAMParserProperties");
     auto fastsamParser = ADD_BETA_NODE_DERIVED(FastSAMParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     properties.def_readwrite("initialConfig", &beta::FastSAMParserProperties::initialConfig)
         .def_readwrite("numClasses", &beta::FastSAMParserProperties::numClasses)

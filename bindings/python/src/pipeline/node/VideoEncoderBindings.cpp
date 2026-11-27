@@ -8,27 +8,17 @@ void bind_videoencoder(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Node and Properties declare upfront
     py::class_<VideoEncoderProperties> videoEncoderProperties(m, "VideoEncoderProperties", DOC(dai, VideoEncoderProperties));
     py::enum_<VideoEncoderProperties::Profile> videoEncoderPropertiesProfile(videoEncoderProperties, "Profile", DOC(dai, VideoEncoderProperties, Profile));
     py::enum_<VideoEncoderProperties::RateControlMode> videoEncoderPropertiesProfileRateControlMode(
         videoEncoderProperties, "RateControlMode", DOC(dai, VideoEncoderProperties, RateControlMode));
     auto videoEncoder = ADD_NODE(VideoEncoder);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Properties
     videoEncoderPropertiesProfile.value("H264_BASELINE", VideoEncoderProperties::Profile::H264_BASELINE)
         .value("H264_HIGH", VideoEncoderProperties::Profile::H264_HIGH)
         .value("H264_MAIN", VideoEncoderProperties::Profile::H264_MAIN)
@@ -52,7 +42,6 @@ void bind_videoencoder(pybind11::module& m, void* pCallstack) {
         .def_readwrite("rateCtrlMode", &VideoEncoderProperties::rateCtrlMode)
         .def_readwrite("outputFrameSize", &VideoEncoderProperties::outputFrameSize);
 
-    // Node
     videoEncoder
 #define VIDEO_ENCODER_BUILD_ARGS Node::Output& input
 #define VIDEO_ENCODER_BUILD_PYARGS py::arg("input")
@@ -105,7 +94,6 @@ void bind_videoencoder(pybind11::module& m, void* pCallstack) {
         .def("setBitrateKbps", &VideoEncoder::setBitrateKbps, py::arg("bitrateKbps"), DOC(dai, node, VideoEncoder, setBitrateKbps))
         .def("setKeyframeFrequency", &VideoEncoder::setKeyframeFrequency, py::arg("freq"), DOC(dai, node, VideoEncoder, setKeyframeFrequency))
         .def("setMaxOutputFrameSize", &VideoEncoder::setMaxOutputFrameSize, py::arg("maxFrameSize"), DOC(dai, node, VideoEncoder, setMaxOutputFrameSize))
-        //.def("setMaxBitrate", &VideoEncoder::setMaxBitrate)
         .def("setNumBFrames", &VideoEncoder::setNumBFrames, py::arg("numBFrames"), DOC(dai, node, VideoEncoder, setNumBFrames))
         .def("setQuality", &VideoEncoder::setQuality, py::arg("quality"), DOC(dai, node, VideoEncoder, setQuality))
         .def("setLossless", &VideoEncoder::setLossless, DOC(dai, node, VideoEncoder, setLossless))
@@ -115,12 +103,10 @@ void bind_videoencoder(pybind11::module& m, void* pCallstack) {
         .def("getBitrate", &VideoEncoder::getBitrate, DOC(dai, node, VideoEncoder, getBitrate))
         .def("getBitrateKbps", &VideoEncoder::getBitrateKbps, DOC(dai, node, VideoEncoder, getBitrateKbps))
         .def("getKeyframeFrequency", &VideoEncoder::getKeyframeFrequency, DOC(dai, node, VideoEncoder, getKeyframeFrequency))
-        //.def("getMaxBitrate", &VideoEncoder::getMaxBitrate)
         .def("getNumBFrames", &VideoEncoder::getNumBFrames, DOC(dai, node, VideoEncoder, getNumBFrames))
         .def("getQuality", &VideoEncoder::getQuality, DOC(dai, node, VideoEncoder, getQuality))
         .def("getFrameRate", &VideoEncoder::getFrameRate, DOC(dai, node, VideoEncoder, getFrameRate))
         .def("getLossless", &VideoEncoder::getLossless, DOC(dai, node, VideoEncoder, getLossless))
         .def("getMaxOutputFrameSize", &VideoEncoder::getMaxOutputFrameSize, DOC(dai, node, VideoEncoder, getMaxOutputFrameSize));
-    // ALIAS
     daiNodeModule.attr("VideoEncoder").attr("Properties") = videoEncoderProperties;
 }

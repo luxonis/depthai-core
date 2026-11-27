@@ -9,13 +9,10 @@ void bind_beta_classificationparser(pybind11::module& m, void* pCallstack) {
 
     auto classificationParser = ADD_BETA_NODE_DERIVED(ClassificationParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     classificationParser.def_readonly("input", &ClassificationParser::input, DOC(dai, beta, node, ClassificationParser, input))
         .def_readonly("out", &ClassificationParser::out, DOC(dai, beta, node, ClassificationParser, out))

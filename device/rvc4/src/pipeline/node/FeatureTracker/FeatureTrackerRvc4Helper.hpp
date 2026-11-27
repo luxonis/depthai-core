@@ -23,12 +23,6 @@ float qToFloat(IntegerType q, int fractional_bits) {
     return ((float)q) * std::pow(2, -fractional_bits);
 }
 
-/**
- * Detect features in previous frame and add those which are:
- * ----- not too close to any of the already tracked features
- * ----- satisfy the Harris Corner detection score threshold
- *
- **/
 void addMoreFeaturesToPreviousFrame(std::map<TrackedPoint, uint32_t>& detectedFeaturesInPreviousFrame,
                                     const CornerDetector& cornerDetector,
                                     uint32_t limit,
@@ -51,7 +45,6 @@ void addMoreFeaturesToPreviousFrame(std::map<TrackedPoint, uint32_t>& detectedFe
         if(harrisScore > limit) {
             TrackedPoint trackedPoint(current.x, current.y, harrisScore, 0, 0);
 
-            // First check if it is already in there
             if(detectedFeaturesInPreviousFrame.find(trackedPoint) == detectedFeaturesInPreviousFrame.end()) {
                 bool addThisPoint = true;
                 for(const auto& [current, second] : detectedFeaturesInPreviousFrame) {
@@ -63,7 +56,6 @@ void addMoreFeaturesToPreviousFrame(std::map<TrackedPoint, uint32_t>& detectedFe
                     }
                 }
                 if(addThisPoint) {
-                    // Only add it if it is far enough of all existing points
                     featureId++;
                     valuesToBeAdded[trackedPoint] = featureId;
                 }
@@ -76,9 +68,6 @@ void addMoreFeaturesToPreviousFrame(std::map<TrackedPoint, uint32_t>& detectedFe
     }
 }
 
-/**
- * Detect features in current frame and accept them all
- **/
 void detectFeaturesInCurrentFrame(const CornerDetector& cornerDetector,
                                   const uint32_t limit,
                                   uint32_t& featureId,
@@ -109,10 +98,6 @@ void detectFeaturesInCurrentFrame(const CornerDetector& cornerDetector,
     }
 }
 
-/**
- *  Tracking and reidentification using motion estimation between 2 consecutive frames
- *  From the point of feature pixel movement, we both scenarios: Feature that moved and features that didn't move
- **/
 std::map<TrackedPoint, uint32_t> reidentifyUsingDenseOpticalFlow(const std::map<TrackedPoint, uint32_t>& detectedFeaturesInPreviousFrame,
                                                                  const OpticalFlow& opticalFlow,
                                                                  const CornerDetector& cornerDetector,
@@ -148,7 +133,6 @@ std::map<TrackedPoint, uint32_t> reidentifyUsingDenseOpticalFlow(const std::map<
             if((std::abs(xMoveFwdShift + xMoveBwdShift) <= 5) and (std::abs(yMoveFwdShift + yMoveBwdShift) <= 5)) {
                 TrackedPoint trackedPoint;
 
-                // Move to signed arithmetic
                 int x = current.x;
                 int y = current.y;
 
@@ -183,7 +167,6 @@ std::vector<DescriptorSearchPosition> convertFpxToDcmFeaturePositions(std::vecto
                                                                       bool lpfOn,
                                                                       uint16_t height,
                                                                       uint16_t width) {
-    // The descriptor calculator handles at most MAX_POINTS positions per run
     const size_t numPositions = std::min<size_t>(trackedFeatures.size(), DescriptorCalculator::MAX_POINTS);
     std::vector<DescriptorSearchPosition> dcmSearchPositions(numPositions);
 
@@ -209,16 +192,13 @@ void calculateOrbDescriptors(std::shared_ptr<dai::ImgFrame> inImageCurrentFrame,
                                                                                                     static_cast<uint16_t>(inImageCurrentFrame->getHeight()),
                                                                                                     static_cast<uint16_t>(inImageCurrentFrame->getWidth()));
 
-    // Set the points for DCM
     descriptorCalculator.setNumPoints(positionsInCurrentFrame.size());
-    // Reconfigure DCM
     descriptorCalculator.Config();
 
     descriptorCalculator.Run(inImageCurrentFrame, positionsInCurrentFrame);
 
     const uint8_t* descData = descriptorCalculator.descriptors();
 
-    // Descriptors exist only for the positions that were computed
     const size_t numDescriptors = std::min(outFeatures->trackedFeatures.size(), positionsInCurrentFrame.size());
     for(size_t i = 0; i < numDescriptors; i++) {
         for(size_t j = 0; j < dai::gate::FeatureTracker::DESCRIPTOR_SIZE; j++) {
@@ -247,8 +227,6 @@ void printConfig(const dai::FeatureTrackerConfig& latestConfig, std::shared_ptr<
     logger->debug("InitialConfig for cornerDetector type: {}", static_cast<int>(latestConfig.cornerDetector.type));
     logger->debug("InitialConfig for cornerDetector numMaxFeatures: {}", latestConfig.cornerDetector.numMaxFeatures);
     logger->debug("InitialConfig for cornerDetector thresholds.harrisScore to: {}", latestConfig.cornerDetector.thresholds.initialValue);
-    // logger->error("InitialConfig for cornerDetector robustness: {}", latestConfig.cornerDetector.robustness);
-    // logger->error("InitialConfig for enableDescriptorCalculation: {}", latestConfig.cornerDetector.enableDescriptorCalculation);
 }
 
 }  // namespace gate

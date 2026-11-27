@@ -1,4 +1,3 @@
-// std
 #include <signal.h>
 #include <sys/prctl.h>
 #include <unistd.h>
@@ -19,10 +18,8 @@
 #include <unordered_map>
 #include <utility>
 
-// Generated
 #include "depthai/build/version.hpp"
 
-// shared
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
@@ -37,13 +34,11 @@
 #include "depthai/utility/Initialization.hpp"
 #include "depthai/xlink/XLinkConstants.hpp"
 
-// libraries
 #include "XLink/XLink.h"
 #include "pipeline/node/NeuralNetwork/NeuralNetwork.hpp"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
 
-// project
 #include "IMU.hpp"
 #include "ImuExtrinsicsData.hpp"
 #include "Logging.hpp"
@@ -64,7 +59,6 @@
 #include "utilities/StereoPairs.hpp"
 #include "vendor/dai_device_calibration.h"
 
-// #include "pipeline/PipelineRequirements.hpp"
 #include "depthai/pipeline/datatype/SystemInformationRVC4.hpp"
 #include "pipeline/node/Measurements.hpp"
 
@@ -174,7 +168,6 @@ dai::PipelineSchema pipelineSchema;
 dai::Assets assets;
 dai::EepromData eepromData;
 dai::gate::PipelineBuilder& pipelineBuilder{dai::gate::PipelineBuilder::getInstance()};
-// std::shared_ptr<dai::Pipeline> pipeline;
 dai::Pipeline pipeline = dai::Pipeline(false);
 dai::DeviceProperties deviceProperties;
 
@@ -188,17 +181,9 @@ std::unique_ptr<Logging> logging;
 std::shared_ptr<std::vector<uint8_t>> assetStorageVector;
 std::unique_ptr<Timesync> timesync;
 
-// Support functions (Common between RPC and flashed operation)
-std::function<void(std::vector<std::uint8_t>)> parsePipeline = [](std::vector<std::uint8_t> binary) {
-    // deserialize to pipeline schema
-    dai::utility::deserialize(binary, pipelineSchema);
-};
+std::function<void(std::vector<std::uint8_t>)> parsePipeline = [](std::vector<std::uint8_t> binary) { dai::utility::deserialize(binary, pipelineSchema); };
 
-// Support functions (Common between RPC and flashed operation)
-std::function<void(dai::PipelineSchema)> setPipelineSchema = [](dai::PipelineSchema s) {
-    // set schema
-    pipelineSchema = s;
-};
+std::function<void(dai::PipelineSchema)> setPipelineSchema = [](dai::PipelineSchema s) { pipelineSchema = s; };
 
 std::function<void(std::vector<dai::CameraFeatures>, std::string imu)> overrideCameraFeatures = [](std::vector<dai::CameraFeatures> features, std::string imu) {
     dai::gate::CameraDiscovery::getInstance().overrideConnectedCameraFeatures(std::move(features));
@@ -231,10 +216,7 @@ std::function<void()> onInit = []() {
     }
 };
 
-// Support functions (Common between RPC and flashed operation)
-std::function<bool(dai::CameraBoardSocket)> isEepromAvailable = [](dai::CameraBoardSocket skt) {
-    return eeprom_found(skt);
-};
+std::function<bool(dai::CameraBoardSocket)> isEepromAvailable = [](dai::CameraBoardSocket skt) { return eeprom_found(skt); };
 
 void patchIMUCalibration(dai::EepromData& board_data_config) {
     const auto& rotationMatrix = board_data_config.imuExtrinsics.rotationMatrix;
@@ -328,10 +310,8 @@ std::function<std::tuple<bool, std::string>(std::optional<dai::EepromData>)> set
         }
 
         patchIMUCalibration(runtimeCalibration);
-        // A local calibration whose origin no longer matches the installed multi-device graph would
-        // leave source nodes unable to rebase, so reject it instead of silently publishing local poses.
         dai::gate::MultiDeviceCalibrationStore::getInstance().validateLocalCalibration(dai::CalibrationHandler(runtimeCalibration),
-                                                                                    dai::gate::getSerialNumber());
+                                                                                       dai::gate::getSerialNumber());
         pipeline.setEepromData(runtimeCalibration);
     } catch(const std::exception& ex) {
         return {false, ex.what()};
@@ -339,7 +319,6 @@ std::function<std::tuple<bool, std::string>(std::optional<dai::EepromData>)> set
     return {true, ""};
 };
 
-// Runtime replacement of the cross-device calibration graph (mirrors setCalibration for local calibration).
 std::function<std::tuple<bool, std::string>(std::optional<std::vector<dai::MultiDeviceExtrinsics>>)> setMultiDeviceCalibration =
     [](std::optional<std::vector<dai::MultiDeviceExtrinsics>> graph) -> std::tuple<bool, std::string> {
     try {
@@ -348,7 +327,6 @@ std::function<std::tuple<bool, std::string>(std::optional<std::vector<dai::Multi
             localCalibration = pipeline.getCalibrationData();
         }
         dai::gate::MultiDeviceCalibrationStore::getInstance().set(graph, localCalibration, dai::gate::getSerialNumber());
-        // Keep the device pipeline's global properties in sync with what the nodes now use.
         auto globalProperties = pipeline.getGlobalProperties();
         globalProperties.multiDeviceCalibration = graph;
         pipeline.setGlobalProperties(globalProperties);
@@ -359,7 +337,6 @@ std::function<std::tuple<bool, std::string>(std::optional<std::vector<dai::Multi
     return {true, ""};
 };
 
-// Support functions (Common between RPC and flashed operation)
 std::function<std::tuple<bool, std::string>(dai::EepromData, bool, bool, dai::CameraBoardSocket)> storeToEeprom =
     [](dai::EepromData localEepromData, bool factoryPermissions, bool protectedPermissions, dai::CameraBoardSocket skt) -> std::tuple<bool, std::string> {
     pipelineBuilder.getSystemLogger()->info("Store to EEPROM");
@@ -474,18 +451,13 @@ std::function<std::tuple<bool, std::string>(bool, bool, dai::CameraBoardSocket, 
 };
 
 std::function<void(dai::Assets)> setAssets = [](dai::Assets a) {
-    // set Assets
     pipelineBuilder.getSystemLogger()->info("Setting assets");
     assets = a;
 };
 
 std::function<void(std::vector<std::uint8_t>)> parseAssets = [](std::vector<std::uint8_t> binary) {
-    // deserialize to assets
     printf("TODO - parsing assets\n");
     dai::utility::deserialize(binary, assets);
-
-    // // parse on LeonRT as well
-    // ipc.getClient().call("parseAssets", binary);
 };
 
 dai::Asset parseAssetView(const std::string assetName, dai::AssetView assetView) {
@@ -498,35 +470,26 @@ dai::Asset parseAssetView(const std::string assetName, dai::AssetView assetView)
 void parseAssetsToAssetManager(dai::Pipeline& pipeline, dai::Assets& assets) {
     auto& pipelineAssetManager = pipeline.getAssetManager();
     auto assetsMutable = assets.getAll();
-    // std::cout << "Print all nodes in the pipeline!\n";
 
-    // Traverse through the assets
     for(auto& assetView : assetsMutable) {
         auto assetName = assetView.first;
-        // std::cout << assetName << std::endl;
         std::string parent;
 
         assetName = assetName.substr(1);  // Remove the first slash
         int identifierPosition = assetName.find('/');
         std::string identifier = assetName.substr(0, identifierPosition);
-        // std::cout << "Identifier: " << identifier << std::endl;
 
         if(identifier.find("pipeline") != std::string::npos) {
-            // std::cout << "Identified as a pipeline!\n";
             std::string assetNameLocal = assetName.substr(identifierPosition + 1);
-            // std::cout << "Asset name: " << assetNameLocal << std::endl;
             auto builtAsset = parseAssetView(assetNameLocal, assetView.second);
             pipelineAssetManager.set(builtAsset);
 
         } else if(identifier.find("node") != std::string::npos) {
-            // std::cout << "Identified as a node!\n";
             std::string charNodeId = assetName.substr(identifierPosition + 1);
             dai::Node::Id nodeID = std::stoi(charNodeId);
 
-            // Find the next delimiter
             int delimiterAfterNodeID = assetName.find('/', identifierPosition + 1);
             std::string assetNameLocal = assetName.substr(delimiterAfterNodeID + 1);
-            // std::cout << "Asset name: " << assetNameLocal << std::endl;
             auto node = pipeline.getNode(nodeID);
             auto neuralNetwork = std::dynamic_pointer_cast<dai::gate::NeuralNetwork>(node);
             if(neuralNetwork != nullptr && assetNameLocal == "__model") {
@@ -649,23 +612,15 @@ std::function<std::tuple<bool, std::string>()> buildPipeline = []() -> std::tupl
     return {true, ""};
 };
 
-// WARNING! This function should only be used in tests for collecting crash dumps and so,
-// and for nothing else. It intentionally dereferences a null pointer to crash the device.
-std::function<void(void)> crashDevice = []() {
+std::function<void(void)> crashDevice = []() {  // Only for crash dump tests: intentionally dereferences a null pointer
     int* p = nullptr;
     std::cout << "My nullpointer point to" << *p << std::endl;
 };
 
-std::function<void(void)> startPipeline = []() {
-    // // Disable initial watchdog delay
-    // watchdog_cancel_initial_delay();
-    pipelineBuilder.start(pipeline);
-};
+std::function<void(void)> startPipeline = []() { pipelineBuilder.start(pipeline); };
 
 std::function<void(std::uint32_t, std::uint32_t)> setAssetStorage = [](std::uint32_t storageAddress, std::uint32_t size) {
     printf("TODO - implement set asset storage\n");
-    // auto pStorage = (std::uint8_t*) storageAddress;
-    // assets.setStorage(pStorage);
 };
 
 std::function<void(void)> watchdogResetTimer = []() {
@@ -769,12 +724,10 @@ std::atomic<bool> isRunning{true};
 static std::string appFullPath = "";
 static std::string appParentFolderFullPath = "";
 
-// RESET / SHUTDOWN mechanism if host requests it
 void onLinkDownCallback(linkId_t linkId) {
     printf("onLinkDownCallback!\n");
 
-    // Host is gone, disable crash dumps to prevent large core files from filling up RAM tmpfs
-    dai::gate::enableCrashDump(false);
+    dai::gate::enableCrashDump(false);  // Host is gone: avoid large core files filling the RAM tmpfs
 
     dai::gate::FsyncController::getInstance().cleanup();
 
@@ -783,35 +736,22 @@ void onLinkDownCallback(linkId_t linkId) {
     XLinkResetRemoteTimeout(0, 1000);
 }
 
-// Custom log handler
 static void custom_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const gchar* message, gpointer user_data) {
-    // Handle only critical messages
     if(log_level & G_LOG_LEVEL_CRITICAL) {
         std::cerr << "GStreamer-CRITICAL: " << message << std::endl;
-        // Terminate the application
-        // std::exit(EXIT_FAILURE);
         if(pipeline.isRunning()) {
             pipeline.stop();
         }
     }
 }
 
-// Crash handler that guarantees a kernel core dump. A plain re-raise (what
-// backward-cpp does) is not enough: the signal catcher of the camera HAL re-registers these
-// signals at camera open reusing one sigaction whose sa_mask blocks the signal
-// itself inside its own handler, so the re-raise would stay pending and the
-// process would die without a core. sigaction() and pthread_sigmask() are
-// async-signal-safe, so undo all of that here before delegating.
-static struct sigaction previousCrashActions[NSIG];
+static struct sigaction previousCrashActions[NSIG];  // The camera HAL signal catcher blocks the signal in its handler, so a plain re-raise leaves no core
 static void crashHandler(int sig, siginfo_t* info, void* ctx) {
-    // Make the signal lethal again: default disposition and not blocked.
     signal(sig, SIG_DFL);
     sigset_t unblock;
     sigemptyset(&unblock);
     sigaddset(&unblock, sig);
     pthread_sigmask(SIG_UNBLOCK, &unblock, nullptr);
-    // Print the stack trace through backward's handler if it was installed.
-    // Its trailing raise() now lands on SIG_DFL and dumps core.
     const struct sigaction& prev = previousCrashActions[sig];
     if((prev.sa_flags & SA_SIGINFO) && prev.sa_sigaction != nullptr) {
         prev.sa_sigaction(sig, info, ctx);
@@ -833,27 +773,16 @@ static void installCrashHandler() {
 }
 
 int main(int argc, char** args) {
-    // Install backward-cpp crash handlers before anything else touches depthai-core:
-    // initialize() is a run-once static and XLink bring-up calls the no-arg overload
-    // with installSignalHandler=false, so a later opt-in would be silently ignored.
-    // The signal catcher of the camera HAL then chains into these handlers instead of SIG_DFL(=NULL).
-    dai::initialize("", /*installSignalHandler=*/true, nullptr);
+    dai::initialize("", true, nullptr);  // Must run first: initialize() runs once, and XLink calls it with installSignalHandler=false
 
-    // A linked library drops PR_SET_DUMPABLE at startup which makes the kernel
-    // silently skip core dumps for this process - re-assert it so crashes dump.
-    prctl(PR_SET_DUMPABLE, 1);
+    prctl(PR_SET_DUMPABLE, 1);  // A linked library drops PR_SET_DUMPABLE at startup; without it the kernel skips core dumps
 
-    // Wrap backward's handlers so the crash path always ends in a core dump,
-    // also when invoked through the signal catcher chain of the camera HAL (see crashHandler).
     installCrashHandler();
 
-    // Watchdog
     std::atomic<bool> isWatchdogRunning{true};
     std::thread watchdogThread;
-    // System log
     std::atomic<bool> isSystemLogRunning{true};
     std::thread systemLogThread;
-    // Low memory check
     std::atomic<bool> isLowMemoryCheckRunning{true};
     std::thread lowMemoryCheckThread;
     using namespace std::chrono;
@@ -882,14 +811,11 @@ int main(int argc, char** args) {
         if(0) {
             env_p = std::getenv("DSP_LIBRARY_PATH");
 
-            // Check if DSP_LIBRARY_PATH exists
             if(env_p) {
-                // Prepend the new path and set the updated environment variable
                 std::string newPath = std::string(env_p) + ";" + appParentFolderFullPath;
                 setenv("DSP_LIBRARY_PATH", newPath.c_str(), 1);
                 std::cout << "Updated DSP_LIBRARY_PATH: " << newPath << '\n';
             } else {
-                // If it doesn't exist, set DSP_LIBRARY_PATH to the new path
                 setenv("DSP_LIBRARY_PATH", appParentFolderFullPath.c_str(), 1);
                 std::cout << "Set DSP_LIBRARY_PATH to: " << appParentFolderFullPath << '\n';
             }
@@ -897,14 +823,11 @@ int main(int argc, char** args) {
 
         env_p = std::getenv("ADSP_LIBRARY_PATH");
 
-        // Check if ADSP_LIBRARY_PATH exists
         if(env_p) {
-            // Prepend the new path and set the updated environment variable
             std::string newPath = std::string(env_p) + ";" + appParentFolderFullPath;
             setenv("ADSP_LIBRARY_PATH", newPath.c_str(), 1);
             std::cout << "Updated ADSP_LIBRARY_PATH: " << newPath << '\n';
         } else {
-            // If it doesn't exist, set ADSP_LIBRARY_PATH to the new path
             setenv("ADSP_LIBRARY_PATH", appParentFolderFullPath.c_str(), 1);
             std::cout << "Set ADSP_LIBRARY_PATH to: " << appParentFolderFullPath << '\n';
         }
@@ -913,44 +836,23 @@ int main(int argc, char** args) {
     printf("=== DepthAI Device RVC4 ===\n");
 
     {
-        // // Set some env
-        // setenv("G_DEBUG", "fatal_warnings", 1);
-
-        // Init gst
         gst_init(0, NULL);
 
-        // Set the custom log handler
         g_log_set_handler("GStreamer", G_LOG_LEVEL_CRITICAL, (GLogFunc)custom_log_handler, NULL);
 
-        // Set logging level to GST_LEVEL_ERROR
         gst_debug_set_default_threshold(GST_LEVEL_ERROR);
     }
 
-    // UNUSED(args);
-    // const char *name = "main";
-    // rtems_object_set_name(RTEMS_SELF, name);
-    // pthread_setname_np(pthread_self(), name);
-
-    // // Set custom assert reset callback
-    // setCustomAssertResetCallback([](){
-    //     shutdownReset(false, true);
-    // });
-
-    // TMP TMP
     bool networkBootloader = true;
 
-    // Initialize watchdog
     using namespace std::chrono_literals;
     auto WATCHDOG_INITIAL_DELAY = 8000ms;
     auto WATCHDOG_TIMEOUT = dai::device::XLINK_USB_WATCHDOG_TIMEOUT;
-    // Network mode and timeout isn't set
     if(networkBootloader) {
-        // Network case
         WATCHDOG_INITIAL_DELAY = 15s;
         WATCHDOG_TIMEOUT = dai::device::XLINK_TCP_WATCHDOG_TIMEOUT;
     }
 
-    // Set from ENV
     try {
         auto* env_p = std::getenv("DEPTHAI_DEVICE_WATCHDOG");
         if(env_p) {
@@ -960,14 +862,6 @@ int main(int argc, char** args) {
         // TODO(themarpe) - display the issue
     }
 
-    //     // // Initialize watchdog
-    //     // actualWatchdogTimeout = watchdog_init(WATCHDOG_INITIAL_DELAY,
-    //     // WATCHDOG_TIMEOUT);
-
-    //     // //set default
-    //     // mvLogDefaultLevelSet(MVLOG_WARN);
-
-    // EEPROM
     eeprom_open();
     eeprom_version eeprom_version = eeprom_get_version(EEPROM_AREA_USER);
     if(eeprom_version_is_valid(eeprom_version)) {
@@ -982,7 +876,6 @@ int main(int argc, char** args) {
     eeprom_status eeprom_status = eeprom_load_config(eepromData, EEPROM_AREA_USER);
     printf("eeprom configuration load from user area, status: %d\n", eeprom_status);
 
-    // If invalid or non existing config, set data version to invalid
     if(eeprom_status != EEPROM_OK) {
         eepromData.version = 0;
         printf("EEPROM data not set");
@@ -993,8 +886,6 @@ int main(int argc, char** args) {
     std::string serialNumber = dai::gate::getSerialNumber();
     if(const char* calibrationOverride = dai_device_calibration_override(serialNumber.c_str())) {
         try {
-            // printEepromData(eepromData);
-
             auto calibJson = nlohmann::json::parse(calibrationOverride);
             std::cout << calibJson << std::endl;
             dai::CalibrationHandler calibHandler = dai::CalibrationHandler::fromJson(calibJson);
@@ -1013,9 +904,7 @@ int main(int argc, char** args) {
     if(!isFlashed) {
         int is_connected_via_usb = 0;
 
-        // Initialize XLink (wait for host to connect)
         {
-            // Add handler first
             XLinkAddLinkDownCb(onLinkDownCallback);
 
             printf("Initializing XLink...\n");
@@ -1051,9 +940,6 @@ int main(int argc, char** args) {
             printf("Done!\n");
         }
 
-        // Open watchdog stream first
-        // Start watchdog thread, which checks both LeonOS and LeonRT are still
-        // alive
         watchdogThread = std::thread([&isWatchdogRunning]() {
             streamId_t streamId = XLinkOpenStream(0, dai::device::XLINK_CHANNEL_WATCHDOG, 128);
 
@@ -1088,11 +974,9 @@ int main(int argc, char** args) {
             }
         });
 
-        // Prepare logger
         logging = std::make_unique<Logging>();
         logging->start();
 
-        // // Prepare the callback
         pipelineBuilder.setLogEventCallback([](dai::LogMessage log) { logging->addLog(std::move(log)); });
         pipelineBuilder.init();
 
@@ -1117,7 +1001,6 @@ int main(int argc, char** args) {
         //     actualUsbSpeed = getUSBSpeed();
         // }
 
-        // Main rpc
         mainRpc = std::make_unique<XLinkRpc>(dai::device::XLINK_CHANNEL_MAIN_RPC, pipelineBuilder.getSystemLogger());
         dai::DeviceTelemetry::getInstance().start();
 
@@ -1160,9 +1043,7 @@ int main(int argc, char** args) {
                 streamPacketDesc_t* packet = nullptr;
                 auto status = XLinkReadData(streamId, &packet);
                 if(status == X_LINK_SUCCESS) {
-                    // rpc handlers are not preemptive, if one is taking too much time
-                    // the watchdog will expire, since the handler will not be executed
-                    watchdogKeepalive();
+                    watchdogKeepalive();  // RPC handlers are not preemptive: a long one would let the watchdog expire
                     memcpy(dest + offset, packet->data, packet->length);
                     XLinkReleaseData(streamId);
                     offset += toRead;
@@ -1185,9 +1066,7 @@ int main(int argc, char** args) {
                 streamPacketDesc_t* packet = nullptr;
                 auto status = XLinkReadData(streamId, &packet);
                 if(status == X_LINK_SUCCESS) {
-                    // rpc handlers are not preemptive, if one is taking too much time
-                    // the watchdog will expire, since the handler will not be executed
-                    watchdogKeepalive();
+                    watchdogKeepalive();  // RPC handlers are not preemptive: a long one would let the watchdog expire
                     memcpy(dest + offset, packet->data, packet->length);
                     XLinkReleaseData(streamId);
                     offset += toRead;
@@ -1236,14 +1115,8 @@ int main(int argc, char** args) {
 
         rpcHandle(*mainRpc, "timestampEcho", [](std::uint64_t ts) { return ts; });
         rpcHandle(*mainRpc, "enableCrashDump", dai::gate::enableCrashDump);
-        // after watchdog ends, this enables for quicker reconnects and link down
-        // detection
         rpcHandle(*mainRpc, "reset", []() {
             // TODO(themarpe) - port
-
-            // // Stay in bootloader for a little while in this case as well.
-            // // Helps to not require jumping from FLASH_BOOTED to BL -> BOOTED if
-            // timeout is set to a low value shutdownReset(true, true);
         });
         mainRpc->getServer().handle("setCalibration", setCalibration);
         mainRpc->getServer().handle("setMultiDeviceCalibration", setMultiDeviceCalibration);
@@ -1262,7 +1135,6 @@ int main(int argc, char** args) {
         });
         rpcHandle(*mainRpc, "getStereoPairs", []() { return dai::gate::getStereoPairs(getCalibration()); });
 
-        // Capability to select log level of nodes
         rpcHandle(*mainRpc, "setLogLevel", [](dai::LogLevel level) { pipelineBuilder.setLogLevelCallback(level); });
         rpcHandle(*mainRpc, "setNodeLogLevel", [](int64_t nodeId, dai::LogLevel level) { pipelineBuilder.setNodeLogLevelCallback(nodeId, level); });
         printf("Added setLogLevel to be handled\n");
@@ -1357,20 +1229,18 @@ int main(int argc, char** args) {
             return supportedModels;
         });
         rpcHandle(*mainRpc, "isNeuralDepthSupported", []() {
-            // Only check the models that were added originally in 1.20.5
             const std::array<dai::DeviceModelZoo, 4> requiredModels = {
                 dai::DeviceModelZoo::NEURAL_DEPTH_768X480,
                 dai::DeviceModelZoo::NEURAL_DEPTH_576X360,
                 dai::DeviceModelZoo::NEURAL_DEPTH_480X300,
                 dai::DeviceModelZoo::NEURAL_DEPTH_384X240,
-            };
+            };  // Only the models that were added in 1.20.5
 
             return std::all_of(requiredModels.begin(), requiredModels.end(), [](const auto& model) {
                 return dai::gate::NeuralNetwork::isModelAvailable(model);
             });
         });
         rpcHandle(*mainRpc, "hasGPU", []() { return dai::utils::hasGPU(); });
-        // rpcHandle(*mainRpc, "startCamera", startCamera);
 
 #if 0  // Note: these are no longer exposed in depthai-core !!!
         rpcHandle(*mainRpc, "irWriteReg", [](int reg, int value){
@@ -1438,9 +1308,7 @@ int main(int argc, char** args) {
             return latestAvailableImuFirmwareVersion;
         });
 
-        // Create a measurement logging thread
         rpcHandle(*mainRpc, "setSystemInformationLoggingRate", [&loggingRateHz, &loggingRateHzMtx, &loggingRateHzCv](float rateHz) {
-            // Notifies logging thread about the rate change
             std::unique_lock<std::mutex> l(loggingRateHzMtx);
             loggingRateHz.store(rateHz);
             loggingRateHzCv.notify_all();
@@ -1483,14 +1351,11 @@ int main(int argc, char** args) {
 
             bool isFirstRun = true;
             while(isSystemLogRunning) {
-                // Retrieve current set rate
                 float rateHz = loggingRateHz.load();
 
                 bool wasWaiting = false;
-                // if rate <= 0 - block until new change
                 while(rateHz <= 0) {
                     wasWaiting = true;
-                    // get lock and wait until a new change happens (rate > 0, predicate)
                     std::unique_lock<std::mutex> lock(loggingRateHzMtx);
                     loggingRateHzCv.wait(lock, [&loggingRateHz, &isSystemLogRunning]() { return loggingRateHz.load() > 0 || !isSystemLogRunning; });
                     if(!isSystemLogRunning) {
@@ -1498,13 +1363,11 @@ int main(int argc, char** args) {
                     }
                     rateHz = loggingRateHz.load();
                 }
-                // rateHz is now guranteed > 0, so below sleep function is okay to call
                 if(isFirstRun || wasWaiting) {
                     isFirstRun = false;
                     measurements.readStatsCpu(entriesEnd, totalEnd);
                 }
 
-                // Measure CPU load
                 entriesStart.swap(entriesEnd);
                 totalStart = totalEnd;
                 const std::chrono::duration<float> sleepPeriod(1.0f / rateHz);
@@ -1710,35 +1573,6 @@ int main(int argc, char** args) {
 
         mainRpc->start();
 
-        //( The lambda below corrects the FREE RUNNING counter with the offset
-        // supplied. )
-        // Do not use except when SURE what is the intention
-        // As modifying the monotonic counter will most likely lead to all sorts of
-        // errors
-        // auto updateFreeRunningCounter = [](const struct timespec& offset){
-        //    // convert timespec to ticks
-        //    int64_t ns = 0;
-        //    MvTimespecToNanos(&ns, &offset);
-        //    int64_t ticksOffset = ((ns/1000) * DrvCprGetSysClocksPerUs());
-
-        //    // Update current ticks with offset count,
-        //    for(const auto& id : {OS_DRV_FREE_RUN_CNT_CSS ,
-        //    OS_DRV_FREE_RUN_CNT_MSS}){
-        //        uint64_t ticks;
-        //        OsDrvFreeRunCntRead(id, &ticks);
-        //        ticks += (int64_t)ticksOffset;
-        //        OsDrvFreeRunCntWrite(id, ticks);
-        //    }
-        //    // Test
-        //    //{
-        //    //    struct timespec current;
-        //    //    MvGetTimestamp(&current);
-        //    //    printf("New synced timestamp: %f\n", current.tv_sec +
-        //    current.tv_nsec/1000000000.0);
-        //    //}
-        //};
-        ////timesync.setSyncCallback(updateFreeRunningCounter);
-
         // TODO(themarpe) - port
         // // Start timesync (sync every 5s)
         // timesync.startSync(std::chrono::milliseconds(5000), true);
@@ -1851,13 +1685,10 @@ int main(int argc, char** args) {
         std::cout << "Still alive." << std::endl;
     }
 
-    // Shutdown execution, etc...
-    // Join the threads: destroying a joinable std::thread at the end of main calls std::terminate
     isSystemLogRunning = false;
     isLowMemoryCheckRunning = false;
     {
-        // Notify under the lock, so the predicate wait cannot miss the stop
-        std::lock_guard<std::mutex> lock(loggingRateHzMtx);
+        std::lock_guard<std::mutex> lock(loggingRateHzMtx);  // Notify under the lock, so the predicate wait cannot miss the stop
         loggingRateHzCv.notify_all();
     }
     systemLogSleepCv.notify_all();
@@ -1873,12 +1704,9 @@ int main(int argc, char** args) {
     if(watchdogThread.joinable()) watchdogThread.join();
     // TODO - seems to block, bring back when exit is cleaner
     gst_deinit();
-    // Node threads are joined, but their asynchronous log callbacks may still be queued.
-    // Drain and join spdlog's worker while the callback's Logging target is still alive.
-    spdlog::shutdown();
+    spdlog::shutdown();  // Drain queued async log callbacks while their Logging target is still alive
     logging = nullptr;
 
-    // Bye bye
     printf("DepthAI Device KB - Bye Bye!\n");
 
     return 0;

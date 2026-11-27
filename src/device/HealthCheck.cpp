@@ -51,9 +51,7 @@ constexpr auto BANDWIDTH_RECONNECT_TIMEOUT = std::chrono::seconds(10);
 constexpr auto BANDWIDTH_RECONNECT_POLL_INTERVAL = std::chrono::milliseconds(100);
 constexpr auto STOP_POLL_INTERVAL = std::chrono::milliseconds(100);
 
-// Thrown to leave the health check when a stop was requested. It does not derive from std::exception on purpose:
-// the handlers of the single steps catch std::exception and would report it as a failed check.
-struct HealthCheckStopRequested {};
+struct HealthCheckStopRequested {};  // Not a std::exception on purpose: the step handlers would report it as a failed check
 
 void throwIfStopRequested(const std::function<bool()>& shouldStop) {
     if(shouldStop && shouldStop()) {
@@ -73,7 +71,6 @@ std::shared_ptr<T> getUntil(const std::shared_ptr<MessageQueue>& queue,
             timedOut = true;
             return nullptr;
         }
-        // Wait in short slices, so that a stop request is seen in time
         const auto wait = std::min(std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now), STOP_POLL_INTERVAL);
         auto message = queue->get<T>(wait, timedOut);
         if(!timedOut) {
@@ -465,7 +462,6 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
     const bool shouldCreateCameraStreams = (config.verifyCameraFunctionality && metrics.cameraFunctionality == HealthCheckResult::NOT_RUN)
                                            || (config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN);
 
-    // Prepare camera streams for camera verification and power-supply load
     if(shouldCreateCameraStreams) {
         for(auto socket : connectedCameras) {
             Node::Output* output = nullptr;
@@ -493,7 +489,6 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
         }
     }
 
-    // Prepare IMU verification
     if(config.verifyImuFunctionality && !imuName.empty()) {
         auto imu = pipeline.create<node::IMU>();
         imu->enableIMUSensor(IMUSensor::ACCELEROMETER_RAW, IMU_REPORT_RATE);
@@ -503,7 +498,6 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
         imuQueue = imu->out.createOutputQueue(10, false);
     }
 
-    // Prepare power supply verification
     if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN && cameraQueues.empty()) {
         metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
         metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, "No camera streams were created for power supply load.");
@@ -513,7 +507,6 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
     try {
         pipeline.start();
 
-        // Verify camera streaming and keep the same streams active for power-supply validation
         if(!cameraQueues.empty() && shouldCreateCameraStreams) {
             bool allCamerasStreaming = true;
             for(auto& socketAndQueue : cameraQueues) {
@@ -540,7 +533,6 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
             }
         }
 
-        // Verify IMU
         if(imuQueue) {
             bool timedOut = false;
             auto imuData = getUntil<IMUData>(imuQueue, std::chrono::steady_clock::now() + DIAGNOSTIC_OUTPUT_TIMEOUT, timedOut, shouldStop);
@@ -552,7 +544,6 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
             }
         }
 
-        // Verify power supply
         if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN) {
             enablePowerSupplyLoad(device, metrics, irGuard, shouldStop);
             bool sufficientPower = waitForPowerSupplyLoad(device, std::chrono::steady_clock::now() + config.powerSupplyCheckDuration, metrics, shouldStop);
@@ -641,15 +632,13 @@ void measureBandwidth(const std::shared_ptr<Device>& device, HealthCheckMetrics&
 }
 
 HealthCheckMetrics runChecks(const DeviceInfo& devInfo, const HealthCheckConfig& config, const std::function<bool()>& shouldStop, HealthCheckMetrics& metrics) {
-    // Create a device object for a health check, check its availability
     logger::info("Health check: Connecting to device and checking availability");
     std::shared_ptr<Device> device;
     try {
         device = std::make_shared<Device>(devInfo);
     } catch(const std::exception& ex) {
         const std::string errorMessage = ex.what();
-        // devInfo can have stale/unresolved values in some cases and does not necessarily contain the correct state values - parse error message
-        metrics.deviceInUse =
+        metrics.deviceInUse =  // devInfo can hold stale state values, so parse the error message
             errorMessage.find("X_LINK_DEVICE_ALREADY_IN_USE") != std::string::npos || errorMessage.find("Device is already used") != std::string::npos;
         metrics.missingUdevRules = errorMessage.find("X_LINK_INSUFFICIENT_PERMISSIONS") != std::string::npos;
         metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Connection, errorMessage);
@@ -658,7 +647,6 @@ HealthCheckMetrics runChecks(const DeviceInfo& devInfo, const HealthCheckConfig&
         return metrics;
     }
 
-    // Perform basic device info check
     metrics.deviceInUse = device->getDeviceInfo().status == X_LINK_DEVICE_ALREADY_IN_USE;
     metrics.deviceInSetupMode = device->getDeviceInfo().state == X_LINK_GATE_SETUP;
     metrics.missingUdevRules = device->getDeviceInfo().status == X_LINK_INSUFFICIENT_PERMISSIONS;
@@ -667,7 +655,6 @@ HealthCheckMetrics runChecks(const DeviceInfo& devInfo, const HealthCheckConfig&
         return metrics;
     }
 
-    // USB speed and generation check
     throwIfStopRequested(shouldStop);
     if(config.checkUsbGeneration) {
         logger::info("Health check: Checking USB generation");
@@ -683,7 +670,6 @@ HealthCheckMetrics runChecks(const DeviceInfo& devInfo, const HealthCheckConfig&
         }
     }
 
-    // Read the calibration
     throwIfStopRequested(shouldStop);
     std::optional<CalibrationHandler> calibration;
     if(config.verifyCameraCalibration || config.verifyImuCalibration) {
@@ -706,7 +692,6 @@ HealthCheckMetrics runChecks(const DeviceInfo& devInfo, const HealthCheckConfig&
         }
     }
 
-    // Query cameras for camera verification and power-supply load
     throwIfStopRequested(shouldStop);
     std::vector<CameraBoardSocket> connectedCameras;
     std::vector<CameraBoardSocket> tofSockets;
@@ -739,7 +724,6 @@ HealthCheckMetrics runChecks(const DeviceInfo& devInfo, const HealthCheckConfig&
         }
     }
 
-    // Verify camera calibration metadata
     if(config.verifyCameraCalibration) {
         logger::info("Health check: Verifying camera calibration");
         try {
@@ -755,7 +739,6 @@ HealthCheckMetrics runChecks(const DeviceInfo& devInfo, const HealthCheckConfig&
         }
     }
 
-    // Verify IMU functionality and calibration metadata
     throwIfStopRequested(shouldStop);
     std::string imuName;
     if(config.verifyImuFunctionality || config.verifyImuCalibration) {
@@ -784,7 +767,6 @@ HealthCheckMetrics runChecks(const DeviceInfo& devInfo, const HealthCheckConfig&
         runDiagnosticPipeline(device, config, connectedCameras, tofSockets, imuName, metrics, shouldStop);
     }
 
-    // Measure the bandwidth
     throwIfStopRequested(shouldStop);
     if(config.measureBandwidth) {
         logger::info("Health check: Measuring bandwidth");
@@ -820,7 +802,6 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     try {
         return runChecks(devInfo, config, shouldStop, metrics);
     } catch(const HealthCheckStopRequested&) {
-        // Unwinding stopped the pipeline and the IR load (RAII) and closed the device
         logger::info("Health check: Stopped on request, the remaining checks did not run");
     }
     return metrics;

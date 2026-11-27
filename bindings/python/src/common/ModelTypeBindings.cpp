@@ -10,20 +10,11 @@ void ModelTypeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     py::enum_<model::ModelType> modelType(m, "ModelType", DOC(dai, model, ModelType));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Bind ModelType
     modelType.value("BLOB", model::ModelType::BLOB);
     modelType.value("SUPERBLOB", model::ModelType::SUPERBLOB);
     modelType.value("DLC", model::ModelType::DLC);

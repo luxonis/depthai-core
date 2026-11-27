@@ -79,7 +79,6 @@ std::shared_ptr<GateControl> Gate::sendMessages(int numMessages, int fps) {
         }
     }
 
-    // Auto-close logic after N messages
     auto closeCmd = std::make_shared<GateControl>();
     closeCmd->open = false;
     closeCmd->numMessages = -1;
@@ -96,14 +95,11 @@ void Gate::run() {
     logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     auto currentCommand = std::make_shared<GateControl>(*initialConfig);
 
-    // Initialize the timer baseline
     while(mainLoop()) {
         if(currentCommand->open) {
             if(currentCommand->numMessages >= 0) {
-                // Pass both numMessages and fps
                 currentCommand = sendMessages(currentCommand->numMessages, currentCommand->fps);
             } else {
-                // Pass just fps for continuous mode
                 currentCommand = sendMessages(currentCommand->fps);
             }
         } else {

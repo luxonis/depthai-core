@@ -116,7 +116,6 @@ void RecordVideo::run() {
                 }
             }
 
-            // Record the data
             auto data = msg->getData();
             if(streamType == DatatypeEnum::ImgFrame) {
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

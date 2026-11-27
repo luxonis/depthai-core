@@ -1,19 +1,12 @@
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 
-// C++ std
 #include <fstream>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <variant>
 
-// libraries
-#include <nlohmann/json.hpp>
-
-#include "depthai/utility/spimpl.h"
-
-// internal public
 #include "depthai/nn_archive/v1/Config.hpp"
-
-// internal private
+#include "depthai/utility/spimpl.h"
 #include "nn_archive/v1/Generators.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"

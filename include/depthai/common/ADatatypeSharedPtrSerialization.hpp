@@ -4,11 +4,11 @@
 namespace nlohmann {
 template <>
 struct adl_serializer<std::shared_ptr<dai::ADatatype>> {
-    static void to_json(json& j, const std::shared_ptr<dai::ADatatype>& /*opt*/) {  // NOLINT this is a specialization, naming conventions don't apply
+    static void to_json(json& j, const std::shared_ptr<dai::ADatatype>&) {  // NOLINT this is a specialization, naming conventions don't apply
         j = nullptr;
     }
 
-    static void from_json(const json& /*j*/, std::shared_ptr<dai::ADatatype>& opt) {  // NOLINT this is a specialization, naming conventions don't apply
+    static void from_json(const json&, std::shared_ptr<dai::ADatatype>& opt) {  // NOLINT this is a specialization, naming conventions don't apply
         opt = nullptr;
     }
 };
@@ -19,11 +19,11 @@ template <>
 struct Encoding<std::shared_ptr<dai::ADatatype>> : EncodingIO<std::shared_ptr<dai::ADatatype>> {
     using Type = std::shared_ptr<dai::ADatatype>;
 
-    static constexpr EncodingByte Prefix(const Type& /* value */) {
+    static constexpr EncodingByte Prefix(const Type&) {
         return EncodingByte::Empty;
     }
 
-    static constexpr std::size_t Size(const Type& /* value */) {
+    static constexpr std::size_t Size(const Type&) {
         return 0;
     }
 
@@ -32,12 +32,12 @@ struct Encoding<std::shared_ptr<dai::ADatatype>> : EncodingIO<std::shared_ptr<da
     }
 
     template <typename Writer>
-    static constexpr Status<void> WritePayload(EncodingByte /* prefix */, const Type& /* value */, Writer* /* writer */) {
+    static constexpr Status<void> WritePayload(EncodingByte, const Type&, Writer*) {
         return {};
     }
 
     template <typename Reader>
-    static constexpr Status<void> ReadPayload(EncodingByte /* prefix */, Type* value, Reader* /* reader */) {
+    static constexpr Status<void> ReadPayload(EncodingByte, Type* value, Reader*) {
         value->reset();
         return {};
     }

@@ -1,6 +1,5 @@
 #include "depthai/device/Platform.hpp"
 
-// std
 #include <algorithm>
 #include <stdexcept>
 
@@ -19,11 +18,9 @@ std::string platform2string(Platform platform) {
 }
 
 Platform string2platform(const std::string& platform) {
-    // Convert to lower case
     std::string lower = platform;
     std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
 
-    // Check which platform it is
     if(lower == "rvc2") {
         return Platform::RVC2;
     }

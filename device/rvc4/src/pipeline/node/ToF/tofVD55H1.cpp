@@ -11,9 +11,6 @@
 #include "utilities/ErrorMacros.hpp"
 #include "vendor/DeviceError.hpp"
 
-// The sensor pipeline (depth-map wrapper, aligned buffers, tuning tables) is in the vendor module behind
-// vendor/dai_device_tof.h. This file has the C interface calls, the geometry helpers and the plane conversions.
-
 namespace {
 
 constexpr const char* UNIT = "ToF";
@@ -46,7 +43,6 @@ tofVD55H1::tofVD55H1(uint32_t rawWidth, uint32_t rawHeight, bool wantConfidence,
     const dai_status status = dai_device_tof_create(&params, &tof);
     if(status != DAI_STATUS_OK) {
 #ifdef DEPTHAI_DEVICE_TOF_VD55H1_STUB
-        // The stub of the ToF part (dai_device_tof_stub.cpp) can not set the text of dai_device_last_error()
         throw dai::device::DeviceError(
             status, "dai_device_tof_create", "tofVD55H1: ToF VD55H1 support is not built into this firmware (DEPTHAI_DEVICE_TOF_VD55H1=OFF)");
 #else
@@ -113,7 +109,6 @@ void tofVD55H1::buildRadialToPerpLut(const std::array<std::array<float, 3>, 3>& 
 }
 
 void tofVD55H1::buildIdentityLut() {
-    // No calibration: skip radial-to-perpendicular correction (factor 1.0 per pixel).
     const auto sizes = output();
     r2pLut.assign(static_cast<size_t>(sizes.depth_width) * sizes.depth_height, 1.0f);
 }

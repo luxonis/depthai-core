@@ -33,7 +33,6 @@ MPPalmDetectionParser::Properties& MPPalmDetectionParser::getProperties() {
 }
 
 NNArchive MPPalmDetectionParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -125,7 +124,6 @@ void MPPalmDetectionParser::setConfig(const dai::nn_archive::v1::Head& head) {
     DAI_CHECK_V(headOutputs.size() == 2, "Only two output layers are supported for MPPalmDetectionParser, got {} layers.", headOutputs.size());
     setOutputLayerNames(headOutputs);
 
-    // The scale key without a typed metadata field lives in the head metadata extra parameters.
     const auto& extraParams = head.metadata.extraParams;
     if(extraParams.is_object() && extraParams.contains("scale") && !extraParams.at("scale").is_null()) {
         const auto& scaleJson = extraParams.at("scale");
@@ -199,8 +197,6 @@ void MPPalmDetectionParser::run() {
     DAI_CHECK(activeConfig.validate(), "MPPalmDetectionParser initial configuration is invalid.");
     const bool inputConfigSync = inputConfig.getWaitForMessage();
 
-    // The SSD anchors depend only on the scale; they are generated once and cached across
-    // messages, keyed on the scale.
     bool anchorsCached = false;
     int cachedAnchorScale = 0;
     std::vector<std::array<double, 4>> anchors;
@@ -236,10 +232,6 @@ void MPPalmDetectionParser::run() {
 
         const MPPalmDetectionParserConfig config = activeConfig;
 
-        // Extract: identify the bboxes and scores tensors by their last dimension; the tensor
-        // with the larger last dimension holds the bboxes and the tensor with the smaller last
-        // dimension holds the scores, mirroring the source parser's tie behavior over the layer
-        // order.
         const auto layerNames = nnData->getAllLayerNames();
         struct IdentifiedTensor {
             std::vector<float> values;
@@ -263,13 +255,10 @@ void MPPalmDetectionParser::run() {
             }
         }
         DAI_CHECK(bboxesTensor.has_value() && scoresTensor.has_value(), "No valid output tensors found.");
-        // Reshape the bboxes tensor to (-1, 18): bounding box center/size plus 7 palm keypoint
-        // coordinate pairs per anchor. The scores tensor is flattened.
-        DAI_CHECK_V(bboxesTensor->values.size() % 18 == 0,
+        DAI_CHECK_V(bboxesTensor->values.size() % 18 == 0,  // 18 = box center/size + 7 palm keypoint (x, y) pairs per anchor
                     "MPPalmDetectionParser: cannot reshape the bboxes tensor of size {} into shape (-1, 18).",
                     bboxesTensor->values.size());
 
-        // Compute
         const int currentScale = properties.scale;
         if(!anchorsCached || cachedAnchorScale != currentScale) {
             anchors = utilities::MediaPipeUtils::generateHandtrackerAnchors(currentScale, currentScale);
@@ -279,8 +268,6 @@ void MPPalmDetectionParser::run() {
         const auto detections = utilities::MediaPipeUtils::computeMediaPipePalmDetections(
             bboxesTensor->values, scoresTensor->values, anchors, config.confidenceThreshold, config.iouThreshold, config.maxDetections, currentScale);
 
-        // Emit. All detections carry label 0; the first label name (when configured) is mapped
-        // to every detection.
         const std::vector<std::uint32_t> labels(detections.bboxes.size(), 0);
         std::vector<std::string> mappedLabelNames;
         if(!properties.labelNames.empty()) {

@@ -13,8 +13,6 @@ namespace dai {
 struct ToFConfig;
 }
 
-/// VD55H1 ToF depth processing. The processing itself (depth-map wrapper, aligned buffers, tuning) is in the vendor
-/// module behind the C interface vendor/dai_device_tof.h; this class adds the LUTs and the plane conversions.
 class tofVD55H1 {
    public:
     tofVD55H1(uint32_t rawWidth, uint32_t rawHeight, bool wantConfidence, bool wantIntensity, std::shared_ptr<spdlog::logger> logger);
@@ -48,8 +46,7 @@ class tofVD55H1 {
     static void transposeFloat16ToUint8(const void* src, uint8_t* dst, uint32_t srcW, uint32_t srcH, const Float16ToUint8Lut& lut);
 
    private:
-    /// The sizes and the planes of the vendor module; the plane pointers are valid until the next processFrame
-    dai_device_tof_output output() const;
+    dai_device_tof_output output() const;  // The plane pointers are valid until the next processFrame
 
     std::unique_ptr<dai_device_tof, void (*)(dai_device_tof*)> handle;
     std::vector<float> r2pLut;

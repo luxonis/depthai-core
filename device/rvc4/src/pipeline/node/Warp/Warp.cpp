@@ -5,7 +5,6 @@
 #include <iostream>
 #include <sstream>
 
-// #include "WarpHelper.hpp"
 #include "pipeline/NodeTiming.hpp"
 #include "utilities/AcceleratorMemory.hpp"
 
@@ -26,7 +25,6 @@ void Warp::run() {
     logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
     std::shared_ptr<ImgFrame> outImage;
 
-    // Initialize the wrap module after first image received
     bool initialized = false;
 
     warpDispatcher = std::make_unique<WarpDispatcher>();
@@ -53,7 +51,6 @@ void Warp::run() {
         auto tGotInput = steady_clock::now();
         {
             auto t1 = steady_clock::now();
-            // Converts or just returns the same pointer if already AcceleratorMemory
             inImage->data = AcceleratorMemory::convert(inImage->data);
             auto t2 = steady_clock::now();
             wastedTime += duration_cast<microseconds>(t2 - t1);
@@ -65,7 +62,6 @@ void Warp::run() {
 
             auto t1 = steady_clock::now();
 
-            // Initialize the warp engine of the hardware accelerator
             warpDispatcher->Open();
             warpDispatcher->Init(properties, inImage->fb.width, inImage->fb.height, inImage->fb.type, inImage->fb.type);
             warpDispatcher->SetWarpMesh(rawGridX, rawGridY);
@@ -90,14 +86,6 @@ void Warp::run() {
             logger->info("Input wrap time: {}us", duration_cast<microseconds>(t2 - t1).count());
         }
 
-        // printf("IN IMAGE -----> ");
-        // printImgFrame(*inImage);
-        // printf("OUT IMAGE -----> ");
-        // printImgFrame(*outImage);
-        // printf("CONFIG -----> ");
-        // printConfig(currentConfig);
-
-        // Send image out
         auto tProcessed = steady_clock::now();
         out.send(outImage);
         logger->info("Image sent out.");
@@ -114,7 +102,7 @@ void printImgFrame(const dai::ImgFrame& img) {
            img.fb.width,
            img.fb.height,
            img.fb.stride,
-           0 /*img.fb.planeStride*/,
+           0,
            img.fb.bytesPP,
            (int)img.fb.type);
 }

@@ -19,7 +19,6 @@
 #include <stack>
 #include <utility/SpanBindings.hpp>
 
-// Include docstring file
 #include "docstring.hpp"
 
 PYBIND11_MAKE_OPAQUE(std::vector<uint8_t>);

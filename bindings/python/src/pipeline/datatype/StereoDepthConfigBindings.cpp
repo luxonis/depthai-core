@@ -4,22 +4,15 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // py::class_<RawStereoDepthConfig, RawBuffer, std::shared_ptr<RawStereoDepthConfig>> rawStereoDepthConfig(m, "RawStereoDepthConfig", DOC(dai,
-    // RawStereoDepthConfig));
-    py::class_<StereoDepthConfig, Py<StereoDepthConfig>, Buffer, py::smart_holder> stereoDepthConfig(
-        m, "StereoDepthConfig", DOC(dai, StereoDepthConfig));
+    py::class_<StereoDepthConfig, Py<StereoDepthConfig>, Buffer, py::smart_holder> stereoDepthConfig(m, "StereoDepthConfig", DOC(dai, StereoDepthConfig));
     py::class_<StereoDepthConfig::ConfidenceMetrics> _ConfidenceMetrics(stereoDepthConfig, "ConfidenceMetrics", DOC(dai, StereoDepthConfig, ConfidenceMetrics));
     py::class_<StereoDepthConfig::AlgorithmControl> algorithmControl(stereoDepthConfig, "AlgorithmControl", DOC(dai, StereoDepthConfig, AlgorithmControl));
     py::enum_<StereoDepthConfig::AlgorithmControl::DepthAlign> depthAlign(
@@ -47,18 +40,10 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
     py::enum_<StereoDepthConfig::CensusTransform::KernelSize> censusTransformKernelSize(
         censusTransform, "KernelSize", DOC(dai, StereoDepthConfig, CensusTransform, KernelSize));
     py::enum_<StereoDepthConfig::PostProcessing::Filter> filterEnum(postProcessing, "Filter", DOC(dai, StereoDepthConfig, PostProcessing, Filter));
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     depthAlign.value("AUTO", StereoDepthConfig::AlgorithmControl::DepthAlign::AUTO)
         .value("RECTIFIED_RIGHT",
@@ -70,8 +55,6 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
         .value("CENTER", StereoDepthConfig::AlgorithmControl::DepthAlign::CENTER, DOC(dai, StereoDepthConfig, AlgorithmControl, DepthAlign, CENTER))
         .value("RIGHT", StereoDepthConfig::AlgorithmControl::DepthAlign::RIGHT)
         .value("LEFT", StereoDepthConfig::AlgorithmControl::DepthAlign::LEFT);
-
-    // m.attr("StereoDepthProperties").attr("DepthAlign") = depthAlign;
 
     algorithmControl.attr("DepthUnit") = m.attr("DepthUnit");
 
@@ -194,7 +177,6 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
             "adaptiveMedianFilter", &StereoDepthConfig::PostProcessing::adaptiveMedianFilter, DOC(dai, StereoDepthConfig, PostProcessing, adaptiveMedianFilter))
         .def_readwrite("holeFilling", &StereoDepthConfig::PostProcessing::holeFilling, DOC(dai, StereoDepthConfig, PostProcessing, holeFilling));
 
-    // KernelSize
     censusTransformKernelSize
         .value("AUTO", StereoDepthConfig::CensusTransform::KernelSize::AUTO, DOC(dai, StereoDepthConfig, CensusTransform, KernelSize, AUTO))
         .value("KERNEL_5x5", StereoDepthConfig::CensusTransform::KernelSize::KERNEL_5x5, DOC(dai, StereoDepthConfig, CensusTransform, KernelSize, KERNEL_5x5))
@@ -222,7 +204,6 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
                        &StereoDepthConfig::CostMatching::LinearEquationParameters::threshold,
                        DOC(dai, StereoDepthConfig, CostMatching, LinearEquationParameters, threshold));
 
-    // Disparity width
     costMatchingDisparityWidth
         .value("DISPARITY_64",
                StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64,
@@ -298,7 +279,6 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("costAggregation", &StereoDepthConfig::costAggregation, DOC(dai, StereoDepthConfig, costAggregation))
         .def_readwrite("confidenceMetrics", &StereoDepthConfig::confidenceMetrics, DOC(dai, StereoDepthConfig, confidenceMetrics));
 
-    // Message
     stereoDepthConfig.def("__repr__", &StereoDepthConfig::str)
         .def("setDepthAlign", &StereoDepthConfig::setDepthAlign, py::arg("align"), DOC(dai, StereoDepthConfig, setDepthAlign))
         .def("setConfidenceThreshold", &StereoDepthConfig::setConfidenceThreshold, py::arg("confThr"), DOC(dai, StereoDepthConfig, setConfidenceThreshold))
@@ -330,8 +310,6 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
         .def("getCustomDepthUnitMultiplier", &StereoDepthConfig::getCustomDepthUnitMultiplier, DOC(dai, StereoDepthConfig, getCustomDepthUnitMultiplier))
         .def("setDisparityShift", &StereoDepthConfig::setDisparityShift, DOC(dai, StereoDepthConfig, setDisparityShift))
         .def("setNumInvalidateEdgePixels", &StereoDepthConfig::setNumInvalidateEdgePixels, DOC(dai, StereoDepthConfig, setNumInvalidateEdgePixels))
-        // .def("set",                     &StereoDepthConfig::set, py::arg("config"), DOC(dai, StereoDepthConfig, set))
-        // .def("get",                     &StereoDepthConfig::get, DOC(dai, StereoDepthConfig, get))
         .def("setFiltersComputeBackend",
              &StereoDepthConfig::setFiltersComputeBackend,
              py::arg("filtersBackend"),

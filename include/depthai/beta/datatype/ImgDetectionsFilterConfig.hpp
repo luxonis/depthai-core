@@ -1,10 +1,6 @@
 #pragma once
 
-// Compatibility header. ImgDetectionsFilterConfig moved out of the beta namespace in v3.12:
-// include "depthai/pipeline/datatype/ImgDetectionsFilterConfig.hpp" and use dai::ImgDetectionsFilterConfig.
-// Only the name is kept. The v3.12 config has different fields.
-
-#include "depthai/pipeline/datatype/ImgDetectionsFilterConfig.hpp"
+#include "depthai/pipeline/datatype/ImgDetectionsFilterConfig.hpp"  // Compatibility header: moved out of beta in v3.12; the new config has different fields
 
 namespace dai {
 namespace beta {

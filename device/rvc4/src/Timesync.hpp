@@ -30,25 +30,19 @@ class Timesync {
     void updateSyncOffset(struct timespec);
     void updateSyncOffsetNanos(uint64_t offsetNanos);
 
-    // MAVLINK port
-
-    // Estimated statistics
-    double time_offset;
+    double time_offset;  // Ported from MAVLINK
     double time_skew;
 
-    // Filter parameters
     uint32_t sequence;
     double filter_alpha;
     double filter_beta;
 
-    // Filter settings
     float filter_alpha_initial;
     float filter_beta_initial;
     float filter_alpha_final;
     float filter_beta_final;
     int convergence_window;
 
-    // Outlier rejection
     int max_rtt_sample;
     int max_deviation_sample;
     int max_cons_high_rtt;
@@ -81,8 +75,6 @@ public:
     struct timespec getSyncOffset() const;
     struct timespec getSyncTime() const;
 
-
-// static
     static struct timespec getDefaultSynchronizedOffset();
     static struct timespec getDefaultSynchronizedTimestamp();
 

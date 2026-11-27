@@ -8,7 +8,6 @@
 #include <iterator>
 #include <vector>
 
-// include depthai library
 #include <depthai/depthai.hpp>
 #include <depthai/pipeline/datatype/DatatypeEnum.hpp>
 #include <depthai/pipeline/datatype/StreamMessageParser.hpp>
@@ -22,8 +21,7 @@ std::shared_ptr<T> daiDeserializeFromJS(std::vector<std::uint8_t> data) {
     auto imgFrame = std::make_shared<T>();
     const auto rc = dai::utility::deserialize(data, *imgFrame);
     if(!rc) {
-        // this should never happen as exceptions are enabled !!!
-        std::cout << "Deserialization failed" << std::endl;
+        std::cout << "Deserialization failed" << std::endl;  // Not reached: deserialize() throws on error (exceptions are enabled)
     }
     return imgFrame;
 }
@@ -46,11 +44,9 @@ MessageHeader daiGetMessageType(std::vector<std::uint8_t> data) {
 using namespace emscripten;
 
 EMSCRIPTEN_BINDINGS(depthai_js) {
-    // vector types
     register_vector<std::uint8_t>("Uint8Vector");
     register_vector<dai::ImgDetection>("ImgDetectionVector");
 
-    // enums
     enum_<dai::DatatypeEnum>("DatatypeEnum")
         .value("ADatatype", dai::DatatypeEnum::ADatatype)
         .value("Buffer", dai::DatatypeEnum::Buffer)
@@ -79,7 +75,6 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .value("MessageGroup", dai::DatatypeEnum::MessageGroup)
         .value("ImageFiltersConfig", dai::DatatypeEnum::ImageFiltersConfig);
 
-    // structs
     value_object<MessageHeader>("MessageHeader")
         .field("objectType", &MessageHeader::objectType)
         .field("serializedObjectSize", &MessageHeader::serializedObjectSize);
@@ -91,7 +86,6 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .field("ymin", &dai::ImgDetection::ymin)
         .field("ymax", &dai::ImgDetection::ymax);
 
-    // classes
     class_<dai::ImgFrame>("ImgFrame")
         .smart_ptr_constructor("ImgFrame", &std::make_shared<dai::ImgFrame>)
         .property("width", &dai::ImgFrame::getWidth)
@@ -100,7 +94,6 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .smart_ptr_constructor("ImgDetections", &std::make_shared<dai::ImgDetections>)
         .property("detections", &dai::ImgDetections::detections);
 
-    // module global functions
     function("deserializeImgFrame", &daiDeserializeFromJS<dai::ImgFrame>);
     function("deserializeImgDetections", &daiDeserializeFromJS<dai::ImgDetections>);
     function("getMessageType", &daiGetMessageType);

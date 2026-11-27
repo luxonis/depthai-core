@@ -19,7 +19,6 @@ class OpenVINO {
     /// OpenVINO Version supported version information
     enum Version { VERSION_2020_3, VERSION_2020_4, VERSION_2021_1, VERSION_2021_2, VERSION_2021_3, VERSION_2021_4, VERSION_2022_1, VERSION_UNIVERSAL };
 
-    // Device for which the blob is compiled
     enum class Device { VPU, VPUX };
     /// OpenVINO Blob
     struct Blob {
@@ -85,7 +84,6 @@ class OpenVINO {
         dai::OpenVINO::Blob getBlobWithNumShaves(int numShaves);
 
        private:
-        // A header in the superblob containing metadata about the blob and patches
         struct SuperBlobHeader {
             static constexpr size_t HEADER_SIZE = 1 * sizeof(uint64_t) + NUMBER_OF_PATCHES * sizeof(uint64_t);
 
@@ -95,25 +93,18 @@ class OpenVINO {
             std::vector<int64_t> patchSizes;
         };
 
-        // Read the SuperBlob file into memory
         std::vector<uint8_t> readSuperBlobFile(const std::filesystem::path& path);
 
-        // Get a pointer to the first byte of the blob data
         const uint8_t* getBlobDataPointer();
 
-        // Get the size in bytes of the blob data
         int64_t getBlobDataSize();
 
-        // Get a pointer to the first byte of the patch data for a specific number of shaves
         const uint8_t* getPatchDataPointer(int numShaves);
 
-        // Get the size in bytes of the patch data for a specific number of shaves
         int64_t getPatchDataSize(int numShaves);
 
-        // Load header - throw if an error occurs
         void loadAndCheckHeader();
 
-        // Validate superblob - throw if an error occurs
         void validateSuperblob();
 
         SuperBlobHeader header;

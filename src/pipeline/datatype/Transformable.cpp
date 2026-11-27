@@ -8,9 +8,7 @@ namespace dai {
 
 TransformableBuffer::~TransformableBuffer() = default;
 
-void TransformableBuffer::transformToInternal(const ImgTransformation&) {
-    // No-op placeholder for the abstract Transformable interface.
-}
+void TransformableBuffer::transformToInternal(const ImgTransformation&) {}
 
 std::shared_ptr<TransformableBuffer> TransformableBuffer::transformTo(const ImgTransformation& target) const {
     static_cast<void>(target);

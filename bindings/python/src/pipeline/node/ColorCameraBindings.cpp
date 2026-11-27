@@ -10,7 +10,6 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Node and Properties declare upfront
     py::class_<ColorCameraProperties> colorCameraProperties(m, "ColorCameraProperties", DOC(dai, ColorCameraProperties));
     py::enum_<ColorCameraProperties::SensorResolution> colorCameraPropertiesSensorResolution(
         colorCameraProperties, "SensorResolution", DOC(dai, ColorCameraProperties, SensorResolution));
@@ -20,20 +19,11 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
         colorCameraProperties, "WarpMeshSource", DOC(dai, ColorCameraProperties, WarpMeshSource));
     auto colorCamera = ADD_NODE(ColorCamera);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // ColorCamera Properties
     colorCameraPropertiesSensorResolution.value("THE_1080_P", ColorCameraProperties::SensorResolution::THE_1080_P)
         .value("THE_1200_P", ColorCameraProperties::SensorResolution::THE_1200_P)
         .value("THE_4_K", ColorCameraProperties::SensorResolution::THE_4_K)
@@ -90,7 +80,6 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
         .def_readwrite("warpMeshStepWidth", &ColorCameraProperties::warpMeshStepWidth)
         .def_readwrite("warpMeshStepHeight", &ColorCameraProperties::warpMeshStepHeight)
         .def_readwrite("eventFilter", &ColorCameraProperties::eventFilter);
-    // ColorCamera node
     colorCamera
         .def(py::init([]() {
             auto camera = getImplicitPipeline()->create<ColorCamera>();
@@ -106,7 +95,6 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
         .def_readonly("frameEvent", &ColorCamera::frameEvent, DOC(dai, node, ColorCamera, frameEvent))
         .def("setCamId",
              [](ColorCamera& c, int64_t id) {
-                 // Issue an deprecation warning
                  PyErr_WarnEx(PyExc_DeprecationWarning, "setCamId() is deprecated, use setBoardSocket() instead.", 1);
                  HEDLEY_DIAGNOSTIC_PUSH
                  HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
@@ -115,7 +103,6 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
              })
         .def("getCamId",
              [](ColorCamera& c) {
-                 // Issue an deprecation warning
                  PyErr_WarnEx(PyExc_DeprecationWarning, "getCamId() is deprecated, use getBoardSocket() instead.", 1);
                  HEDLEY_DIAGNOSTIC_PUSH
                  HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
@@ -234,6 +221,5 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
         .def("getCamera", &ColorCamera::getCamera, DOC(dai, node, ColorCamera, getCamera))
         .def("setRawOutputPacked", &ColorCamera::setRawOutputPacked, py::arg("packed"), DOC(dai, node, ColorCamera, setRawOutputPacked));
     DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
-    // ALIAS
     daiNodeModule.attr("ColorCamera").attr("Properties") = colorCameraProperties;
 }

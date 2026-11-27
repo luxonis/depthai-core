@@ -1,6 +1,5 @@
 #pragma once
 
-// libraries
 #include <depthai/pipeline/InputQueue.hpp>
 #include <depthai/pipeline/Node.hpp>
 #include <depthai/pipeline/Subnode.hpp>
@@ -18,15 +17,12 @@ class NeuralDepth : public ::dai::node::NeuralDepth {
    public:
     constexpr static const char* NAME = node::NeuralDepth::NAME;
     NeuralDepth() : NeuralDepth(std::make_unique<dai::node::NeuralDepth::Properties>()) {}
-    NeuralDepth(std::unique_ptr<Properties> props) : dai::node::NeuralDepth(std::move(props)) {
-        // override that this is a host node
-    }
+    NeuralDepth(std::unique_ptr<Properties> props) : dai::node::NeuralDepth(std::move(props)) {}
     bool runOnHost() const override {
         return true;
     }
     void run() override;
 
-    /* Post processing pipeline */
     TemporalFilter<float> temporalFilter;
     ThresholdFilter thresholdFilter;
 };

@@ -14,8 +14,7 @@ namespace beta {
 
 namespace {
 
-// Visualization constants matching the source implementation in depthai-nodes.
-constexpr double FONT_SIZE_PER_HEIGHT = 1.0 / 30.0;
+constexpr double FONT_SIZE_PER_HEIGHT = 1.0 / 30.0;  // Match the depthai-nodes implementation
 const Color FONT_COLOR{1.0f, 1.0f, 1.0f, 1.0f};
 const Color FONT_BACKGROUND_COLOR{0.0f, 0.0f, 0.0f, 0.0f};
 
@@ -56,9 +55,7 @@ dai::VisualizeType Predictions::getVisualizationMessage() const {
         return std::monostate{};
     }
 
-    // Positions are computed in double precision like the Python source and only narrowed to
-    // float when stored in the annotation.
-    const double fontSize = FONT_SIZE_PER_HEIGHT * static_cast<double>(height);
+    const double fontSize = FONT_SIZE_PER_HEIGHT * static_cast<double>(height);  // Double precision like the Python source; narrowed to float on store
     const double relativeFontSize = fontSize / static_cast<double>(height);
     const double xOffset = 3.0 / static_cast<double>(width);
     const double yOffset = 3.0 / static_cast<double>(height);

@@ -12,12 +12,10 @@ MonoCamera::Properties& MonoCamera::getProperties() {
     return properties;
 }
 
-// Set board socket to use
 void MonoCamera::setBoardSocket(dai::CameraBoardSocket boardSocket) {
     properties.boardSocket = boardSocket;
 }
 
-// Get current board socket
 CameraBoardSocket MonoCamera::getBoardSocket() const {
     return properties.boardSocket;
 }
@@ -30,9 +28,7 @@ std::string MonoCamera::getCamera() const {
     return properties.cameraName;
 }
 
-// Set which color camera to use
 void MonoCamera::setCamId(int64_t camId) {
-    // cast to board socket
     switch(camId) {
         case 0:
             properties.boardSocket = CameraBoardSocket::CAM_A;
@@ -52,17 +48,14 @@ void MonoCamera::setCamId(int64_t camId) {
     }
 }
 
-// Get which color camera to use
 int64_t MonoCamera::getCamId() const {
     return (int64_t)properties.boardSocket;
 }
 
-// Set camera image orientation
 void MonoCamera::setImageOrientation(CameraImageOrientation imageOrientation) {
     properties.imageOrientation = imageOrientation;
 }
 
-// Get camera image orientation
 CameraImageOrientation MonoCamera::getImageOrientation() const {
     // TODO: in case of AUTO, see if possible to return actual value determined by device?
     return properties.imageOrientation;
@@ -98,12 +91,10 @@ void MonoCamera::setIsp3aFps(int isp3aFps) {
 }
 
 float MonoCamera::getFps() const {
-    // if AUTO
     if(properties.fps == -1 || properties.fps == 0) {
         return 30.0f;
     }
 
-    // else return fps
     return properties.fps;
 }
 

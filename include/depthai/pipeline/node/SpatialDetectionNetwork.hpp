@@ -3,21 +3,17 @@
 #include <depthai/pipeline/DeviceNodeGroup.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/Camera.hpp>
+#include <depthai/pipeline/node/Depth.hpp>
 #include <depthai/pipeline/node/DetectionNetwork.hpp>
 #include <depthai/pipeline/node/ImageAlign.hpp>
-#include <depthai/pipeline/node/SpatialLocationCalculator.hpp>
-#include <variant>
-
-// depth map source nodes
-#include <depthai/pipeline/node/Depth.hpp>
 #include <depthai/pipeline/node/NeuralDepth.hpp>
+#include <depthai/pipeline/node/SpatialLocationCalculator.hpp>
 #include <depthai/pipeline/node/StereoDepth.hpp>
 #include <depthai/pipeline/node/ToF.hpp>
+#include <depthai/properties/SpatialDetectionNetworkProperties.hpp>
+#include <variant>
 
 #include "depthai/openvino/OpenVINO.hpp"
-
-// shared
-#include <depthai/properties/SpatialDetectionNetworkProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -152,7 +148,6 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
     void setNNArchive(const NNArchive& nnArchive, int numShaves);
 
     /** Backwards compatibility interface **/
-    // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
      * Load network blob into assets and use once pipeline is started.
      *
@@ -281,10 +276,8 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
     NNArchive createNNArchive(NNModelDescription& modelDesc);
     NNArchive decodeModel(const Model& model);
 
-    // Unified depth alignment helper
     void alignDepth(const DepthSource& depthSource, const std::shared_ptr<Camera>& camera);
 
-    // Type-specific alignment implementations
     void alignDepthImpl(const std::shared_ptr<Depth>& depth, const std::shared_ptr<Camera>& camera);
     void alignDepthImpl(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera);
     void alignDepthImpl(const std::shared_ptr<NeuralDepth>& neuralDepth, const std::shared_ptr<Camera>& camera);

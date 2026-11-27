@@ -1,13 +1,11 @@
 #pragma once
 
-#include <optional>
-#include <variant>
-#include <vector>
-
-// depthai public
 #include <depthai/common/optional.hpp>
 #include <depthai/common/variant.hpp>
 #include <depthai/utility/Serialization.hpp>
+#include <optional>
+#include <variant>
+#include <vector>
 
 namespace dai {
 

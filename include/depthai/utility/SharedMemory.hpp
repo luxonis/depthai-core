@@ -1,6 +1,5 @@
 #pragma once
 
-// std
 #include <cstdint>
 #include <cstring>
 #include <stdexcept>
@@ -12,25 +11,21 @@
     #include <unistd.h>
 #endif
 
-// project
 #include "depthai/utility/Memory.hpp"
 #include "depthai/utility/MemoryWrappers.hpp"
 
 namespace dai {
 
-// memory as interface
 class SharedMemory : public Memory {
    protected:
     long fd = -1;
     void* mapping;
     void mapFd() {
         if(fd < 0) {
-            /* Error handling here */
         }
 #if defined(__unix__) && !defined(__APPLE__)
         mapping = mmap(NULL, getSize(), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
         if(mapping == NULL) {
-            /* Error handling here */
         }
 #endif
     }

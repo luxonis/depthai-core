@@ -6,7 +6,6 @@
 #include "depthai/utility/LockingQueue.hpp"
 #include "rvc4/GstVaapiEncRvc4.hpp"
 #include "utilities/ErrorMacros.hpp"
-// shared
 #include "pipeline/ThreadedNodeImpl.hpp"
 
 namespace dai {
@@ -41,16 +40,13 @@ class VideoEncoder : public node::VideoEncoder {
         }
     };
 
-    /// One frame queued at the JPEG encoder; handed to OfflineJpegEncoder as the job tag.
     struct JpegJob {
         GstBuffer* outputBuffer{nullptr};
         PassthroughMessage msg;
     };
 
     VideoEncoder() : VideoEncoder(std::make_unique<VideoEncoder::Properties>()) {}
-    VideoEncoder(std::unique_ptr<VideoEncoder::Properties> props) : node::VideoEncoder(std::move(props)) {
-        // override that this is a host node
-    }
+    VideoEncoder(std::unique_ptr<VideoEncoder::Properties> props) : node::VideoEncoder(std::move(props)) {}
     bool runOnHost() const override {
         return true;
     }

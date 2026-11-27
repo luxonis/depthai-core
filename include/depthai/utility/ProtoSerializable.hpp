@@ -51,7 +51,6 @@ class ProtoSerializable {
     void load(const std::filesystem::path& path);
 
 #else
-    // Helper struct for compile-time check
     template <typename... T>
     struct dependent_false {
         static constexpr bool value = false;

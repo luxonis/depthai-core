@@ -1,10 +1,8 @@
 #pragma once
 
-// std
 #include <cstdint>
 #include <unordered_map>
 
-// project
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
 #include "depthai/common/CameraSensorType.hpp"
@@ -80,12 +78,8 @@ struct BoardConfig {
     };
     std::unordered_map<std::int8_t, GPIO> gpio;
 
-    // Uart config
-
     /// UART instance config
     struct UART {
-        // TBD
-        // std::int8_t tx, rx;
         std::int8_t tmp;
     };
     /// UART instance map
@@ -135,8 +129,6 @@ struct BoardConfig {
         // TODO(themarpe) - add later when applicable
         // std::vector<std::string> sensorName;
         std::optional<CameraSensorType> sensorType = std::nullopt;
-        // std::vector<vector> vcm;
-        // std::optional<CameraBoardSocket> syncTo;
         std::optional<CameraImageOrientation> orientation = std::nullopt;
     };
     std::unordered_map<CameraBoardSocket, Camera> camera;

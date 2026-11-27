@@ -1,26 +1,19 @@
 #pragma once
 
-// pybind
 #include "pybind11_common.hpp"
 
-// depthai
 #include "depthai/device/Device.hpp"
 
-// Searches for available devices (as Device constructor)
-// but pooling, to check for python interrupts, and releases GIL in between
-
-template <typename DEVICE, class... Args>
+template <typename DEVICE, class... Args>  // Device search like the Device constructor, but polls for Python interrupts and releases the GIL
 static dai::DeviceInfo deviceSearchHelper(Args&&... args) {
     bool found;
     dai::DeviceInfo deviceInfo;
-    // releases python GIL
     py::gil_scoped_release release;
     std::tie(found, deviceInfo) = DEVICE::getAnyAvailableDevice(DEVICE::getDefaultSearchTime(), []() {
         py::gil_scoped_acquire acquire;
         if(PyErr_CheckSignals() != 0) throw py::error_already_set();
     });
 
-    // if no devices found, then throw
     if(!found) {
         auto numConnected = DEVICE::getAllAvailableDevices().size();
         if(numConnected > 0) {

@@ -1,6 +1,5 @@
 #pragma once
 
-// all the nodes
 #include "node/Align.hpp"
 #include "node/AprilTag.hpp"
 #include "node/BenchmarkIn.hpp"
@@ -62,7 +61,6 @@
     #include "depthai/basalt/BasaltVIO.hpp"
 #endif
 
-// Internal nodes
 #include "node/ImgDetectionsFilter.hpp"
 #include "node/internal/XLinkIn.hpp"
 #include "node/internal/XLinkInHost.hpp"

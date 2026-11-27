@@ -21,12 +21,8 @@ extern "C" {
 
 namespace dai {
 
-// Definition
 constexpr OpenVINO::Version OpenVINO::DEFAULT_VERSION;
 
-// static member init
-// {{major, minor}, 'guessed openvino version to support it'}
-// major and minor represent openvino NN blob version information
 const std::map<std::pair<std::uint32_t, std::uint32_t>, OpenVINO::Version> OpenVINO::blobVersionToOpenvinoGuessMapping = {
     {{5, 0}, OpenVINO::VERSION_2020_3},
     {{6, 0}, OpenVINO::VERSION_2022_1},
@@ -60,19 +56,14 @@ const std::map<std::pair<std::uint32_t, std::uint32_t>, std::vector<OpenVINO::Ve
 
 };
 
-// Helper function to convert big-endian to host-endian integer
 static uint64_t bigEndianToHost(uint64_t value) {
-    // Change endianness of 64-bit integer from network (big-endian) to host (big-endian or little-endias) order
-    // Check host endianness
     const int num = 42;  // 0x0000002A when using big-endian byte order
     const bool hostIsBigEndian = *reinterpret_cast<const char*>(&num) == 0;
 
-    // If host is big-endian, no conversion is needed
     if(hostIsBigEndian) {
         return value;
     }
 
-    // If host is little-endian, convert = flip the bytes
     uint64_t result = 0;
     for(size_t i = 0; i < sizeof(uint64_t); ++i) {
         result |= (value & 0xFF) << (8 * (sizeof(uint64_t) - i - 1));
@@ -81,7 +72,6 @@ static uint64_t bigEndianToHost(uint64_t value) {
     return result;
 }
 
-// Helper function to read 64-bit big-endian integer from data
 static uint64_t readInt64(const uint8_t* data) {
     uint64_t value = *reinterpret_cast<const uint64_t*>(data);
     return bigEndianToHost(value);
@@ -105,42 +95,31 @@ dai::OpenVINO::Blob OpenVINO::SuperBlob::getBlobWithNumShaves(int numShaves) {
                                 + std::to_string(OpenVINO::SuperBlob::NUMBER_OF_PATCHES) + ")");
     }
 
-    // Load main blob data
     const uint8_t* blobData = getBlobDataPointer();
     int64_t blobSize = getBlobDataSize();
 
-    // Load blob patch
     const uint8_t* patchData = getPatchDataPointer(numShaves);
     int64_t patchSize = getPatchDataSize(numShaves);
 
-    // Prepare patched blob data
     std::vector<uint8_t> patchedBlobData;
 
-    // If patchSize == 0 (no patch), blob is already compiled for the desired number of shaves.
-    // Therefore no patching is needed.
-    if(patchSize != 0) {
-        // Calculate patched blob size and allocate memory
+    if(patchSize != 0) {  // patchSize 0: the main blob is already compiled for numShaves
         int64_t patchedBlobSize = bspatch_mem_get_newsize(patchData, patchSize);
         patchedBlobData.resize(patchedBlobSize);
 
-        // Apply patch
         bspatch_mem(blobData, blobSize, patchData, patchSize, patchedBlobData.data());
     } else {
-        // Just copy the blob data
         patchedBlobData.resize(blobSize);
         std::copy(blobData, blobData + blobSize, patchedBlobData.data());
     }
 
-    // Convert to OpenVINO Blob
     dai::OpenVINO::Blob patchedBlob(patchedBlobData);
     return patchedBlob;
 }
 
 std::vector<uint8_t> OpenVINO::SuperBlob::readSuperBlobFile(const std::filesystem::path& path) {
-    // Make sure file exists before opening it
     if(!std::filesystem::exists(path)) throw std::runtime_error("File does not exist: " + path.string());
 
-    // Open file and read bytes
     std::ifstream file(path, std::ios::binary);
     if(!file.is_open()) {
         throw std::runtime_error("Cannot open file: " + path.string());
@@ -190,14 +169,12 @@ void OpenVINO::SuperBlob::loadAndCheckHeader() {
 }
 
 void OpenVINO::SuperBlob::validateSuperblob() {
-    // Check that superblob is of the expected size
     size_t expectedSize = SuperBlobHeader::HEADER_SIZE + header.blobSize + std::accumulate(header.patchSizes.begin(), header.patchSizes.end(), 0);
     if(expectedSize != data.size()) {
         throw std::invalid_argument("Invalid superblob data: size mismatch. Expected " + std::to_string(expectedSize) + " bytes, got "
                                     + std::to_string(data.size()) + " bytes.");
     }
 
-    // Validate that there are the 'BSDIFF' bytes for each patch
     for(size_t numShaves = 1; numShaves <= OpenVINO::SuperBlob::NUMBER_OF_PATCHES; ++numShaves) {
         int64_t patchSize = getPatchDataSize(numShaves);
         if(patchSize == 0) continue;
@@ -276,36 +253,28 @@ OpenVINO::Version OpenVINO::getBlobLatestSupportedVersion(std::uint32_t majorVer
 }
 
 bool OpenVINO::areVersionsBlobCompatible(OpenVINO::Version v1, OpenVINO::Version v2) {
-    // Universal check
     if(v1 == VERSION_UNIVERSAL || v2 == VERSION_UNIVERSAL) {
         return true;
     }
 
-    // Classic check
-    // Check all blob versions
     for(const auto& kv : blobVersionToOpenvinoMapping) {
         bool v1Found = false;
         bool v2Found = false;
 
-        // Check if both openvino versions are in same blob version
         for(const auto& el : blobVersionToOpenvinoMapping.at(kv.first)) {
             if(el == v1) v1Found = true;
             if(el == v2) v2Found = true;
         }
 
         if(v1Found && v2Found) {
-            // if both were found, return true
             return true;
         } else if(!v1Found && !v2Found) {
-            // If both weren't found, continue
             continue;
         } else {
-            // If one was found but other wasn't, return false
             return false;
         }
     }
 
-    // If versions weren't matched up in any of the above cases, log an error and return false
     logger::error("OpenVINO - version compatibility check with invalid values or unknown blob version");
     return false;
 }
@@ -313,13 +282,11 @@ bool OpenVINO::areVersionsBlobCompatible(OpenVINO::Version v1, OpenVINO::Version
 static void blobInit(OpenVINO::Blob& blob, std::vector<uint8_t> data) {
     blob.data = std::move(data);
 
-    // Check if the blob is for VPUX
     std::vector<uint8_t> vpuxBlobSkip{0X18, 0X0, 0X0, 0X0};
     std::vector<uint8_t> vpuxBlobHeader{0X42, 0X4C, 0X4F, 0X42};
 
     if(std::equal(vpuxBlobHeader.begin(), vpuxBlobHeader.end(), blob.data.begin() + vpuxBlobSkip.size())) {
-        // Most of the parsing done on device for now
-        blob.device = OpenVINO::Device::VPUX;
+        blob.device = OpenVINO::Device::VPUX;     // VPUX blobs are parsed on the device
         blob.version = OpenVINO::VERSION_2022_1;  // TODO: parse blob to get the version
     } else {
         blob.device = OpenVINO::Device::VPU;
@@ -339,7 +306,6 @@ OpenVINO::Blob::Blob(std::vector<uint8_t> data) {
 }
 
 OpenVINO::Blob::Blob(const std::filesystem::path& path) {
-    // Load binary file at path
     std::ifstream stream(path, std::ios::in | std::ios::binary);
     if(!stream.is_open()) {
         // Throw an error

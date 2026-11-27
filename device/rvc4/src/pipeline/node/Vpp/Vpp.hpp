@@ -5,12 +5,10 @@
 #include <thread>
 #include <vector>
 
-// libraries
 #include "depthai/pipeline/datatype/VppConfig.hpp"
 #include "depthai/properties/VppProperties.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
-// shared
 #include "VppImpl.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"

@@ -39,13 +39,10 @@ struct GyroscopeNoiseParams {
 
 /// Allan-variance-derived IMU noise parameters.
 struct ImuNoiseParameters {
-    // IMU type name, e.g. "LSM6", "BMX160", etc.
     std::string name;
 
-    // Accelerometer parameters
     AccelerometerNoiseParams accelerometer;
 
-    // Gyroscope parameters
     GyroscopeNoiseParams gyroscope;
 
     DEPTHAI_SERIALIZE_DECL(ImuNoiseParameters, name, accelerometer, gyroscope);

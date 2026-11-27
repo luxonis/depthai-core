@@ -23,53 +23,20 @@ class ToFConfig : public Buffer {
      */
     filters::params::MedianFilter median = filters::params::MedianFilter::MEDIAN_OFF;
 
-    /*
-     * Phase unwrapping level.
-     */
     int phaseUnwrappingLevel = 4;
 
-    /*
-     * Phase unwrapping error threshold.
-     */
     uint16_t phaseUnwrapErrorThreshold = 100;
 
-    /*
-     * Enable phase shuffle temporal filter.
-     * Temporal filter that averages the shuffle and non-shuffle frequencies.
-     */
     bool enablePhaseShuffleTemporalFilter = true;
 
-    /*
-     * Enable burst mode.
-     * Decoding is performed on a series of 4 frames.
-     * Output fps will be 4 times lower, but reduces motion blur artifacts.
-     */
-    bool enableBurstMode = false;
+    bool enableBurstMode = false;  // Decodes 4 frames at a time: output fps is 4 times lower, less motion blur
 
-    /*
-     * Enable distortion correction for intensity, amplitude and depth output, if calibration is present.
-     */
-    bool enableDistortionCorrection = true;
+    bool enableDistortionCorrection = true;  // Only when calibration is present
 
-    /*
-     * Enable FPN correction. Used for debugging.
-     */
     std::optional<bool> enableFPPNCorrection;
-    /*
-     * Enable optical correction. Used for debugging.
-     */
     std::optional<bool> enableOpticalCorrection;
-    /*
-     * Enable temperature correction. Used for debugging.
-     */
     std::optional<bool> enableTemperatureCorrection;
-    /*
-     * Enable wiggle correction. Used for debugging.
-     */
     std::optional<bool> enableWiggleCorrection;
-    /*
-     * Enable phase unwrapping. Used for debugging.
-     */
     std::optional<bool> enablePhaseUnwrapping;
 
     /**

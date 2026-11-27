@@ -2,7 +2,6 @@
 
 #include <cstdint>
 
-// depthai
 #include "depthai/openvino/OpenVINO.hpp"
 
 void OpenVINOBindings::bind(pybind11::module& m, void* pCallstack) {
@@ -14,20 +13,11 @@ void OpenVINOBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<OpenVINO::SuperBlob> openvinoSuperBlob(openvino, "SuperBlob", DOC(dai, OpenVINO, SuperBlob));
     py::enum_<OpenVINO::Device> openvinoDevice(openvino, "Device", DOC(dai, OpenVINO, Device));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Bind OpenVINO
     openvino.def_static("getVersions", &OpenVINO::getVersions, DOC(dai, OpenVINO, getVersions))
         .def_static("getVersionName", &OpenVINO::getVersionName, py::arg("version"), DOC(dai, OpenVINO, getVersionName))
         .def_static("parseVersionName", &OpenVINO::parseVersionName, py::arg("versionString"), DOC(dai, OpenVINO, parseVersionName))
@@ -45,13 +35,6 @@ void OpenVINOBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_static(
             "areVersionsBlobCompatible", &OpenVINO::areVersionsBlobCompatible, py::arg("v1"), py::arg("v2"), DOC(dai, OpenVINO, areVersionsBlobCompatible));
 
-    // not strongly typed enum OpenVINO::Version
-    // previous step defined class 'OpenVINO' (variable 'openvino')
-    // which is used in defining the following enum (its scope)
-    // and that the values are available directly under OpenVINO.VERSION_2021_4, ...
-    // they are exported
-    // By default, pybind creates strong typed enums, eg: OpenVINO::Version::VERSION_2021_4
-
     openvinoVersion.value("VERSION_2020_3", OpenVINO::Version::VERSION_2020_3)
         .value("VERSION_2020_4", OpenVINO::Version::VERSION_2020_4)
         .value("VERSION_2021_1", OpenVINO::Version::VERSION_2021_1)
@@ -61,12 +44,10 @@ void OpenVINOBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("VERSION_2022_1", OpenVINO::Version::VERSION_2022_1)
         .value("VERSION_UNIVERSAL", OpenVINO::Version::VERSION_UNIVERSAL)
         .export_values();
-    // DEFAULT_VERSION binding
     openvino.attr("DEFAULT_VERSION") = dai::OpenVINO::DEFAULT_VERSION;
 
     openvinoDevice.value("VPU", OpenVINO::Device::VPU).value("VPUX", OpenVINO::Device::VPUX);
 
-    // Bind OpenVINO::Blob
     openvinoBlob.def(py::init<std::vector<uint8_t>>(), DOC(dai, OpenVINO, Blob, Blob))
         .def(py::init<std::filesystem::path>(), DOC(dai, OpenVINO, Blob, Blob, 2))
         .def_readwrite("version", &OpenVINO::Blob::version, DOC(dai, OpenVINO, Blob, version))
@@ -78,7 +59,6 @@ void OpenVINOBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("numSlices", &OpenVINO::Blob::numSlices, DOC(dai, OpenVINO, Blob, numSlices))
         .def_readwrite("data", &OpenVINO::Blob::data, DOC(dai, OpenVINO, Blob, data));
 
-    // Bind OpenVINO::SuperBlob
     openvinoSuperBlob.def(py::init<std::vector<uint8_t>>(), py::arg("superblobBytes"), DOC(dai, OpenVINO, SuperBlob, SuperBlob))
         .def(py::init<std::string>(), py::arg("pathToSuperBlobFile"), DOC(dai, OpenVINO, SuperBlob, SuperBlob))
         .def("getBlobWithNumShaves", &OpenVINO::SuperBlob::getBlobWithNumShaves, py::arg("numShaves"), DOC(dai, OpenVINO, SuperBlob, getBlobWithNumShaves))

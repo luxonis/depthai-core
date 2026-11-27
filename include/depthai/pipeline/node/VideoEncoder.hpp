@@ -1,8 +1,6 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
-
-// shared
 #include <depthai/properties/VideoEncoderProperties.hpp>
 
 namespace dai {
@@ -33,7 +31,6 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
      * Mutually exclusive with bitstream.
      */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::EncodedFrame, false}}}}};
-    // Sets default options for a specified size and profile
     /**
      * Sets a default preset based on specified frame rate and profile
      * @param fps Frame rate in frames per second
@@ -41,7 +38,6 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
      */
     void setDefaultProfilePreset(float fps, Properties::Profile profile);
 
-    // node properties
     /**
      * Set number of frames in pool
      * @param frames Number of pool frames
@@ -54,7 +50,6 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
      */
     int getNumFramesPool() const;
 
-    // encoder properties
     /// Set rate control mode
     void setRateControlMode(Properties::RateControlMode mode);
     /// Set encoding profile
@@ -115,7 +110,6 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
     int getBitrateKbps() const;
     /// Get keyframe frequency
     int getKeyframeFrequency() const;
-    // int getMaxBitrate() const;
     /// Get number of B frames
     int getNumBFrames() const;
     /// Get quality

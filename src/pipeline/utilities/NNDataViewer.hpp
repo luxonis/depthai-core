@@ -11,7 +11,6 @@ class NNDataViewer {
     dai::TensorInfo tensor;
     std::shared_ptr<spdlog::async_logger> logger;
 
-    // Factors to multiply with before the vectors
     struct FactorsBefore {
         int32_t h;
         int32_t w;
@@ -124,7 +123,6 @@ class NNDataViewer {
     };
 
     inline float get(int c, int h, int w) {
-        // If this turns out to be slow, use a function pointer instead and point to the right getter at build time
         int32_t index = tensor.offset + factorsBefore.h * h + factorsBefore.w * w + factorsBefore.c * c;
 #ifdef DEPTHAI_SAFE_NN_DATA_ACCESS
         logger->trace("Offset {}, fbH {}, fbW {}, fbC {}, h {}, w {}, c{}", tensor.offset, factorsBefore.h, factorsBefore.w, factorsBefore.c, h, w, c);

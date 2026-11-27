@@ -69,9 +69,6 @@ void ObjectTracker::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
-/**
- * Check if the node is set to run on host
- */
 bool ObjectTracker::runOnHost() const {
     return runOnHostVar;
 }
@@ -153,7 +150,6 @@ void ObjectTracker::run() {
             tracker.configure(*inputCfg);
         }
 
-        // Either update or track, not both
         if(gotDetections) {
             // TODO: sync messages (currently OK since only imageless tracker is supported)
             std::vector<impl::TrackerDetection> detections;
@@ -161,9 +157,8 @@ void ObjectTracker::run() {
             detections.reserve(inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size());
             spatialData.reserve(detections.size());
 
-            // inputDetectionImg is read only when the detections have no transformation, so it is null otherwise
             const auto& detectionsOwnTransformation = inputImgDetections ? inputImgDetections->transformation : inputSpatialImgDetections->transformation;
-            ImgTransformation detectionsTransformation =
+            ImgTransformation detectionsTransformation =  // inputDetectionImg is null when the detections have their own transformation
                 detectionsOwnTransformation.has_value() ? *detectionsOwnTransformation : inputDetectionImg->transformation;
 
             if(!detectionsTransformation.isValid()) {
@@ -173,7 +168,6 @@ void ObjectTracker::run() {
             for(size_t i = 0; i < (inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size()); ++i) {
                 const auto& detection = inputImgDetections ? inputImgDetections->detections[i] : inputSpatialImgDetections->detections[i].getImgDetection();
                 if(detection.confidence >= trackerThreshold && (detectionLabelsToTrack.empty() || contains(detectionLabelsToTrack, detection.label))) {
-                    // Denormalize and remap the outer bounds to inputTrackerImg
                     uint32_t width = detectionsTransformation.getSize().first;
                     uint32_t height = detectionsTransformation.getSize().second;
 
@@ -213,7 +207,6 @@ void ObjectTracker::run() {
         auto trackletsMsg = std::make_shared<Tracklets>();
         trackletsMsg->setBufferMetadataFrom(inputTrackerImg);
         trackletsMsg->tracklets = tracker.isInitialized() ? tracker.getTracklets() : std::vector<Tracklet>();
-        // Normalize the tracklets
         for(auto& tracklet : trackletsMsg->tracklets) {
             tracklet.roi = tracklet.roi.normalize(inputTrackerImg->getWidth(), inputTrackerImg->getHeight());
         }

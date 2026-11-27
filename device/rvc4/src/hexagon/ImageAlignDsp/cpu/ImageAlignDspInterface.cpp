@@ -1,9 +1,3 @@
-// The ImageAlign part of the C interface of the DSP offload (vendor/dai_device_dsp.h): the CPU side of ImageAlignDsp,
-// for the nodes ImageAlign and Align, which call it directly (vendor/dai_device_dsp.h).
-//
-// dai_device_dsp_open_align, or else the first call of dai_device_dsp_shift_depth, opens the DSP session. The log
-// and the status mapping (utilities/DspCommon.cpp) come from the StereoDepthDsp library.
-
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -22,7 +16,6 @@ namespace {
 
 using hexagon::logMessage;
 
-// The FastRPC session of ImageAlignDsp
 class Session {
    public:
     Session() {
@@ -80,7 +73,6 @@ class Session {
     int id = DOMAIN_ID;
 };
 
-// Opens the session on the first call. Thread-safe. When the open throws, the next call tries again.
 Session& session() {
     static Session instance;
     return instance;

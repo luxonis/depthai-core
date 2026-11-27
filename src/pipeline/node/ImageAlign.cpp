@@ -53,9 +53,6 @@ void ImageAlign::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
-/**
- * Check if the node is set to run on host
- */
 bool ImageAlign::runOnHost() const {
     return runOnHostVar;
 }
@@ -70,7 +67,6 @@ namespace {
 
 cv::Mat vecToCvMat(int rows, int cols, int type, const std::vector<float>& orig) {
     cv::Mat cvMat = cv::Mat(rows, cols, type);
-    // An empty vector (e.g. no distortion coefficients) gives an empty cv::Mat with null data
     if(!orig.empty()) {
         memcpy(cvMat.data, orig.data(), orig.size() * sizeof(orig[0]));
     }
@@ -205,8 +201,7 @@ void ImageAlign::run() {
         auto cv_targetCamMatrix = cv_M1.clone();
         const auto bounds = detail::rectifiedBounds(imageSize, cv_M1, cv_d1, cv_R1, {alignWidth, alignHeight}, cv_M2, cv_R2, logger.get());
         auto rectifiedSize = bounds.size();
-        // Chroma planes require even intermediate dimensions for NV12 and YUV420p.
-        if(inputFrameType == ImgFrame::Type::NV12 || inputFrameType == ImgFrame::Type::YUV420p) {
+        if(inputFrameType == ImgFrame::Type::NV12 || inputFrameType == ImgFrame::Type::YUV420p) {  // Chroma planes need even intermediate dimensions
             rectifiedSize.width += rectifiedSize.width % 2;
             rectifiedSize.height += rectifiedSize.height % 2;
         }
@@ -235,7 +230,6 @@ void ImageAlign::run() {
         cv_newR.copyTo(cv_combinedExtrinsics(cv::Rect(0, 0, 3, 3)));
         cv_newT.copyTo(cv_combinedExtrinsics(cv::Rect(3, 0, 1, 3)));
 
-        // Rotate the depth to the RGB frame
         cv::Mat cv_R_back = cv_R2.t();
 
         cv_meshSize = cv::Size(alignWidth, alignHeight);
@@ -281,7 +275,6 @@ void ImageAlign::run() {
 
     alignWidth = properties.alignWidth;
     alignHeight = properties.alignHeight;
-    // bool keepAspectRatio = properties.outKeepAspectRatio;
 
     bool initialized = false;
 
@@ -301,9 +294,7 @@ void ImageAlign::run() {
             auto blockEvent = this->inputBlockEvent();
 
             inputImg = input.get<ImgFrame>();
-            // Non-blocking, so that a lower inputAlignTo frequency doesn't stall the main input. The queue holds a single,
-            // non-blocking slot, so this always yields the most recent alignTo frame. Only the very first frame is awaited.
-            auto newInputAlignToImg = inputAlignTo.tryGet<ImgFrame>();
+            auto newInputAlignToImg = inputAlignTo.tryGet<ImgFrame>();  // Non-blocking: a slower inputAlignTo must not stall the main input
             if(newInputAlignToImg) {
                 inputAlignToImg = newInputAlignToImg;
             } else if(inputAlignToImg == nullptr) {
@@ -333,8 +324,7 @@ void ImageAlign::run() {
                 }
 
                 alignTo = static_cast<CameraBoardSocket>(inputAlignToImg->getInstanceNum());
-                // Re-derive on every (re)initialization, the alignTo frame may have changed resolution.
-                alignWidth = properties.alignWidth;
+                alignWidth = properties.alignWidth;  // Re-derived on each init: the alignTo frame may have changed resolution
                 alignHeight = properties.alignHeight;
                 if(alignWidth == 0 || alignHeight == 0) {
                     alignWidth = inputAlignToImg->getWidth();
@@ -423,7 +413,6 @@ void ImageAlign::run() {
             t1 = steady_clock::now();
         }
 
-        // warp1
         const auto inputFrame = inputImg->getFrame();
 
         if(inputFrameBpp == 1.5f) {
@@ -472,7 +461,6 @@ void ImageAlign::run() {
             t1 = steady_clock::now();
         }
 
-        // warp2
         auto alignedImg = std::make_shared<ImgFrame>();
         alignedImg->setData(std::vector<uint8_t>(static_cast<size_t>(alignWidth * alignHeight * inputFrameBpp)));
         if(PRINT_DEBUG) {
@@ -482,7 +470,6 @@ void ImageAlign::run() {
             t1 = steady_clock::now();
         }
 
-        // manually set metadata
         alignedImg->cam = inputImg->cam;
         alignedImg->category = inputImg->category;
         alignedImg->event = inputImg->event;

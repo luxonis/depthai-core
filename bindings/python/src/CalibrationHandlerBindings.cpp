@@ -9,23 +9,14 @@
 void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // Type definitions
     py::class_<CalibrationHandler> calibrationHandler(m, "CalibrationHandler", DOC(dai, CalibrationHandler));
     py::class_<CBACalibrationHandler> cbaCalibrationHandler(m, "CBACalibrationHandler", DOC(dai, CBACalibrationHandler));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Bindings
     calibrationHandler.def(py::init<>(), DOC(dai, CalibrationHandler, CalibrationHandler))
         .def(py::init<std::filesystem::path, std::optional<bool>>(),
              py::arg("eepromDataPath"),

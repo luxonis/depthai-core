@@ -1,8 +1,4 @@
-#pragma once
-// Common part of the C interface of the DSP offload (vendor/dai_device_dsp.h): the log and the status of a call.
-// The StereoDepthDsp library compiles DspCommon.cpp; the ImageAlignDsp library links StereoDepthDsp. The prebuilt dsp/
-// folder of the vendor module has these libraries, so this code includes only the C interface, the standard library
-// and the Hexagon SDK.
+#pragma once  // Include only the C interface, std and the Hexagon SDK: the vendor module ships these libraries prebuilt
 
 #include <cstdint>
 #include <exception>
@@ -12,24 +8,16 @@
 
 namespace hexagon {
 
-/// Sends a printf-style message to the callback of dai_device_dsp_set_log. No callback, or level below the minimum
-/// level: no message (and no formatting). Never throws.
 __attribute__((format(printf, 2, 3))) void logMessage(int32_t level, const char* format, ...) noexcept;
 
-/// A FastRPC call that failed with an AEE status, for example the open of the DSP session. The code that throws it
-/// logs the details.
 class DspCallError : public std::runtime_error {
    public:
     DspCallError(int aeeStatus, const char* message) : std::runtime_error(message), aeeStatus(aeeStatus) {}
     int aeeStatus;
 };
 
-/// The dai_status of the AEE status of a FastRPC call: AEE_SUCCESS gives DAI_STATUS_OK, a positive AEE status is the
-/// driver status, a negative one gives DAI_STATUS_INTERNAL (and an error message with the AEE status).
-dai_status toStatus(int aeeStatus, const char* call) noexcept;
+dai_status toStatus(int aeeStatus, const char* call) noexcept;  // AEE_SUCCESS -> OK; positive AEE status = driver status; negative -> DAI_STATUS_INTERNAL
 
-/// Runs fn (returns a dai_status) so that no exception leaves the C interface: a DspCallError gives the status of its
-/// AEE status, other exceptions give DAI_STATUS_INTERNAL and an error message.
 template <typename Fn>
 dai_status guard(const char* function, Fn&& fn) noexcept {
     try {

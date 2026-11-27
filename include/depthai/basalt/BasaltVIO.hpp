@@ -152,7 +152,6 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     void runSyncOnHost(bool runOnHost);
 
    private:
-    // pimpl
     class Impl;
     Pimpl<Impl> pimpl;
 

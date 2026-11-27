@@ -171,7 +171,6 @@ class DynamicCalibrationControl : public Buffer {
 
     ~DynamicCalibrationControl() override;
 
-    // ---------- Named constructors that return shared_ptr ----------
     /**
      * @brief Create a command that triggers a full calibration run.
      *

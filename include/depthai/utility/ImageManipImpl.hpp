@@ -108,7 +108,6 @@ void loop(N& node,
                 }
             }
 
-            // if has new config, parse and check if any changes
             if(hasConfig) {
                 config = *pConfig;
             }
@@ -120,7 +119,6 @@ void loop(N& node,
 
         auto outputSize = build(config, *inImage);
 
-        // Check the output image size requirements, and check whether pool has the size required
         if(outputSize == 0) {
             auto tProcessed = steady_clock::now();
             node.out.send(inImage);
@@ -359,7 +357,7 @@ class Warp {
     Warp(std::shared_ptr<spdlog::async_logger> logger) : logger(logger) {}
     virtual ~Warp() = default;
 
-    virtual void init(ImageManipProperties& /* properties */) {}
+    virtual void init(ImageManipProperties&) {}
     virtual void build(const FrameSpecs srcFrameSpecs,
                        const FrameSpecs dstFrameSpecs,
                        const ImgFrame::Type type,
@@ -896,9 +894,6 @@ bool ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::appl
             }
             cv::applyColorMap(gray, color, cvColormap);
         }
-        // Change color(format) if outputFrameType is not None / the same as the current frame type and not (frame type is single channel + colormap is
-        // applied
-        // + output frame type is RGBi)
         if(type != outputFrameType && !(isSingleChannelu8(type) && base.colormap != Colormap::NONE && outputFrameType == VALID_TYPE_COLOR)) {
             clrChange.apply(warpedFrame, dst);
         }
@@ -1014,7 +1009,7 @@ size_t ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::ge
             break;
         case ImgFrame::Type::YUV420p:
             size = getOutputPlaneSize(2);
-            // Fallthrough
+            [[fallthrough]];
         case ImgFrame::Type::NV12:
             size += getOutputPlaneSize(0) + getOutputPlaneSize(1);
             break;

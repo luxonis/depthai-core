@@ -39,13 +39,10 @@ inline std::optional<float> stereoPairPositionDeltaInView(const StereoPairTransf
         return Vector3{vector[0] / length, vector[1] / length, vector[2] / length};
     };
 
-    // The third rotation column is the camera's optical axis expressed in the common frame.
     const auto forward =
         normalized({firstToCommon[0][2] + secondToCommon[0][2], firstToCommon[1][2] + secondToCommon[1][2], firstToCommon[2][2] + secondToCommon[2][2]});
     if(!forward) return std::nullopt;
 
-    // Keep the common frame's down direction, but remove any component along the optical axis.
-    // This makes the derived right direction reverse naturally for a backward-facing pair.
     constexpr Vector3 commonDown{0.0f, 1.0f, 0.0f};
     const auto downAlongForward = dot(commonDown, *forward);
     const auto down = normalized(
@@ -64,10 +61,7 @@ inline std::optional<float> stereoPairPositionDeltaInView(const StereoPairTransf
 
 inline bool stereoPairFirstCameraIsLeft(
     const CalibrationHandler& calibrationHandler, CameraBoardSocket first, CameraBoardSocket second, bool vertical, float baseline) {
-    // Legacy getStereoPairs() inferred left/right solely from the sign of the pairwise X/Y translation. That ordering is reversed for cameras
-    // which face backward relative to the calibration origin. Preserve the legacy rule as a fallback when disconnected or degenerate calibration
-    // data prevents both cameras from being compared in a common viewing frame.
-    const bool legacyOrder = baseline < 0.0f;
+    const bool legacyOrder = baseline < 0.0f;  // Legacy rule (sign of X/Y translation), wrong for backward-facing cameras; fallback only
 
     try {
         CameraBoardSocket firstRoot = CameraBoardSocket::AUTO;
@@ -143,16 +137,9 @@ class StereoPairCalculator {
     }
 };
 
-/// Outcome of findStereoPairs(), for the caller's logging.
 enum class StereoPairSearch { DONE, NO_CALIBRATION, FAILED };
 
-/**
- * Stereo pairs of a device: searched in the runtime calibration, or in the factory calibration when the runtime
- * one cannot be read or has no cameras. Returns an empty list when neither calibration is available or the
- * search fails (no intrinsics or extrinsics stored). The host (dai::DeviceBase::getStereoPairs) and the firmware
- * read the three inputs differently and share the rules through this function.
- */
-template <typename GetCalibration, typename ReadFactoryCalibration, typename GetCameraFeatures>
+template <typename GetCalibration, typename ReadFactoryCalibration, typename GetCameraFeatures>  // Runtime calibration, else factory one; empty on failure
 std::vector<StereoPair> findStereoPairs(GetCalibration&& getCalibration,
                                         ReadFactoryCalibration&& readFactoryCalibration,
                                         GetCameraFeatures&& getCameraFeatures,

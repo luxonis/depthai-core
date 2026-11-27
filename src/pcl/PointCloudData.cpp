@@ -65,7 +65,6 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr dai::PointCloudData::getPclDataRGB() cons
 }
 
 void dai::PointCloudData::setPclData(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
-    // Ensure cloud is valid
     if(!cloud) {
         throw std::invalid_argument("Input cloud is null");
     }
@@ -83,7 +82,6 @@ void dai::PointCloudData::setPclData(const pcl::PointCloud<pcl::PointXYZ>::Ptr& 
 }
 
 void dai::PointCloudData::setPclData(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud) {
-    // Ensure cloud is valid
     if(!cloud) {
         throw std::invalid_argument("Input cloud is null");
     }
@@ -102,7 +100,6 @@ void dai::PointCloudData::setPclData(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 }
 
 void dai::PointCloudData::setPclDataRGB(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud) {
-    // Ensure cloud is valid
     if(!cloud) {
         throw std::invalid_argument("Input cloud is null");
     }

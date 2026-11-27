@@ -7,7 +7,6 @@ namespace dai {
 namespace node {
 
 void HostCamera::run() {
-    // Open a opencv camera
     cv::VideoCapture cap(0);
     if(!cap.isOpened()) {
         throw std::runtime_error("Couldn't open camera");
@@ -32,7 +31,6 @@ void HostCamera::run() {
         cv::Mat preview;
         cv::cvtColor(frameResized, preview, cv::COLOR_RGB2BGR);
         cv::imshow("HostCameraPreview", preview);
-        // Send message
         out.send(imgFrame);
     }
 }

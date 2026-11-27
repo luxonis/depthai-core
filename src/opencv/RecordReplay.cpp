@@ -228,7 +228,6 @@ void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
 void VideoRecorder::close() {
 #ifdef DEPTHAI_ENABLE_MP4V2
     if(mp4Writer != MP4_INVALID_FILE_HANDLE) {
-        // MP4Dump(mp4Writer);
         MP4Close(mp4Writer);
         mp4Writer = MP4_INVALID_FILE_HANDLE;
         mp4Track = MP4_INVALID_TRACK_ID;
@@ -248,7 +247,6 @@ void VideoPlayer::init(const std::string& filePath) {
     if(initialized) {
         throw std::runtime_error("VideoPlayer already initialized");
     }
-    // Check if file exists
     if(filePath.empty()) {
         throw std::runtime_error("VideoPlayer file path is empty");
     }

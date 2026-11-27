@@ -1,14 +1,10 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
-
-#include "depthai/pipeline/datatype/Tracklets.hpp"
-
-// standard
+#include <depthai/properties/ObjectTrackerProperties.hpp>
 #include <fstream>
 
-// shared
-#include <depthai/properties/ObjectTrackerProperties.hpp>
+#include "depthai/pipeline/datatype/Tracklets.hpp"
 
 namespace dai {
 namespace node {

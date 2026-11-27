@@ -16,7 +16,6 @@ namespace KeypointsUtils {
 
 namespace {
 
-/// True when the head metadata extra parameters hold the key with a value other than null.
 bool hasParam(const nlohmann::json& extraParams, const char* key) {
     return extraParams.is_object() && extraParams.contains(key) && !extraParams.at(key).is_null();
 }
@@ -26,7 +25,6 @@ bool hasParam(const nlohmann::json& extraParams, const char* key) {
 KeypointCoordinates computeKeypoints(std::vector<float> values, std::int64_t nKeypoints, float scaleFactor) {
     DAI_CHECK(nKeypoints > 0, "Number of keypoints must be greater than 0.");
 
-    // Matches int(np.prod(shape) / n_keypoints), which floors for non-divisible sizes.
     const std::size_t numCoords = values.size() / static_cast<std::size_t>(nKeypoints);
     DAI_CHECK_V(numCoords == 2 || numCoords == 3, "Expected 2 or 3 coordinates per keypoint, got {}.", numCoords);
     DAI_CHECK_V(values.size() == static_cast<std::size_t>(nKeypoints) * numCoords,
@@ -47,8 +45,6 @@ KeypointCoordinates computeKeypoints(std::vector<float> values, std::int64_t nKe
 
 HrnetKeypoints computeHrnetKeypoints(const std::vector<float>& values, const std::vector<std::size_t>& dims) {
     std::vector<std::size_t> shape = dims;
-    // A leading dimension of 1 (typically the batch dimension) is dropped exactly once; a batch
-    // of more than 1 is not squeezed and fails the 3D check below, mirroring the source parser.
     if(!shape.empty() && shape.front() == 1) {
         shape.erase(shape.begin());
     }
@@ -69,9 +65,7 @@ HrnetKeypoints computeHrnetKeypoints(const std::vector<float>& values, const std
 
     for(std::size_t keypointIndex = 0; keypointIndex < numKeypoints; ++keypointIndex) {
         const float* heatmap = values.data() + keypointIndex * mapSize;
-        // First maximum in row-major scan order, matching np.argmax: ties keep the first
-        // occurrence and the first NaN is treated as the maximum.
-        std::size_t maxIndex = 0;
+        std::size_t maxIndex = 0;  // As np.argmax: the first maximum wins and the first NaN counts as the maximum
         float maxValue = heatmap[0];
         for(std::size_t i = 1; i < mapSize && !std::isnan(maxValue); ++i) {
             if(std::isnan(heatmap[i]) || heatmap[i] > maxValue) {
@@ -96,8 +90,6 @@ SuperAnimalKeypoints computeSuperAnimalKeypoints(const std::vector<float>& value
     const std::size_t mapWidth = dims[2];
     const std::size_t numKeypoints = dims[3];
     const std::size_t mapSize = mapHeight * mapWidth;
-    // The source decode fails for any batch size other than 1 (the batch dimension is indexed at
-    // 0 and the per-batch results cannot be recombined); reject it with an actionable error.
     DAI_CHECK_V(batchSize == 1, "Expected a heatmaps tensor with batch size 1, got batch size {}.", batchSize);
     DAI_CHECK_V(mapSize > 0, "Expected non-empty heatmaps, got shape ({}, {}, {}, {}).", batchSize, mapHeight, mapWidth, numKeypoints);
     DAI_CHECK_V(values.size() == mapSize * numKeypoints,
@@ -108,7 +100,6 @@ SuperAnimalKeypoints computeSuperAnimalKeypoints(const std::vector<float>& value
                 mapWidth,
                 numKeypoints);
 
-    // Heatmap-cell size in input-image pixels, (scale_factor / height, scale_factor / width).
     const double scaleFactorY = static_cast<double>(scaleFactor) / static_cast<double>(mapHeight);
     const double scaleFactorX = static_cast<double>(scaleFactor) / static_cast<double>(mapWidth);
 
@@ -118,8 +109,6 @@ SuperAnimalKeypoints computeSuperAnimalKeypoints(const std::vector<float>& value
     result.scores.reserve(numKeypoints);
 
     for(std::size_t keypointIndex = 0; keypointIndex < numKeypoints; ++keypointIndex) {
-        // First maximum over the flattened spatial dimension in row-major scan order, matching
-        // np.argmax: ties keep the first occurrence and the first NaN is treated as the maximum.
         std::size_t maxIndex = 0;
         float maxValue = values[keypointIndex];
         for(std::size_t i = 1; i < mapSize && !std::isnan(maxValue); ++i) {
@@ -129,12 +118,9 @@ SuperAnimalKeypoints computeSuperAnimalKeypoints(const std::vector<float>& value
                 maxIndex = i;
             }
         }
-        // The score is the heatmap value at the maximum, intentionally not clipped.
-        result.scores.push_back(maxValue);
+        result.scores.push_back(maxValue);  // Intentionally not clipped
         const std::size_t row = maxIndex / mapWidth;
         const std::size_t col = maxIndex % mapWidth;
-        // Map to input-image pixels with a 0.5-pixel center offset, then normalize by the scale
-        // factor. Computed in double precision to match the NumPy float64 arithmetic.
         const double x = static_cast<double>(col) * scaleFactorX + 0.5 * scaleFactorX;
         const double y = static_cast<double>(row) * scaleFactorY + 0.5 * scaleFactorY;
         result.coordinates.values.push_back(static_cast<float>(x / static_cast<double>(scaleFactor)));
@@ -176,7 +162,6 @@ std::shared_ptr<Keypoints> createKeypointsMessage(const KeypointCoordinates& coo
 
     std::vector<Keypoint> points;
     points.reserve(numKeypoints);
-    // Maps the original keypoint index to the index within the kept keypoints.
     std::unordered_map<std::uint32_t, std::uint32_t> indexMapping;
     indexMapping.reserve(numKeypoints);
 
@@ -201,7 +186,6 @@ std::shared_ptr<Keypoints> createKeypointsMessage(const KeypointCoordinates& coo
     message->keypointsList.setKeypoints(points);
 
     if(!edges.empty()) {
-        // Keep only edges whose both endpoints were kept and remap them to the new indices.
         std::vector<Edge> filteredEdges;
         filteredEdges.reserve(edges.size());
         for(const auto& edge : edges) {

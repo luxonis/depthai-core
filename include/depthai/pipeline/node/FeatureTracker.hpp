@@ -1,12 +1,8 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
-
-// standard
-#include <fstream>
-
-// shared
 #include <depthai/properties/FeatureTrackerProperties.hpp>
+#include <fstream>
 
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 

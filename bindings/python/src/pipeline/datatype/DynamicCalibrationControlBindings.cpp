@@ -13,7 +13,6 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
     using namespace dai;
     using DCC = dai::DynamicCalibrationControl;
 
-    // Owning message FIRST
     auto cls = py::class_<DCC, Py<DCC>, Buffer, py::smart_holder>(m, "DynamicCalibrationControl");
     auto cmds = py::class_<DCC::Commands>(cls, "Commands");
 
@@ -26,7 +25,6 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
         .value("RELAXED_COVERAGE", DCC::PerformanceMode::RELAXED_COVERAGE)
         .export_values();
 
-    // Aliases for readability
     using Calibrate = DCC::Commands::Calibrate;
     using CalibrationQuality = DCC::Commands::CalibrationQuality;
     using StartCalibration = DCC::Commands::StartCalibration;
@@ -37,7 +35,6 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
     using SetPerformanceMode = DCC::Commands::SetPerformanceMode;
     using ComputeCalibrationMetrics = dai::DynamicCalibrationControl::Commands::ComputeCalibrationMetrics;
 
-    // ---- Commands nested inside DynamicCalibrationControl ----
     py::class_<Calibrate, std::shared_ptr<Calibrate>>(cmds, "Calibrate")
         .def(py::init<bool, bool>(), py::arg("force") = false, py::arg("keepCameraCenters") = true)
         .def_readwrite("force", &Calibrate::force)
@@ -74,7 +71,6 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
         .def(py::init<dai::DynamicCalibrationControl::PerformanceMode>(), py::arg("performanceMode"))
         .def_readwrite("performanceMode", &SetPerformanceMode::performanceMode);
 
-    // ---- Constructors on the owner type (for variant dispatch) ----
     cls.def(py::init<>())
         .def(py::init<const Calibrate&>())
         .def(py::init<const CalibrationQuality&>())
@@ -84,7 +80,6 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
         .def(py::init<const ApplyCalibration&>())
         .def(py::init<const ResetData&>())
         .def(py::init<const SetPerformanceMode&>());
-    // Pythonic names + docstrings; defaults match C++.
     // clang-format off
     cls.def_static(
            "calibrate",
@@ -133,7 +128,6 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
            py::arg("mode") = dai::DynamicCalibrationControl::PerformanceMode::DEFAULT,
            "Create a DynamicCalibrationControl with a SetPerformanceMode command.");
     // clang-format on
-    // Call remaining stack
     auto* callstack = static_cast<Callstack*>(pCallstack);
     auto cb = callstack->top();
     callstack->pop();

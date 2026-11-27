@@ -207,8 +207,6 @@ void CameraDiscovery::forceCameraDiscovery() {
     DBG("Forcing camera discovery");
     CameraSingleton::getInstance();
     return;
-    // DBG("Forcing camera discovery DISABLED");
-    // return;
 }
 
 std::vector<CameraDescription> CameraDiscovery::forceEnumerateCameras() {
@@ -241,8 +239,6 @@ std::vector<CameraDescription> CameraDiscovery::forceEnumerateCameras() {
         desc.camera.width = camera.maxWidth;
         desc.camera.height = camera.maxHeight;
         if(camera.socket == -1) {
-            // would be nice to have a global logging instance / function
-            // logger->warn("");
             std::cout
                 << "Warning: couldn't find camera socket information. Maybe running an old OS version or something else went wrong. Fallbacking to camera id.\n"
                 << std::flush;
@@ -260,12 +256,9 @@ std::vector<CameraDescription> CameraDiscovery::forceEnumerateCameras() {
 
         dai::CameraSensorType type = dai::CameraSensorType::COLOR;
 
-        // The camera type info is not included in the json file.
-        // Look on sensor name.
-        if(sensorName.find("OV9282") != std::string::npos) {
+        if(sensorName.find("OV9282") != std::string::npos) {  // The json file has no camera type info, so use the sensor name
             if(desc.camera.width == 0 || desc.camera.height == 0) {
-                // os r851.0.25 support
-                desc.camera.width = 1280;
+                desc.camera.width = 1280;  // OS r851.0.25 support
                 desc.camera.height = 800;
             }
             type = dai::CameraSensorType::MONO;
@@ -279,10 +272,8 @@ std::vector<CameraDescription> CameraDiscovery::forceEnumerateCameras() {
             type = dai::CameraSensorType::TOF;
         }
 
-        // os < r851.1.1 support
         if(dai::gate::getOSVersion() <= dai::Version(1, 1, 0) && sensorName.find("IMX586") != std::string::npos) {
-            // Override the resolution, as the actual full resolution is not supported yet
-            desc.camera.width = 4000;
+            desc.camera.width = 4000;  // The actual full resolution is not supported yet
             desc.camera.height = 3000;
         }
         desc.camera.supportedTypes.push_back(type);
@@ -326,7 +317,6 @@ std::vector<CameraDescription> CameraDiscovery::forceEnumerateCameras() {
         cameras.push_back(desc);
     }
 
-    // Create other types of views
     cameraSockets = {};
     for(auto cam : cameras) {
         cameraSockets.push_back(cam.camera.socket);
@@ -340,11 +330,9 @@ std::vector<CameraDescription> CameraDiscovery::forceEnumerateCameras() {
         cameraNames[cam.camera.socket] = cam.camera.sensorName;
     }
 
-    // Still return cameras if needed
     return cameras;
 }  // namespace gate
 
-// Lock for this length of operation
 std::vector<CameraDescription> CameraDiscovery::getConnectedCameraDescriptions() const {
     std::unique_lock<std::mutex> lock(mtx);
     DAI_CHECK_IN(initialized);
@@ -366,7 +354,6 @@ std::unordered_map<dai::CameraBoardSocket, std::string> CameraDiscovery::getConn
     return cameraNames;
 }
 
-/// Returns corresponding socket or AUTO if not available
 dai::CameraBoardSocket CameraDiscovery::getCameraByName(std::string name) const {
     std::unique_lock<std::mutex> lock(mtx);
     DAI_CHECK_IN(initialized);
@@ -377,7 +364,6 @@ dai::CameraBoardSocket CameraDiscovery::getCameraByName(std::string name) const 
     }
     return dai::CameraBoardSocket::AUTO;
 }
-/// Returns corresponding id or -1 if not available
 int CameraDiscovery::getCameraId(std::string name) const {
     std::unique_lock<std::mutex> lock(mtx);
     DAI_CHECK_IN(initialized);
@@ -388,7 +374,6 @@ int CameraDiscovery::getCameraId(std::string name) const {
     }
     return -1;
 }
-/// Returns corresponding id or -1 if not available
 int CameraDiscovery::getCameraId(dai::CameraBoardSocket socket) const {
     std::unique_lock<std::mutex> lock(mtx);
     DAI_CHECK_IN(initialized);
@@ -399,7 +384,6 @@ int CameraDiscovery::getCameraId(dai::CameraBoardSocket socket) const {
     }
     return -1;
 }
-// Returns corresponding id or -1 if not available
 int CameraDiscovery::getCameraId(std::string name, dai::CameraBoardSocket socket) const {
     std::unique_lock<std::mutex> lock(mtx);
     DAI_CHECK_IN(initialized);
@@ -414,7 +398,6 @@ int CameraDiscovery::getCameraId(std::string name, dai::CameraBoardSocket socket
     return -1;
 }
 
-// Returns corresponding id or -1 if not available
 dai::CameraFeatures CameraDiscovery::getCameraFeatures(std::string name, dai::CameraBoardSocket socket) const {
     std::unique_lock<std::mutex> lock(mtx);
     DAI_CHECK_IN(initialized);
@@ -429,7 +412,6 @@ dai::CameraFeatures CameraDiscovery::getCameraFeatures(std::string name, dai::Ca
     return dai::CameraFeatures{.socket = dai::CameraBoardSocket::AUTO};
 }
 
-// Returns corresponding id or -1 if not available
 CameraDescription CameraDiscovery::getCameraDescription(std::string name, dai::CameraBoardSocket socket) const {
     std::unique_lock<std::mutex> lock(mtx);
     DAI_CHECK_IN(initialized);

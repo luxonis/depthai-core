@@ -81,8 +81,7 @@ bool HalUtil::getMetaSensorTemperature(const camera_metadata_t* meta, uint32_t t
 
     switch(entry.type) {
         case TYPE_BYTE:
-            if(entry.count >= sizeof(uint16_t)) {
-                // Some CAMX builds expose the temperature vendor tag as raw bytes.
+            if(entry.count >= sizeof(uint16_t)) {  // Some HAL builds expose the temperature tag as raw bytes
                 value = static_cast<float>(static_cast<uint16_t>(entry.data.u8[0]) | (static_cast<uint16_t>(entry.data.u8[1]) << 8));
                 return true;
             }

@@ -72,8 +72,6 @@ class Camera : public node::Camera {
         bool ispOutput;
     };
 
-    // Use for issuing warning in case of attemtping to start too many cameras
-
     size_t findMaxResolutionIndex() const;
 
     std::vector<size_t> getIspIndices() const;
@@ -100,7 +98,6 @@ class Camera : public node::Camera {
     std::shared_ptr<const dai::beta::MultiDeviceCalibrationHandler> multiDeviceCalibration;
     uint32_t multiDeviceCalibrationId = 0;
     bool warnedForMultiDeviceMismatch = false;
-    /** Picks up a graph installed or replaced at runtime; cheap when nothing changed. */
     void refreshMultiDeviceCalibration();
     std::optional<SensorConfig> sensorConfig;
     dai::CameraSensorType selectedSensorType = dai::CameraSensorType::AUTO;

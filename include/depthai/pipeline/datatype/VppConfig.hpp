@@ -21,7 +21,6 @@ class VppConfig : public Buffer {
         float confidenceThreshold = 0.5;
         int morphologyIterations = 5;
         bool useMorphology = true;
-        // Getters and setters with docstrings
         /**
          * @brief Check if injection is enabled
          * False: all possible pixels will be used.
@@ -143,7 +142,6 @@ class VppConfig : public Buffer {
     VppConfig() = default;
     virtual ~VppConfig();
 
-    // Getters and setters with docstrings
     /**
      * @brief Get blending factor between 0 and 1
      * @return Current blending value

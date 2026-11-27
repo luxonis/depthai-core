@@ -10,10 +10,6 @@
 namespace dai {
 namespace gate {
 
-/**
- * Dynamic calibration running inside the RVC4 firmware. The core node does all the work; this subclass only
- * replaces the host dai::Device accessors with the camera discovery and the EEPROM.
- */
 class DynamicCalibration : public ::dai::node::DynamicCalibration {
    public:
     constexpr static const char* NAME = ::dai::node::DynamicCalibration::NAME;
@@ -22,8 +18,7 @@ class DynamicCalibration : public ::dai::node::DynamicCalibration {
     DynamicCalibration(std::unique_ptr<Properties> props) : ::dai::node::DynamicCalibration(std::move(props)) {}
 
     bool runOnHost() const override {
-        // Run as a firmware thread on the RVC4 ARM CPU.
-        return true;
+        return true;  // Runs as a firmware thread on the RVC4 ARM CPU
     }
 
    protected:

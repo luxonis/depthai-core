@@ -9,7 +9,6 @@ namespace dai {
  *
  */
 struct DeviceNodeGroupProperties : PropertiesSerializable<Properties, DeviceNodeGroupProperties> {
-    // Dummy property
     int dummy = 0;
 
     ~DeviceNodeGroupProperties() override;

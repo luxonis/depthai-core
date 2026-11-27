@@ -1,6 +1,5 @@
 #pragma once
 
-// libraries
 #include "depthai/pipeline/node/Sync.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
@@ -18,9 +17,7 @@ class Sync : public dai::node::Sync {
 
     constexpr static const char* NAME = node::Sync::NAME;
     Sync() : Sync(std::make_unique<dai::node::Sync::Properties>()) {}
-    Sync(std::unique_ptr<Properties> props) : dai::node::Sync(std::move(props)) {
-        // override that this is a host node
-    }
+    Sync(std::unique_ptr<Properties> props) : dai::node::Sync(std::move(props)) {}
     bool runOnHost() const override {
         return true;
     }

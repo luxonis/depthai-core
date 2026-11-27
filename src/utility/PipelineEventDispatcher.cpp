@@ -257,15 +257,12 @@ PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::blockEvent(
     return BlockPipelineEvent(*this, type, source, ts, startNow);
 }
 PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::inputBlockEvent(bool startNow) {
-    // For convenience due to the default source
     return blockEvent(PipelineEvent::Type::INPUT_BLOCK, INPUT_BLOCK_NAME, std::nullopt, startNow);
 }
 PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::outputBlockEvent(bool startNow) {
-    // For convenience due to the default source
     return blockEvent(PipelineEvent::Type::OUTPUT_BLOCK, OUTPUT_BLOCK_NAME, std::nullopt, startNow);
 }
 PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::customBlockEvent(const std::string& source, bool startNow) {
-    // For convenience due to the default source
     return blockEvent(PipelineEvent::Type::CUSTOM, source, std::nullopt, startNow);
 }
 

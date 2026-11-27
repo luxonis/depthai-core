@@ -16,12 +16,9 @@ void recursive_filter_horizontal(SpatialFilterParams* params) {
     int _height = params->currentFrame->getHeight();
     size_t _holes_filling_radius = params->holesFillingRadius;
 
-    // Handle conversions for invalid input data
     bool fp = (std::is_floating_point<T>::value);
 
-    // Filtering integer values requires round-up to the nearest discrete value
     const float round = fp ? 0.f : 0.5f;
-    // define invalid inputs
     const T valid_threshold = fp ? static_cast<T>(std::numeric_limits<T>::epsilon()) : static_cast<T>(1);
     const T delta_z = static_cast<T>(deltaZ);
 
@@ -29,7 +26,6 @@ void recursive_filter_horizontal(SpatialFilterParams* params) {
     size_t cur_fill = 0;
 
     for(int v = 0; v < _height; v++) {
-        // left to right
         T* im = image + v * _width;
         T val0 = im[0];
         cur_fill = 0;
@@ -59,7 +55,6 @@ void recursive_filter_horizontal(SpatialFilterParams* params) {
             im += 1;
         }
 
-        // right to left
         im = image + (v + 1) * _width - 2;  // end of row - two pixels
         T val1 = im[1];
         cur_fill = 0;
@@ -100,20 +95,13 @@ void recursive_filter_vertical(SpatialFilterParams* params) {
     int _height = params->currentFrame->getHeight();
     size_t _holes_filling_radius = params->holesFillingRadius;
 
-    // Handle conversions for invalid input data
     bool fp = (std::is_floating_point<T>::value);
 
-    // Filtering integer values requires round-up to the nearest discrete value
     const float round = fp ? 0.f : 0.5f;
-    // define invalid range
     const T valid_threshold = fp ? static_cast<T>(std::numeric_limits<T>::epsilon()) : static_cast<T>(1);
     const T delta_z = static_cast<T>(deltaZ);
 
     auto image = reinterpret_cast<T*>(image_data);
-
-    // we'll do one row at a time, top to bottom, then bottom to top
-
-    // top to bottom
 
     T* im = image;
     T im0{};
@@ -123,7 +111,6 @@ void recursive_filter_vertical(SpatialFilterParams* params) {
             im0 = im[0];
             imw = im[_width];
 
-            // if ((fabs(im0) >= valid_threshold) && (fabs(imw) >= valid_threshold))
             {
                 T diff = static_cast<T>(fabs(im0 - imw));
                 if(diff < delta_z) {
@@ -135,7 +122,6 @@ void recursive_filter_vertical(SpatialFilterParams* params) {
         }
     }
 
-    // bottom to top
     im = image + (_height - 2) * _width;
     for(int v = 1; v < _height; v++, im -= (_width * 2)) {
         for(int u = 0; u < _width; u++) {

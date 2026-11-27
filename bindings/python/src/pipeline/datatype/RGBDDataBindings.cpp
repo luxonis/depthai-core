@@ -4,10 +4,8 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/RGBDData.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
@@ -16,20 +14,11 @@ void bind_rgbddata(pybind11::module& m, void* pCallstack) {
 
     py::class_<RGBDData, Py<RGBDData>, Buffer, ProtoSerializable, py::smart_holder> rgbdData(m, "RGBDData", DOC(dai, RGBDData));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Metadata / raw
     rgbdData.def(py::init<>())
         .def("__repr__", &RGBDData::str)
         .def("getRGBFrame", &RGBDData::getRGBFrame, DOC(dai, RGBDData, getRGBFrame))

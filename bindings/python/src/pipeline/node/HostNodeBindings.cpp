@@ -93,12 +93,7 @@ namespace pybind11 {
 namespace detail {
 template <>
 struct process_attribute<AddHostNodeToPipeline> : process_attribute_default<AddHostNodeToPipeline> {
-    static void postcall(function_call& call, handle) {
-        // The init factory has installed the smart_holder by this point. Its
-        // shared_ptr conversion now establishes Python-retaining ownership,
-        // including the control block used by Node::shared_from_this().
-        // Register before returning from the base initializer so Python node
-        // constructors can immediately use getParentPipeline().
+    static void postcall(function_call& call, handle) {  // smart_holder is installed here; register now so Python constructors can use getParentPipeline()
         getImplicitPipeline()->add(py::cast<std::shared_ptr<dai::Node>>(call.init_self));
     }
 };
@@ -106,23 +101,14 @@ struct process_attribute<AddHostNodeToPipeline> : process_attribute_default<AddH
 }  // namespace pybind11
 
 void bind_hostnode(pybind11::module& m, void* pCallstack) {
-    // declare upfront
-    auto threadedHostNode = py::class_<ThreadedHostNode, PyThreadedHostNode, ThreadedNode, py::smart_holder>(
-        daiNodeModule, "ThreadedHostNode", DOC(dai, node, ThreadedHostNode));
+    auto threadedHostNode =
+        py::class_<ThreadedHostNode, PyThreadedHostNode, ThreadedNode, py::smart_holder>(daiNodeModule, "ThreadedHostNode", DOC(dai, node, ThreadedHostNode));
     auto hostNode = py::class_<HostNode, PyHostNode, ThreadedHostNode, py::smart_holder>(daiNodeModule, "HostNode", DOC(dai, node, HostNode));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     threadedHostNode
         .def(py::init<>([]() {

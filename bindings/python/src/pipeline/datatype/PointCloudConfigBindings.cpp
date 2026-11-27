@@ -3,19 +3,14 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_pointcloudconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // py::class_<RawPointCloudConfig, RawBuffer, std::shared_ptr<RawPointCloudConfig>> rawConfig(m, "RawPointCloudConfig", DOC(dai, RawPointCloudConfig));
     py::class_<PointCloudConfig, Py<PointCloudConfig>, Buffer, py::smart_holder> config(m, "PointCloudConfig", DOC(dai, PointCloudConfig));
 
     py::enum_<PointCloudConfig::CoordinateSystemType>(config, "CoordinateSystemType")
@@ -23,27 +18,11 @@ void bind_pointcloudconfig(pybind11::module& m, void* pCallstack) {
         .value("CAMERA_SOCKET", PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET)
         .value("HOUSING", PointCloudConfig::CoordinateSystemType::HOUSING);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // // Metadata / raw
-    // rawConfig
-    //     .def(py::init<>())
-    //     .def_readwrite("sparse", &RawPointCloudConfig::sparse, DOC(dai, RawPointCloudConfig, sparse))
-    //     .def_readwrite("transformationMatrix", &RawPointCloudConfig::transformationMatrix, DOC(dai, RawPointCloudConfig, transformationMatrix))
-    //     ;
-
-    // Message
     config.def(py::init<>())
         .def("__repr__", &PointCloudConfig::str)
         .def("getOrganized", &PointCloudConfig::getOrganized, DOC(dai, PointCloudConfig, getOrganized))
@@ -92,7 +71,6 @@ void bind_pointcloudconfig(pybind11::module& m, void* pCallstack) {
              py::arg("housingCS"),
              py::arg("useSpecTranslation"),
              "**Deprecated:** Use setTargetCoordinateSystem(housingCS) instead.")
-        // Deprecated
         .def(
             "getSparse",
             [](const PointCloudConfig& cfg) {
@@ -110,6 +88,4 @@ void bind_pointcloudconfig(pybind11::module& m, void* pCallstack) {
             },
             py::arg("sparse"),
             "**Deprecated:** Use setOrganized() instead (sparse == !organized).");
-
-    // add aliases
 }

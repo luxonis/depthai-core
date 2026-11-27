@@ -8,7 +8,6 @@ struct TraceEvent {
     enum Event : std::uint8_t {
         SEND,
         RECEIVE,
-        // PULL,
     };
     enum class Status : std::uint8_t {
         START,

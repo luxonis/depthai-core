@@ -11,8 +11,7 @@ namespace beta {
 
 namespace {
 
-// Visualization constants matching the source implementation in depthai-nodes.
-const Color PRIMARY_COLOR{21.0f / 255.0f, 127.0f / 255.0f, 88.0f / 255.0f, 1.0f};
+const Color PRIMARY_COLOR{21.0f / 255.0f, 127.0f / 255.0f, 88.0f / 255.0f, 1.0f};  // Match the depthai-nodes implementation
 constexpr float LINE_THICKNESS = 2.0f;
 
 }  // namespace
@@ -43,7 +42,6 @@ Lines Lines::transformTo(const ImgTransformation& target) const {
 dai::VisualizeType Lines::getVisualizationMessage() const {
     ImgAnnotation annotation;
 
-    // Each line is drawn as one two-point LINE_STRIP annotation.
     for(const auto& line : lines) {
         PointsAnnotation lineAnnotation;
         lineAnnotation.type = PointsAnnotationType::LINE_STRIP;

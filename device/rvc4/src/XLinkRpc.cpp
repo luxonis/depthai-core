@@ -1,16 +1,12 @@
 #include "XLinkRpc.hpp"
 
-// libraries
 #include "depthai/xlink/XLinkStream.hpp"
 
-// shared
 #include "depthai/xlink/XLinkConstants.hpp"
 
-// std
 #include <chrono>
 #include <thread>
 
-// TMP
 constexpr int CACHE_LINE_SIZE = 64;
 constexpr long ALIGN_UP(long S, long a) {
     return ((((S) + (a)-1)) & ~((a)-1));
@@ -30,20 +26,14 @@ void XLinkRpc::start() {
     executorThread = std::thread([this]() {
         while(running) {
             XLinkError_t ret;
-            // Wait for data from host
             dai::StreamPacketDesc packet;
             ret = XLinkReadMoveData(streamId, &packet);
             if(ret != X_LINK_SUCCESS) {
-                // if(pLogger != nullptr) {
-                //     pLogger->error("Error while reading data from xlink: {}", ret);
-                // }
                 break;
             }
 
-            // Copy data
             nanorpc::core::type::buffer buf(packet.data, packet.data + packet.length);
 
-            // Parse and call respective function
             nanorpc::core::type::buffer response;
             try {
                 response = server.execute(std::move(buf));
@@ -55,7 +45,6 @@ void XLinkRpc::start() {
                 throw;
             }
 
-            // Write back return data
             ret = XLinkWriteData(streamId, response.data(), response.size());
             if(ret != X_LINK_SUCCESS) {
                 continue;

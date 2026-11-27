@@ -34,7 +34,6 @@ class FileData {
     explicit FileData(std::filesystem::path filePath, std::string fileTag);
     explicit FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileTag);
     explicit FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileTag);
-    // explicit FileData(const std::shared_ptr<NNData>& nnData, std::string fileTag);
     explicit FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileTag);
     bool toFile(const std::filesystem::path& inputPath);
 
@@ -54,7 +53,6 @@ class FileGroup {
     void addFile(std::string fileTag, std::filesystem::path filePath);
     void addFile(const std::optional<std::string>& fileTag, const std::shared_ptr<ImgFrame>& imgFrame);
     void addFile(const std::optional<std::string>& fileTag, const std::shared_ptr<EncodedFrame>& encodedFrame);
-    // void addFile(std::string fileTag, const std::shared_ptr<NNData>& nnData);
     void addFile(const std::optional<std::string>& fileTag, const std::shared_ptr<ImgDetections>& imgDetections);
     void addImageDetectionsPair(const std::optional<std::string>& fileTag,
                                 const std::shared_ptr<ImgFrame>& imgFrame,
@@ -62,8 +60,6 @@ class FileGroup {
     void addImageDetectionsPair(const std::optional<std::string>& fileTag,
                                 const std::shared_ptr<EncodedFrame>& encodedFrame,
                                 const std::shared_ptr<ImgDetections>& imgDetections);
-    // void addImageNNDataPair(std::string fileTag, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& imgDetections);
-    // void addImageNNDataPair(std::string fileTag, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& imgDetections);
 
    private:
     std::vector<std::shared_ptr<FileData>> fileData;
@@ -193,61 +189,18 @@ class EventsManager {
         std::chrono::milliseconds baseDelay{100};
     };
 
-    /**
-     * Fetch the configuration limits and quotas for snaps & events
-     * @param retryOnFail Retry fetching on failure; when true, keeps retrying until successful (except if the apiKey is empty)
-     * @return bool
-     */
-    bool fetchConfigurationLimits(const bool retryOnFail);
-    /**
-     * Prepare a batch of file groups from inputSnapBatch
-     */
+    bool fetchConfigurationLimits(const bool retryOnFail);  // retryOnFail: retry until success, unless the apiKey is empty
     void uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputSnapBatch);
-    /**
-     * Upload a prepared group of files from snapData, using prepareGroupResult
-     */
     bool uploadGroup(std::shared_ptr<SnapData> snapData, dai::proto::event::FileUploadGroupResult prepareGroupResult);
-    /**
-     * Upload a file from fileData using the chosen uploadUrl
-     */
     bool uploadFile(std::shared_ptr<FileData> fileData, std::string uploadUrl);
-    /**
-     * Upload events from eventBuffer in batch
-     */
     void uploadEventBatch();
-    /**
-     * Return whether pending uploads are finished
-     */
     bool checkPendingUploadsFinished();
-    /**
-     * Validate the input event by checking that its fields adhere to defined limitations
-     * @param inputEvent Input event to be validated
-     * @return bool
-     */
     bool validateEvent(const proto::event::Event& inputEvent);
-    /**
-     * Cache events from the eventBuffer to the filesystem
-     */
     void cacheEvents();
-    /**
-     * Cache snapData from the inputSnapBatch to the filesystem
-     */
     void cacheSnapData(std::deque<std::shared_ptr<SnapData>>& inputSnapBatch);
-    /**
-     * Upload cached events to the events service
-     */
     void uploadCachedEvents();
-    /**
-     * Upload cached snaps to the events service
-     */
     void uploadCachedSnaps();
-    /**
-     * Check if there's any cached data in the filesystem
-     */
     bool checkForCachedData();
-    /**
-     * Clear cached data in the filesystem (if any)
-     */
     void clearCachedData(const std::filesystem::path& directory);
 
     std::string token;

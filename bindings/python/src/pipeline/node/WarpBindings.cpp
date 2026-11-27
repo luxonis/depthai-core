@@ -8,21 +8,13 @@ void bind_warp(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Node and Properties declare upfront
     py::class_<Warp::Properties> warpProperties(m, "WarpProperties", DOC(dai, WarpProperties));
     auto warp = ADD_NODE(Warp);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     warpProperties.def(py::init<>())
         .def_readwrite("interpolation", &WarpProperties::interpolation, DOC(dai, WarpProperties, interpolation))
@@ -35,18 +27,11 @@ void bind_warp(pybind11::module& m, void* pCallstack) {
         .def_readwrite("outputWidth", &WarpProperties::outputWidth, DOC(dai, WarpProperties, outputWidth))
         .def_readwrite("warpHwIds", &WarpProperties::warpHwIds, DOC(dai, WarpProperties, warpHwIds));
 
-    // ImageManip Node
-    warp
-        // .def_readonly("inputConfig", &Warp::inputConfig, DOC(dai, node, Warp, inputConfig))
-        .def_readonly("inputImage", &Warp::inputImage, DOC(dai, node, Warp, inputImage))
+    warp.def_readonly("inputImage", &Warp::inputImage, DOC(dai, node, Warp, inputImage))
         .def_readonly("out", &Warp::out, DOC(dai, node, Warp, out))
-        // .def_readonly("initialConfig", &Warp::initialConfig, DOC(dai, node, Warp, initialConfig))
-        // setters
 
         .def("setOutputSize", py::overload_cast<int, int>(&Warp::setOutputSize), DOC(dai, node, Warp, setOutputSize))
         .def("setOutputSize", py::overload_cast<const std::tuple<int, int>&>(&Warp::setOutputSize), DOC(dai, node, Warp, setOutputSize, 2))
-        // .def("setOutputWidth", &Warp::setOutputWidth, DOC(dai, node, Warp, setOutputWidth))
-        // .def("setOutputHeight", &Warp::setOutputHeight, DOC(dai, node, Warp, setOutputHeight))
 
         .def("setNumFramesPool", &Warp::setNumFramesPool, DOC(dai, node, Warp, setNumFramesPool))
         .def("setMaxOutputFrameSize", &Warp::setMaxOutputFrameSize, DOC(dai, node, Warp, setMaxOutputFrameSize))

@@ -29,12 +29,10 @@ class RGBDData : public Buffer, public ProtoSerializable {
 
     ~RGBDData() override;
 
-    // Setters
     void setRGBFrame(const FrameVariant& frame);
     void setDepthFrame(const FrameVariant& frame);
 
-    // Getters: return std::nullopt if no frame is set, otherwise a valid FrameVariant is returned (it's not a nullptr)
-    std::optional<FrameVariant> getRGBFrame() const;
+    std::optional<FrameVariant> getRGBFrame() const;  // std::nullopt if no frame is set, else a non-null FrameVariant
     std::optional<FrameVariant> getDepthFrame() const;
 
    private:

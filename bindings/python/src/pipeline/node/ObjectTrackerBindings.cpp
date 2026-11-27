@@ -8,27 +8,17 @@ void bind_objecttracker(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Node and Properties declare upfront
     py::enum_<TrackerType> trackerType(m, "TrackerType");
     py::enum_<TrackerIdAssignmentPolicy> trackerIdAssignmentPolicy(m, "TrackerIdAssignmentPolicy");
     py::class_<ObjectTrackerProperties, std::shared_ptr<ObjectTrackerProperties>> objectTrackerProperties(
         m, "ObjectTrackerProperties", DOC(dai, ObjectTrackerProperties));
     auto objectTracker = ADD_NODE(ObjectTracker);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Properties
     trackerType.value("SHORT_TERM_KCF", TrackerType::SHORT_TERM_KCF, DOC(dai, TrackerType, SHORT_TERM_KCF))
         .value("SHORT_TERM_IMAGELESS", TrackerType::SHORT_TERM_IMAGELESS, DOC(dai, TrackerType, SHORT_TERM_IMAGELESS))
         .value("ZERO_TERM_IMAGELESS", TrackerType::ZERO_TERM_IMAGELESS, DOC(dai, TrackerType, ZERO_TERM_IMAGELESS))
@@ -58,7 +48,6 @@ void bind_objecttracker(pybind11::module& m, void* pCallstack) {
             "spatialDistanceThreshold", &ObjectTrackerProperties::spatialDistanceThreshold, DOC(dai, ObjectTrackerProperties, spatialDistanceThreshold))
         .def_readwrite("spatialDepthAwareScale", &ObjectTrackerProperties::spatialDepthAwareScale, DOC(dai, ObjectTrackerProperties, spatialDepthAwareScale));
 
-    // Node
     objectTracker.def_readonly("inputTrackerFrame", &ObjectTracker::inputTrackerFrame, DOC(dai, node, ObjectTracker, inputTrackerFrame))
         .def_readonly("inputDetectionFrame", &ObjectTracker::inputDetectionFrame, DOC(dai, node, ObjectTracker, inputDetectionFrame))
         .def_readonly("inputDetections", &ObjectTracker::inputDetections, DOC(dai, node, ObjectTracker, inputDetections))

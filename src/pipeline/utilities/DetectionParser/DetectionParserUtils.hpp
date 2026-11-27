@@ -18,41 +18,26 @@ struct DetectionCandidate {
     int label, headIndex, rowIndex, columnIndex;
     std::optional<std::string> labelName;
 };
-/**
-Decode YOLOv6 R1 raw center/size predictions.
-*/
 void decodeR1AF(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
                 std::shared_ptr<spdlog::async_logger>& logger);
 
-/**
-Decode anchor based yolo v3 and v3-Tiny
-*/
 void decodeV3AB(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
                 std::shared_ptr<spdlog::async_logger>& logger);
 
-/**
-Decode anchor based networks, e.g., yolo v5, v7, P
-*/
 void decodeV5AB(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
                 std::shared_ptr<spdlog::async_logger>& logger);
 
-/**
-Decode anchor free top-left-bottom-right (TLBR) style networks, e.g., yolo v6r2, v8, v10, v11
-*/
 void decodeTLBR(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
                 std::shared_ptr<spdlog::async_logger>& logger);
 
-/**
-Process already descoded end to end models TLBR models. e.g. yolo26
-*/
 void decodeEndToEnd(const dai::NNData& nnData,
                     dai::ImgDetections& outDetections,
                     DetectionParserProperties& properties,

@@ -16,36 +16,17 @@ namespace XFeatUtils {
 
 namespace {
 
-/// Keypoint heat map NMS threshold (exclusive), hard-coded by the source detect_and_compute.
-constexpr float NMS_THRESHOLD = 0.05f;
-/// Keypoint heat map NMS local-maximum window size, hard-coded by the source detect_and_compute.
+constexpr float NMS_THRESHOLD = 0.05f;  // Exclusive threshold, hard-coded by the source detect_and_compute
 constexpr int NMS_KERNEL_SIZE = 5;
-/// Keypoint logit softmax temperature, hard-coded by the source _get_kpts_heatmap.
 constexpr float SOFTMAX_TEMPERATURE = 1.0f;
-/// Cell size of the keypoint logit unfold: channel (r * 8 + c) maps to the (r, c) offset of an
-/// 8x8 cell, so 64 channels produce one full-resolution cell per (height, width) grid position.
-constexpr std::size_t UNFOLD_CELL = 8;
+constexpr std::size_t UNFOLD_CELL = 8;  // Channel r * 8 + c maps to offset (r, c) of an 8x8 cell
 
-/**
- * One bilinear sampling tap: the four zero-padded, clipped source indices and their float64
- * weights. The source bilinear() computes the weights as int32 neighbor minus position, which
- * numpy promotes to float64 for both the float64 (integer candidate) and float32 (descriptor)
- * position paths.
- */
-struct BilinearTap {
+struct BilinearTap {  // float64 weights: the source's int32 neighbor minus position promotes to float64 in numpy
     std::int32_t xi0, xi1, yi0, yi1;
     double wa, wb, wc, wd;
 };
 
-/**
- * Build the bilinear tap of a normalized grid position for an image of size (h, w), porting the
- * source bilinear() with align_corners=False: the position is unnormalized to
- * ((grid + 1) * size - 1) / 2 in T precision (float64 for integer candidate positions, float32
- * for the float32 descriptor positions, following the numpy dtype promotion), the four
- * neighbors are found with floor/+1, the float64 weights are computed from the unclipped
- * neighbors, and the indices are shifted into the 1-pixel zero padding and clipped to it.
- */
-template <typename T>
+template <typename T>  // Port of the source bilinear() with align_corners=False
 BilinearTap makeBilinearTap(std::int64_t h, std::int64_t w, T gridX, T gridY) {
     const T x = ((gridX + T(1)) * static_cast<T>(w) - T(1)) / T(2);
     const T y = ((gridY + T(1)) * static_cast<T>(h) - T(1)) / T(2);
@@ -56,13 +37,11 @@ BilinearTap makeBilinearTap(std::int64_t h, std::int64_t w, T gridX, T gridY) {
     const std::int32_t y1 = y0 + 1;
 
     BilinearTap tap;
-    // x1 - x is int32 minus T, promoted to float64 by numpy for both T = float and T = double.
     tap.wa = (static_cast<double>(x1) - static_cast<double>(x)) * (static_cast<double>(y1) - static_cast<double>(y));
     tap.wb = (static_cast<double>(x1) - static_cast<double>(x)) * (static_cast<double>(y) - static_cast<double>(y0));
     tap.wc = (static_cast<double>(x) - static_cast<double>(x0)) * (static_cast<double>(y1) - static_cast<double>(y));
     tap.wd = (static_cast<double>(x) - static_cast<double>(x0)) * (static_cast<double>(y) - static_cast<double>(y0));
 
-    // Shift into the padded image and clip to it; out-of-range taps land on the zero border.
     const std::int32_t paddedW = static_cast<std::int32_t>(w) + 2;
     const std::int32_t paddedH = static_cast<std::int32_t>(h) + 2;
     tap.xi0 = std::clamp(x0 + 1, 0, paddedW - 1);
@@ -72,12 +51,7 @@ BilinearTap makeBilinearTap(std::int64_t h, std::int64_t w, T gridX, T gridY) {
     return tap;
 }
 
-/**
- * Sample one channel plane of size (h, w) with a bilinear tap in float64. Taps on the zero
- * border read 0, matching the source's 1-pixel constant padding, and the weighted sum is
- * accumulated left-to-right like the numpy expression Ia*wa + Ib*wb + Ic*wc + Id*wd.
- */
-double sampleWithTap(const float* channel, std::int64_t h, std::int64_t w, const BilinearTap& tap) {
+double sampleWithTap(const float* channel, std::int64_t h, std::int64_t w, const BilinearTap& tap) {  // Sum order matches numpy Ia*wa + Ib*wb + Ic*wc + Id*wd
     const auto fetch = [&](std::int32_t xi, std::int32_t yi) -> double {
         if(xi < 1 || xi > static_cast<std::int32_t>(w) || yi < 1 || yi > static_cast<std::int32_t>(h)) {
             return 0.0;
@@ -87,10 +61,6 @@ double sampleWithTap(const float* channel, std::int64_t h, std::int64_t w, const
     return ((fetch(tap.xi0, tap.yi0) * tap.wa + fetch(tap.xi0, tap.yi1) * tap.wb) + fetch(tap.xi1, tap.yi0) * tap.wc) + fetch(tap.xi1, tap.yi1) * tap.wd;
 }
 
-/**
- * Validate one XFeat tensor: 4D NCHW with batch size 1, at least minChannels channels and a
- * value count matching the shape.
- */
 void validateTensor(const XFeatTensor& tensor, const char* name, std::size_t minChannels, std::size_t maxChannels) {
     DAI_CHECK_V(tensor.dims.size() == 4, "XFeat: expected a 4D (batch, channels, height, width) {} tensor, got {} dimensions.", name, tensor.dims.size());
     DAI_CHECK_V(tensor.dims[0] == 1, "XFeat: expected a {} tensor with batch size 1, got batch size {}.", name, tensor.dims[0]);
@@ -110,7 +80,6 @@ void validateTensor(const XFeatTensor& tensor, const char* name, std::size_t min
                 tensor.dims[3]);
 }
 
-/// numpy maximum fold: the accumulated maximum propagates NaN from either operand.
 template <typename T>
 inline T nanPropagatingMax(T acc, T value) {
     if(std::isnan(acc)) {
@@ -122,11 +91,7 @@ inline T nanPropagatingMax(T acc, T value) {
     return std::max(acc, value);
 }
 
-/**
- * numpy floating-point argmax over count values with the given stride: first occurrence of the
- * maximum, where a NaN is maximal (the first NaN wins).
- */
-template <typename T>
+template <typename T>  // First occurrence of the maximum; a NaN is maximal (the first NaN wins)
 std::size_t numpyArgmax(const T* values, std::size_t count, std::size_t stride) {
     std::size_t best = 0;
     T maxValue = values[0];
@@ -182,10 +147,7 @@ std::optional<XFeatResult> detectAndCompute(const XFeatTensor& feats,
                                             int topK) {
     constexpr std::size_t noLimit = std::numeric_limits<std::size_t>::max();
     validateTensor(feats, "feats", 1, noLimit);
-    // The keypoint logit unfold keeps the first 64 channels; the softmax runs over all of them.
     validateTensor(keypoints, "keypoints", UNFOLD_CELL * UNFOLD_CELL, noLimit);
-    // The candidate scores multiply one reliability value per candidate, so the reliability heat
-    // map must have exactly one channel.
     validateTensor(heatmaps, "heatmaps", 1, 1);
 
     const std::size_t descriptorSize = feats.dims[1];
@@ -193,9 +155,7 @@ std::optional<XFeatResult> detectAndCompute(const XFeatTensor& feats,
     const std::size_t featsW = feats.dims[3];
     const std::size_t featsPlane = featsH * featsW;
 
-    // feats = feats / np.linalg.norm(feats, axis=1, keepdims=True): the squares are accumulated
-    // sequentially over the channel axis in float32, matching numpy's strided-axis reduce.
-    std::vector<float> normalizedFeats(feats.values);
+    std::vector<float> normalizedFeats(feats.values);  // Sequential float32 sum over the channels matches numpy's strided-axis reduce
     {
         std::vector<float> squaredSum(featsPlane, 0.0f);
         for(std::size_t c = 0; c < descriptorSize; c++) {
@@ -215,9 +175,6 @@ std::optional<XFeatResult> detectAndCompute(const XFeatTensor& feats,
         }
     }
 
-    // _get_kpts_heatmap: per-cell softmax over all channels, then the first 64 channels are
-    // unfolded into the full-resolution keypoint heat map of shape (kptsH * 8, kptsW * 8), where
-    // position (y, x) reads softmax channel (y % 8) * 8 + (x % 8) at grid cell (y / 8, x / 8).
     const std::size_t kptsChannels = keypoints.dims[1];
     const std::size_t kptsH = keypoints.dims[2];
     const std::size_t kptsW = keypoints.dims[3];
@@ -228,8 +185,6 @@ std::optional<XFeatResult> detectAndCompute(const XFeatTensor& feats,
     {
         std::vector<float> exponentials(kptsChannels * kptsPlane);
         std::vector<float> expSum(kptsPlane, 0.0f);
-        // The exponential sum accumulates channel 0, 1, ... in ascending order for every grid
-        // position, matching numpy's sequential strided-axis reduce in float32.
         for(std::size_t c = 0; c < kptsChannels; c++) {
             const float* channel = keypoints.values.data() + c * kptsPlane;
             float* expChannel = exponentials.data() + c * kptsPlane;
@@ -248,15 +203,12 @@ std::optional<XFeatResult> detectAndCompute(const XFeatTensor& feats,
         }
     }
 
-    // _nms: candidates are local maxima of the keypoint heat map over a 5x5 zero-padded window
-    // with a value strictly above the threshold, in row-major scan order as (x, y).
     std::vector<std::array<std::int64_t, 2>> candidates;
     {
         const int pad = NMS_KERNEL_SIZE / 2;
         for(std::int64_t y = 0; y < static_cast<std::int64_t>(heatH); y++) {
             for(std::int64_t x = 0; x < static_cast<std::int64_t>(heatW); x++) {
                 const float value = keypointHeat[y * heatW + x];
-                // np.max over the window propagates NaN; a NaN local maximum never equals value.
                 float windowMax = -std::numeric_limits<float>::infinity();
                 for(std::int64_t dy = -pad; dy <= pad; dy++) {
                     for(std::int64_t dx = -pad; dx <= pad; dx++) {
@@ -273,16 +225,11 @@ std::optional<XFeatResult> detectAndCompute(const XFeatTensor& feats,
         }
     }
 
-    // if mkpts.size == 0: return None
     if(candidates.empty()) {
         return std::nullopt;
     }
 
-    // Candidate scores: the keypoint heat map and the reliability heat map are bilinearly
-    // sampled at the integer candidate positions. Integer positions divided by the grid extent
-    // promote to float64 in the source normgrid(), so this path computes in float64 and the
-    // product is cast to float32, matching scores.astype(np.float32).
-    const std::size_t heatmapsH = heatmaps.dims[2];
+    const std::size_t heatmapsH = heatmaps.dims[2];  // float64 like the source normgrid() on integer positions; the product is cast to float32
     const std::size_t heatmapsW = heatmaps.dims[3];
     std::vector<float> scores(candidates.size());
     for(std::size_t i = 0; i < candidates.size(); i++) {
@@ -294,15 +241,12 @@ std::optional<XFeatResult> detectAndCompute(const XFeatTensor& feats,
         const double reliabilityValue =
             sampleWithTap(heatmaps.values.data(), static_cast<std::int64_t>(heatmapsH), static_cast<std::int64_t>(heatmapsW), reliabilityTap);
         scores[i] = static_cast<float>(keypointValue * reliabilityValue);
-        // scores[np.all(mkpts == 0, axis=-1)] = -1
         if(candidates[i][0] == 0 && candidates[i][1] == 0) {
             scores[i] = -1.0f;
         }
     }
 
-    // idxs = np.argsort(-scores), then keep the first topK sorted candidates. A negative topK
-    // follows Python slice semantics like the source's [:, :top_k].
-    const auto order = MLSDUtils::argsortDescending(scores);
+    const auto order = MLSDUtils::argsortDescending(scores);  // A negative topK follows Python slice semantics, like the source's [:, :top_k]
     const std::int64_t total = static_cast<std::int64_t>(order.size());
     const std::int64_t kept = topK < 0 ? std::max<std::int64_t>(std::int64_t(0), total + topK) : std::min<std::int64_t>(static_cast<std::int64_t>(topK), total);
 
@@ -315,15 +259,11 @@ std::optional<XFeatResult> detectAndCompute(const XFeatTensor& feats,
     for(std::int64_t rank = 0; rank < kept; rank++) {
         const std::size_t index = static_cast<std::size_t>(order[rank]);
         const float score = scores[index];
-        // valid = scores > 0
         if(!(score > 0.0f)) {
             continue;
         }
 
-        // The kept positions are cast to float32 before the descriptor sampling, so this path
-        // computes the grid normalization and unnormalized positions in float32 like the
-        // source; the weights and the weighted sum promote to float64.
-        const float posX = static_cast<float>(candidates[index][0]);
+        const float posX = static_cast<float>(candidates[index][0]);  // float32 like the source: positions are cast to float32 before descriptor sampling
         const float posY = static_cast<float>(candidates[index][1]);
         const float gridX = 2.0f * (posX / static_cast<float>(inputWidth - 1)) - 1.0f;
         const float gridY = 2.0f * (posY / static_cast<float>(inputHeight - 1)) - 1.0f;
@@ -333,15 +273,11 @@ std::optional<XFeatResult> detectAndCompute(const XFeatTensor& feats,
             descriptor[c] = sampleWithTap(normalizedFeats.data() + c * featsPlane, static_cast<std::int64_t>(featsH), static_cast<std::int64_t>(featsW), tap);
             squaredSum += descriptor[c] * descriptor[c];
         }
-        // Descriptor L2 normalization: numpy reduces this norm sequentially as well because the
-        // squared array inherits the transposed layout, keeping the channel axis strided.
-        const double norm = std::sqrt(squaredSum);
+        const double norm = std::sqrt(squaredSum);  // Sequential sum: numpy reduces this norm sequentially (strided channel axis)
         for(std::size_t c = 0; c < descriptorSize; c++) {
             result.descriptors.push_back(descriptor[c] / norm);
         }
 
-        // mkpts *= np.array([resize_rate_w, resize_rate_h]): float32 *= float64 computes in
-        // float64 and casts back to float32.
         result.keypoints.push_back({static_cast<float>(static_cast<double>(posX) * resizeRateW), static_cast<float>(static_cast<double>(posY) * resizeRateH)});
         result.scores.push_back(score);
     }
@@ -351,9 +287,7 @@ std::optional<XFeatResult> detectAndCompute(const XFeatTensor& feats,
 MatchedPoints matchResults(const XFeatResult& reference, const XFeatResult& target, double minCossim) {
     const std::size_t referenceCount = reference.keypoints.size();
     const std::size_t targetCount = target.keypoints.size();
-    // The source _match_mkpts fails inside np.argmax on an empty similarity axis whenever either
-    // result holds no keypoints.
-    DAI_CHECK_V(referenceCount > 0 && targetCount > 0,
+    DAI_CHECK_V(referenceCount > 0 && targetCount > 0,  // Like the source, where np.argmax fails on an empty similarity axis
                 "XFeat: cannot match results with no keypoints, got {} reference keypoints and {} target keypoints.",
                 referenceCount,
                 targetCount);
@@ -363,9 +297,6 @@ MatchedPoints matchResults(const XFeatResult& reference, const XFeatResult& targ
                 target.descriptorSize);
     const std::size_t descriptorSize = reference.descriptorSize;
 
-    // cossim = feats1 @ feats2.T in float64 (the descriptors are float64). The transposed
-    // product feats2 @ feats1.T holds the same values, so the column argmax below reproduces
-    // match21.
     std::vector<double> cossim(referenceCount * targetCount);
     for(std::size_t i = 0; i < referenceCount; i++) {
         const double* referenceDescriptor = reference.descriptors.data() + i * descriptorSize;
@@ -379,7 +310,6 @@ MatchedPoints matchResults(const XFeatResult& reference, const XFeatResult& targ
         }
     }
 
-    // match12 = np.argmax(cossim, axis=1), match21 = np.argmax(cossim_t, axis=1)
     std::vector<std::size_t> match12(referenceCount);
     for(std::size_t i = 0; i < referenceCount; i++) {
         match12[i] = numpyArgmax(cossim.data() + i * targetCount, targetCount, 1);
@@ -391,12 +321,10 @@ MatchedPoints matchResults(const XFeatResult& reference, const XFeatResult& targ
 
     MatchedPoints matchedPoints;
     for(std::size_t i = 0; i < referenceCount; i++) {
-        // mutual = match21[match12] == np.arange(len(match12))
         if(match21[match12[i]] != i) {
             continue;
         }
         if(minCossim > 0) {
-            // max_cossim = np.max(cossim, axis=1); good = max_cossim > min_cossim
             double maxCossim = cossim[i * targetCount];
             for(std::size_t j = 1; j < targetCount; j++) {
                 maxCossim = nanPropagatingMax(maxCossim, cossim[i * targetCount + j]);

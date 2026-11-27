@@ -32,23 +32,12 @@ MapOutputParser::Properties& MapOutputParser::getProperties() {
 
 namespace {
 
-/**
- * Tensor values in the tensor's stored order together with the tensor shape.
- */
 using TensorData = utilities::ClassificationUtils::ShapedTensorData;
 
-/**
- * Retrieve a tensor from NNData as dequantized FP32 values in the tensor's stored order, matching
- * the source parser's output.getTensor(name, dequantize=True).
- */
 TensorData getTensorData(dai::NNData& nnData, const std::string& tensorName) {
     return utilities::ClassificationUtils::getShapedTensorData(nnData, tensorName);
 }
 
-/**
- * Format a tensor shape like a Python tuple, e.g. (2, 240, 320) or (4,), for source-identical
- * error messages.
- */
 std::string formatShape(const std::vector<std::size_t>& dims) {
     std::string result = "(";
     for(std::size_t i = 0; i < dims.size(); i++) {
@@ -64,11 +53,6 @@ std::string formatShape(const std::vector<std::size_t>& dims) {
     return result;
 }
 
-/**
- * Reduce a model map output tensor to a 2D HW map, mirroring the source compute_map_output()
- * utility. Leading dimensions of 1 are squeezed while the tensor has more than two dimensions;
- * the tensor must then be 2D, or 3D with a singleton trailing dimension that is squeezed as well.
- */
 TensorData computeMapOutput(TensorData tensor) {
     while(tensor.dims.size() > 2 && tensor.dims[0] == 1) {
         tensor.dims.erase(tensor.dims.begin());
@@ -86,11 +70,6 @@ TensorData computeMapOutput(TensorData tensor) {
     throw std::runtime_error("Expected HW, NHW, or HWN with singleton N; got " + formatShape(tensor.dims) + ".");
 }
 
-/**
- * Create the output Map2D message from a 2D HW map, mirroring the source create_map_message()
- * creator. When min-max scaling is requested, the values are scaled to [0, 1]; a constant map is
- * left unchanged.
- */
 std::shared_ptr<Map2D> createMapMessage(TensorData map, bool minMaxScaling) {
     if(minMaxScaling) {
         DAI_CHECK(!map.values.empty(), "Cannot min-max scale an empty map.");
@@ -113,7 +92,6 @@ std::shared_ptr<Map2D> createMapMessage(TensorData map, bool minMaxScaling) {
 }  // namespace
 
 NNArchive MapOutputParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -192,8 +170,6 @@ void MapOutputParser::setConfig(const dai::nn_archive::v1::Head& head) {
     DAI_CHECK_V(numOutputs == 1, "MapOutputParser expects exactly 1 output layer, got {} layers.", numOutputs);
     setOutputLayerName(head.outputs->front());
 
-    // The min_max_scaling key without a typed metadata field lives in the head metadata extra
-    // parameters.
     const auto& extraParams = head.metadata.extraParams;
 
     if(extraParams.is_object() && extraParams.contains("min_max_scaling") && !extraParams.at("min_max_scaling").is_null()) {
@@ -234,8 +210,6 @@ void MapOutputParser::run() {
     DAI_CHECK(config.validate(), "MapOutputParser initial configuration is invalid.");
     const bool inputConfigSync = inputConfig.getWaitForMessage();
 
-    // The resolved layer name persists across messages once auto-selected from a single-tensor
-    // NNData, mirroring the source parser behavior.
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
@@ -268,7 +242,6 @@ void MapOutputParser::run() {
         auto tGotInput = std::chrono::steady_clock::now();
         const MapOutputParserConfig configSnapshot = config;
 
-        // Extract
         const auto layerNames = nnData->getAllLayerNames();
         if(resolvedOutputLayerName.empty()) {
             DAI_CHECK_V(
@@ -278,10 +251,8 @@ void MapOutputParser::run() {
 
         auto tensor = getTensorData(*nnData, resolvedOutputLayerName);
 
-        // Compute. The map dimensions are derived from the tensor shape.
         auto map = computeMapOutput(std::move(tensor));
 
-        // Emit
         auto message = createMapMessage(std::move(map), configSnapshot.minMaxScaling);
         if(nnData->transformation.has_value()) {
             message->setTransformation(*nnData->transformation);

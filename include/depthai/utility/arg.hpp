@@ -1,7 +1,4 @@
-#pragma once
-
-// Taken from PyTorch's arg.h: https://github.com/pytorch/pytorch/blob/main/torch/csrc/api/include/torch/arg.h
-// Thank you Pytorch :)
+#pragma once  // From PyTorch arg.h: https://github.com/pytorch/pytorch/blob/main/torch/csrc/api/include/torch/arg.h
 
 #define DEPTAHI_ARG(T, name)                                                \
    public:                                                                  \

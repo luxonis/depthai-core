@@ -35,12 +35,10 @@ namespace {
  * other hardware.
  */
 
-/// numpy floating_point_type::less: NaN compares as the largest value (sorts to the end).
-inline bool floatLess(float a, float b) {
+inline bool floatLess(float a, float b) {  // As numpy floating_point_type::less: NaN sorts to the end
     return a < b || (b != b && a == a);
 }
 
-/// numpy npy_get_msb: index of the most significant set bit, 0 for num == 0.
 inline int npyGetMsb(std::int64_t num) {
     int msb = 0;
     while(num >>= 1) {
@@ -51,10 +49,8 @@ inline int npyGetMsb(std::int64_t num) {
 
 constexpr std::int64_t SMALL_QUICKSORT = 15;
 
-/// numpy npysort_heapsort.h aheapsort_: indirect heapsort of tosort[0..n) ascending by v.
-void argHeapSort(const float* v, std::int64_t* tosort, std::int64_t n) {
-    // The array is offset by one for heapsort indexing.
-    std::int64_t* a = tosort - 1;
+void argHeapSort(const float* v, std::int64_t* tosort, std::int64_t n) {  // Port of numpy npysort_heapsort.h aheapsort_
+    std::int64_t* a = tosort - 1;                                         // Offset by one for 1-based heapsort indexing
 
     for(std::int64_t l = n >> 1; l > 0; --l) {
         const std::int64_t tmp = a[l];
@@ -97,8 +93,7 @@ void argHeapSort(const float* v, std::int64_t* tosort, std::int64_t n) {
     }
 }
 
-/// numpy quicksort.hpp aquicksort_: indirect introsort of tosort[0..num) ascending by v.
-void argQuickSort(const float* v, std::int64_t* tosort, std::int64_t num) {
+void argQuickSort(const float* v, std::int64_t* tosort, std::int64_t num) {  // Port of numpy quicksort.hpp aquicksort_ (introsort)
     if(num < 1) {
         return;
     }
@@ -111,7 +106,6 @@ void argQuickSort(const float* v, std::int64_t* tosort, std::int64_t num) {
     for(;;) {
         if(cdepth < 0) {
             argHeapSort(v, pl, pr - pl + 1);
-            // stack pop
             if(stack.empty()) {
                 break;
             }
@@ -122,7 +116,6 @@ void argQuickSort(const float* v, std::int64_t* tosort, std::int64_t num) {
             continue;
         }
         while((pr - pl) > SMALL_QUICKSORT) {
-            // quicksort partition with median-of-3 pivot
             std::int64_t* pm = pl + ((pr - pl) >> 1);
             if(floatLess(v[*pm], v[*pl])) {
                 std::swap(*pm, *pl);
@@ -151,7 +144,6 @@ void argQuickSort(const float* v, std::int64_t* tosort, std::int64_t num) {
             }
             std::int64_t* pk = pr - 1;
             std::swap(*pi, *pk);
-            // push largest partition on stack
             if(pi - pl < pr - pi) {
                 stack.emplace_back(pi + 1, pr);
                 pr = pi - 1;
@@ -162,7 +154,6 @@ void argQuickSort(const float* v, std::int64_t* tosort, std::int64_t num) {
             depth.push_back(--cdepth);
         }
 
-        // insertion sort
         for(std::int64_t* pi = pl + 1; pi <= pr; ++pi) {
             const std::int64_t vi = *pi;
             const float vp = v[vi];
@@ -185,8 +176,6 @@ void argQuickSort(const float* v, std::int64_t* tosort, std::int64_t num) {
 
 std::int64_t argIntroSelect(const float* v, std::int64_t* tosort, std::int64_t num, std::int64_t kth);
 
-/// numpy selection.cpp median3_swap_: moves the median-of-3 pivot to low and the 3-lowest
-/// element to low + 1 for the unguarded partition.
 void argMedian3Swap(const float* v, std::int64_t* tosort, std::int64_t low, std::int64_t mid, std::int64_t high) {
     if(floatLess(v[tosort[high]], v[tosort[mid]])) {
         std::swap(tosort[high], tosort[mid]);
@@ -194,15 +183,12 @@ void argMedian3Swap(const float* v, std::int64_t* tosort, std::int64_t low, std:
     if(floatLess(v[tosort[high]], v[tosort[low]])) {
         std::swap(tosort[high], tosort[low]);
     }
-    // move pivot to low
     if(floatLess(v[tosort[low]], v[tosort[mid]])) {
         std::swap(tosort[low], tosort[mid]);
     }
-    // move 3-lowest element to low + 1
     std::swap(tosort[mid], tosort[low + 1]);
 }
 
-/// numpy selection.cpp median5_: selects the index of the median of five elements.
 std::int64_t argMedian5(const float* v, std::int64_t* tosort) {
     if(floatLess(v[tosort[1]], v[tosort[0]])) {
         std::swap(tosort[1], tosort[0]);
@@ -226,13 +212,10 @@ std::int64_t argMedian5(const float* v, std::int64_t* tosort) {
             return 3;
         }
     } else {
-        // tosort[1] and tosort[2] swapped into order above
         return 2;
     }
 }
 
-/// numpy selection.cpp median_of_median5_: median of medians of blocks of 5, guaranteeing a
-/// 30%/70% split for the linear-time worst case.
 std::int64_t argMedianOfMedian5(const float* v, std::int64_t* tosort, std::int64_t num) {
     const std::int64_t right = num - 1;
     const std::int64_t nmed = (right + 1) / 5;
@@ -248,7 +231,6 @@ std::int64_t argMedianOfMedian5(const float* v, std::int64_t* tosort, std::int64
     return nmed / 2;
 }
 
-/// numpy selection.cpp dumb_select_: N^2 selection, fast only for very small kth.
 void argDumbSelect(const float* v, std::int64_t* tosort, std::int64_t num, std::int64_t kth) {
     for(std::int64_t i = 0; i <= kth; i++) {
         std::int64_t minidx = i;
@@ -263,8 +245,6 @@ void argDumbSelect(const float* v, std::int64_t* tosort, std::int64_t num, std::
     }
 }
 
-/// numpy selection.cpp unguarded_partition_: partitions around the pivot; the median-of-3
-/// preparation removes the need for bound checks.
 void argUnguardedPartition(const float* v, std::int64_t* tosort, const float pivot, std::int64_t* ll, std::int64_t* hh) {
     for(;;) {
         do {
@@ -282,20 +262,14 @@ void argUnguardedPartition(const float* v, std::int64_t* tosort, const float piv
     }
 }
 
-/// numpy selection.cpp introselect_ (arg variant, single kth): median-of-3 quickselect with a
-/// cutoff to median-of-medians-of-5. The numpy pivot stack is omitted: with a single kth per
-/// call it is written but never read within the call.
-std::int64_t argIntroSelect(const float* v, std::int64_t* tosort, std::int64_t num, std::int64_t kth) {
+std::int64_t argIntroSelect(const float* v, std::int64_t* tosort, std::int64_t num, std::int64_t kth) {  // numpy introselect_ without the unused pivot stack
     std::int64_t low = 0;
     std::int64_t high = num - 1;
 
-    // use a faster O(n*kth) algorithm for very small kth
     if(kth - low < 3) {
         argDumbSelect(v, tosort + low, high - low + 1, kth - low);
         return 0;
-    }
-    // useful to check if NaN present via partition(d, (x, -1))
-    else if(kth == num - 1) {
+    } else if(kth == num - 1) {
         std::int64_t maxidx = low;
         float maxval = v[tosort[low]];
         for(std::int64_t k = low + 1; k < num; k++) {
@@ -310,37 +284,24 @@ std::int64_t argIntroSelect(const float* v, std::int64_t* tosort, std::int64_t n
 
     int depthLimit = npyGetMsb(num) * 2;
 
-    // guarantee three elements
     for(; low + 1 < high;) {
         std::int64_t ll = low + 1;
         std::int64_t hh = high;
 
-        /*
-         * if we aren't making sufficient progress with median of 3 fall back to
-         * median-of-median5 pivot for linear worst case; med3 for small sizes is required to do
-         * unguarded partition
-         */
-        if(depthLimit > 0 || hh - ll < 5) {
+        if(depthLimit > 0 || hh - ll < 5) {  // Median-of-median5 fallback for a linear worst case; small sizes need med3 for the unguarded partition
             const std::int64_t mid = low + (high - low) / 2;
-            // median of 3 pivot strategy, swapping for efficient partition
             argMedian3Swap(v, tosort, low, mid, high);
         } else {
             const std::int64_t mid = ll + argMedianOfMedian5(v, tosort + ll, hh - ll);
             std::swap(tosort[mid], tosort[low]);
-            // adapt for the larger partition than med3 pivot
-            ll--;
+            ll--;  // Adapt for the larger partition than the med3 pivot
             hh++;
         }
 
         depthLimit--;
 
-        /*
-         * find place to put pivot (in low): previous swapping removes need for bound checks
-         * pivot 3-lowest [x x x] 3-highest
-         */
-        argUnguardedPartition(v, tosort, v[tosort[low]], &ll, &hh);
+        argUnguardedPartition(v, tosort, v[tosort[low]], &ll, &hh);  // The previous swapping removes the need for bound checks
 
-        // move pivot into position
         std::swap(tosort[low], tosort[hh]);
 
         if(hh >= kth) {
@@ -351,7 +312,6 @@ std::int64_t argIntroSelect(const float* v, std::int64_t* tosort, std::int64_t n
         }
     }
 
-    // two elements
     if(high == low + 1) {
         if(floatLess(v[tosort[high]], v[tosort[low]])) {
             std::swap(tosort[high], tosort[low]);
@@ -368,16 +328,13 @@ std::vector<std::int64_t> topKIndicesByScore(const std::vector<float>& heatValue
     DAI_CHECK(!heatValues.empty(), "Expected a non-empty heat tensor.");
 
     const std::int64_t num = static_cast<std::int64_t>(heatValues.size());
-    // The number of candidates is capped at the heat map size.
     const std::int64_t topk = std::min<std::int64_t>(static_cast<std::int64_t>(topK), num);
     const std::int64_t kth = num - topk;
 
-    // indices_np = np.argpartition(heat_flat, -topk_n)[-topk_n:]
     std::vector<std::int64_t> tosort(num);
     std::iota(tosort.begin(), tosort.end(), 0);
     argIntroSelect(heatValues.data(), tosort.data(), num, kth);
 
-    // sorted_idx = indices_np[np.argsort(-heat_flat[indices_np])]
     const std::int64_t* indices = tosort.data() + kth;
     std::vector<float> negScores(topk);
     for(std::int64_t i = 0; i < topk; i++) {
@@ -397,8 +354,6 @@ std::vector<std::int64_t> topKIndicesByScore(const std::vector<float>& heatValue
 std::vector<std::int64_t> argsortDescending(const std::vector<float>& values) {
     const std::int64_t num = static_cast<std::int64_t>(values.size());
 
-    // idxs = np.argsort(-values): negate in float32 and argsort the identity permutation
-    // ascending with numpy's generic introsort.
     std::vector<float> negValues(num);
     for(std::int64_t i = 0; i < num; i++) {
         negValues[i] = -values[i];
@@ -412,8 +367,6 @@ std::vector<std::int64_t> argsortDescending(const std::vector<float>& values) {
 std::vector<std::int64_t> argsortAscending(const std::vector<float>& values) {
     const std::int64_t num = static_cast<std::int64_t>(values.size());
 
-    // idxs = np.argsort(values): argsort the identity permutation ascending with numpy's
-    // generic introsort.
     std::vector<std::int64_t> order(num);
     std::iota(order.begin(), order.end(), 0);
     argQuickSort(values.data(), order.data(), num);
@@ -434,7 +387,6 @@ MlsdLines computeMlsdLines(const std::vector<float>& tpMapValues,
     const std::size_t height = tpMapDims[2];
     const std::size_t width = tpMapDims[3];
     DAI_CHECK_V(batch >= 1, "Expected a tpMap tensor with at least one batch entry, got batch size {}.", batch);
-    // Channel 0 is the unused center map; channels 1 to 4 are the displacement maps.
     DAI_CHECK_V(channels >= 5, "Expected a tpMap tensor with at least 5 channels (1 center + 4 displacement), got {} channels.", channels);
     DAI_CHECK_V(tpMapValues.size() == batch * channels * height * width,
                 "Cannot interpret {} tpMap values as shape ({}, {}, {}, {}).",
@@ -447,17 +399,14 @@ MlsdLines computeMlsdLines(const std::vector<float>& tpMapValues,
 
     const auto sortedIndices = topKIndicesByScore(heatValues, topK);
 
-    // Displacement maps of the first batch entry: vmap[y][x][c] = tpMap[0][1 + c][y][x].
     const std::size_t mapSize = height * width;
     const float* displacement = tpMapValues.data() + mapSize;
 
     MlsdLines result;
     for(const std::int64_t index : sortedIndices) {
         const float score = heatValues[index];
-        // yy, xx = np.divmod(sorted_idx, w)
         const std::int64_t y = index / static_cast<std::int64_t>(width);
         const std::int64_t x = index % static_cast<std::int64_t>(width);
-        // Equivalent of the numpy IndexError when a heat position falls outside the tpMap grid.
         DAI_CHECK_V(
             y < static_cast<std::int64_t>(height), "Heat map index {} maps to row {} outside the tpMap spatial shape ({}, {}).", index, y, height, width);
 
@@ -467,8 +416,6 @@ MlsdLines computeMlsdLines(const std::vector<float>& tpMapValues,
         const float dispEndX = displacement[2 * mapSize + offset];
         const float dispEndY = displacement[3 * mapSize + offset];
 
-        // start = (x, y) + displacement start, end = (x, y) + displacement end, computed in
-        // float64 like the numpy int64 + float32 promotion.
         const double startX = static_cast<double>(x) + static_cast<double>(dispStartX);
         const double startY = static_cast<double>(y) + static_cast<double>(dispStartY);
         const double endX = static_cast<double>(x) + static_cast<double>(dispEndX);
@@ -476,18 +423,11 @@ MlsdLines computeMlsdLines(const std::vector<float>& tpMapValues,
 
         const double distance = std::sqrt((startX - endX) * (startX - endX) + (startY - endY) * (startY - endY));
 
-        // keep = (pts_score > score_thr) & (dists > dist_thr); both thresholds are exclusive.
-        // The score comparison is in float32 and the distance comparison in float64, matching
-        // the numpy promotion rules.
         if(!(score > scoreThreshold && distance > static_cast<double>(distanceThreshold))) {
             continue;
         }
 
-        // lines = 2 * lines / input_size: cast to float32, scale by 2 (the heat map grid is
-        // half the model input resolution) and normalize, x by width and y by height. The
-        // source hard-codes a single scalar input size (512 for all known M-LSD models); the
-        // per-axis normalization generalizes it to non-square inputs.
-        const std::array<float, 4> line{(2.0f * static_cast<float>(startX)) / static_cast<float>(inputWidth),
+        const std::array<float, 4> line{(2.0f * static_cast<float>(startX)) / static_cast<float>(inputWidth),  // 2: the heat map grid is half the input size
                                         (2.0f * static_cast<float>(startY)) / static_cast<float>(inputHeight),
                                         (2.0f * static_cast<float>(endX)) / static_cast<float>(inputWidth),
                                         (2.0f * static_cast<float>(endY)) / static_cast<float>(inputHeight)};

@@ -73,7 +73,6 @@ class Version::Impl {
     std::string buildInfo;
 };
 
-// Definitions of Version member functions
 Version::Version(const std::string& v) : pimpl(spimpl::make_impl<Impl>(v)) {}
 
 Version::Version(

@@ -244,7 +244,6 @@ class Application(QtWidgets.QMainWindow):
 
         self.test_process_pid = None
 
-        # Once the test process is started, periodically check if it's still running (catches eg. camera unplugged)
         self.check_test_process_timer = QtCore.QTimer()
         self.check_test_process_timer.timeout.connect(self.check_test_process)
 
@@ -314,7 +313,6 @@ class Application(QtWidgets.QMainWindow):
         
         started_successfully = False
         self.test_process = QtCore.QProcess()
-        # Start detached process with the function that also returns the PID
         if getattr(sys, 'frozen', False):
             started_successfully, self.test_process_pid = self.test_process.startDetached(
                 sys.executable, args, "")

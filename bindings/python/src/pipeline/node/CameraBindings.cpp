@@ -10,16 +10,13 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
     using namespace dai::node;
     using namespace pybind11::literals;
 
-    // Declare node upfront
     auto camera = ADD_NODE(Camera);
 
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
 
-    // Actual bindings
     camera.def("getMaxWidth", &dai::node::Camera::getMaxWidth, DOC(dai, node, Camera, getMaxWidth))
         .def("getMaxHeight", &dai::node::Camera::getMaxHeight, DOC(dai, node, Camera, getMaxHeight))
         .def("getMaxRequestedFps", &dai::node::Camera::getMaxRequestedFps, DOC(dai, node, Camera, getMaxRequestedFps))
@@ -61,11 +58,8 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
         .def("getMaxSizePoolIsp", &Camera::getMaxSizePoolIsp, DOC(dai, node, Camera, getMaxSizePoolIsp))
         .def("getOutputsNumFramesPool", &Camera::getOutputsNumFramesPool, DOC(dai, node, Camera, getOutputsNumFramesPool))
         .def("getOutputsMaxSizePool", &Camera::getOutputsMaxSizePool, DOC(dai, node, Camera, getOutputsMaxSizePool))
-        // .def("setBoardSocket", &Camera::setBoardSocket, "boardSocket"_a, DOC(dai, node, Camera, setBoardSocket))
         .def("getBoardSocket", &Camera::getBoardSocket, DOC(dai, node, Camera, getBoardSocket))
         .def("setMockIsp", &Camera::setMockIsp, "mockIsp"_a, DOC(dai, node, Camera, setMockIsp))
-        // .def("setCamera", &Camera::setCamera, "name"_a, DOC(dai, node, Camera, setCamera))
-        // .def("getCamera", &Camera::getCamera, DOC(dai, node, Camera, getCamera))
         .def("requestOutput",
              py::overload_cast<const std::pair<uint32_t, uint32_t>&,
                                std::optional<ImgFrame::Type>,

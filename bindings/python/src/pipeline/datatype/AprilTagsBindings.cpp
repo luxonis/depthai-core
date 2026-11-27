@@ -4,14 +4,10 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/AprilTags.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_apriltags(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -19,20 +15,11 @@ void bind_apriltags(pybind11::module& m, void* pCallstack) {
     py::class_<AprilTag> aprilTag(m, "AprilTag", DOC(dai, AprilTag));
     py::class_<AprilTags, Py<AprilTags>, Buffer, Transformable, py::smart_holder> aprilTags(m, "AprilTags", DOC(dai, AprilTags));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Metadata / raw
     aprilTag.def(py::init<>())
         .def_readwrite("id", &AprilTag::id, DOC(dai, AprilTag, id))
         .def_readwrite("hamming", &AprilTag::hamming, DOC(dai, AprilTag, hamming))
@@ -42,7 +29,6 @@ void bind_apriltags(pybind11::module& m, void* pCallstack) {
         .def_readwrite("bottomRight", &AprilTag::bottomRight, DOC(dai, AprilTag, bottomRight))
         .def_readwrite("bottomLeft", &AprilTag::bottomLeft, DOC(dai, AprilTag, bottomLeft));
 
-    // Message
     aprilTags.def(py::init<>())
         .def("__repr__", &AprilTags::str)
         .def_readwrite("aprilTags", &AprilTags::aprilTags)

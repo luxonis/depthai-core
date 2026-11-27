@@ -10,10 +10,6 @@
 namespace dai {
 namespace node {
 
-//--------------------------------------------------------------------
-// Base Detection Network Class
-//--------------------------------------------------------------------
-
 SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<Device>& device)
     : DeviceNodeGroup(device, std::make_unique<Properties>(), false),
       properties(static_cast<Properties&>(*propertiesHolder))
@@ -101,10 +97,8 @@ SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<Device>& 
 };
 
 void SpatialDetectionNetwork::buildInternal() {
-    // Default confidence threshold
     detectionParser->setConfidenceThreshold(0.5f);
 
-    // Mirror SpatialDetectionNetwork properties onto the SpatialLocationCalculator initial config
     auto& initialConfig = *spatialLocationCalculator->initialConfig;
     initialConfig.setDepthThresholds(properties.depthThresholds.lowerThreshold, properties.depthThresholds.upperThreshold);
     initialConfig.setCalculationAlgorithm(properties.calculationAlgorithm);
@@ -113,8 +107,7 @@ void SpatialDetectionNetwork::buildInternal() {
     neuralNetwork->out.link(detectionParser->input);
     detectionParser->out.link(spatialLocationCalculator->inputDetections);
 
-    // No "internal" buffering to keep interface similar to monolithic nodes
-    detectionParser->input.setBlocking(true);
+    detectionParser->input.setBlocking(true);  // No internal buffering, to behave like the monolithic nodes
     detectionParser->input.setMaxSize(1);
     spatialLocationCalculator->inputDetections.setBlocking(true);
     spatialLocationCalculator->inputDetections.setMaxSize(1);
@@ -158,7 +151,6 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
 }
 
 NNArchive SpatialDetectionNetwork::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         DAI_CHECK(getDevice() != nullptr, "Device is not set.");
         modelDesc.platform = getDevice()->getPlatformAsString();
@@ -244,10 +236,6 @@ void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<ToF>& tof, co
     throw std::runtime_error("ToF with SpatialDetectionNetwork is not supported yet.");
 }
 
-// -------------------------------------------------------------------
-// Neural Network API
-// -------------------------------------------------------------------
-
 void SpatialDetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
 
@@ -285,7 +273,6 @@ void SpatialDetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numSh
 }
 
 void SpatialDetectionNetwork::setFromModelZoo(NNModelDescription description, bool useCached) {
-    // Download model from zoo
     if(description.platform.empty()) {
         DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
         description.platform = getDevice()->getPlatformAsString();

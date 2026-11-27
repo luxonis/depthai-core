@@ -70,12 +70,10 @@ dai::LogMessage spdlogMsgToDaiLogMessage(const spdlog::details::log_msg& msg) {
     using namespace std::chrono;
     using namespace std::chrono_literals;
 
-    // Convert to dai::LogMessage
     dai::LogMessage daiMsg;
     daiMsg.nodeIdName = std::string(msg.logger_name.begin(), msg.logger_name.end());
     daiMsg.level = spdlogLevelToDaiLogLevel(msg.level);
 
-    // Timestamp
     auto d = msg.time.time_since_epoch();
     daiMsg.time.sec = duration_cast<seconds>(d).count();
     daiMsg.time.nsec = duration_cast<nanoseconds>(d).count() % 1000000000;

@@ -1,9 +1,7 @@
 #include "CapabilityRangeBindings.hpp"
 
-// for std::optional and std::variant support
 #include <pybind11/stl.h>
 
-// depthai
 #include "depthai/capabilities/CapabilityRange.hpp"
 
 void CapabilityRangeBindings::bind(pybind11::module& m, void* pCallstack) {
@@ -27,7 +25,6 @@ void CapabilityRangeBindings::bind(pybind11::module& m, void* pCallstack) {
 
 #undef ADD_TYPE
 
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();

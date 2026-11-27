@@ -21,17 +21,14 @@ constexpr size_t MAX_AUTO_WIDTH = 4000;
 
 constexpr size_t MAX_AUTO_HEIGHT = 3000;
 
-// helper type for the visitor #4
 template <class... Ts>
 struct overloaded : Ts... {
     using Ts::operator()...;
 };
-// explicit deduction guide (not needed as of C++20)
 template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
 static inline int clampi(int val, int minv, int maxv) {
-    // return val < minv ? minv : (val > maxv ? maxv : val);
     return std::clamp(val, minv, maxv);
 }
 inline bool floatEq(float a, float b) {
@@ -101,7 +98,6 @@ void transformOpenCV(const uint8_t* src,
     int ssF = srcImgSpecs.width / srcWidth;
     assert(ssF == (int)(srcImgSpecs.height / srcHeight) && (ssF == 1 || ssF == 2));  // Sanity check
     if(floatEq(matrix[2][0], 0) && floatEq(matrix[2][1], 0) && floatEq(matrix[2][2], 1)) {
-        // Affine transform
         float affine[6] = {matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF};
         cv::Rect roi(sourceMinX / ssF, sourceMinY / ssF, (sourceMaxX - sourceMinX) / ssF, (sourceMaxY - sourceMinY) / ssF);
         if(sourceMinX != 0 || sourceMinY != 0) {
@@ -109,7 +105,6 @@ void transformOpenCV(const uint8_t* src,
             affine[5] = affine[3] * ((float)sourceMinX / ssF) + affine[4] * ((float)sourceMinY / ssF) + affine[5];
         }
         if(floatEq(affine[0], 1.f) && floatEq(affine[1], 0.f) && floatEq(affine[3], 0.f) && floatEq(affine[4], 1.f) && floatEq(affine[5], 0.f)) {
-            // Crop only
             cvSrc(roi).copyTo(cvDst);
         } else {
             cv::Mat cvAffine(2, 3, CV_32F, affine);
@@ -122,7 +117,6 @@ void transformOpenCV(const uint8_t* src,
                            bg);  // TODO(asahtik): Add support for different border types
         }
     } else {
-        // Perspective transform
         float projection[9] = {
             matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF, matrix[2][0], matrix[2][1], matrix[2][2]};
         cv::Rect roi(sourceMinX / ssF, sourceMinY / ssF, (sourceMaxX - sourceMinX) / ssF, (sourceMaxY - sourceMinY) / ssF);
@@ -187,7 +181,6 @@ bool transformFastCV(const uint8_t* src,
     int ssF = srcImgSpecs.width / srcWidth;
     assert(ssF == (int)(srcImgSpecs.height / srcHeight) && (ssF == 1 || ssF == 2));  // Sanity check
     if(floatEq(matrix[2][0], 0) && floatEq(matrix[2][1], 0) && floatEq(matrix[2][2], 1)) {
-        // Affine transform
         float affine[6] = {matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF};
         if(isSingleChannelu8(src)) {
             fcvTransformAffineClippedu8_v3(src,
@@ -207,7 +200,6 @@ bool transformFastCV(const uint8_t* src,
             fcv3ChannelTransformAffineClippedBCu8(src, srcWidth, srcHeight, srcStride, affine, dst, dstWidth, dstHeight, dstStride, fastCvBorder);
         }
     } else {
-        // Perspective transform
         float projection[9] = {
             matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF, matrix[2][0], matrix[2][1], matrix[2][2]};
         fcvStatus status = fcvStatus::FASTCV_SUCCESS;
@@ -424,7 +416,6 @@ bool dai::impl::isTypeSupported(dai::ImgFrame::Type type) {
 bool dai::impl::getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPlanes, float& outBpp) {
     using ImgFrame = dai::ImgFrame;
 
-    // Set output Bpp and planes by PixelFormat and interleaved options
     outNumPlanes = 3;
 
     switch(outFrameType) {
@@ -578,7 +569,6 @@ void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 
     auto [srcInnerMinx, srcInnerMaxx, srcInnerMiny, srcInnerMaxy] = dai::impl::getOuterRect(std::vector(srcInnerCorners.begin(), srcInnerCorners.end()));
     auto [srcOuterMinx, srcOuterMaxx, srcOuterMiny, srcOuterMaxy] = dai::impl::getOuterRect(std::vector(srcOuterCorners.begin(), srcOuterCorners.end()));
 
-    // If outer bb is outside of the image, but inner is inside, use inner bb, otherwise use outer bb
     float rminx = srcOuterMinx < 0 && srcInnerMinx >= 0 ? innerMinx : outerMinx;
     float rmaxx = srcOuterMaxx >= srcWidth && srcInnerMaxx < srcWidth ? innerMaxx : outerMaxx;
     float rminy = srcOuterMiny < 0 && srcInnerMiny >= 0 ? innerMiny : outerMiny;
@@ -1013,10 +1003,6 @@ void dai::impl::UndistortOpenCvImpl::undistort(const UndistortInput& srcI, const
 
 namespace dai::impl {
 
-//--------------------------------------------------
-//------------------ Color Conversion --------------
-//--------------------------------------------------
-
 static inline void YUVfromRGB(float& Y, float& U, float& V, const float R, const float G, const float B) {
     Y = 0.257f * R + 0.504f * G + 0.098f * B + 16;
     U = -0.148f * R - 0.291f * G + 0.439f * B + 128;
@@ -1031,10 +1017,7 @@ static inline void RGBfromYUV(float& R, float& G, float& B, float Y, float U, fl
     B = 1.164f * Y + 2.017f * U;
 }
 
-// Rectified RAW8 and GRAY8 are full-range monochrome samples, not limited-range YUV.
-// Keep this path independent of OpenCV/FastCV so the same implementation works on
-// the host and in the RVC4 device runtime. Frame and plane offsets include padding.
-static bool colorConvertMono8ToColor(const ColorChangeArgs& args, bool planar) {
+static bool colorConvertMono8ToColor(const ColorChangeArgs& args, bool planar) {  // Full-range mono, not limited YUV; no OpenCV/FastCV so it also runs on RVC4
     const auto& srcSpecs = args.srcSpecs;
     const auto& dstSpecs = args.dstSpecs;
     const auto srcView = args.inputFrame->getOffsetData();
@@ -1043,8 +1026,7 @@ static bool colorConvertMono8ToColor(const ColorChangeArgs& args, bool planar) {
         throw std::runtime_error("ImageManip mono-to-color conversion received invalid source image specs");
     }
     const size_t available = srcView.size() - srcSpecs.p1Offset;
-    // Check the last row without overflowing offset + (height - 1) * stride + width.
-    if(srcSpecs.width > available || srcSpecs.height - 1 > (available - srcSpecs.width) / stride) {
+    if(srcSpecs.width > available || srcSpecs.height - 1 > (available - srcSpecs.width) / stride) {  // Last-row check, written to avoid integer overflow
         throw std::runtime_error("ImageManip mono-to-color conversion source view is too small for the image specs");
     }
     const auto* src = srcView.data() + srcSpecs.p1Offset;
@@ -1077,7 +1059,6 @@ static bool colorConvertMono8ToColor(const ColorChangeArgs& args, bool planar) {
 }
 
 bool colorConvertToRGB888p(const ColorChangeArgs& args) {
-    // dai::ImgFrame::Type to = dai::ImgFrame::Type::RGB888p;
     const std::shared_ptr<OffsetMemory>& inputFrame = args.inputFrame;
     std::shared_ptr<OffsetMemory> outputFrame = args.outputFrame;
     FrameSpecs srcSpecs = args.srcSpecs;
@@ -1397,7 +1378,6 @@ bool colorConvertToRGB888p(const ColorChangeArgs& args) {
 }
 
 bool colorConvertToBGR888p(const ColorChangeArgs& args) {
-    // dai::ImgFrame::Type to = dai::ImgFrame::Type::BGR888p;
     const std::shared_ptr<OffsetMemory>& inputFrame = args.inputFrame;
     std::shared_ptr<OffsetMemory> outputFrame = args.outputFrame;
     FrameSpecs srcSpecs = args.srcSpecs;
@@ -1717,7 +1697,6 @@ bool colorConvertToBGR888p(const ColorChangeArgs& args) {
 }
 
 bool colorConvertToRGB888i(const ColorChangeArgs& args) {
-    // dai::ImgFrame::Type to = dai::ImgFrame::Type::RGB888i;
     const std::shared_ptr<OffsetMemory>& inputFrame = args.inputFrame;
     std::shared_ptr<OffsetMemory> outputFrame = args.outputFrame;
     FrameSpecs srcSpecs = args.srcSpecs;
@@ -1929,7 +1908,6 @@ bool colorConvertToRGB888i(const ColorChangeArgs& args) {
 }
 
 bool colorConvertToBGR888i(const ColorChangeArgs& args) {
-    // dai::ImgFrame::Type to = dai::ImgFrame::Type::BGR888i;
     const std::shared_ptr<OffsetMemory>& inputFrame = args.inputFrame;
     std::shared_ptr<OffsetMemory> outputFrame = args.outputFrame;
     FrameSpecs srcSpecs = args.srcSpecs;
@@ -2153,7 +2131,6 @@ bool colorConvertToBGR888i(const ColorChangeArgs& args) {
 }
 
 bool colorConvertToNV12(const ColorChangeArgs& args) {
-    // dai::ImgFrame::Type to = dai::ImgFrame::Type::NV12;
     const std::shared_ptr<OffsetMemory>& inputFrame = args.inputFrame;
     std::shared_ptr<OffsetMemory> outputFrame = args.outputFrame;
     FrameSpecs srcSpecs = args.srcSpecs;
@@ -2409,7 +2386,6 @@ bool colorConvertToNV12(const ColorChangeArgs& args) {
 }
 
 bool colorConvertToYUV420p(const ColorChangeArgs& args) {
-    // dai::ImgFrame::Type to = dai::ImgFrame::Type::YUV420p;
     const std::shared_ptr<OffsetMemory>& inputFrame = args.inputFrame;
     std::shared_ptr<OffsetMemory> outputFrame = args.outputFrame;
     FrameSpecs srcSpecs = args.srcSpecs;
@@ -2685,7 +2661,6 @@ bool colorConvertToYUV420p(const ColorChangeArgs& args) {
 }
 
 bool colorConvertToGRAY8(const ColorChangeArgs& args) {
-    // dai::ImgFrame::Type to = dai::ImgFrame::Type::GRAY8;
     const std::shared_ptr<OffsetMemory>& inputFrame = args.inputFrame;
     std::shared_ptr<OffsetMemory> outputFrame = args.outputFrame;
     FrameSpecs srcSpecs = args.srcSpecs;
@@ -2725,7 +2700,6 @@ bool colorConvertToGRAY8(const ColorChangeArgs& args) {
             channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p3Offset), srcSpecs.p3Stride);
             cv::Mat auxRGB(srcSpecs.height, srcSpecs.width, CV_8UC3, ccAuxFrame->getOffsetData().data(), auxStride);
             cv::merge(channels, auxRGB);
-            // Convert to grayscale
             cv::Mat gray(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
             cv::cvtColor(auxRGB, gray, cv::COLOR_RGB2GRAY);
 #else
@@ -2994,10 +2968,6 @@ void ColorChangeH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_p
     }
 }
 
-//--------------------------------------------------
-//----------------------- Warp ---------------------
-//--------------------------------------------------
-
 bool Warp::isIdentityWarp() const {
     return (matrix[0][0] == 1.0f && matrix[0][1] == 0.0f && matrix[0][2] == 0.0f && matrix[1][0] == 0.0f && matrix[1][1] == 1.0f && matrix[1][2] == 0.0f
             && matrix[2][0] == 0.0f && matrix[2][1] == 0.0f && matrix[2][2] == 1.0f)
@@ -3030,7 +3000,6 @@ Warp& Warp::setBackgroundColor(const uint32_t r, const uint32_t g, const uint32_
             break;
         case ImgFrame::Type::RAW8:
         case ImgFrame::Type::GRAY8:
-            // backgroundColor[0] = 0.299f * r + 0.587f * g + 0.114f * b;
             backgroundColor[0] = b;
             break;
         case ImgFrame::Type::RAW16:
@@ -3131,7 +3100,6 @@ void WarpH::buildUndistort(bool enable,
         if(this->enableUndistort && !this->undistortOneShot) {
             auto frameSize = getAlignedOutputFrameSize(type, srcWidth, srcHeight);
             if(!auxFrame || auxFrame->getOffsetSize() < frameSize) {
-                // When undistort is needed but cannot one shot - undistorted frame must be written to an aux buffer
                 auxFrame = std::make_shared<_ImageManipMemory>(frameSize);
             }
         }
@@ -3210,7 +3178,6 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
         this->isIdentityWarp() || this->undistortOneShot ? this->dstSpecs : getDstFrameSpecs(this->srcSpecs.width, this->srcSpecs.height, this->type);
     auto warpSrc = this->enableUndistort ? auxFrame : src;
     auto warpSrcSpecs = this->enableUndistort ? undistortSpecs : this->srcSpecs;
-    // Apply transformation multiple times depending on the image format
     switch(this->type) {
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:

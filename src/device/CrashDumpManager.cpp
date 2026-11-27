@@ -2,14 +2,11 @@
 
 #include <stdexcept>
 
-// project
 #include "depthai/build/version.hpp"
 #include "depthai/device/DeviceGate.hpp"
+#include "spdlog/spdlog.h"
 #include "utility/Environment.hpp"
 #include "utility/Platform.hpp"
-
-// third party
-#include "spdlog/spdlog.h"
 
 namespace dai {
 
@@ -46,7 +43,6 @@ CrashDumpManager& CrashDumpManager::operator=(CrashDumpManager&& other) noexcept
 }
 
 std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
-    // Collect the correct crash dump based on the platform
     std::unique_ptr<CrashDump> dump;
     Platform platform = this->devicePtr->getPlatform();
 
@@ -67,7 +63,6 @@ std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
             throw std::runtime_error("Unsupported platform");
     }
 
-    // Add metadata and other helpful information
     dump->depthaiVersion = build::VERSION;
     dump->depthaiVersionMajor = std::to_string(build::VERSION_MAJOR);
     dump->depthaiVersionMinor = std::to_string(build::VERSION_MINOR);
@@ -83,10 +78,8 @@ std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
     dump->depthaiDeviceRVC4Version = build::DEVICE_RVC4_VERSION;
     dump->osPlatform = platform::getOSPlatform();
 
-    // Device
     dump->deviceId = this->devicePtr->deviceInfo.getDeviceId();
 
-    // Crashdump collection time
     dump->crashdumpTimestamp = getCurrentTimestamp();
 
     return dump;
@@ -105,7 +98,6 @@ std::unique_ptr<CrashDump> CrashDumpManager::collectDumpRVC4() {
         throw std::runtime_error("RVC4 device has no gate, cannot collect crashdump");
     }
 
-    // Collect the crash dump from the gate
     auto dump = std::make_unique<CrashDumpRVC4>();
     auto gateDump = this->devicePtr->gate->getCrashDump();
     if(gateDump) {

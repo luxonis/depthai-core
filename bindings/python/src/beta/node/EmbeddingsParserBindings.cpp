@@ -9,13 +9,10 @@ void bind_beta_embeddingsparser(pybind11::module& m, void* pCallstack) {
 
     auto embeddingsParser = ADD_BETA_NODE_DERIVED(EmbeddingsParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     embeddingsParser.def_readonly("input", &EmbeddingsParser::input, DOC(dai, beta, node, EmbeddingsParser, input))
         .def_readonly("out", &EmbeddingsParser::out, DOC(dai, beta, node, EmbeddingsParser, out))

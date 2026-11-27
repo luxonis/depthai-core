@@ -1,9 +1,7 @@
 #pragma once
 
-// std
 #include <cstdint>
 
-// project
 #include "LogLevel.hpp"
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/utility/Serialization.hpp"

@@ -259,7 +259,6 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
 };
 
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children) {
-    // Check if parent is in hierarchy
     if(hierarchy.find(parent) == hierarchy.end()) {
         throw std::invalid_argument("Parent datatype not found in hierarchy");
     }

@@ -1,9 +1,7 @@
 #pragma once
 
-// libraries
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 
-// shared
 #include "pipeline/ThreadedNodeImpl.hpp"
 
 namespace dai {
@@ -17,9 +15,7 @@ class XLinkIn : public node::internal::XLinkIn {
 
    public:
     XLinkIn() : XLinkIn(std::make_unique<XLinkIn::Properties>()) {}
-    XLinkIn(std::unique_ptr<Properties> props) : node::internal::XLinkIn(std::move(props)) {
-        // override that this is a host node
-    }
+    XLinkIn(std::unique_ptr<Properties> props) : node::internal::XLinkIn(std::move(props)) {}
     bool runOnHost() const override {
         return true;
     }

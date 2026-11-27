@@ -31,7 +31,6 @@ HRNetParser::Properties& HRNetParser::getProperties() {
 }
 
 NNArchive HRNetParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -110,8 +109,6 @@ void HRNetParser::setConfig(const dai::nn_archive::v1::Head& head) {
     DAI_CHECK_V(numOutputs == 1, "Only one output layer supported for HRNetParser, got {} layers.", numOutputs);
     setOutputLayerName(head.outputs->front());
 
-    // The keypoint-specific keys without typed metadata fields live in the head metadata extra
-    // parameters.
     const auto& extraParams = head.metadata.extraParams;
 
     if(const auto scoreThreshold = utilities::KeypointsUtils::readFloatParam(extraParams, "score_threshold")) {
@@ -120,8 +117,6 @@ void HRNetParser::setConfig(const dai::nn_archive::v1::Head& head) {
     if(const auto labelNames = utilities::KeypointsUtils::readKeypointLabelsParam(extraParams)) {
         setLabelNames(*labelNames);
     }
-    // An empty edge list does not overwrite explicitly configured edges, mirroring the source
-    // parser behavior.
     const auto edges = utilities::KeypointsUtils::readSkeletonEdgesParam(extraParams);
     if(!edges.empty()) {
         setEdges(edges);
@@ -175,8 +170,6 @@ void HRNetParser::run() {
     DAI_CHECK(config.validate(), "HRNetParser initial configuration is invalid.");
     const bool inputConfigSync = inputConfig.getWaitForMessage();
 
-    // The resolved layer name persists across messages once auto-selected from a
-    // single-tensor NNData, mirroring the source parser behavior.
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
@@ -209,7 +202,6 @@ void HRNetParser::run() {
         auto tGotInput = std::chrono::steady_clock::now();
         const HRNetParserConfig configSnapshot = config;
 
-        // Extract
         const auto layerNames = nnData->getAllLayerNames();
         if(resolvedOutputLayerName.empty()) {
             DAI_CHECK_V(
@@ -219,11 +211,8 @@ void HRNetParser::run() {
 
         auto heatmaps = utilities::ClassificationUtils::getNchwTensorData(*nnData, resolvedOutputLayerName);
 
-        // Compute. The number of keypoints and the heatmap size are derived from the tensor shape.
         auto hrnetKeypoints = utilities::KeypointsUtils::computeHrnetKeypoints(heatmaps.values, heatmaps.dims);
 
-        // Emit. Keypoints with a score below the score threshold are dropped and the edges are
-        // filtered and remapped to the kept keypoints.
         auto message = utilities::KeypointsUtils::createKeypointsMessage(
             hrnetKeypoints.coordinates, std::move(hrnetKeypoints.scores), configSnapshot.scoreThreshold, properties.labelNames, properties.edges);
         if(nnData->transformation.has_value()) {

@@ -28,8 +28,7 @@ void BleedingFilter::configure(const Parameters& p) {
     parameters = p;
     meanWeight = 0;
     for(size_t a = 0; a < weight.size(); ++a) {
-        // Ramp over 32 brightness levels instead of jumping from zero to nearly full strength.
-        const double activation = std::clamp((a - p.lambdaB) / std::min(32.0, 255 - p.lambdaB), 0.0, 1.0);
+        const double activation = std::clamp((a - p.lambdaB) / std::min(32.0, 255 - p.lambdaB), 0.0, 1.0);  // Ramp over 32 levels, not a jump to full strength
         lambda[a] = a < p.lambdaB ? 0 : p.lambdaA * std::pow((a - p.lambdaB) / (255 - p.lambdaB), p.lambdaC) * activation * activation * (3 - 2 * activation);
         weight[a] = a < p.histogramB ? 0 : p.histogramA * std::pow((a - p.histogramB) / (255 - p.histogramB), p.histogramC);
         meanWeight += weight[a];
@@ -71,7 +70,6 @@ void BleedingFilter::filterDepth(uint16_t* depth, const uint8_t* amplitude, size
     if(!sourceCount) return;
     double numerator = 0;
     for(size_t a = 0; a < histogram.size(); ++a) numerator += weight[a] * (static_cast<double>(histogram[a]) * a);
-    // This normalization intentionally differs from the old weighted-count mean.
     const double mean = numerator / (static_cast<double>(width) * height * meanWeight);
     const double boundedMean = std::clamp(mean, 0.0, 255.0);
     const auto meanIndex = static_cast<size_t>(boundedMean);
@@ -87,9 +85,7 @@ void BleedingFilter::filterDepth(uint16_t* depth, const uint8_t* amplitude, size
         thresholds[bin] = static_cast<uint16_t>(std::ceil(response * affinity[bin + depthBins - 1 - sourceBin]));
     }
 
-    // Four-connected background is dual to the eight-connected bright contours.
-    // The padded border connects all image edges to the same exterior seed.
-    cv::floodFill(exterior, cv::Point(0, 0), cv::Scalar(2), nullptr, cv::Scalar(), cv::Scalar(), 4);
+    cv::floodFill(exterior, cv::Point(0, 0), cv::Scalar(2), nullptr, cv::Scalar(), cv::Scalar(), 4);  // 4-connected: dual of 8-connected bright contours
     for(size_t y = 0; y < height; ++y) {
         const auto* mask = exterior.ptr(static_cast<int>(y + 1)) + 1;
         auto* z = depth + y * depthStride;

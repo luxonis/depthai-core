@@ -2,11 +2,9 @@
 
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/datatype/CameraControl.hpp>
+#include <depthai/properties/MonoCameraProperties.hpp>
 
 #include "depthai/common/CameraBoardSocket.hpp"
-
-// shared
-#include <depthai/properties/MonoCameraProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -39,7 +37,6 @@ class [[deprecated("Use Camera node instead")]] MonoCamera : public DeviceNodeCR
      * Input for CameraControl message, which can modify camera parameters in runtime
      * Default queue is blocking with size 8
      */
-    // Input inputControl{*this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
     Input inputControl{
         *this, {"inputControl", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::CameraControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
@@ -54,7 +51,6 @@ class [[deprecated("Use Camera node instead")]] MonoCamera : public DeviceNodeCR
      *
      * Suitable for use StereoDepth node. Processed by ISP
      */
-    // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
@@ -62,7 +58,6 @@ class [[deprecated("Use Camera node instead")]] MonoCamera : public DeviceNodeCR
      *
      * Captured directly from the camera sensor
      */
-    // Output raw{*this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
     Output raw{*this, {"raw", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
@@ -73,7 +68,6 @@ class [[deprecated("Use Camera node instead")]] MonoCamera : public DeviceNodeCR
      * Could be used to synchronize various processes with camera capture.
      * Fields populated: camera id, sequence number, timestamp
      */
-    // Output frameEvent{*this, "frameEvent", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
     Output frameEvent{*this, {"frameEvent", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
@@ -100,10 +94,8 @@ class [[deprecated("Use Camera node instead")]] MonoCamera : public DeviceNodeCR
      */
     std::string getCamera() const;
 
-    // Set which mono camera to use
     [[deprecated("Use 'setBoardSocket()' instead.")]] void setCamId(int64_t id);
 
-    // Get which mono camera to use
     [[deprecated("Use 'getBoardSocket()' instead.")]] int64_t getCamId() const;
 
     /// Set camera image orientation
@@ -120,10 +112,8 @@ class [[deprecated("Use Camera node instead")]] MonoCamera : public DeviceNodeCR
     /// Get sensor resolution
     Properties::SensorResolution getResolution() const;
 
-    // Set events on which frames will be received
     void setFrameEventFilter(const std::vector<dai::FrameEvent>& events);
 
-    // Get events on which frames will be received
     std::vector<dai::FrameEvent> getFrameEventFilter() const;
 
     /**

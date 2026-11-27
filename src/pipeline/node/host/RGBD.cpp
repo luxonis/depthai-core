@@ -85,7 +85,6 @@ class RGBD::Impl {
    private:
     void initializeGPU(uint32_t device) {
 #ifdef DEPTHAI_ENABLE_KOMPUTE
-        // Initialize Kompute
         mgr = std::make_shared<kp::Manager>(device);
         shader = std::vector<uint32_t>(shaders::RGBD2POINTCLOUD_COMP_SPV.begin(), shaders::RGBD2POINTCLOUD_COMP_SPV.end());
         computeMethod = ComputeMethod::GPU;
@@ -100,9 +99,6 @@ class RGBD::Impl {
 
         xyzOut.resize(size * 3);
 
-        // Convert depth to float
-        // Depth is in mm by default, convert to meters if outputMeters == true
-        // If outputMeters is true, scale = 1/1000.0 else scale = 1.0
         float scale = scaleFactor;
 
         std::vector<float> depthDataFloat(size);
@@ -111,10 +107,8 @@ class RGBD::Impl {
             depthDataFloat[i] = static_cast<float>(depthValue);  // will multiply by scale in shader
         }
 
-        // Intrinsics: [fx, fy, cx, cy, scale, width, height]
         std::vector<float> intrinsics = {fx, fy, cx, cy, scale, static_cast<float>(width), static_cast<float>(height)};
 
-        // Create Kompute tensors
         if(!tensorsInitialized) {
             depthTensor = mgr->tensor(depthDataFloat);
             intrinsicsTensor = mgr->tensor(intrinsics);
@@ -123,7 +117,6 @@ class RGBD::Impl {
         } else {
             depthTensor->setData(depthDataFloat);
         }
-        // Load shader
         if(!algoInitialized) {
             tensors.emplace_back(depthTensor);
             tensors.emplace_back(intrinsicsTensor);
@@ -132,7 +125,6 @@ class RGBD::Impl {
             algoInitialized = true;
         }
         mgr->sequence()->record<kp::OpSyncDevice>(tensors)->record<kp::OpAlgoDispatch>(algo)->record<kp::OpSyncLocal>(tensors)->eval();
-        // Retrieve results
         xyzOut = xyzTensor->vector<float>();
         for(int i = 0; i < size; i++) {
             Point3fRGBA p;
@@ -165,7 +157,6 @@ class RGBD::Impl {
                 float xCoord = (col - cx) * z / fx;
                 float yCoord = (row - cy) * z / fy;
 
-                // BGR order in colorData
                 uint8_t r = colorData[i * 3 + 0];
                 uint8_t g = colorData[i * 3 + 1];
                 uint8_t b = colorData[i * 3 + 2];
@@ -176,7 +167,6 @@ class RGBD::Impl {
     }
 
     void computePointCloudCPU(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points) {
-        // Single-threaded directly writes into points
         calcPointsChunk(depthData, colorData, points, 0, height);
     }
 
@@ -239,14 +229,11 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
     if(!autocreate) {
         return std::static_pointer_cast<RGBD>(shared_from_this());
     }
-    // Find out of the device is ToF - if it is, we will use the ToF node
     auto pipeline = getParentPipeline();
     auto device = pipeline.getDefaultDevice();
     auto connectedCameraFeatures = device->getConnectedCameraFeatures();
-    // Find the first color camera
     auto rgbCameraSocket = CameraBoardSocket::CAM_A;
     for(const auto& feature : connectedCameraFeatures) {
-        // Check if the supportedTypes contain ToF
         std::vector<CameraSensorType> supportedTypes = feature.supportedTypes;
         if(std::find(supportedTypes.begin(), supportedTypes.end(), CameraSensorType::COLOR) != supportedTypes.end()) {
             rgbCameraSocket = feature.socket;
@@ -260,12 +247,9 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
     colorCamOutputType = std::nullopt;  // native output for each platform
 #endif
 
-    // Handle ToF camera
     for(const auto& feature : connectedCameraFeatures) {
-        // Check if the supportedTypes contain ToF
         std::vector<dai::CameraSensorType> supportedTypes = feature.supportedTypes;
         if(std::find(supportedTypes.begin(), supportedTypes.end(), dai::CameraSensorType::TOF) != supportedTypes.end()) {
-            // Create the ToF node along with ImageAlign node and return
             bool setRunOnHost = true;
             auto tofFps = fps.value_or(30.0f);
             auto tof = pipeline.create<node::ToF>()->build(feature.socket, ToFConfig::Profile::MID_RANGE, tofFps);
@@ -315,8 +299,6 @@ std::shared_ptr<RGBD> RGBD::build(const std::shared_ptr<Camera>& camera,
 }
 
 void RGBD::initialize(const std::shared_ptr<MessageGroup>& frames) {
-    // Initialize the camera intrinsics
-    // Check if width, width and cameraID match
     auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(frames->group.at(inColor.getName()));
     auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(frames->group.at(inDepth.getName()));
     if(colorFrame->getWidth() != depthFrame->getWidth() || colorFrame->getHeight() != depthFrame->getHeight()) {
@@ -342,7 +324,6 @@ void RGBD::run() {
             std::shared_ptr<MessageGroup> group = nullptr;
             {
                 auto blockEvent = this->inputBlockEvent();
-                // Get the color and depth frames
                 group = inSync.get<MessageGroup>();
             }
             if(group == nullptr) continue;
@@ -378,7 +359,6 @@ void RGBD::run() {
             }
             auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inDepth.getName()));
 
-            // Create the point cloud
             auto pc = std::make_shared<PointCloudData>();
             pc->setBufferMetadataFrom(colorFrame);
             pc->setInstanceNum(colorFrame->getInstanceNum());
@@ -387,10 +367,8 @@ void RGBD::run() {
             pc->setSize(width, height);
 
             std::vector<Point3fRGBA> points;
-            // Fill the point cloud
             auto* depthData = depthFrame->getData().data();
             auto* colorData = colorFrame->getData().data();
-            // Use GPU to compute point cloud
             pimpl->computePointCloud(depthData, colorData, points);
 
             float minX = 0.0;
@@ -507,7 +485,6 @@ void RGBD::alignDepthImpl(const std::shared_ptr<StereoDepth>& stereo,
             throw std::runtime_error("Unsupported platform for RGBD with StereoDepth");
         }
     } else {
-        // Fallback without device info
         auto* colorCamOutput = camera->requestOutput(frameSize, colorCamOutputType, ImgResizeMode::CROP, fps, true);
         colorCamOutput->link(inColor);
         stereo->depth.link(inDepth);
@@ -565,8 +542,7 @@ void RGBD::alignDepthImpl(const std::shared_ptr<ToF>& tof,
     colorCamOutput->link(align->inputAlignTo);
     align->outputAligned.link(inDepth);
 
-    // ImageAlign and Sync do not work well on ToF cameras - run on host for better performance
-    align->setRunOnHost(true);
+    align->setRunOnHost(true);  // ImageAlign and Sync do not work well on ToF cameras: run them on host
     constexpr float DEFAULT_TOF_FPS = 30.0f;
     sync->setSyncThreshold(std::chrono::milliseconds(static_cast<uint32_t>(500 / fps.value_or(DEFAULT_TOF_FPS))));
     sync->setRunOnHost(true);

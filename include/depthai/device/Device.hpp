@@ -1,7 +1,6 @@
 // IWYU pragma: private, include "depthai/depthai.hpp"
 #pragma once
 
-// std
 #include <algorithm>
 #include <chrono>
 #include <condition_variable>
@@ -11,7 +10,6 @@
 #include <string>
 #include <unordered_map>
 
-// project
 #include "depthai/device/DeviceBase.hpp"
 #include "depthai/device/Platform.hpp"
 

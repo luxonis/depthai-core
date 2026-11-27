@@ -1,6 +1,5 @@
 #pragma once
 
-// std
 #include <cstdint>
 
 #include "depthai/utility/Serialization.hpp"
@@ -22,8 +21,7 @@ struct Size2f {
 
     bool isNormalized() const {
         if(hasNormalized) return normalized;
-        // When ambiguous, default to denormalized
-        if((width == 0 || width == 1) && (height == 0 || height == 1)) return false;
+        if((width == 0 || width == 1) && (height == 0 || height == 1)) return false;  // Ambiguous 0/1 sizes count as denormalized
         return width >= 0 && width <= 1 && height >= 0 && height <= 1;
     }
 };

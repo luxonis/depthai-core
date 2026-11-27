@@ -8,7 +8,6 @@
 
 // clang-format off
 
-// Only use this one for internal errors. Clearly invalid states that shouldn't happen.
 #define DAI_CHECK_IN(A) \
     if(!(A)) { /* NOLINT(readability-simplify-boolean-expr) */ \
         throw std::runtime_error(fmt::format( \

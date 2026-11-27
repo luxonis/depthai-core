@@ -20,7 +20,6 @@ class BinarySemaphore {
     BinarySemaphore() = default;
     explicit BinarySemaphore(bool initiallyAvailable) : available(initiallyAvailable) {}
 
-    // signal / post / V
     void release() {
         bool notify = false;
         {
@@ -31,14 +30,12 @@ class BinarySemaphore {
         if(notify) cv.notify_one();
     }
 
-    // wait / P
     void acquire() {
         std::unique_lock<std::mutex> lk(mtx);
         cv.wait(lk, [&] { return available; });
         available = false;  // consume
     }
 
-    // try-wait
     bool tryAcquire() {
         std::lock_guard<std::mutex> lk(mtx);
         if(!available) return false;

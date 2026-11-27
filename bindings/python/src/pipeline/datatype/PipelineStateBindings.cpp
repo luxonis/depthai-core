@@ -2,15 +2,11 @@
 
 #include "DatatypeBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/PipelineState.hpp"
 
-// pybind
 #include <pybind11/cast.h>
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -37,18 +33,10 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
         .value("PROCESSING", NodeState::State::PROCESSING)
         .value("SENDING_OUTPUTS", NodeState::State::SENDING_OUTPUTS);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     durationEvent.def(py::init<>())
         .def("__repr__", &NodeState::DurationEvent::str)
@@ -103,7 +91,6 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
         .def_readwrite("mainLoopTiming", &NodeState::mainLoopTiming, DOC(dai, NodeState, mainLoopTiming))
         .def_readwrite("otherTimings", &NodeState::otherTimings, DOC(dai, NodeState, otherTimings));
 
-    // Message
     pipelineState.def(py::init<>())
         .def_readwrite("configSequenceNum", &dai::PipelineState::configSequenceNum, DOC(dai, PipelineState, configSequenceNum))
         .def("__repr__", &PipelineState::str)

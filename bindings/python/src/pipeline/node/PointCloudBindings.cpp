@@ -8,24 +8,14 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Node and Properties declare upfront
     py::class_<PointCloudProperties> properties(m, "PointCloudProperties", DOC(dai, PointCloudProperties));
     auto node = ADD_NODE(PointCloud);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Properties
     py::enum_<PointCloudProperties::ComputeMethod>(properties, "ComputeMethod", DOC(dai, PointCloudProperties, ComputeMethod))
         .value("CPU", PointCloudProperties::ComputeMethod::CPU)
         .value("CPU_MT", PointCloudProperties::ComputeMethod::CPU_MT)
@@ -41,7 +31,6 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack) {
         .def_readwrite("numThreads", &PointCloudProperties::numThreads, DOC(dai, PointCloudProperties, numThreads))
         .def_readwrite("gpuDevice", &PointCloudProperties::gpuDevice, DOC(dai, PointCloudProperties, gpuDevice));
 
-    // Node
     node.def_readonly("inputConfig", &PointCloud::inputConfig, DOC(dai, node, PointCloud, inputConfig), DOC(dai, node, PointCloud, inputConfig))
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
         .def("getColorInput",
@@ -122,6 +111,5 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack) {
              py::arg("useSpecTranslation"),
              "**Deprecated:** Use setTargetCoordinateSystem(housingCS) instead.");
 
-    // ALIAS
     daiNodeModule.attr("PointCloud").attr("Properties") = properties;
 }

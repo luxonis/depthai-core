@@ -34,21 +34,8 @@ class RemoteConnectionImpl {
     int waitKey(int delayMs);
 
    private:
-    /**
-     * @brief Initialize websocket server
-     * @param address Address to bind to
-     * @param port Port to bind to
-     * @return True if successful, false otherwise
-     *
-     */
     bool initWebsocketServer(const std::string& address, uint16_t port);
 
-    /**
-     * @brief Initialize HTTP server
-     * @param address Address to bind to
-     * @param port Port to bind to
-     * @return True if successful, false otherwise
-     */
     bool initHttpServer(const std::string& address, uint16_t port);
 
     void addPublishThread(const std::string& topicName,

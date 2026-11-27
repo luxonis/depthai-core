@@ -764,14 +764,6 @@ class CalibrationHandler {
     std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
 
    private:
-    /** when the user is writing extrinsics do we validate if
-     * the connection between all the cameras exists ?
-     * Some users might not need that connection so they might ignore adding
-     * that in that case if the user calls the extrinsics betwwn those cameras it
-     * fails We can provide an appropriate error that connection doesn't exist between the requested camera id's..
-     * And other option is making sure the connection exists all the time by validating the links.
-     */
-    // bool isCameraArrayConnected;
     dai::EepromData eepromData;
     std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false) const;
     bool checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const;

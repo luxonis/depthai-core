@@ -1,16 +1,13 @@
 #pragma once
 
-// libraries
 #include <optional>
 
-#include "depthai/common/CameraFeatures.hpp"
-#include "depthai/utility/spimpl.h"
-
-// depthai
 #include "depthai/capabilities/ImgFrameCapability.hpp"
+#include "depthai/common/CameraFeatures.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/properties/CameraProperties.hpp"
+#include "depthai/utility/spimpl.h"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include "depthai/pipeline/node/host/Replay.hpp"

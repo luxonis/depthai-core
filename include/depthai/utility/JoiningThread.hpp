@@ -8,7 +8,6 @@ class JoiningThread : private std::thread {
    public:
     using std::thread::thread;
     JoiningThread() = default;
-    // Create an empty copy constructor
     JoiningThread(const JoiningThread&) : JoiningThread() {}
     JoiningThread(JoiningThread&&) = default;
     JoiningThread& operator=(JoiningThread&& thr) {

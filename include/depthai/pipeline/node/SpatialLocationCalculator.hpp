@@ -1,8 +1,6 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
-
-// shared
 #include <depthai/properties/SpatialLocationCalculatorProperties.hpp>
 
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"

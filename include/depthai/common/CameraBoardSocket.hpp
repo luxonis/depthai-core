@@ -26,7 +26,6 @@ enum class CameraBoardSocket : int32_t {
      * @warning Experimental feature. This API might change or be removed in a future release.
      */
     CBA,
-    // Deprecated naming
     RGB [[deprecated]] = CAM_A,
     CENTER [[deprecated]] = CAM_A,
     LEFT [[deprecated]] = CAM_B,
@@ -66,7 +65,6 @@ inline std::string toString(CameraBoardSocket socket) {
 
 }  // namespace dai
 
-// Global namespace
 inline std::ostream& operator<<(std::ostream& out, const dai::CameraBoardSocket& socket) {
     return out << dai::toString(socket);
 }

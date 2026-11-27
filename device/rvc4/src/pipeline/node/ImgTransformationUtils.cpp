@@ -18,7 +18,6 @@ ImgTransformation prepareMultiDeviceTransformation(ImgTransformation transformat
     extrinsics.toDeviceId = deviceId;
     transformation.setExtrinsics(extrinsics);
 
-    // An intrinsics-only transformation has no local 3D pose to rebase.
     if(multiDeviceCalibration == nullptr || extrinsics.toCameraSocket == CameraBoardSocket::AUTO || extrinsics.rotationMatrix.empty()) {
         return transformation;
     }
@@ -29,9 +28,7 @@ ImgTransformation prepareMultiDeviceTransformation(ImgTransformation transformat
             transformation.rebaseExtrinsics(*bridge);
         }
     } catch(const std::exception& ex) {
-        // Safety net: the RPC handlers reject mismatching graphs and calibrations, so this
-        // should not happen. Keep publishing local metadata rather than dropping frames.
-        if(!warnedForMismatch && logger) {
+        if(!warnedForMismatch && logger) {  // Should not happen (the RPC handlers reject mismatches): keep local metadata, do not drop frames
             warnedForMismatch = true;
             logger->warn("Multi-device calibration not applied for socket {}: {}", toString(extrinsics.toCameraSocket), ex.what());
         }

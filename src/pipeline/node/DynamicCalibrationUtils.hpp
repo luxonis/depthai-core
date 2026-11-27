@@ -50,28 +50,17 @@ struct DclUtils {
 #endif
     static dcl::PerformanceMode daiPerformanceModeToDclPerformanceMode(const dai::DynamicCalibrationControl::PerformanceMode mode);
 
-    /// The DCL enumerator of a depthai ArucoDictionary. Throws std::invalid_argument for a value outside the enumeration.
-    static dcl::ArucoDictionary toDclArucoDictionary(ArucoDictionary dictionary);
-    /// The marker detector request for a constraint set. Throws std::invalid_argument for a marker type the library cannot detect.
-    static dcl::MarkerSpec toDclMarkerSpec(const WorldConstraints& constraints);
+    static dcl::ArucoDictionary toDclArucoDictionary(ArucoDictionary dictionary);  // Throws std::invalid_argument for a value outside the enumeration
+    static dcl::MarkerSpec toDclMarkerSpec(const WorldConstraints& constraints);   // Throws std::invalid_argument for a marker type the library cannot detect
 
-    /// Smallest marker the calibration uses, in pixels of the input image: the shortest side of an ArUco marker or
-    /// the smallest diameter of a Luxonis Marker ring. Smaller markers give too coarse a center and size.
     static constexpr double kMinMarkerSizePx = 25.0;
-    /// Synchronized frame sets with marker observations kept for the calibration; the oldest set is dropped first.
     static constexpr size_t kMaxMarkerObservationSets = 50;
-    /// Size of a detection as compared with kMinMarkerSizePx; 0 when the detection has no shape.
-    static double markerSizePx(MarkerType type, const dcl::MarkerDetection& detection);
+    static double markerSizePx(MarkerType type, const dcl::MarkerDetection& detection);  // 0 when the detection has no shape
 
-    /// The configured markers found in one image, keyed by marker id. Markers outside the configuration, smaller than
-    /// kMinMarkerSizePx and ids that appear more than once in the image are dropped. tooSmall, when given, receives
-    /// the configured markers dropped for their size together with that size in pixels. Fails when the detector
-    /// rejects the image.
-    static dcl::Result<std::map<int32_t, dcl::MarkerDetection>> detectConfiguredMarkers(const dcl::ImageData& image,
+    static dcl::Result<std::map<int32_t, dcl::MarkerDetection>> detectConfiguredMarkers(const dcl::ImageData& image,  // Drops too-small and repeated ids
                                                                                         const WorldConstraints& constraints,
                                                                                         std::map<int32_t, double>* tooSmall = nullptr);
 
-    /// The shape of a detection, as kept in a MarkerObservationSet.
     static MarkerOutline toMarkerOutline(const dcl::MarkerDetection& detection);
 
     struct WorldConstraintsSummary {
@@ -82,25 +71,12 @@ struct DclUtils {
         size_t markerSizes = 0;
     };
 
-    /**
-     * Turns the collected marker centers into DCL world constraints. Every frame set contributes one scene
-     * point per marker that at least two sensors saw, the configured marker distances between the points of
-     * the same frame set, the configured socket distances for points of that frame set, and one size observation
-     * per sensor that saw a point's marker when that marker has a configured size. sensorForSocket returns the DCL
-     * sensor of a socket, or nullptr for sockets the node does not know, whose constraints are skipped.
-     */
-    static dcl::WorldConstraints buildWorldConstraints(const WorldConstraints& constraints,
+    static dcl::WorldConstraints buildWorldConstraints(const WorldConstraints& constraints,  // nullptr from sensorForSocket skips that socket's constraints
                                                        const std::deque<MarkerObservationSet>& observationSets,
                                                        const std::function<std::shared_ptr<const dcl::CameraSensorHandle>(CameraBoardSocket)>& sensorForSocket,
                                                        WorldConstraintsSummary* summary = nullptr);
 
-    /**
-     * Marker status of one frame set: which of the markers the constraints refer to were seen by at least two
-     * cameras (observations), which were too small (tooSmallPx, marker id to largest size seen), and whether the
-     * set is accepted, which needs every required marker seen by two cameras. observationSets is the number of
-     * sets kept so far and is copied into the result.
-     */
-    static CoverageData::MarkerCoverage markerCoverage(const WorldConstraints& constraints,
+    static CoverageData::MarkerCoverage markerCoverage(const WorldConstraints& constraints,  // Accepted only when every required marker is seen by two cameras
                                                        const MarkerObservationSet& observations,
                                                        const std::map<int32_t, float>& tooSmallPx,
                                                        size_t observationSets);

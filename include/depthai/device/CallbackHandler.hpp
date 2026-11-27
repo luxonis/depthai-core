@@ -1,10 +1,8 @@
 #pragma once
 
-// std
 #include <functional>
 #include <memory>
 
-// project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 

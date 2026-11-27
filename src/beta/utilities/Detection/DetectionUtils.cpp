@@ -17,21 +17,12 @@ namespace DetectionUtils {
 
 namespace {
 
-/**
- * Overlap of two [x, y, width, height] boxes as intersection area over union area, matching
- * OpenCV's rectOverlap (1.f - (float)jaccardDistance) on cv::Rect2d, including the float cast of
- * the double-precision jaccard distance. An intersection with non-positive width or height has
- * zero area. Two boxes whose areas sum to at most the double-precision epsilon overlap fully
- * (jaccard distance 0, overlap 1).
- */
-float rectOverlap(const std::array<double, 4>& a, const std::array<double, 4>& b) {
+float rectOverlap(const std::array<double, 4>& a, const std::array<double, 4>& b) {  // Matches OpenCV rectOverlap on cv::Rect2d, float cast included
     const double areaA = a[2] * a[3];
     const double areaB = b[2] * b[3];
     double jaccardDistance = 0.0;
     if((areaA + areaB) > std::numeric_limits<double>::epsilon()) {
         double intersectionArea = 0.0;
-        // An empty (non-positive width or height) box has an empty intersection, matching
-        // cv::Rect_ operator&.
         if(a[2] > 0 && a[3] > 0 && b[2] > 0 && b[3] > 0) {
             const double xMin = std::max(a[0], b[0]);
             const double yMin = std::max(a[1], b[1]);
@@ -55,9 +46,6 @@ std::vector<int> nmsBoxes(
     DAI_CHECK(nmsThreshold >= 0.0f, "NMS threshold must be non-negative.");
     DAI_CHECK(eta > 0.0f, "NMS eta must be positive.");
 
-    // Get the topK highest scores (with corresponding indices), matching OpenCV's
-    // GetMaxScoreIndex: filter with a strict greater-than, stable-sort descending by score and
-    // truncate to topK when topK > 0.
     std::vector<std::pair<float, int>> scoreIndexPairs;
     for(std::size_t i = 0; i < scores.size(); i++) {
         if(scores[i] > scoreThreshold) {
@@ -70,8 +58,7 @@ std::vector<int> nmsBoxes(
         scoreIndexPairs.resize(static_cast<std::size_t>(topK));
     }
 
-    // Greedy suppression, matching OpenCV's NMSFast_.
-    float adaptiveThreshold = nmsThreshold;
+    float adaptiveThreshold = nmsThreshold;  // Copy of OpenCV NMSFast_
     std::vector<int> indices;
     for(const auto& scoreIndexPair : scoreIndexPairs) {
         const int idx = scoreIndexPair.second;
@@ -102,7 +89,6 @@ std::shared_ptr<dai::ImgDetections> createDetectionMessage(const std::vector<std
                                                            std::size_t segmentationMaskWidth,
                                                            std::size_t segmentationMaskHeight) {
     auto message = std::make_shared<dai::ImgDetections>();
-    // The mask is applied even when there are no detections, mirroring the source creator.
     if(!segmentationMask.empty()) {
         message->setSegmentationMask(segmentationMask, segmentationMaskWidth, segmentationMaskHeight);
     }

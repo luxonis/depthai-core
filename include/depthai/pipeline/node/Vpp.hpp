@@ -4,7 +4,6 @@
 #include <memory>
 #include <unordered_map>
 
-// shared
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/datatype/VppConfig.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
@@ -47,8 +46,7 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
    private:
-    // Own inactive inputs without exposing them to Sync; public references keep their addresses.
-    std::unordered_map<InputMap::key_type, Input, InputMap::hasher> unusedSyncInputs;
+    std::unordered_map<InputMap::key_type, Input, InputMap::hasher> unusedSyncInputs;  // Inactive inputs, kept out of Sync so public references stay valid
     bool hasDirectSyncedInput = false;
 
    public:

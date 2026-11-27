@@ -16,8 +16,7 @@ struct Values {
     double powerTofWatts = -1.0;
 };
 
-// Reads vendor counters without writing settings or resetting cumulative state.
-class Collector {
+class Collector {  // Read-only: does not write settings or reset cumulative counters
    public:
     explicit Collector(std::string sysfsRoot = "/sys", std::string debugfsRoot = "/sys/kernel/debug")
         : sysfsRoot(std::move(sysfsRoot)), debugfsRoot(std::move(debugfsRoot)) {}

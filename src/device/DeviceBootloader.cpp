@@ -1,44 +1,31 @@
 #include "device/DeviceBootloader.hpp"
 
-// std
 #include <fstream>
 
-// shared
+#include "XLink/XLink.h"
 #include "depthai-bootloader-shared/Bootloader.hpp"
 #include "depthai-bootloader-shared/SBR.h"
 #include "depthai-bootloader-shared/Structure.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
 #include "depthai/xlink/XLinkConstants.hpp"
-
-// project
+#include "spdlog/fmt/chrono.h"
+#include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
 #include "utility/Platform.hpp"
 #include "utility/Resources.hpp"
 #include "utility/spdlog-fmt.hpp"
 
-// libraries
-#include "XLink/XLink.h"
-#include "spdlog/fmt/chrono.h"
-#include "spdlog/spdlog.h"
-#include "utility/Logging.hpp"
-
 namespace dai {
 
-// Using
 namespace Request = bootloader::request;
 namespace Response = bootloader::response;
 
-// constants
 constexpr const DeviceBootloader::Type DeviceBootloader::DEFAULT_TYPE;
 constexpr const char* NETWORK_BOOTLOADER_FLASH_UTILITY_PATH = "depthai-core/utilities/flash_network_bootloader.py";
 constexpr const char* NETWORK_BOOTLOADER_DOCS_URL = "https://docs.luxonis.com/software-v3/depthai/depthai-components/bootloader";
 
-// static api
-
-// First tries to find UNBOOTED device, then BOOTLOADER device
 std::tuple<bool, DeviceInfo> DeviceBootloader::getFirstAvailableDevice() {
-    // Get all connected devices
     auto devices = XLinkConnection::getAllConnectedDevices();
-    // Search order - first unbooted, then bootloader and last flash booted
     for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
         for(const auto& device : devices) {
             if(device.state == searchState) {
@@ -49,7 +36,6 @@ std::tuple<bool, DeviceInfo> DeviceBootloader::getFirstAvailableDevice() {
     return {false, {}};
 }
 
-// Returns all devices which aren't already booted
 std::vector<DeviceInfo> DeviceBootloader::getAllAvailableDevices() {
     std::vector<DeviceInfo> availableDevices;
     auto connectedDevices = XLinkConnection::getAllConnectedDevices();
@@ -85,41 +71,30 @@ void DeviceBootloader::createWatchdog() {
         throw std::runtime_error("Watchdog already created. Destroy it first.");
     }
     watchdogRunning = true;
-    // Specify "last" ping time (5s in the future, for some grace time)
     {
         std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
         lastWatchdogPingTime = std::chrono::steady_clock::now() + std::chrono::seconds(5);
     }
-    // Create monitor thread
     monitorThread = std::thread([this]() {
         while(watchdogRunning) {
-            // Ping with a period half of that of the watchdog timeout
             std::this_thread::sleep_for(bootloader::XLINK_WATCHDOG_TIMEOUT);
-            // Check if wd was pinged in the specified watchdogTimeout time.
             decltype(lastWatchdogPingTime) prevPingTime;
             {
                 std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
                 prevPingTime = lastWatchdogPingTime;
             }
-            // Recheck if watchdogRunning wasn't already closed and close if more than twice of WD passed
-            // Bump checking thread to not cause spurious warnings/closes
-            std::chrono::milliseconds watchdogTimeout = std::chrono::milliseconds(3000);
+            std::chrono::milliseconds watchdogTimeout = std::chrono::milliseconds(3000);  // Raised to avoid spurious warnings and closes
             if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
                 logger::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.deviceId, deviceInfo.name);
-                // ping was missed, reset the device
                 watchdogRunning = false;
-                // close the underlying connection
                 connection->close();
             }
         }
     });
 
-    // prepare watchdog thread, which will keep device alive
     watchdogThread = std::thread([this]() {
         try {
-            // constructor often throws in quick start/stop scenarios because
-            // the connection is close()...usually by DeviceBootloader::close()
-            XLinkStream stream(connection, bootloader::XLINK_CHANNEL_WATCHDOG, 64);
+            XLinkStream stream(connection, bootloader::XLINK_CHANNEL_WATCHDOG, 64);  // Throws on quick start/stop: close() already closed the connection
             std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
             std::vector<uint8_t> reset = {1, 0, 0, 0};
             while(watchdogRunning) {
@@ -132,32 +107,24 @@ void DeviceBootloader::createWatchdog() {
                     std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
                     lastWatchdogPingTime = std::chrono::steady_clock::now();
                 }
-                // Ping with a period half of that of the watchdog timeout
                 std::this_thread::sleep_for(bootloader::XLINK_WATCHDOG_TIMEOUT / 2);
             }
 
             try {
-                // Send reset request
                 stream.write(reset);
-                // Dummy read (wait till link falls down)
-                const auto dummy = stream.readMove();
+                const auto dummy = stream.readMove();  // Waits until the link falls down
             } catch(const std::exception&) {
-                // ignore
             }
         } catch(const std::exception&) {
-            // ignore
         }
 
-        // Sleep a bit, so device isn't available anymore
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));  // So that the device is not available anymore
     });
 }
 
 void DeviceBootloader::destroyWatchdog() {
     watchdogRunning = false;
-    // Check & join previous thread
     if(watchdogThread.joinable()) watchdogThread.join();
-    // Check & join previous thread
     if(monitorThread.joinable()) monitorThread.join();
 }
 
@@ -167,7 +134,6 @@ void DeviceBootloader::init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std
 
     bootloaderType = type.value_or(DEFAULT_TYPE);
 
-    // If deviceInfo isn't fully specified (eg ANY_STATE, etc...), but id or name is - try finding it first
     if((deviceInfo.state == X_LINK_ANY_STATE || deviceInfo.protocol == X_LINK_ANY_PROTOCOL) && (!deviceInfo.deviceId.empty() || !deviceInfo.name.empty())) {
         deviceDesc_t foundDesc;
         auto ret = XLinkConnection::findFirstSuitableDevice(deviceInfo, foundDesc);
@@ -179,69 +145,45 @@ void DeviceBootloader::init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std
         }
     }
 
-    // Below can throw - make sure to gracefully exit threads
     try {
-        // Init device (if bootloader, handle correctly - issue USB boot command)
         if(deviceInfo.state == X_LINK_UNBOOTED) {
-            // Unbooted device found, boot to BOOTLOADER and connect with XLinkConnection constructor
             if(embeddedMvcmd) {
                 connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedBootloaderBinary(bootloaderType), X_LINK_BOOTLOADER);
             } else {
                 connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd, X_LINK_BOOTLOADER);
             }
 
-            // prepare bootloader stream
             stream = std::make_unique<XLinkStream>(connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 
-            // Prepare monitor & wd threads in case things go down
             createWatchdog();
 
-            // Retrieve bootloader version
             version = requestVersion();
 
-            // Device wasn't already in bootloader, that means that embedded bootloader is booted
             isEmbedded = true;
         } else if(deviceInfo.state == X_LINK_BOOTLOADER || deviceInfo.state == X_LINK_FLASH_BOOTED) {
-            // If device is in flash booted state, reset to bootloader and then continue by booting appropriate FW
             if(deviceInfo.state == X_LINK_FLASH_BOOTED) {
-                // Boot bootloader and set current deviceInfo to new device state
                 deviceInfo = XLinkConnection::bootBootloader(deviceInfo);
             }
 
-            // In this case boot specified bootloader only if current bootloader isn't of correct type
-            // Check version first, if >= 0.0.12 then check type and then either bootmemory to correct BL or continue as is
-
-            // Device already in bootloader mode.
-            // Connect without booting
             connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_BOOTLOADER);
 
-            // Prepare monitor & wd threads in case things go down
             createWatchdog();
 
-            // If type is specified, try to boot into that BL type
             stream = std::make_unique<XLinkStream>(connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 
-            // Retrieve bootloader version
             version = requestVersion();
             if(version >= Version(0, 0, 12)) {
-                // If version is adequate, do an in memory boot.
-
-                // Send request for bootloader type
                 if(!sendRequest(Request::GetBootloaderType{})) {
                     throw std::runtime_error("Error trying to connect to device");
                 }
-                // Receive response
                 Response::BootloaderType runningBootloaderType;
                 if(!receiveResponse(runningBootloaderType)) throw std::runtime_error("Error trying to connect to device");
 
-                // Modify actual bootloader type
                 bootloaderType = runningBootloaderType.type;
 
                 Type desiredBootloaderType = type.value_or(bootloaderType);
 
-                // If not correct type OR if allowFlashingBootloader is set, then boot internal (latest) bootloader of correct type
                 if((desiredBootloaderType != bootloaderType) || allowFlashingBootloader) {
-                    // Send request to boot firmware directly from bootloader
                     Request::BootMemory bootMemory;
                     auto binary = getEmbeddedBootloaderBinary(desiredBootloaderType);
                     bootMemory.totalSize = static_cast<uint32_t>(binary.size());
@@ -250,80 +192,55 @@ void DeviceBootloader::init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std
                         throw std::runtime_error("Error trying to connect to device");
                     }
 
-                    // After that send numPackets of data
                     stream->writeSplit(binary.data(), binary.size(), bootloader::XLINK_STREAM_MAX_SIZE);
-                    // Close existing stream first
                     stream = nullptr;
-                    // Stop watchdog
                     destroyWatchdog();
-                    // Close connection
                     connection->close();
 
-                    // Now reconnect
                     connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_BOOTLOADER);
 
-                    // Recreate watchdog - monitor & wd threads in case things go down
                     createWatchdog();
 
-                    // prepare new bootloader stream
                     stream = std::make_unique<XLinkStream>(connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 
-                    // Retrieve bootloader version
                     version = requestVersion();
 
-                    // The type of bootloader is now 'desiredBootloaderType'
                     bootloaderType = desiredBootloaderType;
 
-                    // Embedded bootloader was used to boot, set to true
                     isEmbedded = true;
                 } else {
-                    // Just connected to existing bootloader on device. Set embedded to false
                     isEmbedded = false;
                 }
 
             } else {
-                // If version isn't adequate to do an in memory boot - do regular Bootloader -> USB ROM -> Boot transition.
-                Type desiredBootloaderType = type.value_or(Type::USB);
+                Type desiredBootloaderType = type.value_or(Type::USB);  // Too old for an in memory boot: Bootloader -> USB ROM -> Boot
 
-                // If not correct type OR if allowFlashingBootloader is set, then boot internal (latest) bootloader of correct type
                 if((desiredBootloaderType != Type::USB) || allowFlashingBootloader) {
-                    // Send request to jump to USB bootloader
-                    // Boot into USB ROM BOOTLOADER NOW
                     if(!sendRequest(Request::UsbRomBoot{})) {
                         throw std::runtime_error("Error trying to connect to device");
                     }
-                    // Close existing stream first
                     stream = nullptr;
-                    // Close connection
                     connection->close();
 
-                    // Now reconnect
-                    // Unbooted device found, boot to BOOTLOADER and connect with XLinkConnection constructor
                     if(embeddedMvcmd) {
                         connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedBootloaderBinary(desiredBootloaderType), X_LINK_BOOTLOADER);
                     } else {
                         connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd, X_LINK_BOOTLOADER);
                     }
 
-                    // Prepare monitor & wd threads in case things go down
                     createWatchdog();
 
-                    // prepare bootloader stream
                     stream = std::make_unique<XLinkStream>(connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 
-                    // Retrieve bootloader version
                     version = requestVersion();
 
-                    // The type of bootloader is now 'desiredBootloaderType'
                     bootloaderType = desiredBootloaderType;
 
-                    // Embedded bootloader was used to boot, set to true
                     isEmbedded = true;
 
                 } else {
                     bootloaderType = dai::bootloader::Type::USB;
 
-                    // Just connected to existing bootloader on device. Set embedded to false
                     isEmbedded = false;
                 }
             }
@@ -334,7 +251,6 @@ void DeviceBootloader::init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std
 
         deviceInfo.state = X_LINK_BOOTLOADER;
 
-        // Bootloader device ready, check for version
         logger::debug("Connected bootloader version {}", version.toString());
         if(getType() == Type::NETWORK && getEmbeddedBootloaderVersion() > version) {
             logger::warn(
@@ -348,43 +264,28 @@ void DeviceBootloader::init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std
         }
 
     } catch(...) {
-        // catchall, to properly close the threads as we are in constructor context
-        destroyWatchdog();
-        // Rethrow original exception
+        destroyWatchdog();  // Constructor context: close the threads here
         throw;
     }
 }
 
 void DeviceBootloader::close() {
-    // Only allow to close once
     if(closed.exchange(true)) return;
 
     using namespace std::chrono;
     auto t1 = steady_clock::now();
     logger::debug("DeviceBootloader about to be closed...");
 
-    // Close connection first; causes Xlink internal calls to unblock semaphore waits and
-    // return error codes, which then allows queues to unblock
-    // always manage ownership because other threads (e.g. watchdog) are running and need to
-    // keep the shared_ptr valid (even if closed). Otherwise leads to using null pointers,
-    // invalid memory, etc. which hard crashes main app
-    connection->close();
+    connection->close();  // Close first: XLink calls then unblock semaphore waits, which unblocks the queues
 
-    // destroy Watchdog
     destroyWatchdog();
 
-    // Close stream
-    // BUGBUG investigate ownership; can another thread accessing this at the same time?
     stream = nullptr;
 
     logger::debug("DeviceBootloader closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
 }
 
-// This function is thread-unsafe. The idea of "isClosed" is ephemerial and
-// is invalid even within this function between the evaluation of the logical OR.
-// The calculated boolean and then then return by value continue to degrade in
-// validity to the caller
-bool DeviceBootloader::isClosed() const {
+bool DeviceBootloader::isClosed() const {  // The result can be stale as soon as it returns
     return closed || !watchdogRunning;
 }
 
@@ -401,12 +302,10 @@ DeviceBootloader::Version DeviceBootloader::getVersion() const {
 }
 
 DeviceBootloader::Version DeviceBootloader::requestVersion() {
-    // Send request to retrieve bootloader version
     if(!sendRequest(Request::GetBootloaderVersion{})) {
         throw std::runtime_error("Couldn't get bootloader version");
     }
 
-    // Receive response
     Response::BootloaderVersion ver;
     if(!receiveResponse(ver)) {
         throw std::runtime_error("Couldn't parse version response");
@@ -415,11 +314,9 @@ DeviceBootloader::Version DeviceBootloader::requestVersion() {
     Version blVersion(ver.major, ver.minor, ver.patch);
 
     if(blVersion >= Version(Request::GetBootloaderCommit::VERSION)) {
-        // Send request to retrieve bootloader commit (skip version check)
         Request::GetBootloaderCommit request{};
         stream->write({(uint8_t*)&request, sizeof(request)});
 
-        // Receive response
         Response::BootloaderCommit commit;
         if(!receiveResponse(commit)) {
             throw std::runtime_error("Couldn't get bootloader commit");
@@ -440,23 +337,19 @@ bool DeviceBootloader::isAllowedFlashingBootloader() const {
 }
 
 DeviceBootloader::ApplicationInfo DeviceBootloader::readApplicationInfo(Memory mem) {
-    // Send request to retrieve bootloader version
     Request::GetApplicationDetails appDetails;
     appDetails.memory = mem;
 
     sendRequestThrow(appDetails);
 
-    // Receive response
     Response::ApplicationDetails details;
     receiveResponseThrow(details);
 
-    // Set default values
     ApplicationInfo info;
     info.memory = mem;
     info.firmwareVersion = "";
     info.applicationName = "";
 
-    // Fill out details
     info.hasApplication = details.hasApplication;
     if(details.hasFirmwareVersion) {
         info.firmwareVersion = std::string(details.firmwareVersionStr);
@@ -474,16 +367,13 @@ DeviceBootloader::ApplicationInfo DeviceBootloader::readApplicationInfo(Memory m
 
 DeviceBootloader::MemoryInfo DeviceBootloader::getMemoryInfo(Memory memory) {
     if(memory == Memory::EMMC && bootloaderType == Type::USB) {
-        // Warn, as result of "no emmc" might be deceiving
         logger::warn("USB Bootloader type does NOT support eMMC");
     }
 
-    // Send request to retrieve bootloader version
     Request::GetMemoryDetails req{};
     req.memory = memory;
     sendRequestThrow(req);
 
-    // Receive response
     Response::MemoryDetails details;
     receiveResponseThrow(details);
 
@@ -496,12 +386,10 @@ DeviceBootloader::MemoryInfo DeviceBootloader::getMemoryInfo(Memory memory) {
 }
 
 bool DeviceBootloader::isUserBootloaderSupported() {
-    // Check that type is NETWORK
     if(getType() != Type::NETWORK) {
         return false;
     }
 
-    // Check if bootloader version is adequate
     if(getVersion() < Version(Request::IsUserBootloader::VERSION)) {
         return false;
     }
@@ -510,16 +398,13 @@ bool DeviceBootloader::isUserBootloaderSupported() {
 }
 
 bool DeviceBootloader::isUserBootloader() {
-    // Check if bootloader version is adequate
     if(getVersion() < Version(Request::IsUserBootloader::VERSION)) {
         return false;
     }
 
-    // Send request to retrieve if user bootloader is loaded
     Request::IsUserBootloader req{};
     sendRequestThrow(req);
 
-    // Receive response
     Response::IsUserBootloader user;
     receiveResponseThrow(user);
 
@@ -539,17 +424,14 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(const std::funct
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, Type type, std::function<void(float)> progressCb, const fs::path& path) {
-    // Check if 'allowFlashingBootloader' is set to true.
     if(!allowFlashingBootloader) {
         throw std::invalid_argument("DeviceBootloader wasn't initialized to allow flashing bootloader. Set 'allowFlashingBootloader' in constructor");
     }
 
-    // Set specific type if AUTO
     if(type == Type::AUTO) {
         type = getType();
     }
 
-    // Only flash memory is supported for now
     if(memory != Memory::FLASH) {
         throw std::invalid_argument("Only FLASH memory is supported for now");
     }
@@ -566,12 +448,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
         package = getEmbeddedBootloaderBinary(type);
     }
 
-    // If booted and desired bootloader types don't match
-    // Use UpdateFlashEx2 instead to properly flash
-    if(bootloaderType == type) {
-        // Old command
-
-        // send request to FLASH BOOTLOADER
+    if(bootloaderType == type) {  // Different types need UpdateFlashEx2 to flash properly
         Request::UpdateFlash updateFlash;
         updateFlash.storage = Request::UpdateFlash::BOOTLOADER;
         updateFlash.totalSize = static_cast<uint32_t>(package.size());
@@ -579,7 +456,6 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
         if(!sendRequest(updateFlash)) return {false, "Couldn't send bootloader flash request"};
 
     } else {
-        // send request to FLASH BOOTLOADER
         Request::UpdateFlashEx2 updateFlashEx2;
         updateFlashEx2.memory = memory;
         updateFlashEx2.offset = dai::bootloader::getStructure(type).offset.at(Section::BOOTLOADER);
@@ -588,11 +464,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
         if(!sendRequest(updateFlashEx2)) return {false, "Couldn't send bootloader flash request"};
     }
 
-    // After that send numPackets of data
     stream->writeSplit(package.data(), package.size(), bootloader::XLINK_STREAM_MAX_SIZE);
 
-    // Then wait for response by bootloader
-    // Wait till FLASH_COMPLETE response
     Response::FlashComplete result;
     result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
     result.errorMsg[0] = 0;
@@ -602,42 +475,31 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
 
         Response::FlashStatusUpdate update;
         if(parseResponse(data, update)) {
-            // if progress callback is set
             if(progressCb != nullptr) {
                 progressCb(update.progress);
             }
-            // if flash complete response arrived, break from while loop
         } else if(parseResponse(data, result)) {
             break;
         } else {
-            // Unknown response, shouldn't happen
             return {false, "Unknown response from bootloader while flashing"};
         }
 
     } while(true);
 
-    // Return if flashing was successful
     return {result.success, result.errorMsg};
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::function<void(float)> progressCb, const fs::path& path) {
-    // Check that type is NETWORK
     const auto type = Type::NETWORK;
     if(getType() != Type::NETWORK) {
         throw std::runtime_error("Flashing User Bootloader is only available for NETWORK bootloaders");
     }
-    // Only flash memory is supported for now
     const auto memory = Memory::FLASH;
-    // if(memory != Memory::FLASH) {
-    //     throw std::invalid_argument("Only FLASH memory is supported for now");
-    // }
 
-    // Check if bootloader version is adequate
     if(getVersion() < Version(Request::IsUserBootloader::VERSION)) {
         throw std::runtime_error("Current bootloader version doesn't support User Bootloader");
     }
 
-    // Retrieve bootloader
     std::vector<uint8_t> package;
     if(!path.empty()) {
         std::ifstream fwStream(path, std::ios::binary);
@@ -647,14 +509,12 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
         package = getEmbeddedBootloaderBinary(type);
     }
 
-    // Send request to FLASH USER BOOTLOADER
     Request::UpdateFlashEx2 updateFlashEx2;
     updateFlashEx2.memory = memory;
     updateFlashEx2.offset = dai::bootloader::getStructure(type).offset.at(Section::USER_BOOTLOADER);
     updateFlashEx2.totalSize = static_cast<uint32_t>(package.size());
     updateFlashEx2.numPackets = ((static_cast<uint32_t>(package.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
 
-    // Checks first
     const auto MAX_USER_BOOTLOADER_SIZE = dai::bootloader::getStructure(type).size.at(Section::USER_BOOTLOADER);
     if(static_cast<long>(updateFlashEx2.totalSize) > MAX_USER_BOOTLOADER_SIZE) {
         throw std::runtime_error(fmt::format("Selected User Bootloader is too large {} / {}B", updateFlashEx2.totalSize, MAX_USER_BOOTLOADER_SIZE));
@@ -662,11 +522,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
 
     if(!sendRequest(updateFlashEx2)) return {false, "Couldn't send bootloader flash request"};
 
-    // After that send numPackets of data
     stream->writeSplit(package.data(), package.size(), bootloader::XLINK_STREAM_MAX_SIZE);
 
-    // Then wait for response by bootloader
-    // Wait till FLASH_COMPLETE response
     Response::FlashComplete result;
     result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
     result.errorMsg[0] = 0;
@@ -676,40 +533,31 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
 
         Response::FlashStatusUpdate update;
         if(parseResponse(data, update)) {
-            // if progress callback is set
             if(progressCb != nullptr) {
                 progressCb(update.progress);
             }
-            // if flash complete response arrived, break from while loop
         } else if(parseResponse(data, result)) {
             break;
         } else {
-            // Unknown response, shouldn't happen
             return {false, "Unknown response from bootloader while flashing"};
         }
 
     } while(true);
 
-    // Do not register a user bootloader that the device failed to write or
-    // verify. The factory bootloader remains selected as the safe fallback.
-    if(!result.success) {
+    if(!result.success) {  // Do not register a failed user bootloader: the factory one stays the fallback
         return {false, result.errorMsg};
     }
 
-    // Calculate checksum and update config
-    // Try reading existing config, or create a new one
     nlohmann::json configJson;
     try {
         configJson = readConfigData();
     } catch(const std::exception& ex) {
         logger::debug("Error while trying to read existing bootloader configuration: {}", ex.what());
     }
-    // Set the userBl fields (in forward/backward compat manner)
     const auto userBlSize = static_cast<std::uint32_t>(package.size());
     const auto userBlChecksum = sbr_compute_checksum(package.data(), static_cast<uint32_t>(package.size()));
     configJson["userBlSize"] = userBlSize;
     configJson["userBlChecksum"] = userBlChecksum;
-    // Flash back the rest of configuration as is
     bool success;
     std::string errorMsg;
     std::tie(success, errorMsg) = flashConfigData(configJson);
@@ -719,7 +567,6 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
         throw std::runtime_error(errorMsg);
     }
 
-    // Return if flashing was successful
     return {result.success, result.errorMsg};
 }
 
@@ -731,7 +578,6 @@ std::tuple<bool, std::string> DeviceBootloader::flashGpioModeBootHeader(Memory m
     updateBootHeader.type = Request::UpdateFlashBootHeader::GPIO_MODE;
     updateBootHeader.gpioMode = gpioMode;
 
-    // Send & Get response
     if(!sendRequest(updateBootHeader)) return {false, "Couldn't send request to flash boot header"};
     Response::FlashComplete resp = {};
     receiveResponse(resp);
@@ -745,7 +591,6 @@ std::tuple<bool, std::string> DeviceBootloader::flashUsbRecoveryBootHeader(Memor
     Request::UpdateFlashBootHeader updateBootHeader;
     updateBootHeader.type = Request::UpdateFlashBootHeader::USB_RECOVERY;
 
-    // Send & Get response
     if(!sendRequest(updateBootHeader)) return {false, "Couldn't send request to flash boot header"};
     Response::FlashComplete resp = {};
     receiveResponse(resp);
@@ -762,10 +607,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootHeader(Memory memory, i
     updateBootHeader.location = location;
     updateBootHeader.dummyCycles = dummyCycles;
     updateBootHeader.frequency = frequency;
-    // Set optimized gpio boot mode, which allows changing above parameters
-    updateBootHeader.gpioMode = 0x7;
+    updateBootHeader.gpioMode = 0x7;  // 0x7: optimized GPIO boot mode, which allows the above parameters
 
-    // Send & Get response
     if(!sendRequest(updateBootHeader)) return {false, "Couldn't send request to flash boot header"};
     Response::FlashComplete resp = {};
     receiveResponse(resp);
@@ -782,10 +625,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashFastBootHeader(Memory memor
     updateBootHeader.location = location;
     updateBootHeader.dummyCycles = dummyCycles;
     updateBootHeader.frequency = frequency;
-    // Set optimized gpio boot mode, which allows changing above parameters
-    updateBootHeader.gpioMode = 0x7;
+    updateBootHeader.gpioMode = 0x7;  // 0x7: optimized GPIO boot mode, which allows the above parameters
 
-    // Send & Get response
     if(!sendRequest(updateBootHeader)) return {false, "Couldn't send request to flash boot header"};
     Response::FlashComplete resp = {};
     receiveResponse(resp);
@@ -816,24 +657,18 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory,
 }
 std::tuple<bool, std::string> DeviceBootloader::flashCustom(
     Memory memory, size_t offset, const uint8_t* data, size_t size, std::string filename, std::function<void(float)> progressCb) {
-    // // Only flash memory is supported for now
-    // if(memory != Memory::FLASH) {
-    //     throw std::invalid_argument("Only FLASH memory is supported for now");
-    // }
     if(getVersion() < Version(0, 0, 12)) {
         throw std::runtime_error("Current bootloader version doesn't support custom flashing");
     }
 
     std::vector<uint8_t> optFileData;
     if(!filename.empty()) {
-        // Read file into memory first
         std::ifstream optFile(filename, std::ios::in | std::ios::binary);
         optFileData = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(optFile), {});
         data = optFileData.data();
         size = optFileData.size();
     }
 
-    // send request to FLASH BOOTLOADER
     Request::UpdateFlashEx2 updateFlashEx2;
     updateFlashEx2.memory = memory;
     updateFlashEx2.offset = static_cast<uint32_t>(offset);
@@ -841,11 +676,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(
     updateFlashEx2.numPackets = ((static_cast<uint32_t>(size) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
     if(!sendRequest(updateFlashEx2)) return {false, "Couldn't send bootloader flash request"};
 
-    // After that send numPackets of data
     stream->writeSplit(data, size, bootloader::XLINK_STREAM_MAX_SIZE);
 
-    // Then wait for response by bootloader
-    // Wait till FLASH_COMPLETE response
     Response::FlashComplete result;
     result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
     result.errorMsg[0] = 0;
@@ -855,27 +687,22 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(
 
         Response::FlashStatusUpdate update;
         if(parseResponse(responseData, update)) {
-            // if progress callback is set
             if(progressCb != nullptr) {
                 progressCb(update.progress);
             }
-            // if flash complete response arrived, break from while loop
         } else if(parseResponse(responseData, result)) {
             break;
         } else {
-            // Unknown response, shouldn't happen
             return {false, "Unknown response from bootloader while flashing"};
         }
 
     } while(true);
 
-    // Return if flashing was successful
     return {result.success, result.errorMsg};
 }
 
 std::tuple<bool, std::string> DeviceBootloader::readCustom(
     Memory memory, size_t offset, size_t size, std::vector<uint8_t>& data, const std::function<void(float)>& progressCb) {
-    // Resize container if not too small
     if(data.size() < size) {
         data.resize(size);
     }
@@ -900,29 +727,19 @@ std::tuple<bool, std::string, std::vector<uint8_t>> DeviceBootloader::readCustom
 
 std::tuple<bool, std::string> DeviceBootloader::readCustom(
     Memory memory, size_t offset, size_t size, uint8_t* data, std::string filename, std::function<void(float)> progressCb) {
-    // // Only flash memory is supported for now
-    // if(memory != Memory::FLASH) {
-    //     throw std::invalid_argument("Only FLASH memory is supported for now");
-    // }
-
-    // send request to Read Flash
     Request::ReadFlash readFlash;
     readFlash.memory = memory;
     readFlash.offset = static_cast<uint32_t>(offset);
     readFlash.totalSize = static_cast<uint32_t>(size);
     if(!sendRequest(readFlash)) return {false, "Couldn't send bootloader flash request"};
 
-    // Then wait for response by bootloader
     Response::ReadFlash response;
     receiveResponse(response);
-    // If error
     if(!response.success) {
         return {false, std::string(response.errorMsg)};
     }
 
-    // Read numPackets of data
     if(filename.empty()) {
-        // Read to buffer
         size_t dataOffset = 0;
         for(unsigned i = 0; i < response.numPackets; i++) {
             auto d = stream->read();
@@ -931,7 +748,6 @@ std::tuple<bool, std::string> DeviceBootloader::readCustom(
             if(progressCb) progressCb((1.0f / response.numPackets) * (i + 1));
         }
     } else {
-        // Write to file
         std::ofstream outputFile(filename);
         for(unsigned i = 0; i < response.numPackets; i++) {
             auto d = stream->read();
@@ -940,12 +756,10 @@ std::tuple<bool, std::string> DeviceBootloader::readCustom(
         }
     }
 
-    // Return if flashing was successful
     return {response.success, response.errorMsg};
 }
 
 nlohmann::json DeviceBootloader::readConfigData(Memory memory, Type type) {
-    // Send request to GET_BOOTLOADER_CONFIG
     Request::GetBootloaderConfig getConfigReq;
     getConfigReq.memory = memory;
 
@@ -954,20 +768,16 @@ nlohmann::json DeviceBootloader::readConfigData(Memory memory, Type type) {
         getConfigReq.offset = confStructure.offset.at(bootloader::Section::BOOTLOADER_CONFIG);
         getConfigReq.maxSize = confStructure.size.at(bootloader::Section::BOOTLOADER_CONFIG);
     } else {
-        // leaves as default values, which correspond to AUTO
-    }
+    }  // Default values mean AUTO
 
     sendRequestThrow(getConfigReq);
 
-    // Get response
     Response::GetBootloaderConfig resp;
     resp.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
 
     receiveResponseThrow(resp);
     if(resp.success) {
-        // Read back bootloader config (1 packet max)
-        auto bsonConfig = stream->read();
-        // Parse from BSON
+        auto bsonConfig = stream->read();  // One packet max
         return nlohmann::json::from_bson(bsonConfig);
     } else {
         throw std::runtime_error(resp.errorMsg);
@@ -975,7 +785,6 @@ nlohmann::json DeviceBootloader::readConfigData(Memory memory, Type type) {
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashConfigClear(Memory memory, Type type) {
-    // send request to SET_BOOTLOADER_CONFIG
     Request::SetBootloaderConfig setConfigReq;
     setConfigReq.memory = memory;
     if(type != Type::AUTO) {
@@ -987,7 +796,6 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigClear(Memory memory, 
     setConfigReq.clearConfig = 1;
     if(!sendRequest(setConfigReq)) return {false, "Couldn't send request to flash configuration clear"};
 
-    // Read back response
     Response::FlashComplete result;
     result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
     result.errorMsg[0] = 0;
@@ -995,15 +803,12 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigClear(Memory memory, 
         return {false, "Couldn't receive response to flash configuration clear"};
     }
 
-    // Return if flashing was successful
     return {result.success, result.errorMsg};
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashConfigData(const nlohmann::json& configData, Memory memory, Type type) {
-    // Parse to BSON
     auto bson = nlohmann::json::to_bson(configData);
 
-    // Send request to SET_BOOTLOADER_CONFIG
     Request::SetBootloaderConfig setConfigReq;
     setConfigReq.memory = memory;
     if(type != Type::AUTO) {
@@ -1014,10 +819,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigData(const nlohmann::
     setConfigReq.clearConfig = 0;
     if(!sendRequest(setConfigReq)) return {false, "Couldn't send request to flash configuration data"};
 
-    // Send 1 packet, of bson config data
     stream->write(bson);
 
-    // Read back response
     Response::FlashComplete result;
     result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
     result.errorMsg[0] = 0;
@@ -1025,12 +828,10 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigData(const nlohmann::
         return {false, "Couldn't receive response to flash configuration data"};
     }
 
-    // Return if flashing was successful
     return {result.success, result.errorMsg};
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashConfigFile(const fs::path& configPath, Memory memory, Type type) {
-    // read a JSON file
     std::ifstream configInputStream(configPath);
     if(!configInputStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash configuration, JSON at path: {} doesn't exist", configPath));
     nlohmann::json configJson;
@@ -1047,9 +848,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfig(const Config& config
     return flashConfigData(config.toJson(), memory, type);
 }
 
-// Boot memory
 void DeviceBootloader::bootMemory(const std::vector<uint8_t>& embeddedFw) {
-    // Send request to boot firmware directly from bootloader
     Request::BootMemory bootMemory;
     bootMemory.totalSize = static_cast<uint32_t>(embeddedFw.size());
     bootMemory.numPackets = ((static_cast<uint32_t>(embeddedFw.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
@@ -1057,28 +856,22 @@ void DeviceBootloader::bootMemory(const std::vector<uint8_t>& embeddedFw) {
         throw std::runtime_error("Error trying to connect to device");
     }
 
-    // After that send numPackets of data
     stream->writeSplit(embeddedFw.data(), embeddedFw.size(), bootloader::XLINK_STREAM_MAX_SIZE);
 
-    // Then wait for the link to fall down
-    try {
+    try {  // Waits until the link falls down
         stream->read();
     } catch(const std::exception&) {
-        // ignore
     }
 }
 
 void DeviceBootloader::bootUsbRomBootloader() {
-    // Boot into USB ROM BOOTLOADER now
     if(!sendRequest(Request::UsbRomBoot{})) {
         throw std::runtime_error("Error trying to connect to device");
     }
 
-    // Then wait for the link to fall down
-    try {
+    try {  // Waits until the link falls down
         stream->read();
     } catch(const std::exception&) {
-        // ignore
     }
 }
 
@@ -1094,7 +887,6 @@ template <typename T>
 bool DeviceBootloader::sendRequest(const T& request) {
     if(stream == nullptr) return false;
 
-    // Do a version check beforehand (compare just the semver)
     if(getVersion() < Version(T::VERSION)) {
         throw std::runtime_error(
             fmt::format("Bootloader version {} required to send request '{}'. Current version {}", T::VERSION, T::NAME, getVersion().toString()));
@@ -1113,7 +905,6 @@ template <typename T>
 void DeviceBootloader::sendRequestThrow(const T& request) {
     if(stream == nullptr) throw std::runtime_error("Couldn't send request. Stream is null");
 
-    // Do a version check beforehand (compare just the semver)
     if(getVersion() < Version(T::VERSION)) {
         throw std::runtime_error(
             fmt::format("Bootloader version {} required to send request '{}'. Current version {}", T::VERSION, T::NAME, getVersion().toString()));
@@ -1135,14 +926,12 @@ bool DeviceBootloader::receiveResponseData(std::vector<uint8_t>& data) {
 
 template <typename T>
 bool DeviceBootloader::parseResponse(const std::vector<uint8_t>& data, T& response) {
-    // Checks that 'data' is type T
     Response::Command command;
     if(data.size() < sizeof(command)) return false;
     memcpy(&command, data.data(), sizeof(command));
     if(response.cmd != command) return false;
     if(data.size() < sizeof(response)) return false;
 
-    // If yes, memcpy to response
     memcpy(&response, data.data(), sizeof(response));
     return true;
 }
@@ -1150,11 +939,9 @@ bool DeviceBootloader::parseResponse(const std::vector<uint8_t>& data, T& respon
 template <typename T>
 bool DeviceBootloader::receiveResponse(T& response) {
     if(stream == nullptr) return false;
-    // Receive data first
     std::vector<uint8_t> data;
     if(!receiveResponseData(data)) return false;
 
-    // Then try to parse
     if(!parseResponse(data, response)) return false;
 
     return true;
@@ -1164,19 +951,16 @@ template <typename T>
 void DeviceBootloader::receiveResponseThrow(T& response) {
     if(stream == nullptr) throw std::runtime_error("Couldn't receive response. Stream is null");
 
-    // Receive data first
     std::vector<uint8_t> data;
     if(!receiveResponseData(data)) {
         throw std::runtime_error("Couldn't receive " + std::string(T::NAME) + " response");
     }
 
-    // Then try to parse
     if(!parseResponse(data, response)) {
         throw std::runtime_error("Couldn't parse " + std::string(T::NAME) + " response");
     }
 }
 
-// Config functions
 void DeviceBootloader::Config::setStaticIPv4(const std::string& ip, const std::string& mask, const std::string& gateway) {
     network.ipv4 = platform::getIPv4AddressAsBinary(ip);
     network.ipv4Mask = platform::getIPv4AddressAsBinary(mask);
@@ -1251,11 +1035,9 @@ void DeviceBootloader::Config::setMacAddress(const std::string& mac) {
         }
     }
 
-    // Set the parsed mac address
     network.mac = a;
 }
 std::string DeviceBootloader::Config::getMacAddress() {
-    // 32 characters is adequite for MAC address representation
     std::array<char, 32> macStr = {};
     std::snprintf(macStr.data(),
                   macStr.size(),
@@ -1271,7 +1053,6 @@ std::string DeviceBootloader::Config::getMacAddress() {
 }
 
 nlohmann::json DeviceBootloader::Config::toJson() const {
-    // Get current config & add data (but don't override)
     nlohmann::json configValues = *this;
     auto dataCopy = data;
     dataCopy.update(configValues);
@@ -1279,10 +1060,8 @@ nlohmann::json DeviceBootloader::Config::toJson() const {
 }
 
 DeviceBootloader::Config DeviceBootloader::Config::fromJson(const nlohmann::json& json) {
-    // Parse out json (implicitly) and
     Config cfg = json;
-    // save json data as is (to retain unknown values)
-    cfg.data = json;
+    cfg.data = json;  // Keeps unknown values
     return cfg;
 }
 

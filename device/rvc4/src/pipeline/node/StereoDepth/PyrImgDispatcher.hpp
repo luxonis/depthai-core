@@ -28,7 +28,6 @@ struct PyrImgConfig {
     dai::gate::ScaledownInterpolation eDsInterpolation = dai::gate::ScaledownInterpolation::BILINEAR;
 };
 
-/// The hardware image pyramid (accelerator) of the vendor module: dai_device_pyrimg_* of vendor/dai_device_accel.h
 class PyrImgDispatcher {
    public:
     PyrImgDispatcher();
@@ -45,13 +44,10 @@ class PyrImgDispatcher {
     uint32_t Config(PyrImgConfig& c);
     uint32_t Close();
 
-    /// Minimum size in bytes of the output frame buffer of a pyramid level; valid after Init
-    uint32_t GetMinPyrImgBytes(int level = 1) const;
+    uint32_t GetMinPyrImgBytes(int level = 1) const;  // Valid only after Init
 
    private:
-    // The accelerator buffers of the last RunAsync: the hardware uses them until Wait
-    std::shared_ptr<dai::AcceleratorMemory> inMem;
+    std::shared_ptr<dai::AcceleratorMemory> inMem;  // Kept alive: the hardware uses them from RunAsync until Wait
     std::vector<std::shared_ptr<dai::AcceleratorMemory>> outMems;
-    // Declared last: destroyed (and closed) before the buffers are released
-    std::unique_ptr<dai_device_pyrimg, void (*)(dai_device_pyrimg*)> handle;
+    std::unique_ptr<dai_device_pyrimg, void (*)(dai_device_pyrimg*)> handle;  // Declared last: closed before the buffers above are released
 };

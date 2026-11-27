@@ -1,6 +1,5 @@
 #pragma once
 
-// libraries
 #include "depthai/pipeline/node/AprilTag.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 

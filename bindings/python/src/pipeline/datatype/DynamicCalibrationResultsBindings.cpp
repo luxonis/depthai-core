@@ -6,7 +6,6 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 
@@ -16,7 +15,6 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
     using namespace pybind11::literals;
     namespace py = pybind11;
 
-    // CoverageData
     py::class_<CoverageData, Py<CoverageData>, Buffer, py::smart_holder> coverageData(m, "CoverageData");
     py::class_<CoverageData::MarkerCoverage>(coverageData, "MarkerCoverage", DOC(dai, CoverageData, MarkerCoverage))
         .def(py::init<>())
@@ -36,7 +34,6 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
         .def_readwrite("coverageAcquired", &CoverageData::coverageAcquired)
         .def_readwrite("markers", &CoverageData::markers, DOC(dai, CoverageData, markers));
 
-    // CalibrationQuality::Data
     py::class_<CalibrationQuality::Data>(m, "CalibrationQualityData")
         .def(py::init<>())
         .def_readwrite("rotationChange", &CalibrationQuality::Data::rotationChange)              // std::array<float,3>
@@ -45,7 +42,6 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
         .def_readwrite("sampsonErrorNew", &CalibrationQuality::Data::sampsonErrorNew)
         .def_readwrite("pairwiseRotationDifference", &CalibrationQuality::Data::pairwiseRotationDifference);
 
-    // CalibrationQuality
     py::class_<CalibrationQuality, Py<CalibrationQuality>, Buffer, py::smart_holder>(m, "CalibrationQuality")
         .def(py::init<>())
         .def(py::init<CalibrationQuality::Data, std::string>(), "qualityData"_a, "info"_a)
@@ -58,7 +54,6 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
         .def_readwrite("calibrationConfidence", &CalibrationMetrics::calibrationConfidence)
         .def_readwrite("dataConfidence", &CalibrationMetrics::dataConfidence);
 
-    // DynamicCalibrationResult::Data
     py::class_<DynamicCalibrationResult::Data>(m, "DynamicCalibrationResultData")
         .def(py::init<>())
         .def_readwrite("newCalibration", &DynamicCalibrationResult::Data::newCalibration)                // dai::CalibrationHandler
@@ -66,7 +61,6 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
         .def_readwrite("calibrationDifference", &DynamicCalibrationResult::Data::calibrationDifference)  // CalibrationQuality::Data
         .def_readwrite("dataConfidence", &DynamicCalibrationResult::Data::dataConfidence);
 
-    // DynamicCalibrationResult
     py::class_<DynamicCalibrationResult, Py<DynamicCalibrationResult>, Buffer, py::smart_holder>(m, "DynamicCalibrationResult")
         .def(py::init<>())
         .def(py::init<DynamicCalibrationResult::Data, std::string>(), "data"_a, "info"_a)
@@ -74,9 +68,6 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
         .def_readwrite("calibrationData", &DynamicCalibrationResult::calibrationData)  // std::optional<Data>
         .def_readwrite("info", &DynamicCalibrationResult::info);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();

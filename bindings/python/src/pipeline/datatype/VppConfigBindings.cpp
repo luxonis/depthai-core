@@ -4,10 +4,8 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/VppConfig.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
@@ -15,13 +13,11 @@ void bind_vppconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace pybind11::literals;
 
-    // 1. First, define the VppConfig class object so we can attach things to it
     py::class_<VppConfig, Py<VppConfig>, Buffer, py::smart_holder> vppConfig(m, "VppConfig", DOC(dai, VppConfig));
 
     py::enum_<VppConfig::PatchColoringType> patchColoringType(vppConfig, "PatchColoringType", DOC(dai, VppConfig, PatchColoringType));
     py::class_<VppConfig::InjectionParameters> injectionParameters(vppConfig, "InjectionParameters", DOC(dai, VppConfig, InjectionParameters));
 
-    // 4. Handle DepthAI callstack logic
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
@@ -75,7 +71,6 @@ void bind_vppconfig(pybind11::module& m, void* pCallstack) {
             return "<VppInjectionParameters useInjection=" + std::to_string(p.useInjection) + "...>";  // Simplified for brevity
         });
 
-    // VppConfig methods and properties
     vppConfig.def(py::init<>())
         .def("getBlending", &dai::VppConfig::getBlending, DOC(dai, VppConfig, getBlending))
         .def("setBlending", &dai::VppConfig::setBlending, py::arg("value"), DOC(dai, VppConfig, setBlending))

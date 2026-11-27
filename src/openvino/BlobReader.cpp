@@ -75,21 +75,18 @@ void BlobReader::parse(const std::vector<std::uint8_t>& blob) {
             c = readFromBlob<char>(blob, ioSectionOffset);
         }
 
-        // Truncate zeros
-        ioName = ioName.c_str();
+        ioName = ioName.c_str();  // Drops the trailing zeros: c_str() ends at the first NUL
 
         auto dataType = static_cast<TensorInfo::DataType>(readFromBlob<int32_t>(blob, ioSectionOffset));
         auto orderCode = static_cast<TensorInfo::StorageOrder>(readFromBlob<uint32_t>(blob, ioSectionOffset));
 
         auto numDims = readFromBlob<uint32_t>(blob, ioSectionOffset);
 
-        // ignore
         readFromBlob<int32_t>(blob, ioSectionOffset);
 
         auto dimsOffset = blobHeader.const_data_section_offset + readFromBlob<uint32_t>(blob, ioSectionOffset);
 
-        // Skip strides' location and offset
-        ioSectionOffset += 2 * sizeof(uint32_t);
+        ioSectionOffset += 2 * sizeof(uint32_t);  // Skips the strides' location and offset
 
         std::vector<unsigned> dims;
         for(unsigned i = 0; i < numDims; ++i) {
@@ -111,7 +108,6 @@ void BlobReader::parse(const std::vector<std::uint8_t>& blob) {
     for(uint32_t i = 0; i < blobHeader.inputs_count; i++) {
         const auto processedInput = readIO(inputInfoSecOffset, i);
         if(!isIOShapeName(processedInput.name)) {
-            // Add to inputs
             networkInputs[processedInput.name] = processedInput;
         }
     }
@@ -120,7 +116,6 @@ void BlobReader::parse(const std::vector<std::uint8_t>& blob) {
     for(uint32_t i = 0; i < blobHeader.outputs_count; i++) {
         const auto processedOutput = readIO(outputInfoSecOffset, i);
         if(!isIOShapeName(processedOutput.name)) {
-            // Add to inputs
             networkOutputs[processedOutput.name] = processedOutput;
         }
     }

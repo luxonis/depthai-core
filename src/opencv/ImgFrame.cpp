@@ -8,8 +8,6 @@
 #include <opencv2/imgproc.hpp>
 #include <utility>
 
-// #include "spdlog/spdlog.h"
-
 namespace dai {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch-enum"
@@ -28,7 +26,6 @@ ImgFrame& ImgFrame::setFrame(const cv::Mat frame) {
 }
 
 cv::Mat ImgFrame::getFrame(bool deepCopy) {
-    // Convert to cv::Mat. If deepCopy enabled, then copy pixel data, otherwise reference only
     cv::Mat mat;
     cv::Size size = {0, 0};
     int type = 0;
@@ -100,36 +97,25 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
             break;
     }
 
-    // Check if enough data
     long requiredSize = CV_ELEM_SIZE(type) * size.area();
 
-    // TMP TMP
-    // long actualSize = static_cast<long>(img.data.size());
     long actualSize = static_cast<long>(data->getSize());
 
     if(actualSize < requiredSize) {
         throw std::runtime_error("ImgFrame doesn't have enough data to encode specified frame, required " + std::to_string(requiredSize) + ", actual "
                                  + std::to_string(actualSize) + ". Maybe metadataOnly transfer was made?");
     } else if(actualSize > requiredSize) {
-        // FIXME doesn't build on Windows (multiple definitions during link)
-        // logger::warn("ImgFrame has excess data: actual {}, expected {}", actualSize, requiredSize);
     }
     if(getWidth() <= 0 || getHeight() <= 0) {
         throw std::runtime_error("ImgFrame metadata not valid (width or height = 0)");
     }
 
-    // Copy or reference to existing data
     if(deepCopy) {
-        // Create new image data
         mat.create(size, type);
 
-        // TMPTMP
-        // Copy number of bytes that are available by Mat space or by img data size
-        // std::memcpy(mat.data, img.data.data(), std::min((long)(img.data.size()), (long)(mat.dataend - mat.datastart)));
         std::memcpy(mat.data, data->getData().data(), std::min((long)(data->getSize()), (long)(mat.dataend - mat.datastart)));
         // TODO stride handling
     } else {
-        // TMP TMP
         if(fb.stride == 0) {
             mat = cv::Mat(size, type, data->getData().data());
         } else {
@@ -269,7 +255,6 @@ ImgFrame& ImgFrame::setCvFrame(const cv::Mat mat, Type type) {
     setSize(mat.cols, mat.rows);
     unsigned int size = mat.cols * mat.rows;
 
-    // Matching depths can share the input until the final copy into ImgFrame.
     auto convertInputDepth = [&](int depth) {
         if(mat.depth() == depth) return mat;
         cv::Mat converted;

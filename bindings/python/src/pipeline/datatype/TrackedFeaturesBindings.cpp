@@ -4,40 +4,21 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_trackedfeatures(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // py::class_<RawTrackedFeatures, RawBuffer, std::shared_ptr<RawTrackedFeatures>> rawTrackedFeatures(m, "RawTrackedFeatures", DOC(dai, RawTrackedFeatures));
     py::class_<TrackedFeature> trackedFeature(m, "TrackedFeature", DOC(dai, TrackedFeature));
     py::class_<TrackedFeatures, Py<TrackedFeatures>, Buffer, py::smart_holder> trackedFeatures(m, "TrackedFeatures", DOC(dai, TrackedFeatures));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-
-    // Metadata / raw
-    // rawTrackedFeatures
-    //     .def(py::init<>())
-    //     .def_readwrite("trackedFeatures", &RawTrackedFeatures::trackedFeatures)
-    //     ;
 
     trackedFeature.def(py::init<>())
         .def_readwrite("position", &TrackedFeature::position, DOC(dai, TrackedFeature, position))
@@ -47,7 +28,6 @@ void bind_trackedfeatures(pybind11::module& m, void* pCallstack) {
         .def_readwrite("trackingError", &TrackedFeature::trackingError, DOC(dai, TrackedFeature, trackingError))
         .def_readwrite("descriptor", &TrackedFeature::descriptor, DOC(dai, TrackedFeature, descriptor));
 
-    // Message
     trackedFeatures.def(py::init<>())
         .def("__repr__", &TrackedFeatures::str)
         .def_property(

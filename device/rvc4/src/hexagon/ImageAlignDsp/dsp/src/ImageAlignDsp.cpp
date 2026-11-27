@@ -1,6 +1,4 @@
-// needed here
 #include "depthai/utility/Serialization.hpp"
-// needed here
 
 #include <assert.h>
 #include <math.h>
@@ -16,7 +14,6 @@
 #include "hexagon_protos.h"
 
 int ImageAlignDsp_open(const char* uri, remote_handle64* handle) {
-    // Keep the context here. Now it's just a magic number
     *handle = 0x00DEAD00;
 
     FARF(ALWAYS, "SpatialLocationCalculator open session\n");
@@ -24,10 +21,6 @@ int ImageAlignDsp_open(const char* uri, remote_handle64* handle) {
     return 0;
 }
 
-/**
- * @param handle, the value returned by open
- * @retval, 0 for success, should always succeed
- */
 int ImageAlignDsp_close(remote_handle64 handle) {
     FARF(ALWAYS, "SpatialLocationCalculator close session\n");
 
@@ -63,15 +56,11 @@ int ImageAlignDsp_process(remote_handle64 h,
     const uint16_t* plane = reinterpret_cast<const uint16_t*>(inVec);
     uint16_t* alignedPlane = reinterpret_cast<uint16_t*>(outVec);
 
-    // assert(!(bpp != sizeof(*plane)) && "Wrong in/out size");
-    // assert(!(bpp != sizeof(*alignedPlane)) && "Wrong in/out size");
-
     const int lineLength = width * bpp;
 
     float shiftX = cameraExtrinsics[0][3];
 
     float depthFx = depthIntrinsics[0][0];
-    // float depthCx = depthIntrinsics[0][2];
 
     float shiftXPreComputed = shiftX * depthFx;
 

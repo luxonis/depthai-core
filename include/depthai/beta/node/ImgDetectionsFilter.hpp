@@ -1,10 +1,6 @@
 #pragma once
 
-// Compatibility header. ImgDetectionsFilter moved out of the beta namespace in v3.12:
-// include "depthai/pipeline/node/ImgDetectionsFilter.hpp" and use dai::node::ImgDetectionsFilter.
-// Only the name is kept. The v3.12 node has a different interface (inputs, out, new config fields).
-
-#include "depthai/beta/properties/ImgDetectionsFilterProperties.hpp"
+#include "depthai/beta/properties/ImgDetectionsFilterProperties.hpp"  // Compatibility header: moved out of beta in v3.12; the new node has another interface
 #include "depthai/pipeline/node/ImgDetectionsFilter.hpp"
 
 namespace dai {

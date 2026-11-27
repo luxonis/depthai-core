@@ -10,11 +10,8 @@
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include "depthai/pipeline/node/host/Replay.hpp"
 #endif
-// standard
-#include <fstream>
-
-// shared
 #include <depthai/properties/NeuralNetworkProperties.hpp>
+#include <fstream>
 
 namespace dai {
 namespace node {
@@ -129,7 +126,6 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      */
     void setFromModelZoo(NNModelDescription description, bool useCached = true);
 
-    // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
      * Load network blob into assets and use once pipeline is started.
      *

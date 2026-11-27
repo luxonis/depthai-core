@@ -18,8 +18,6 @@
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/datatype/NNData.hpp"
 #include "pipeline/utilities/DetectionParser/DetectionParserUtils.hpp"
-
-// internal headers
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
@@ -84,7 +82,6 @@ const NNArchiveVersionedConfig& DetectionParser::getNNArchiveVersionedConfig() c
 }
 
 void resetParser(DetectionParserOptions& parser) {
-    // Reset per-head YOLO overrides before applying optional metadata.
     parser.subtype.clear();
     parser.confidenceThreshold = 0.f;
     parser.decodingFamily = YoloDecodingFamily::TLBR;
@@ -277,7 +274,6 @@ void DetectionParser::setConfig(const dai::nn_archive::v1::Head& head) {
 }
 
 YoloDecodingFamily DetectionParser::yoloDecodingFamilyResolver(const std::string& name) {
-    // convert string to lower case
     std::string subtypeStr = name;
     std::transform(subtypeStr.begin(), subtypeStr.end(), subtypeStr.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
@@ -416,7 +412,6 @@ void DetectionParser::setNumKeypoints(int numKeypoints) {
     properties.parser.nKeypoints = numKeypoints;
 }
 
-/// Get num classes
 int DetectionParser::getNumClasses() const {
     return properties.parser.classes;
 }
@@ -438,22 +433,18 @@ void DetectionParser::setKeypointEdges(const std::vector<dai::Edge>& edges) {
     properties.parser.keypointEdges = edges;
 }
 
-/// Get coordianate size
 int DetectionParser::getCoordinateSize() const {
     return properties.parser.coordinates;
 }
 
-/// Get anchors
 std::vector<float> DetectionParser::getAnchors() const {
     return properties.parser.anchors;
 }
 
-/// Get anchor masks
 std::map<std::string, std::vector<int>> DetectionParser::getAnchorMasks() const {
     return properties.parser.anchorMasks;
 }
 
-/// Get Iou threshold
 float DetectionParser::getIouThreshold() const {
     return initialConfig->getIouThreshold();
 }
@@ -486,9 +477,6 @@ void DetectionParser::setRunOnHost(bool runOnHost) {
     explicitRunOnHostSet = true;
 }
 
-/**
- * Check if the node is set to run on host
- */
 bool DetectionParser::runOnHost() const {
     return runOnHostVar;
 }
@@ -540,11 +528,9 @@ void DetectionParser::run() {
                 logger->warn("No image size provided for detection parser. Skipping processing and sending empty detections.");
                 continue;
             }
-            // We have determined the image size, no need to try again in the future
             imgSizesSet = true;
         }
 
-        // Parse detections
         switch(properties.parser.nnFamily) {
             case DetectionNetworkType::YOLO: {
                 decodeYolo(inputData, *outDetections, runtimeProperties);
@@ -562,13 +548,11 @@ void DetectionParser::run() {
 
         auto tBeforeSend = steady_clock::now();
 
-        // Copy over seq and ts
         outDetections->setBufferMetadataFrom(&inputData);
         outDetections->transformation = inputData.transformation;
 
         {
             auto blockEvent = this->outputBlockEvent();
-            // Send detections
             out.send(outDetections);
         }
 
@@ -580,7 +564,6 @@ void DetectionParser::run() {
 void DetectionParser::buildStage1() {
     auto& logger = ThreadedNode::pimpl->logger;
 
-    // Grab dimensions from input tensor info
     if(properties.networkInputs.size() > 0) {
         if(properties.networkInputs.size() > 1) {
             logger->warn("Detection parser supports only single input networks, assuming first input");
@@ -631,17 +614,6 @@ void DetectionParser::decodeMobilenet(dai::NNData& nnData, dai::ImgDetections& o
     std::string tensorName;
     for(const auto& tensor : nnData.getAllLayers()) {
         if(tensor.offset == 0) {
-            // // The tensor we want to checkout
-            // if(tensor.numDimensions != 4) {
-            //     std::cout << "ERROR while decoding Mobilenet. Output tensor has incorrect dimensions. Number of dimensions: " << tensor.numDimensions
-            //               << std::endl;
-            // }
-            // // Get tensor output size in Bytes
-            // // Expected dimensions are [1, 1, N, 7] where N is number of detections
-            // if(tensor.dims[3] != 7) {
-            //     std::cout << "ERROR while decoding Mobilenet. Expecting 7 fields for every detection but: " << tensor.dims[3] << " found.\n";
-            // }
-            // maxDetections = tensor.dims[tensor.numDimensions - 2];
             tensorName = tensor.name;
         }
     }
@@ -669,7 +641,6 @@ void DetectionParser::decodeMobilenet(dai::NNData& nnData, dai::ImgDetections& o
         // TODO This is likely unnecessary optimisation
         memcpy(&temp, &rawPtr[i * 7], sizeof(raw_Detection));
 
-        // if header == -1, stop sooner
         if(temp.header == -1.0f) break;
 
         float currentConfidence = temp.confidence;

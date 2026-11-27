@@ -9,24 +9,14 @@ void bind_imagealign(pybind11::module& m, void* pCallstack) {
     using namespace dai::node;
     using namespace pybind11::literals;
 
-    // Node and Properties declare upfront
     py::class_<ImageAlignProperties> imageAlignProperties(m, "ImageAlignProperties", DOC(dai, ImageAlignProperties));
     auto imageAlign = ADD_NODE(ImageAlign);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Properties
     imageAlignProperties.def_readwrite("initialConfig", &ImageAlignProperties::initialConfig, DOC(dai, ImageAlignProperties, initialConfig))
         .def_readwrite("numFramesPool", &ImageAlignProperties::numFramesPool, DOC(dai, ImageAlignProperties, numFramesPool))
         .def_readwrite("numShaves", &ImageAlignProperties::numShaves, DOC(dai, ImageAlignProperties, numShaves))
@@ -36,7 +26,6 @@ void bind_imagealign(pybind11::module& m, void* pCallstack) {
         .def_readwrite("interpolation", &ImageAlignProperties::interpolation, DOC(dai, ImageAlignProperties, interpolation))
         .def_readwrite("outKeepAspectRatio", &ImageAlignProperties::outKeepAspectRatio, DOC(dai, ImageAlignProperties, outKeepAspectRatio));
 
-    // Node
     imageAlign.def_readonly("initialConfig", &ImageAlign::initialConfig, DOC(dai, node, ImageAlign, initialConfig), DOC(dai, node, ImageAlign, initialConfig))
         .def_readonly("inputConfig", &ImageAlign::inputConfig, DOC(dai, node, ImageAlign, inputConfig), DOC(dai, node, ImageAlign, inputConfig))
         .def_readonly("input", &ImageAlign::input, DOC(dai, node, ImageAlign, input), DOC(dai, node, ImageAlign, input))
@@ -52,6 +41,5 @@ void bind_imagealign(pybind11::module& m, void* pCallstack) {
         .def("setRunOnHost", &ImageAlign::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, ImageAlign, setRunOnHost))
         .def("runOnHost", &ImageAlign::runOnHost, DOC(dai, node, ImageAlign, runOnHost));
 
-    // ALIAS
     daiNodeModule.attr("ImageAlign").attr("Properties") = imageAlignProperties;
 }

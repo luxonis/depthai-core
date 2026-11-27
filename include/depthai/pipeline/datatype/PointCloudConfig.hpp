@@ -15,9 +15,7 @@ namespace dai {
  * PointCloudConfig message. Carries point cloud output settings.
  */
 class PointCloudConfig : public Buffer {
-    // false = filter to valid (z > 0) points only (default)
-    // true  = keep all width*height points (organized)
-    bool organized = false;
+    bool organized = false;  // false: only valid (z > 0) points; true: all width*height points
 
     std::array<std::array<float, 4>, 4> transformationMatrix = {{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}}};
 
@@ -35,8 +33,7 @@ class PointCloudConfig : public Buffer {
     CameraBoardSocket targetCameraSocket = CameraBoardSocket::AUTO;
     HousingCoordinateSystem targetHousingCS = HousingCoordinateSystem::AUTO;
     bool useSpecTranslation = false;
-    // Device owning the target camera socket / housing. Empty: the device owning the reference camera of the depth frame.
-    std::string targetDeviceId;
+    std::string targetDeviceId;  // Empty = the device of the depth frame's reference camera
 
    public:
     PointCloudConfig() = default;

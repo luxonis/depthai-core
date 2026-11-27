@@ -48,7 +48,6 @@ class VppImpl {
 
     static bool markOccupied(cv::Mat& occupancyMask, int startX, int startY, int width, int height, float dispDiff);
 
-    // Draws a patch into the image at specified location with blending
     void drawPatch(cv::Mat& img, const UniformPatch& patch);
 
     void drawPatch(cv::Mat& img, const UniformPatch& patch, float subpixelShift);
@@ -57,7 +56,6 @@ class VppImpl {
 
     void drawPatch(cv::Mat& img, const NonuniformPatch& patch, float subpixelShift);
 
-    // Dense, nonuniform 1x1 specialization. Other configurations use the generic path.
     static bool markSinglePixelOccupied(uint8_t* occupied, int width, int startX, float subpixelShift);
     void drawSinglePixel(uint8_t& left, uint8_t* right, int width, int startX, float subpixelShift, uint8_t color);
     void processSinglePixel(cv::Mat& imgLeft, cv::Mat& imgRight, const cv::Mat& disparity, const cv::Mat& mask);

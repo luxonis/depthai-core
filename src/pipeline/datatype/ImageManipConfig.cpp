@@ -1,5 +1,4 @@
-// First, as other headers may include <cmath>
-#define _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES  // Must come first: other headers may include <cmath>
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 
 #include <algorithm>
@@ -28,7 +27,6 @@ void ImageManipConfig::serialize(std::vector<std::uint8_t>& metadata, DatatypeEn
     datatype = DatatypeEnum::ImageManipConfig;
 }
 
-// New API
 ImageManipConfig& ImageManipConfig::clearOps() {
     base.clear();
     return *this;

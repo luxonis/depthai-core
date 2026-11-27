@@ -1,18 +1,15 @@
 #include "PipelineBuilder.hpp"
 
-// libraries
 #include <spdlog/fmt/fmt.h>
 #include <stdexcept>
 #include <string>
 
-// project
 #include "MultiDeviceCalibrationStore.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
 #include "depthai/utility/Memory.hpp"
 #include "utilities/FsyncController.hpp"
 #include "utilities/OSUtils.hpp"
 
-// nodes
 #include "IMU.hpp"
 #include "node/AprilTag/AprilTag.hpp"
 #include "node/Benchmark.hpp"
@@ -83,7 +80,6 @@ void installMultiDeviceCalibration(const Pipeline& pipeline) {
     if(pipeline.isCalibrationDataAvailable()) {
         localCalibration = pipeline.getCalibrationData();
     }
-    // Validates the graph and this device's local origin; a mismatch is a hard build error.
     MultiDeviceCalibrationStore::getInstance().set(pipeline.getMultiDeviceCalibration(), localCalibration, getSerialNumber());
 }
 
@@ -170,7 +166,6 @@ decltype(MessageDemux::NAME) constexpr MessageDemux::NAME;
 template <typename N>
 inline std::shared_ptr<ThreadedNode> nodeHelper(Pipeline& pipeline, const dai::NodeObjInfo& nodeInfo) {
     if(nodeInfo.name == N::NAME) {
-        // deserialize props
         auto props = std::make_unique<typename N::Properties>();
         if(props == nullptr) throw std::runtime_error(fmt::format("Couldn't create properties for node with name: '{}'", N::NAME));
 
@@ -178,11 +173,6 @@ inline std::shared_ptr<ThreadedNode> nodeHelper(Pipeline& pipeline, const dai::N
         auto node = std::make_shared<N>(std::move(props));
         node->id = nodeInfo.id;
 
-        // Deserialize into properties afterwards
-        // auto node = std::make_shared<N>(pipeline.impl()->shared_from_this(), nodeInfo.id, std::move(props));
-        // dai::utility::deserialize(nodeInfo.properties, node->properties);
-
-        // Create ios
         for(auto& ioInfoPair : nodeInfo.ioInfo) {
             auto ioInfo = ioInfoPair.second;
             std::string group = std::get<0>(ioInfoPair.first);
@@ -304,17 +294,13 @@ void PipelineBuilder::setNodeHandler(NodeHandler handler) {
 }
 
 void PipelineBuilder::build(const PipelineSchema& schema, Pipeline& pipeline) {
-    // Set global properties
     pipeline.setGlobalProperties(schema.globalProperties);
     installMultiDeviceCalibration(pipeline);
 
-    // Create all nodes
     for(const auto& kv : schema.nodes) {
         const auto& nodeInfo = kv.second;
-        // Create the node
         if(nodeHandler.count(nodeInfo.name) > 0) {
             auto node = nodeHandler.at(nodeInfo.name)(pipeline, nodeInfo);
-            // Create the logger
             std::string loggerName = fmt::format("{}({})", node->getName(), nodeInfo.id);
             node->pimpl->logger =
                 std::make_shared<spdlog::async_logger>(loggerName, sinks.begin(), sinks.end(), spdlog::thread_pool(), spdlog::async_overflow_policy::block);
@@ -331,7 +317,6 @@ void PipelineBuilder::build(const PipelineSchema& schema, Pipeline& pipeline) {
         }
     }
 
-    // Connect all nodes
     for(const auto& conn : schema.connections) {
         auto outNode = pipeline.getNode(conn.node1Id);
         auto inNode = pipeline.getNode(conn.node2Id);
@@ -352,7 +337,6 @@ void PipelineBuilder::build(const PipelineSchema& schema, Pipeline& pipeline) {
                 fmt::format("No input with name: '{}', group: '{}' found on node '{}'.", conn.node2Input, conn.node2InputGroup, inNode->getName()));
         }
 
-        // Link
         output->link(*input);
     }
 }
@@ -360,14 +344,11 @@ void PipelineBuilder::build(const PipelineSchema& schema, Pipeline& pipeline) {
 void PipelineBuilder::start(Pipeline& pipeline) {
     dai::CameraBoardSocket lastColorCamSocket = dai::CameraBoardSocket::CAM_A;
     int lastColorCamId = 0;
-    // PipelineRequirements req;
 
     validateFsync1();
-    // Build the pipeline
     pipeline.buildDevice();
     validateFsync2();
 
-    // Afterwards, start Pipeline
     pipeline.start();
 }
 
@@ -396,16 +377,13 @@ void PipelineBuilder::setLogEventCallback(std::function<void(dai::LogMessage)> c
 void PipelineBuilder::setLogLevelCallback(dai::LogLevel level) {
     currentLogLevelLoggers = daiLogLevelToSpdlogLevel(level);
 
-    // Set the level for all node loggers
     for(auto& element : nodeLoggers) {
         auto nodeLogger = element.second;
         nodeLogger->set_level(currentLogLevelLoggers);
     }
 
-    // Everything has the same level, remove node-specific levels
     nodeIdToLogLevel.clear();
 
-    // Set the level for the system logger
     assert(systemLogger && "Logger has to exist, before setting its level.");
     systemLogger->set_level(currentLogLevelLoggers);
 }
@@ -413,7 +391,6 @@ void PipelineBuilder::setLogLevelCallback(dai::LogLevel level) {
 void PipelineBuilder::setNodeLogLevelCallback(int64_t nodeId, dai::LogLevel level) {
     nodeIdToLogLevel[nodeId] = daiLogLevelToSpdlogLevel(level);
 
-    // Set the level for the node logger
     if(nodeLoggers.count(nodeId) > 0 && nodeLoggers[nodeId] != nullptr) {
         nodeLoggers[nodeId]->set_level(nodeIdToLogLevel[nodeId]);
     }
@@ -434,12 +411,10 @@ dai::LogLevel PipelineBuilder::getLogLevelCallback() {
 }
 
 dai::LogLevel PipelineBuilder::getNodeLogLevelCallback(int64_t nodeId) {
-    // Return global level if nodeId is not set
     if(nodeIdToLogLevel.count(nodeId) == 0) {
         return getLogLevelCallback();
     }
 
-    // Return node level if set
     return spdlogLevelToDaiLogLevel(nodeIdToLogLevel[nodeId]);
 }
 
@@ -455,32 +430,6 @@ PipelineBuilder& PipelineBuilder::getInstance() {
 PipelineBuilder::PipelineBuilder() {}
 
 PipelineBuilder::~PipelineBuilder(){};
-
-// // Extracts camera settings and assigns IDs
-
-//     for(const auto& kv : pipeline.getNodeMap()) {
-
-//         if(node->getName() == ColorCamera::NAME) {
-//             auto color = std::static_pointer_cast<ColorCamera>(node);
-
-//             int camId = static_cast<int>(color->getBoardSocket());
-//             if(camId == static_cast<int>(dai::CameraBoardSocket::AUTO)) {
-//                 camId = lastColorCamId++;
-//             }
-//             PipelineRequirements colorReq;
-//             colorReq.colorCamera = true;
-//             colorReq.colorConfig.fps = color->getFps();
-//             colorReq.colorConfig.width = color->getResolutionWidth();
-//             colorReq.colorConfig.height = color->getResolutionHeight();
-//             colorReq.colorConfig.height = color->getResolutionHeight();
-
-//             req.add(PipelineRequirements::)
-
-//         } else if(node->getName() == MonoCamera::NAME) {
-
-//         }
-//     }
-// }
 
 }  // namespace gate
 }  // namespace dai

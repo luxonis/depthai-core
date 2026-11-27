@@ -99,15 +99,11 @@ class TemporalFilter {
 
     TemporalFilterParamsImpl params = {};
 
-    MemSections rawAccumulatorFrame = {};  // Hold the last frame received for the current profile
-    MemSections rawHistoryFrame = {};      // represents the history over the last 8 frames, 1 bit per frame
-    // encodes whether a particular 8 bit history is good enough for all 8 phases of storage
+    MemSections rawAccumulatorFrame = {};   // Hold the last frame received for the current profile
+    MemSections rawHistoryFrame = {};       // represents the history over the last 8 frames, 1 bit per frame
     MemSections rawPersistenceMapLUT = {};  // Lookup table if persistency is enabled
 };
 
-/***********************************************************************************************************/
-/***********************************************************************************************************/
-/***********************************************************************************************************/
 MedianFilter::MedianFilter() {}
 
 int MedianFilter::Init() {
@@ -117,7 +113,6 @@ int MedianFilter::Init() {
 MedianFilter::~MedianFilter() {}
 
 void MedianFilter::process(std::shared_ptr<dai::ImgFrame>& frame, int medianSize) {
-    // Median filter only supports RAW16 and RAW8
     int opencvType;
     ImgFrame::Type frameType = frame->getType();
     if(frameType == ImgFrame::Type::RAW8) {
@@ -128,24 +123,16 @@ void MedianFilter::process(std::shared_ptr<dai::ImgFrame>& frame, int medianSize
         DAI_CHECK_V(false, "Unsupported frame type. Supported types are RAW16 and RAW8.");
     }
 
-    // Parameter check
     DAI_CHECK_V(medianSize % 2 == 1, "Median filter size must be odd, got %d", medianSize);
     DAI_CHECK_V(medianSize <= 5, "Median filter size must be <= 5, got %d", medianSize);
 
-    // Convenience wrapper for the frame data - not a copy
     cv::Mat cvFrame = cv::Mat(frame->getHeight(), frame->getWidth(), opencvType, frame->data->getData().data());
 
-    // Apply filter
     cv::Mat cvFrameFiltered = cv::Mat(frame->getHeight(), frame->getWidth(), opencvType);
     cv::medianBlur(cvFrame, cvFrameFiltered, medianSize);
 
-    // Copy data back to frame
     std::memcpy(frame->data->getData().data(), cvFrameFiltered.data, cvFrameFiltered.total() * cvFrameFiltered.elemSize());
 }
-
-/***********************************************************************************************************/
-/***********************************************************************************************************/
-/***********************************************************************************************************/
 
 template <typename T>
 void recursiveFilterHorizontal(SpatialFilterParamsImpl* params) {
@@ -155,12 +142,9 @@ void recursiveFilterHorizontal(SpatialFilterParamsImpl* params) {
     int _height = params->currentFrame->getHeight();
     size_t _holesFillingRadius = params->holesFillingRadius;
 
-    // Handle conversions for invalid input data
     bool fp = (std::is_floating_point<T>::value);
 
-    // Filtering integer values requires round-up to the nearest discrete value
     const float round = fp ? 0.f : 0.5f;
-    // define invalid inputs
     const T valid_threshold = fp ? static_cast<T>(std::numeric_limits<T>::epsilon()) : static_cast<T>(1);
     const T deltaZ = static_cast<T>(params->delta);
 
@@ -168,7 +152,6 @@ void recursiveFilterHorizontal(SpatialFilterParamsImpl* params) {
     size_t currentFill = 0;
 
     for(int v = 0; v < _height; v++) {
-        // left to right
         T* im = image + v * _width;
         T val0 = im[0];
         currentFill = 0;
@@ -198,7 +181,6 @@ void recursiveFilterHorizontal(SpatialFilterParamsImpl* params) {
             im += 1;
         }
 
-        // right to left
         im = image + (v + 1) * _width - 2;  // end of row - two pixels
         T val1 = im[1];
         currentFill = 0;
@@ -237,20 +219,13 @@ void recursiveFilterVertical(SpatialFilterParamsImpl* params) {
     int _width = params->currentFrame->getWidth();
     int _height = params->currentFrame->getHeight();
 
-    // Handle conversions for invalid input data
     bool fp = (std::is_floating_point<T>::value);
 
-    // Filtering integer values requires round-up to the nearest discrete value
     const float round = fp ? 0.f : 0.5f;
-    // define invalid range
     const T valid_threshold = fp ? static_cast<T>(std::numeric_limits<T>::epsilon()) : static_cast<T>(1);
     const T deltaZ = static_cast<T>(params->delta);
 
     auto image = reinterpret_cast<T*>(image_data);
-
-    // we'll do one row at a time, top to bottom, then bottom to top
-
-    // top to bottom
 
     T* im = image;
     T im0{};
@@ -260,7 +235,6 @@ void recursiveFilterVertical(SpatialFilterParamsImpl* params) {
             im0 = im[0];
             imw = im[_width];
 
-            // if ((fabs(im0) >= valid_threshold) && (fabs(imw) >= valid_threshold))
             {
                 T diff = static_cast<T>(fabs(im0 - imw));
                 if(diff < deltaZ) {
@@ -272,7 +246,6 @@ void recursiveFilterVertical(SpatialFilterParamsImpl* params) {
         }
     }
 
-    // bottom to top
     im = image + (_height - 2) * _width;
     for(int v = 1; v < _height; v++, im -= (_width * 2)) {
         for(int u = 0; u < _width; u++) {
@@ -330,10 +303,6 @@ void SpatialFilter::process(std::shared_ptr<dai::ImgFrame>& frame) {
     }
 }
 
-/***********************************************************************************************************/
-/***********************************************************************************************************/
-/***********************************************************************************************************/
-
 SpeckleFilter::SpeckleFilter() {}
 
 int SpeckleFilter::Init() {
@@ -356,10 +325,6 @@ void SpeckleFilter::process(std::shared_ptr<dai::ImgFrame>& frame, int speckleRa
     cv::filterSpeckles(cvFrame, 0, speckleRange, maxDiff);
 }
 
-/***********************************************************************************************************/
-/***********************************************************************************************************/
-/***********************************************************************************************************/
-
 template <typename T>
 void processImpl(TemporalFilterParamsImpl* params) {
     auto& currentFrame = params->currentFrame;
@@ -381,7 +346,6 @@ void processImpl(TemporalFilterParamsImpl* params) {
 
     decltype(alpha) oneMinusAlpha = 1 - alpha;
 
-    // pass one -- go through image and update all
     for(size_t i = 0; i < frameSize; i++) {
         T currentVal = frame[i];
         T previousVal = _lastFrame[i];
@@ -421,7 +385,6 @@ TemporalFilter::TemporalFilter() {}
 
 int TemporalFilter::Init(size_t frameSize, float alpha, int delta, int _persistenceMode) {
     bool resetBuffers = false;
-    // could be lazy loading too, avoided by choice
     int err = allocateBuffers(frameSize);
     if(err) {
         return err;
@@ -572,13 +535,10 @@ void TemporalFilter::buildPersistenceMap() {
         }
     }
 
-    // Convert to credible enough
     std::array<uint8_t, PERSISTENCY_LUT_SIZE> credible_threshold;
     credible_threshold.fill(0);
 
     for(auto phase = 0; phase < 8; phase++) {
-        // evaluating last phase
-        // int ephase = (phase + 7) % 8;
         unsigned char mask = 1 << phase;
         int i;
 
@@ -587,7 +547,6 @@ void TemporalFilter::buildPersistenceMap() {
             if(persistenceMapLUT[pos]) credible_threshold[i] |= mask;
         }
     }
-    // Store results
     assert(rawPersistenceMapLUT.size == PERSISTENCY_LUT_SIZE);
     std::copy(credible_threshold.begin(), credible_threshold.end(), rawPersistenceMapLUT.mem->begin());
 }
@@ -772,10 +731,8 @@ std::shared_ptr<ImageFilters> ImageFilters::build(ImageFiltersPresetMode presetM
 }
 
 void ImageFilters::run() {
-    // A vector of filters
     std::vector<std::unique_ptr<Filter>> filters;
 
-    // A helper function to create a new pipeline
     auto createNewFilterPipeline = [&filters](const ImageFiltersConfig& config) {
         filters.clear();
         for(const auto& params : config.filterParams) {
@@ -783,7 +740,6 @@ void ImageFilters::run() {
         }
     };
 
-    // A helper function to update an existing pipeline
     auto& logger = pimpl->logger;
     logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     auto updateExistingFilterPipeline = [&filters, &logger](const ImageFiltersConfig& config) {
@@ -799,7 +755,6 @@ void ImageFilters::run() {
         }
     };
 
-    // A helper function to get the string representation of the filter pipeline
     auto getFilterPipelineString = [&filters]() {
         std::stringstream ss;
         for(const auto& filter : filters) {
@@ -808,7 +763,6 @@ void ImageFilters::run() {
         return ss.str();
     };
 
-    // Create new filter pipeline
     auto& properties = getProperties();
     auto& initialConfig = properties.initialConfig;
     DAI_CHECK_V(initialConfig.filterIndices.size() == 0, "Initial config must describe a new filter pipeline, not an update to it.");
@@ -825,7 +779,6 @@ void ImageFilters::run() {
         {
             auto blockEvent = this->inputBlockEvent();
 
-            // Set config
             while(inputConfig.has()) {
                 auto configMsg = inputConfig.get<ImageFiltersConfig>();
                 if(!configMsg) {
@@ -842,7 +795,6 @@ void ImageFilters::run() {
                 }
             }
 
-            // Get frame from input queue
             frame = input.get<dai::ImgFrame>();
         }
         auto tGotInput = std::chrono::steady_clock::now();
@@ -851,8 +803,6 @@ void ImageFilters::run() {
             break;
         }
 
-        // If there are no filters, serve as a passthrough
-        // Otherwise, create a copy and run filters inplace on the copy
         std::shared_ptr<dai::ImgFrame> filteredFrame = filters.size() == 0 ? frame : frame->clone();
 
         for(const auto& filter : filters) {
@@ -863,7 +813,6 @@ void ImageFilters::run() {
         {
             auto blockEvent = this->outputBlockEvent();
 
-            // Send filtered frame to the output queue
             output.send(filteredFrame);
         }
         auto tAbsoluteEnd = std::chrono::steady_clock::now();
@@ -916,13 +865,11 @@ void ToFDepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFra
     const int height = depthFrame->getHeight();
     const int width = depthFrame->getWidth();
 
-    // OpenCV wrappers for easier frame manipulation
     cv::Mat depth(height, width, getCvType(depthFrame->getType()), depthFrame->getData().data());
     cv::Mat amplitude(height, width, getCvType(amplitudeFrame->getType()), amplitudeFrame->getData().data());
     cv::Mat filteredDepth(height, width, getCvType(filteredDepthFrame->getType()), filteredDepthFrame->getData().data());
     cv::Mat confidence(height, width, getCvType(confidenceFrame->getType()), confidenceFrame->getData().data());
 
-    // Convert depth and amplitude values to float32 = common type
     cv::Mat depthFloat, amplitudeFloat;
     depth.convertTo(depthFloat, CV_32F);
     amplitude.convertTo(amplitudeFloat, CV_32F);
@@ -932,21 +879,16 @@ void ToFDepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFra
             const float a = amplitudeFloat.at<float>(i, j);
             const float d = depthFloat.at<float>(i, j);
 
-            // Avoid division by zero or very small depth values
             float conf;
             if(a < 1e-12f || d < 1e-12f) {
                 conf = static_cast<float>(std::numeric_limits<std::uint16_t>::max());
             } else {
-                // Corrected formula: amplitude / sqrt(depth / 2.0)
-                // Higher amplitude --> higher confidence
-                // Higher depth --> slightly lower confidence
                 conf = a / std::sqrt(d / 2.0f);
             }
             conf = conf * 100;
 
             confidence.at<std::uint16_t>(i, j) = static_cast<std::uint16_t>(conf);
 
-            // Invalidate pixel if confidence is below threshold
             if(conf < threshold) {
                 filteredDepth.at<std::uint16_t>(i, j) = 0;
             } else {
@@ -969,7 +911,6 @@ void ToFDepthConfidenceFilter::run() {
         {
             auto blockEvent = this->inputBlockEvent();
 
-            // Update threshold dynamically
             while(inputConfig.has()) {
                 auto configMsg = inputConfig.get<ToFDepthConfidenceFilterConfig>();
                 if(configMsg) {
@@ -977,7 +918,6 @@ void ToFDepthConfidenceFilter::run() {
                 }
             }
 
-            // Get frames from input queue
             depthFrame = depth.get<dai::ImgFrame>();
             amplitudeFrame = amplitude.get<dai::ImgFrame>();
             if(depthFrame == nullptr || amplitudeFrame == nullptr) {
@@ -987,7 +927,6 @@ void ToFDepthConfidenceFilter::run() {
         }
         auto tGotInput = std::chrono::steady_clock::now();
 
-        // In case the confidence threshold is 0, serve as a passthrough
         if(confidenceThreshold == 0.0f) {
             {
                 auto blockEvent = this->outputBlockEvent();
@@ -997,11 +936,9 @@ void ToFDepthConfidenceFilter::run() {
             continue;
         }
 
-        // Create empty output frames
         auto filteredDepthFrame = std::make_shared<dai::ImgFrame>();
         auto confidenceFrame = std::make_shared<dai::ImgFrame>();
 
-        // Copy metadata from input frames
         filteredDepthFrame->setMetadata(depthFrame);
         confidenceFrame->setMetadata(depthFrame);
 
@@ -1011,13 +948,11 @@ void ToFDepthConfidenceFilter::run() {
         filteredDepthFrame->data->setSize(depthFrame->getData().size() * depthFrame->getBytesPerPixel());
         confidenceFrame->data->setSize(depthFrame->getData().size() * depthFrame->getBytesPerPixel());
 
-        // Apply filter
         applyDepthConfidenceFilter(depthFrame, amplitudeFrame, filteredDepthFrame, confidenceFrame, confidenceThreshold);
         auto tProcessed = std::chrono::steady_clock::now();
 
         {
             auto blockEvent = this->outputBlockEvent();
-            // Send results
             filteredDepth.send(filteredDepthFrame);
             confidence.send(confidenceFrame);
         }

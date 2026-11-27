@@ -1,7 +1,6 @@
 // IWYU pragma: private, include "depthai/depthai.hpp"
 #pragma once
 
-// all the data types
 #include "datatype/ADatatype.hpp"
 #include "datatype/AprilTagConfig.hpp"
 #include "datatype/AprilTags.hpp"

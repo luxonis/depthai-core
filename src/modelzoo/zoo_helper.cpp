@@ -6,7 +6,6 @@
 #include "depthai/modelzoo/Zoo.hpp"
 
 int main(int argc, char* argv[]) {
-    // version information
     std::ostringstream versionInfo;
     versionInfo << "DepthAI Model Zoo Helper v1.0.2" << std::endl;
     versionInfo << "Commit: " << dai::build::COMMIT << std::endl;
@@ -14,10 +13,8 @@ int main(int argc, char* argv[]) {
     versionInfo << "DepthAI version: " << dai::build::VERSION << std::endl;
     versionInfo << "Build date: " << dai::build::BUILD_DATETIME;
 
-    // Initialize parser
     argparse::ArgumentParser program("DepthAI Model Zoo Helper", versionInfo.str());
 
-    // Add arguments
     const std::string DEFAULT_YAML_FOLDER = dai::utility::getEnvAs<std::string>("DEPTHAI_ZOO_MODELS_PATH", dai::modelzoo::getDefaultModelsPath());
     program.add_argument("--yaml_folder").default_value(DEFAULT_YAML_FOLDER).help("Folder with YAML files describing models to download");
 
@@ -38,7 +35,6 @@ int main(int argc, char* argv[]) {
 
     program.add_argument("--verbose").default_value(false).implicit_value(true).help("Verbose output");
 
-    // Parse arguments
     try {
         program.parse_args(argc, argv);
     } catch(const std::runtime_error& err) {
@@ -47,7 +43,6 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    // Unpack arguments
     auto yamlFolder = program.get<std::string>("--yaml_folder");
     auto cacheFolder = program.get<std::string>("--cache_folder");
     auto apiKey = program.get<std::string>("--api_key");
@@ -60,11 +55,9 @@ int main(int argc, char* argv[]) {
         dai::Logging::getInstance().logger.set_level(spdlog::level::info);
     }
 
-    // Set endpoints
     dai::modelzoo::setHealthEndpoint(healthEndpoint);
     dai::modelzoo::setDownloadEndpoint(downloadEndpoint);
 
-    // Print arguments
     if(format == "pretty") {
         std::cout << "Downloading models defined in yaml files in folder: " << yamlFolder << std::endl;
         std::cout << "Downloading models into cache folder: " << cacheFolder << std::endl;
@@ -73,7 +66,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Download models
     bool success = dai::downloadModelsFromZoo(yamlFolder, cacheFolder, apiKey, format);
     if(!success && format == "pretty") {
         std::cerr << "Failed to download all models from " << yamlFolder << std::endl;

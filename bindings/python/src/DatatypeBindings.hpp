@@ -1,6 +1,5 @@
 #pragma once
 
-// pybind
 #include <type_traits>
 
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
@@ -17,9 +16,7 @@ struct DatatypeBindings {
 
 namespace dai {
 template <typename T, typename Enable = void>
-// This is used so pybind detects the classes as overridable in python,
-// which trigers the holders to keep the python part of the object alive
-class Py : public T, public py::trampoline_self_life_support {
+class Py : public T, public py::trampoline_self_life_support {  // Makes classes overridable, so the holders keep the Python part of the object alive
    public:
     using T::T;
     dai::VisualizeType getVisualizationMessage() const override {

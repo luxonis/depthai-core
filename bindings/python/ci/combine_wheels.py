@@ -68,14 +68,11 @@ class WheelInfo:
 
     @staticmethod
     def from_wheel_name(wheel_name: str) -> "WheelInfo":
-        # All wheels end with .whl
         if not wheel_name.endswith(".whl"):
             raise ValueError(f"Wheel name must end with .whl: {wheel_name}")
 
-        # Remove the .whl extension
         wheel_name = wheel_name[: -len(".whl")]
 
-        # Split wheel into parts: <wheel_dvb>-<python_tag>-<abi_tag>-<platform_tag>
         parts = wheel_name.split("-")
         if not len(parts) >= 4:
             raise ValueError(f"Wheel name must have at least 4 parts: {wheel_name}")
@@ -97,17 +94,14 @@ class WheelInfo:
         assert len(infos) > 0, "Expected at least one wheel info"
         infos = sorted(infos) if sort else infos
 
-        # Basic sanity checks
         if require_dvb_uniqueness:
             assert all(info.wheel_dvb == infos[0].wheel_dvb for info in infos)
         if require_platform_uniqueness:
             assert all(info.platform_tag == infos[0].platform_tag for info in infos)
 
-        # Combine wheel dvb and platform tags
         combined_wheel_dvb = ".".join(set([info.wheel_dvb for info in infos]))
         combined_platform_tag = ".".join(set([info.platform_tag for info in infos]))
 
-        # Combine python and abi tags
         combined_python_tag = ".".join([info.python_tag for info in infos])
         combined_abi_tag = ".".join([info.abi_tag for info in infos])
 
@@ -130,11 +124,9 @@ class WheelInfo:
 
 
 def find_all_wheels(input_folder: str, sort: bool = True) -> list[WheelInfo]:
-    # Find all wheels: just the filenames, not the entire paths
     wheel_files = glob.glob(os.path.join(input_folder, "*.whl"))
     wheel_files = [os.path.basename(file) for file in wheel_files]
 
-    # Extract wheel information and sort them
     infos = [WheelInfo.from_wheel_name(file) for file in wheel_files]
     infos = sorted(infos) if sort else infos
 
@@ -159,25 +151,20 @@ def _generate_record_file(staging_dir: str, dist_info_dir: str):
     """
     record_path = os.path.join(dist_info_dir, "RECORD")
     with open(record_path, "w", encoding="utf-8") as record_file:
-        # Add entries for all files in the wheel
         for root, _, files in os.walk(staging_dir):
             for file in files:
-                # Skip the RECORD file itself
                 if file == "RECORD":
                     continue
                 
                 file_path = os.path.join(root, file)
                 rel_path = os.path.relpath(file_path, staging_dir).replace("\\", "/")
                 
-                # Calculate hash and size
                 file_hash = _calculate_file_hash(file_path)
                 file_size = os.path.getsize(file_path)
                 
-                # Write to RECORD file
                 record_file.write(f"{rel_path},sha256={file_hash},{file_size}\n")
         
-        # Add entry for the RECORD file itself (hash and size are empty as per PEP 427)
-        record_rel_path = os.path.relpath(record_path, staging_dir)
+        record_rel_path = os.path.relpath(record_path, staging_dir)  # Empty hash and size for RECORD itself (PEP 427)
         record_file.write(f"{record_rel_path},,\n")
     
     return record_path
@@ -195,17 +182,14 @@ def _update_wheel_file(dist_info_dir: str, combined_infos: list[WheelInfo]):
 
     _logger.info(f"Updating tags in {wheel_path}")
     
-    # Read existing content
     with open(wheel_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
     new_lines = [line for line in lines if line.strip() and not line.startswith("Tag:")]
     
-    # Generate new Tag lines
     for wheel_info in combined_infos:
         new_lines.append(f"Tag: {wheel_info.python_tag}-{wheel_info.abi_tag}-{wheel_info.platform_tag}\n")
 
-    # Write the updated content back
     with open(wheel_path, "w", encoding="utf-8") as f:
         f.writelines(new_lines)
 
@@ -262,12 +246,10 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
     _logger.info("Combining wheels for Linux!")
     _logger.info(f"Stripping unneeded debug symbols: {strip}")
 
-    # Find all wheel infos in the input folder
     infos = find_all_wheels(input_folder)
     assert len(infos) > 0, "Expected at least one wheel info"
     _logger.debug(f"Found infos in {input_folder}: {infos}")
 
-    # Combined output wheel info
     combined_info = WheelInfo.combine(infos)
     _logger.info(f"Combined wheel name: {combined_info.wheel_name}")
     _logger.debug(f"Combined info: {combined_info}")
@@ -282,82 +264,68 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
         return new_name
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        # Create extraction directory for individual wheels
         extract_dir = os.path.join(temp_dir, "extracted")
         os.makedirs(extract_dir, exist_ok=True)
 
-        # Create staging directory for the combined wheel
         staging_dir = os.path.join(temp_dir, "staging")
         os.makedirs(staging_dir, exist_ok=True)
 
         ExtractedWheel = namedtuple("ExtractedWheel", ["wheel_info", "wheel_extract_dir", "cpython_lib", "libs_folder", "dist_info_dir"])
 
-        # Step: Each wheel is extracted to a separate directory
         extracted_wheels = []
         _logger.info("Step: Extracting all wheels")
         for wheel_info in infos:
             wheel_extract_dir = os.path.join(extract_dir, wheel_info.wheel_name)
             os.makedirs(wheel_extract_dir, exist_ok=True)
 
-            # Extract wheel contents
             _logger.debug(f"Extracting {wheel_info.wheel_name} to {wheel_extract_dir}")
             with zipfile.ZipFile(os.path.join(input_folder, wheel_info.wheel_name), "r") as wheel_zip:
                 wheel_zip.extractall(wheel_extract_dir)
 
-            # Find cpython library
             cpython_libs = [f for f in os.listdir(wheel_extract_dir) if f.endswith(".so") and "cpython" in f]
             assert len(cpython_libs) == 1, f"Expected 1 .so file with 'cpython' in the name, got {len(cpython_libs)}"
             cpython_lib = cpython_libs[0]
             _logger.debug(f"Found cpython lib: {cpython_lib}")
 
-            # Find libs folder
             libs_folders = [f for f in os.listdir(wheel_extract_dir) if f.endswith(".libs")]
             assert len(libs_folders) == 1, f"Expected 1 .libs folder, got {len(libs_folders)}"
             libs_folder = libs_folders[0]
             _logger.debug(f"Found libs folder: {libs_folder}")
 
-            # Find .dist-info directory
             dist_info_dirs = [f for f in os.listdir(wheel_extract_dir) if f.endswith(".dist-info")]
             assert len(dist_info_dirs) == 1, f"Expected 1 .dist-info directory, got {len(dist_info_dirs)}"
             dist_info_dir = dist_info_dirs[0]
             _logger.debug(f"Found dist-info directory: {dist_info_dir}")
 
-            # Remove extra .so files (any .so file already is part of the .libs folder)
             extra_libs = [f for f in os.listdir(wheel_extract_dir) if f.endswith(".so") and "cpython" not in f]
             _logger.debug(f"Found extra libs: {extra_libs}. Removing them.")
             for lib in extra_libs:
-                os.remove(os.path.join(wheel_extract_dir, lib))
+                os.remove(os.path.join(wheel_extract_dir, lib))  # Duplicates: each .so is already in the .libs folder
 
             extracted_wheels.append(ExtractedWheel(wheel_info, wheel_extract_dir, cpython_lib, libs_folder, dist_info_dir))
 
-        # Step: In each folder, rename libraries in the .libs folder to the new names
         magic_hash = str(time.perf_counter())[-5:] + "abc"
         _logger.info("Step: Renaming libraries in the .libs folder | Magic hash: %s", magic_hash)
         for extracted_wheel in extracted_wheels:
             wheel_info, wheel_extract_dir, cpython_lib, libs_folder, dist_info_dir = extracted_wheel
 
-            # Generate rename mapping for libraries in the .libs folder
             name_map = dict()
             for lib in os.listdir(os.path.join(wheel_extract_dir, libs_folder)):
                 original_name = lib
                 new_name = _remangle_name(original_name, magic_hash)
                 name_map[original_name] = new_name
 
-            # Rename libraries in the .libs folder to the new names
             for original_name, new_name in name_map.items():
                 rename_from = os.path.join(wheel_extract_dir, libs_folder, original_name)
                 rename_to = os.path.join(wheel_extract_dir, libs_folder, new_name)
                 os.rename(rename_from, rename_to)
 
-            # Relink all libraries
             libs = os.listdir(os.path.join(wheel_extract_dir, libs_folder))
             for lib in libs:  # for each library, relink it to the new name
                 _replace_needed(os.path.join(wheel_extract_dir, libs_folder, lib), name_map)
 
-            # Relink the cpython library
             _replace_needed(os.path.join(wheel_extract_dir, cpython_lib), name_map)
 
-            # Strip debug symbols for all libraries
             if strip:
                 for lib in libs:
                     _logger.info(f"Stripping debug symbols from {lib}")
@@ -365,20 +333,16 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
                     subprocess.run(["strip", "-S", lib_path], check=True)
                     subprocess.run(["llvm-strip", "-S", lib_path], check=True)
 
-            # Strip debug symbols for the cpython library
             if strip:
                 _logger.info(f"Stripping debug symbols from {cpython_lib}")
                 cpython_lib_path = os.path.join(wheel_extract_dir, cpython_lib)
                 subprocess.run(["strip", "-S", cpython_lib_path], check=True)
                 subprocess.run(["llvm-strip", "-S", cpython_lib_path], check=True)
 
-        # Step: Prepare staging directory's .dist-info
         _logger.info("Step: Preparing .dist-info directory in staging area")
-        # The name of the .dist-info directory is based on the combined package name and version
         new_dist_info_path = os.path.join(staging_dir, extracted_wheels[0].dist_info_dir)
         os.makedirs(new_dist_info_path, exist_ok=True)
 
-        # Copy metadata files from the first wheel, excluding RECORD
         first_wheel_dist_info = os.path.join(extracted_wheels[0].wheel_extract_dir, extracted_wheels[0].dist_info_dir)
         for item in os.listdir(first_wheel_dist_info):
             if item.lower() not in ["record"]:
@@ -389,12 +353,10 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
                 else:
                     shutil.copy2(src_path, dest_path)
 
-        # Step: Copy all other content to the staging directory
         _logger.info("Step: Copying all other content to the staging directory")
         for extracted_wheel in extracted_wheels:
             wheel_info, wheel_extract_dir, cpython_lib, libs_folder, dist_info_dir = extracted_wheel
             for item in os.listdir(wheel_extract_dir):
-                # Skip the old .dist-info directory
                 if item.endswith(".dist-info"):
                     continue
                 src_path = os.path.join(wheel_extract_dir, item)
@@ -404,12 +366,10 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
                 else:
                     shutil.copy2(src_path, dest_path)
 
-        # Step: Update WHEEL and generate RECORD files for PEP 427 compliance
         _logger.info("Step: Updating WHEEL and generating RECORD file for PEP 427 compliance")
         _update_wheel_file(new_dist_info_path, infos)
         _generate_record_file(staging_dir, new_dist_info_path)
 
-        # Step: zip the staging directory
         _logger.info("Step: Zipping the staging directory")
         zip_path = os.path.join(output_folder, combined_info.wheel_name)
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as output_zip:
@@ -463,27 +423,21 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
         # >>> [1]    26437 killed     python3
         strip = False
 
-    # Find all wheel infos in the input folder
     infos = find_all_wheels(input_folder)
     assert len(infos) > 0, "Expected at least one wheel info"
     _logger.debug(f"Found infos in {input_folder}: {infos}")
 
-    # Wheels of different architectures have files with the same names (the cpython .so, the
-    # dylibs). A combined wheel would keep only one of each, but claim all the architectures.
-    archs = {info.platform_tag.split("_", 3)[-1] for info in infos}
+    archs = {info.platform_tag.split("_", 3)[-1] for info in infos}  # Arch wheels share file names; only one copy stays
     assert len(archs) == 1, f"Expected wheels of one architecture, got {sorted(archs)}"
 
-    # Combined output wheel info - platforms on MacOS are not unique
-    combined_info = WheelInfo.combine(infos, require_platform_uniqueness=False)
+    combined_info = WheelInfo.combine(infos, require_platform_uniqueness=False)  # macOS platform tags are not unique
     _logger.info(f"Combined wheel name: {combined_info.wheel_name}")
     _logger.debug(f"Combined info: {combined_info}")
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        # Create extraction directory for individual wheels
         extract_dir = os.path.join(temp_dir, "extracted")
         os.makedirs(extract_dir, exist_ok=True)
 
-        # Create staging directory for the combined wheel
         staging_dir = os.path.join(temp_dir, "staging")
         os.makedirs(staging_dir, exist_ok=True)
 
@@ -491,48 +445,40 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
             "ExtractedWheel", ["wheel_info", "wheel_extract_dir", "cpython_lib", "palace_dylibs", "dist_info_dir"]
         )
 
-        # Step: Each wheel is extracted to a separate directory
         extracted_wheels = []
         _logger.info("Step: Extracting all wheels")
         for wheel_info in infos:
             wheel_extract_dir = os.path.join(extract_dir, wheel_info.wheel_name)
             os.makedirs(wheel_extract_dir, exist_ok=True)
 
-            # Extract wheel contents
             _logger.debug(f"Extracting {wheel_info.wheel_name} to {wheel_extract_dir}")
             with zipfile.ZipFile(os.path.join(input_folder, wheel_info.wheel_name), "r") as wheel_zip:
                 wheel_zip.extractall(wheel_extract_dir)
 
-            # Find cpython library
             cpython_libs = [f for f in os.listdir(wheel_extract_dir) if f.endswith(".so") and "cpython" in f]
             assert len(cpython_libs) == 1, f"Expected 1 .so file with 'cpython' in the name, got {len(cpython_libs)}"
             cpython_lib = cpython_libs[0]
             _logger.debug(f"Found cpython lib: {cpython_lib}")
 
-            # Find palace.dylibs
             palace_dylibs = "palace.dylibs"
             _logger.debug(f"Found palace.dylibs: {palace_dylibs}")
 
-            # Find .dist-info directory
             dist_info_dirs = [f for f in os.listdir(wheel_extract_dir) if f.endswith(".dist-info")]
             assert len(dist_info_dirs) == 1, f"Expected 1 .dist-info directory, got {len(dist_info_dirs)}"
             dist_info_dir = dist_info_dirs[0]
             _logger.debug(f"Found dist-info directory: {dist_info_dir}")
 
-            # Remove extra .dylib files (any .dylib file already is part of the palace.dylibs folder)
-            extra_libs = [f for f in os.listdir(wheel_extract_dir) if f.endswith(".dylib")]
+            extra_libs = [f for f in os.listdir(wheel_extract_dir) if f.endswith(".dylib")]  # Already in palace.dylibs
             _logger.debug(f"Found extra libs: {extra_libs}. Removing them.")
             for lib in extra_libs:
                 os.remove(os.path.join(wheel_extract_dir, lib))
 
             extracted_wheels.append(ExtractedWheel(wheel_info, wheel_extract_dir, cpython_lib, palace_dylibs, dist_info_dir))
 
-        # Step: In each folder, strip debug symbols for all libraries
         _logger.info("Step: Stripping debug symbols for all libraries")
         for extracted_wheel in extracted_wheels:
             wheel_info, wheel_extract_dir, cpython_lib, palace_dylibs, dist_info_dir = extracted_wheel
 
-            # Strip debug symbols for all libraries
             if strip:
                 for lib in os.listdir(os.path.join(wheel_extract_dir, palace_dylibs)):
                     _logger.info(f"Stripping debug symbols from {lib}")
@@ -543,12 +489,10 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
                 # TODO: Invalid signature error, fix this, figure out why
                 _logger.warning(f"Found cpython lib: {cpython_lib}, but not stripping debug symbols for it")
 
-        # Step: Prepare staging directory's .dist-info
         _logger.info("Step: Preparing .dist-info directory in staging area")
         new_dist_info_path = os.path.join(staging_dir, extracted_wheels[0].dist_info_dir)
         os.makedirs(new_dist_info_path, exist_ok=True)
 
-        # Copy metadata files from the first wheel, excluding RECORD
         first_wheel_dist_info = os.path.join(extracted_wheels[0].wheel_extract_dir, extracted_wheels[0].dist_info_dir)
         for item in os.listdir(first_wheel_dist_info):
             if item.lower() not in ["record"]:
@@ -559,7 +503,6 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
                 else:
                     shutil.copy2(src_path, dest_path)
 
-        # Step: Copy all other content to the staging directory
         _logger.info("Step: Copying all other content to the staging directory")
         for extracted_wheel in extracted_wheels:
             wheel_info, wheel_extract_dir, cpython_lib, palace_dylibs, dist_info_dir = extracted_wheel
@@ -573,12 +516,10 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
                 else:
                     shutil.copy2(src_path, dest_path)
 
-        # Step: Update WHEEL and generate RECORD files for PEP 427 compliance
         _logger.info("Step: Updating WHEEL and generating RECORD file for PEP 427 compliance")
         _update_wheel_file(new_dist_info_path, infos)
         _generate_record_file(staging_dir, new_dist_info_path)
 
-        # Step: zip the staging directory
         _logger.info("Step: Zipping the staging directory")
         zip_path = os.path.join(output_folder, combined_info.wheel_name)
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as output_zip:
@@ -637,12 +578,10 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
         _logger.error("delvewheel is required for Windows wheel combining. Install it with: pip install delvewheel")
         raise
 
-    # Find all wheel infos in the input folder
     infos = find_all_wheels(input_folder)
     assert len(infos) > 0, "Expected at least one wheel info"
     _logger.debug(f"Found infos in {input_folder}: {infos}")
 
-    # Combined output wheel info
     combined_info = WheelInfo.combine(infos)
     _logger.info(f"Combined wheel name: {combined_info.wheel_name}")
     _logger.debug(f"Combined info: {combined_info}")
@@ -659,11 +598,9 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
         return f"{base}-{new_hash}{ext}"
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        # Create extraction directory for individual wheels
         extract_dir = os.path.join(temp_dir, "extracted")
         os.makedirs(extract_dir, exist_ok=True)
 
-        # Create staging directory for the combined wheel
         staging_dir = os.path.join(temp_dir, "staging")
         os.makedirs(staging_dir, exist_ok=True)
 
@@ -671,52 +608,43 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
             "ExtractedWheel", ["wheel_info", "wheel_extract_dir", "cpython_lib", "data_folder", "dist_info_dir"]
         )
 
-        # Step: Each wheel is extracted to a separate directory
         extracted_wheels = []
         _logger.info("Step: Extracting all wheels")
         for wheel_info in infos:
             wheel_extract_dir = os.path.join(extract_dir, wheel_info.wheel_name)
             os.makedirs(wheel_extract_dir, exist_ok=True)
 
-            # Extract wheel contents
             _logger.debug(f"Extracting {wheel_info.wheel_name} to {wheel_extract_dir}")
             with zipfile.ZipFile(os.path.join(input_folder, wheel_info.wheel_name), "r") as wheel_zip:
                 wheel_zip.extractall(wheel_extract_dir)
 
             extracted_files = os.listdir(wheel_extract_dir)
 
-            # Find .pyd file (Windows Python extension)
             pyd_files = [f for f in extracted_files if f.endswith(".pyd")]
             assert len(pyd_files) == 1, f"Expected 1 .pyd file, got {len(pyd_files)}"
             cpython_lib = pyd_files[0]
             _logger.debug(f"Found .pyd file: {cpython_lib}")
 
-            # Find .data folder
             data_folders = [f for f in extracted_files if f.endswith(".data")]
             assert len(data_folders) == 1, f"Expected 1 .data folder, got {len(data_folders)}"
             data_folder = data_folders[0]
             _logger.debug(f"Found data folder: {data_folder}")
 
-            # Find .dist-info directory
             dist_info_dirs = [f for f in extracted_files if f.endswith(".dist-info")]
             assert len(dist_info_dirs) == 1, f"Expected 1 .dist-info directory, got {len(dist_info_dirs)}"
             dist_info_dir = dist_info_dirs[0]
             _logger.debug(f"Found dist-info directory: {dist_info_dir}")
 
-            # Delete the DLLs in the wheel root: the bundled ones are already in the .data/platlib folder,
-            # and python3X.dll (older builds) is the interpreter, which is loaded before the module.
-            extra_dlls = [f for f in extracted_files if f.endswith(".dll")]
+            extra_dlls = [f for f in extracted_files if f.endswith(".dll")]  # Already in .data/platlib, or python3X.dll
             _logger.debug(f"Found extra DLLs: {extra_dlls}. Removing them.")
             for dll in extra_dlls:
                 os.remove(os.path.join(wheel_extract_dir, dll))
 
             extracted_wheels.append(ExtractedWheel(wheel_info, wheel_extract_dir, cpython_lib, data_folder, dist_info_dir))
 
-        # Step: Rename libraries in the .data/platlib folder to new names (remangling)
         magic_hash = str(time.perf_counter())[-5:] + "win"
         _logger.info(f"Step: Renaming libraries in .data/platlib folders | Magic hash: {magic_hash}")
 
-        # Store rename mappings for each wheel
         all_name_maps = {}
         for extracted_wheel in extracted_wheels:
             wheel_info, wheel_extract_dir, cpython_lib, data_folder, dist_info_dir = extracted_wheel
@@ -727,7 +655,6 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
                 all_name_maps[wheel_info.wheel_name] = {}
                 continue
 
-            # Generate rename mapping for DLLs in platlib
             name_map = {}
             bundled_dlls = os.listdir(platlib_dir)
             for dll in bundled_dlls:
@@ -740,7 +667,6 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
 
             all_name_maps[wheel_info.wheel_name] = name_map
 
-        # Step: Patch all binaries to use the new DLL names
         _logger.info("Step: Patching binaries with new DLL names")
         for extracted_wheel in extracted_wheels:
             wheel_info, wheel_extract_dir, cpython_lib, data_folder, dist_info_dir = extracted_wheel
@@ -751,7 +677,6 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
 
             platlib_dir = os.path.join(wheel_extract_dir, data_folder, "platlib")
 
-            # Patch the .pyd file
             pyd_path = os.path.join(wheel_extract_dir, cpython_lib)
             try:
                 _logger.info(f"Patching {cpython_lib}")
@@ -762,7 +687,6 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
             except Exception as e:
                 _logger.error(f"Error patching {cpython_lib}: {e}")
 
-            # Patch all DLLs in platlib
             for dll in os.listdir(platlib_dir):
                 if not dll.endswith(".dll"):
                     continue
@@ -777,7 +701,6 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
                 except Exception as e:
                     _logger.error(f"Error patching {dll}: {e}")
 
-        # Step: Actually rename the DLL files
         _logger.info("Step: Renaming DLL files")
         for extracted_wheel in extracted_wheels:
             wheel_info, wheel_extract_dir, cpython_lib, data_folder, dist_info_dir = extracted_wheel
@@ -795,12 +718,10 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
                     _logger.debug(f"Renaming {original_name} -> {new_name}")
                     os.rename(old_path, new_path)
 
-        # Step: Prepare staging directory's .dist-info
         _logger.info("Step: Preparing .dist-info directory in staging area")
         new_dist_info_path = os.path.join(staging_dir, extracted_wheels[0].dist_info_dir)
         os.makedirs(new_dist_info_path, exist_ok=True)
 
-        # Copy metadata files from the first wheel, excluding RECORD
         first_wheel_dist_info = os.path.join(extracted_wheels[0].wheel_extract_dir, extracted_wheels[0].dist_info_dir)
         for item in os.listdir(first_wheel_dist_info):
             if item.lower() not in ["record"]:
@@ -811,7 +732,6 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
                 else:
                     shutil.copy2(src_path, dest_path)
 
-        # Step: Copy all other content to the staging directory
         _logger.info("Step: Copying all other content to the staging directory")
         for extracted_wheel in extracted_wheels:
             wheel_info, wheel_extract_dir, cpython_lib, data_folder, dist_info_dir = extracted_wheel
@@ -825,12 +745,10 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
                 else:
                     shutil.copy2(src_path, dest_path)
 
-        # Step: Update WHEEL and generate RECORD files for PEP 427 compliance
         _logger.info("Step: Updating WHEEL and generating RECORD file for PEP 427 compliance")
         _update_wheel_file(new_dist_info_path, infos)
         _generate_record_file(staging_dir, new_dist_info_path)
 
-        # Step: zip the staging directory
         _logger.info("Step: Zipping the staging directory")
         zip_path = os.path.join(output_folder, combined_info.wheel_name)
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as output_zip:
@@ -850,12 +768,10 @@ def combine_wheels(
     strip: bool = False,
     log_level: str = "INFO",
 ):
-    ## Set up logging
     FORMAT = "[%(asctime)s.%(msecs)03d] [%(levelname)s] [%(name)s] %(message)s"
     DATEFMT = "%Y-%m-%d %H:%M:%S"
     logging.basicConfig(level=log_level.upper(), format=FORMAT, datefmt=DATEFMT)
 
-    # Combine wheels for the current platform
     if sys.platform == "linux":
         _combine_wheels_linux(input_folder, output_folder, strip)
     elif sys.platform == "darwin":
@@ -890,7 +806,6 @@ if __name__ == "__main__":
     parser.add_argument("--log_level", type=str, default="INFO", help="Log level")
     args = parser.parse_args()
 
-    # Combine wheels
     combine_wheels(
         input_folder=args.input_folder,
         output_folder=args.output_folder,

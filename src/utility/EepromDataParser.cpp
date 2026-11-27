@@ -27,11 +27,9 @@ std::string parseProductName(const EepromData& eeprom, const EepromData& eepromF
         }
     }
 
-    // Convert to device naming from display/product naming
     std::transform(productName.begin(), productName.end(), productName.begin(), [](int c) { return std::toupper(c); });
     std::replace(productName.begin(), productName.end(), ' ', '-');
 
-    // Handle some known legacy cases
     if(productName == "BW1098OBC") {
         productName = "OAK-D";
     } else if(productName == "DM2097") {
@@ -47,19 +45,15 @@ std::string parseDeviceName(const EepromData& eeprom, const EepromData& eepromFa
     std::string deviceName;
     if((deviceName = eepromFactory.deviceName).empty()) {
         if((deviceName = eeprom.deviceName).empty()) {
-            // Constant skuDiff array
             const std::array<std::string, 5> skuDiff = {"AF", "FF", "97", "9782", "OV9782"};
 
-            // Parse productName and use that to generate device name
             deviceName = parseProductName(eeprom, eepromFactory);
 
-            // Regenerate from tokens
             auto tokens = split(deviceName, '-');
             deviceName = "";
             for(unsigned int i = 0; i < tokens.size(); i++) {
                 const auto& token = tokens[i];
 
-                // check if token has to be removed
                 bool skipToken = false;
                 for(const auto& d : skuDiff) {
                     if(token == d) {
@@ -73,7 +67,6 @@ std::string parseDeviceName(const EepromData& eeprom, const EepromData& eepromFa
                 deviceName += token;
             }
 
-            // Return generated deviceName
             return deviceName;
         }
     }

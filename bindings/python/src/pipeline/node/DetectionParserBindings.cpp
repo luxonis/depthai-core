@@ -8,30 +8,19 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Node and Properties declare upfront
     py::class_<DetectionParserProperties> detectionParserProperties(m, "DetectionParserProperties", DOC(dai, DetectionParserProperties));
     auto detectionParser = ADD_NODE(DetectionParser);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Properties
     detectionParserProperties.def(py::init<>());
 
     detectionParserProperties.def_readwrite("networkInputs", &dai::DetectionParserProperties::networkInputs, DOC(dai, DetectionParserProperties, networkInputs))
         .def_readwrite("numFramesPool", &dai::DetectionParserProperties::numFramesPool, DOC(dai, DetectionParserProperties, numFramesPool))
         .def_readwrite("parser", &DetectionParserProperties::parser, DOC(dai, DetectionParserProperties, parser));
-    // Node
     detectionParser.def("getNKeypoints", &dai::node::DetectionParser::getNKeypoints, DOC(dai, node, DetectionParser, getNKeypoints))
         .def("getNNArchiveVersionedConfig",
              &dai::node::DetectionParser::getNNArchiveVersionedConfig,

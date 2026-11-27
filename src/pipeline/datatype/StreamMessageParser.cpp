@@ -1,14 +1,11 @@
 #include "depthai/pipeline/datatype/StreamMessageParser.hpp"
 
-// standard
-#include <memory>
-#include <sstream>
-
-// libraries
 #include <XLink/XLinkPublicDefines.h>
 #include <spdlog/spdlog.h>
 
-// project
+#include <memory>
+#include <sstream>
+
 #ifdef DEPTHAI_HAVE_BETA
     #include "depthai/beta/datatype/ClassificationSequenceParserConfig.hpp"
     #include "depthai/beta/datatype/Classifications.hpp"
@@ -50,6 +47,7 @@
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #include "PacketizedData.hpp"
 #include "depthai/pipeline/datatype/AlignConfig.hpp"
+#include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/pipeline/datatype/DetectionParserConfig.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
@@ -87,22 +85,16 @@
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
 #include "depthai/pipeline/datatype/VppConfig.hpp"
-// shared
-#include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Serialization.hpp"
 #include "pipeline/datatype/ObjectTrackerConfig.hpp"
 #include "utility/SharedMemory.hpp"
 #include "utility/VectorMemory.hpp"
 #include "xlink/XLinkStream.hpp"
 
-// StreamPacket structure ->  || imgframepixels... , serialized_object, object_type, serialized_object_size ||
-// object_type -> DataType(int), serialized_object_size -> int
-
 namespace dai {
 
 static constexpr std::array<uint8_t, 16> endOfPacketMarker = {0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0};
 
-// Reads int from little endian format
 inline int readIntLE(const uint8_t* data) {
     return static_cast<int>(static_cast<uint32_t>(data[0]) | (static_cast<uint32_t>(data[1]) << 8) | (static_cast<uint32_t>(data[2]) << 16)
                             | (static_cast<uint32_t>(data[3]) << 24));
@@ -112,7 +104,6 @@ template <class T>
 inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, const std::shared_ptr<Memory>& data) {
     auto tmp = std::make_shared<T>();
 
-    // deserialize
     utility::deserialize(metadata, size, *tmp);
     tmp->data = data;
 
@@ -136,7 +127,6 @@ static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* 
         for(std::uint32_t i = 0; i < endOfPacketMarker.size(); i++) {
             hex += fmt::format("{:02X}", marker[i]);
         }
-        // logger::warn("StreamMessageParser end-of-packet marker mismatch, got: " + hex);
     }
 
     const auto info = fmt::format(", total size {}, type {}, metadata size {}", packet->length, (int32_t)objectType, serializedObjectSize);
@@ -181,10 +171,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
     std::tie(objectType, serializedObjectSize, bufferLength) = parseHeader(packet);
     auto* const metadataStart = packet->data + bufferLength;
 
-    // Create corresponding object
     switch(objectType) {
-        // ADatatype is a special case, since no metadata is actually serialized
-        case DatatypeEnum::ADatatype: {
+        case DatatypeEnum::ADatatype: {  // No metadata is serialized for ADatatype
             auto pBuf = std::make_shared<ADatatype>();
             return pBuf;
         }
@@ -457,7 +445,6 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<CoverageData>(metadataStart, serializedObjectSize, data);
             break;
 #else
-        // Explicitly enum these in this switch state:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
         case DatatypeEnum::AutoCalibrationConfig:
@@ -497,19 +484,11 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(std::vector<uint8_t
 }
 
 std::vector<std::uint8_t> StreamMessageParser::serializeMetadata(const ADatatype& message) {
-    // Serialization:
-    // 1. fill vector with bytes from message.data
-    // 2. serialize and append metadata
-    // 3. append datatype enum (4B LE)
-    // 4. append size (4B LE) of serialized metadata
-    // 5. append 16-byte marker/canary
-
-    DatatypeEnum datatype;
+    DatatypeEnum datatype;  // Wire format: data, metadata, datatype (4B LE), metadata size (4B LE), 16-byte marker
     std::vector<std::uint8_t> metadata;
     message.serialize(metadata, datatype);
     uint32_t metadataSize = static_cast<uint32_t>(metadata.size());
 
-    // 4B datatype & 4B metadata size
     std::array<std::uint8_t, 4> leDatatype;
     std::array<std::uint8_t, 4> leMetadataSize;
     for(int i = 0; i < 4; i++) leDatatype[i] = (static_cast<std::int32_t>(datatype) >> (i * 8)) & 0xFF;
@@ -530,39 +509,6 @@ std::vector<std::uint8_t> StreamMessageParser::serializeMetadata(const std::shar
     return serializeMetadata(*data);
 }
 
-// std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const ADatatype& message) {
-//     // Serialization:
-//     // 1. fill vector with bytes from data.data
-//     // 2. serialize and append metadata
-//     // 3. append datatype enum (4B LE)
-//     // 4. append size (4B LE) of serialized metadata
-
 //     throw std::invalid_argument("TODO");
-
-//     std::vector<std::uint8_t> metadata = serializeMetadata(message);
-//     return metadata;
-
-//     // std::vector<std::uint8_t> ser;
-//     // ser.reserve(data.data.size() + metadata.size() + leDatatype.size() + leMetadataSize.size());
-//     // ser.insert(ser.end(), data.data.begin(), data.data.end());
-//     // ser.insert(ser.end(), metadata.begin(), metadata.end());
-//     // ser.insert(ser.end(), leDatatype.begin(), leDatatype.end());
-//     // ser.insert(ser.end(), leMetadataSize.begin(), leMetadataSize.end());
-//     // return ser;
-// }
-
-// std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const ADatatype>& data) {
-//     if(!data) return {};
-//     return serializeMessage(*data);
-// }
-
-// std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const ADatatype& data) {
-//     return serializeMessage(data.serialize());
-// }
-
-// std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const ADatatype>& data) {
-//     if(!data) return {};
-//     return serializeMessage(*data);
-// }
 
 }  // namespace dai

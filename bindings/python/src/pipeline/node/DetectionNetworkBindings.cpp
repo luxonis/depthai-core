@@ -19,23 +19,11 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
     auto detectionNetwork = ADD_NODE_DERIVED(DetectionNetwork, DeviceNodeGroup);
     detectionNetwork.attr("Model") = daiNodeModule.attr("NeuralNetwork").attr("Model");
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // DetectionNetwork Properties
-    // detectionNetworkProperties.def_readwrite("parser", &DetectionNetworkProperties::parser);
-
-    // DetectionNetwork Node
     detectionNetwork
 #define DETECTION_NETWORK_BUILD_ARGS Node::Output &input, NNArchive &nnArchive
 #define DETECTION_NETWORK_BUILD_PYARGS py::arg("input"), py::arg("nnArchive")
@@ -73,7 +61,6 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("model"),
             py::arg("capability"),
             DOC(dai, node, DetectionNetwork, build, 3))
-        // Backwards-compatible Camera build methods forwarding to the consolidated Model path
         .def(
             "build",
             [](DetectionNetwork& self,
@@ -120,7 +107,6 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("model"),
             py::arg("fps") = std::nullopt,
             DOC(dai, node, DetectionNetwork, build, 4))
-        // Backwards-compatible ReplayVideo build methods forwarding to the consolidated Model path
         .def(
             "build",
             [](DetectionNetwork& self, const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps) {
@@ -157,7 +143,6 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
              }),
              DETECTION_NETWORK_BUILD_PYARGS,
              DETECTION_NETWORK_PYARGS)
-        // Copied from NN node
         .def("setBlobPath", &DetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, DetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &DetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, DetectionNetwork, setNumPoolFrames))
         .def("setNumInferenceThreads",
@@ -205,7 +190,6 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("setBackendProperties"),
              DOC(dai, node, DetectionNetwork, setBackendProperties))
 
-        // Detection specific properties
         .def_property_readonly(
             "input",
             [](const DetectionNetwork& n) { return &n.neuralNetwork->input; },
@@ -239,6 +223,4 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
         .def("setConfidenceThreshold", &DetectionNetwork::setConfidenceThreshold, py::arg("thresh"), DOC(dai, node, DetectionNetwork, setConfidenceThreshold))
         .def("getClasses", &DetectionNetwork::getClasses, DOC(dai, node, DetectionNetwork, getClasses))
         .def("getConfidenceThreshold", &DetectionNetwork::getConfidenceThreshold, DOC(dai, node, DetectionNetwork, getConfidenceThreshold));
-    // ALIAS
-    // daiNodeModule.attr("DetectionNetwork").attr("Properties") = detectionNetworkProperties;
 }

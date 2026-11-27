@@ -23,9 +23,8 @@
 
 namespace {
 
-// Lightweight scope guard — ensures cleanup on both normal exit and exception unwind.
 class ScopeGuard {
-public:
+   public:
     explicit ScopeGuard(std::function<void()> fn) : cleanup_(std::move(fn)) {}
     ~ScopeGuard() {
         if(cleanup_) cleanup_();
@@ -147,7 +146,6 @@ void GPUStereo::run() {
 
     const bool depthConnected = !depth.getConnections().empty();
 
-    // Prefer per-frame transforms; fall back to pipeline calibration when baseline/focal are missing.
     StereoGeometry stereoGeom{};
     dai::CalibrationHandler calib;
     dai::Extrinsics leftExtr;
@@ -279,11 +277,7 @@ void GPUStereo::run() {
             }
         }
 
-        // Upload RAW8 inputs into device-visible buffers.
-        // Note: We still need the buffer_to_image stage inside PyramidStereo because the pyramid images are CL_FLOAT,
-        // so the upload includes a type conversion (uint8 -> float). Eliminating that would require changing the
-        // pyramid image format and all kernels that consume it.
-        checkOpenClStatus(
+        checkOpenClStatus(  // PyramidStereo still runs buffer_to_image: its pyramid images are CL_FLOAT, so the upload converts uint8 to float
             clEnqueueWriteBuffer(commandQueue, leftBuffer, CL_TRUE, 0, monoBytes, leftFrame->getData().data(), 0, nullptr, nullptr),
             "clEnqueueWriteBuffer(left)");
         checkOpenClStatus(
@@ -377,7 +371,6 @@ void GPUStereo::run() {
         auto tAbsoluteEnd = std::chrono::steady_clock::now();
         dai::gate::logTiming(logger, this->getName(), tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
-    // ScopeGuards release all OpenCL resources in reverse order on scope exit.
 }
 
 }  // namespace gate

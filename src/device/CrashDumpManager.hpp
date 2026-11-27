@@ -1,41 +1,26 @@
 #pragma once
 
-// std
 #include <memory>
 
-// project
 #include "depthai/device/CrashDump.hpp"
 #include "depthai/device/DeviceBase.hpp"
 
 namespace dai {
 
-/**
- * @brief Manager class for handling device crash dumps
- */
 class CrashDumpManager {
    public:
     explicit CrashDumpManager(DeviceBase* devicePtr);
 
     ~CrashDumpManager() = default;
 
-    // Non-copyable
     CrashDumpManager(const CrashDumpManager&) = delete;
     CrashDumpManager& operator=(const CrashDumpManager&) = delete;
 
-    // Movable
     CrashDumpManager(CrashDumpManager&& other) noexcept;
     CrashDumpManager& operator=(CrashDumpManager&& other) noexcept;
 
-    /**
-     * @brief Collect crash dump from the device
-     * @param clear Clear the cached crash dump on device after collection
-     * @return Unique pointer to the CrashDump. Platform-specific crash dump payload may be empty if no crash dump is available.
-     */
-    std::unique_ptr<CrashDump> collectCrashDump(bool clear = true);
+    std::unique_ptr<CrashDump> collectCrashDump(bool clear = true);  // clear: delete the dump on the device; the payload is empty when there is no dump
 
-    /**
-     * @brief Check if a crash dump is available on the device
-     */
     bool hasCrashDump();
 
    private:

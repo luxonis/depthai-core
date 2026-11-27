@@ -13,7 +13,6 @@
 #include "depthai/pipeline/Assets.hpp"
 #include "depthai/utility/matrixOps.hpp"
 #include "pipeline/PipelineBuilder.hpp"
-// std
 
 #include <chrono>
 #include <memory>
@@ -335,7 +334,6 @@ void StereoDepth::_ThreadWarp() {
 
         if(enableRectification) {
             rectifiedLeftFrame = rectifiedFrameLeftPool->get();
-            // rectifiedLeftFrame->set(leftIn->get());
             rectifiedLeftFrame->setMetadata(*leftIn);
             rectifiedLeftFrame->setWidth(outFrameWidth);
             rectifiedLeftFrame->setHeight(outFrameHeight);
@@ -346,7 +344,6 @@ void StereoDepth::_ThreadWarp() {
             }
 
             rectifiedRightFrame = rectifiedFrameRightPool->get();
-            // rectifiedRightFrame->set(rightIn->get());
             rectifiedRightFrame->setMetadata(*rightIn);
             rectifiedRightFrame->setWidth(outFrameWidth);
             rectifiedRightFrame->setHeight(outFrameHeight);
@@ -360,9 +357,6 @@ void StereoDepth::_ThreadWarp() {
             tStartWarp = tWarpAllocationEnd;
 
             if(0) {
-                // cv::remap(leftIn->getFrame(), rectifiedLeftFrame->getFrame(), map_x_l, map_y_l, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
-                // cv::remap(rightIn->getFrame(), rectifiedRightFrame->getFrame(), map_x_r, map_y_r, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0,
-                // 0));
             } else {
                 warp.RunAsync(leftInAccel, rectifiedLeftFrame, 0);
                 warp.Wait();
@@ -435,7 +429,6 @@ void StereoDepth::combineDispMaps(std::shared_ptr<dai::ImgFrame>& disparityFrame
     uint16_t* out = (std::uint16_t*)result->data->getData().data();
 
     for(int n = 0; n < outFrameHeight; n++) {
-        // Combine levels foreach disparity reference line
         combineLevels(ref, dscaled, out, outFrameWidth, maxDisp);
 
         ref += outFrameWidth;
@@ -593,7 +586,6 @@ void StereoDepth::_ThreadStereo() {
         auto tStereoAllocationStart = steady_clock::now();
 
         std::shared_ptr<dai::ImgFrame> disparityFrame = disparityFramePool->get();
-        // disparityFrame->set(referenceFrame->get());
         disparityFrame->setMetadata(*referenceFrame);
         disparityFrame->setWidth(outFrameWidth);
         disparityFrame->setHeight(outFrameHeight);
@@ -605,7 +597,6 @@ void StereoDepth::_ThreadStereo() {
         }
 
         std::shared_ptr<dai::ImgFrame> confidenceFrame = confidenceFramePool->get();
-        // confidenceFrame->set(referenceFrame->get());
         confidenceFrame->setMetadata(*referenceFrame);
         confidenceFrame->setWidth(outFrameWidth);
         confidenceFrame->setHeight(outFrameHeight);
@@ -681,9 +672,7 @@ void StereoDepth::_ThreadStereo() {
             PyrImgConfig pyrImgCfg = {.eDsInterpolation = ScaledownInterpolation::BILINEAR};
             pyrImg.Config(pyrImgCfg);
 
-            // Starting downscale - left
             rectifiedLeftFrameDs = pyrFrameLeftPool->get();
-            // rectifiedLeftFrameDs->set(rectifiedLeftFrame->get());
             rectifiedLeftFrameDs->setMetadata(*rectifiedLeftFrame);
             rectifiedLeftFrameDs->setWidth(outFrameWidth / 2);
             rectifiedLeftFrameDs->setHeight(outFrameHeight / 2);
@@ -696,9 +685,7 @@ void StereoDepth::_ThreadStereo() {
             pyrImg.RunAsync(rectifiedLeftFrame, outLeftPyrFrames);
             pyrImg.Wait();
 
-            // Starting downscale - right
             rectifiedRightFrameDs = pyrFrameRightPool->get();
-            // rectifiedRightFrameDs->set(rectifiedRightFrame->get());
             rectifiedRightFrameDs->setMetadata(*rectifiedRightFrame);
             rectifiedRightFrameDs->setWidth(outFrameWidth / 2);
             rectifiedRightFrameDs->setHeight(outFrameHeight / 2);
@@ -868,7 +855,6 @@ void StereoDepth::_ThreadStereo() {
             logger->debug("Preparing for DS..");
 
             disparityFrameDs = disparityDsFramePool->get();
-            // disparityFrameDs->set(referenceFrame->get());
             disparityFrameDs->setMetadata(*referenceFrame);
             disparityFrameDs->setWidth(outFrameWidth / 2);
             disparityFrameDs->setHeight(outFrameHeight / 2);
@@ -880,7 +866,6 @@ void StereoDepth::_ThreadStereo() {
             }
 
             confidenceFrameDs = confidenceDsFramePool->get();
-            // confidenceFrameDs->set(referenceFrame->get());
             confidenceFrameDs->setMetadata(*referenceFrame);
             confidenceFrameDs->setWidth(outFrameWidth / 2);
             confidenceFrameDs->setHeight(outFrameHeight / 2);
@@ -1039,12 +1024,9 @@ void StereoDepth::_ThreadStereo() {
                 logger->debug("Left-right check time: {} ms", duration_cast<microseconds>(stopTimer - startTimer).count() / 1000.0f);
             }
 
-            // Process the disparity output
-
             logger->debug("Stereo for DS finished. Merging the disparities ...");
 
             startTimer = high_resolution_clock::now();
-            // auto combinedDisparity = dai::AcceleratorMemory::create(outDisparityFrameSize);
             if(runPostProcessingOnCPU) {
                 combineDispMaps(disparityFrame, disparityFrameDs, disparityFrame, 64, 2);
             } else {
@@ -1064,7 +1046,6 @@ void StereoDepth::_ThreadStereo() {
             }
             stopTimer = high_resolution_clock::now();
             logger->debug("Disparity combination time: {} ms", duration_cast<microseconds>(stopTimer - startTimer).count() / 1000.0f);
-            // disparityFrame->data = combinedDisparity;
 
             auto t2 = steady_clock::now();
             auto elapsed = duration_cast<microseconds>(t2 - t1).count() / 1000.f;
@@ -1116,9 +1097,7 @@ void StereoDepth::_ThreadStereo() {
 void StereoDepth::setRectifiedTransformations(dai::ImgTransformation& transformation, const cv::Mat& cv_R, const cv::Mat& cv_KRect) const {
     const auto toDeviceId = transformation.getExtrinsics().toDeviceId;
     if(cv_R.empty() || cv_KRect.empty()) {
-        // Custom rectification meshes don't carry a recoverable pinhole camera model.
-        // Leave the output transformation invalid instead of advertising stale intrinsics as undistorted.
-        transformation = dai::ImgTransformation();
+        transformation = dai::ImgTransformation();  // Custom meshes have no recoverable pinhole model: invalid is better than stale intrinsics
         dai::Extrinsics extrinsics;
         extrinsics.toDeviceId = toDeviceId;
         transformation.setExtrinsics(extrinsics);
@@ -1325,7 +1304,6 @@ void StereoDepth::_ThreadPostProcessing() {
                         }
                         logger->debug("Executing temporal filter..");
 
-                        // Apply temporal filter
                         uint8_t* currentFrameData = disparityFrame->data->getData().data();
                         size_t frameHeight = disparityFrame->getHeight();
                         size_t frameWidth = disparityFrame->getWidth();
@@ -1413,15 +1391,11 @@ void StereoDepth::_ThreadPostProcessing() {
             // TODO(Remove this once the pipeline framework supports const shared ptrs)
             rectifiedLeft.send(std::const_pointer_cast<dai::ImgFrame>(rectifiedLeftFrame));
             rectifiedRight.send(std::const_pointer_cast<dai::ImgFrame>(rectifiedRightFrame));
-            // pixelDescriptorsLeft.send(stereoDescriptorFrameLeft);
-            // pixelDescriptorsRight.send(stereoDescriptorFrameRight);
 
             logger->debug("Sending data..");
 
             syncedLeft.send(std::const_pointer_cast<dai::ImgFrame>(leftIn));
             syncedRight.send(std::const_pointer_cast<dai::ImgFrame>(rightIn));
-            // debugDispCostDump.send(costDumpFrame);
-            // debugDispLrCheckIt1.send(wtaDumpFrame);
             outConfig.send(stereoConfig);
 
             dai::ImgTransformation alignTransformation;
@@ -1451,7 +1425,6 @@ void StereoDepth::_ThreadPostProcessing() {
             }
             if(depthConnected) {
                 std::shared_ptr<dai::ImgFrame> depthFrame = depthFramePool->get();
-                // depthFrame->set(referenceFrame->get());
                 depthFrame->setMetadata(*disparityFrame);
                 depthFrame->setType(dai::ImgFrame::Type::RAW16);
                 if(depthFrame->data == nullptr) {
@@ -1530,7 +1503,6 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
         }
     }
 
-    // bool isVertical = properties.verticalStereo;
     bool isVertical = false;
     int baselineIdx = isVertical ? 1 : 0;
 
@@ -1586,7 +1558,6 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
     float calib_H1[9] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
     float calib_H2[9] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
 
-    // default
     float baseline = 0.075;
     float fov = 71.86;
     float focal = 0;
@@ -1629,7 +1600,6 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
                     "'{}'",
                     baseline,
                     fov);
-                // std::cout << "Error reading calib " << ex.what() << std::endl;
             }
         } else {
             logger->warn(
@@ -1690,26 +1660,15 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
             auto cv_M1 = vecToCvMat(3, 3, CV_32FC1, matrix::matrix3x3ToVectorMatrix(M1));
             auto cv_M2 = vecToCvMat(3, 3, CV_32FC1, matrix::matrix3x3ToVectorMatrix(M2));
 
-            /**
-             * (aljazkonec) Need to robustly handle calibration updates and missing metadata:
-             * - ImgTransformations need to save EEPROM ID from which they were created. If EEPROM ID updates in both ImgFrames, recompute the rectification
-             * mesh.
-             * - (holistic) record & replay can record frames without metadata, which causes the transformations to have empty extrinsics.
-             * This is the reason we use calibration handler for getting intrinsics, extrinsics and distortion, instead of relying on the transformations.
-             */
-            // auto d1 = alignedTransformation.getDistortionCoefficients();
-            // auto d2 = nonAlignedTransformation.getDistortionCoefficients();
-            auto d1 = calib.getDistortionCoefficients(leftSocket);
+            auto d1 = calib.getDistortionCoefficients(leftSocket);  // From calibration, not the transformations: replayed frames can lack metadata
             auto d2 = calib.getDistortionCoefficients(rightSocket);
 
             auto cv_d1 = vecToCvMat(1, d1.size(), CV_32FC1, d1);
             auto cv_d2 = vecToCvMat(1, d2.size(), CV_32FC1, d2);
 
-            // std::vector<std::vector<float>> R = matrix::matrix3x3ToVectorMatrix(alignedTransformation.getRotationMatrixTo(nonAlignedTransformation));
             std::vector<std::vector<float>> R = calib.getCameraRotationMatrix(leftSocket, rightSocket);
 
             auto cv_R = vecToCvMat(3, 3, CV_32FC1, R);
-            // auto T = alignedTransformation.getTranslationVectorTo(nonAlignedTransformation);
             auto T = calib.getCameraTranslationVector(leftSocket, rightSocket, false);
             auto cv_T = vecToCvMat(1, 3, CV_32FC1, {T[0], T[1], T[2]});
 
@@ -1859,18 +1818,7 @@ void StereoDepth::initCalib(const std::shared_ptr<const dai::ImgFrame>& leftIn, 
 
 void StereoDepth::buildStage1() {
     if(properties.initialConfig.filtersBackend != dai::ProcessorType::CPU) {
-        // This warms up the dsp so it works afterwards when called.
-        // Without this it fails in some cases with:
-        // Remote_session_control failed
-        // as it has some race conditions with some unknown stuff.
-        // Main suspects are the hardware accelerator and fastCV. fastCV and the accelerator already had a race condition,
-        // where fastCV had to be configured before the accelerator or the accelerator init would fail.
-        //
-        // THEORY:
-        // As the accelerator init also uses CDSP this is probably the same s**t.
-        // fastCV maybe reconfigures / overrides some global CDSP state
-        // and that doesn't play nice with other CDSP stuff.
-        dai::device::openDspSession(dai_device_dsp_open_stereo, "dai_device_dsp_open_stereo");
+        dai::device::openDspSession(dai_device_dsp_open_stereo, "dai_device_dsp_open_stereo");  // Warms up the DSP: else later calls can fail (CDSP race)
     }
 }
 
@@ -1882,8 +1830,6 @@ void StereoDepth::run() {
         throw std::runtime_error("inputAlignTo is not supported!");
     }
 
-    // customInputPixelDescriptors = properties.customPixelDescriptors;
-
     disparityConnected = disparity.getConnections().size();
     depthConnected = depth.getConnections().size();
     syncedLeftConnected = syncedLeft.getConnections().size();
@@ -1892,7 +1838,6 @@ void StereoDepth::run() {
     rectifiedRightConnected = rectifiedRight.getConnections().size();
     confidenceMapConnected = confidenceMap.getConnections().size();
 
-    // unsupported
     outConfigConnected = outConfig.getConnections().size();
     debugDispLrCheckIt1Connected = debugDispLrCheckIt1.getConnections().size();
     debugDispLrCheckIt2Connected = debugDispLrCheckIt2.getConnections().size();
@@ -1920,13 +1865,8 @@ void StereoDepth::run() {
     // TODO(jakgra) check why the accelerator unwarp triggers ASAN
     // enableRectification = false;
 
-    // if(customInputPixelDescriptors && enableRectification) {
-    //     throw std::runtime_error("Custom input pixel descriptors and on-board rectification are mutually exclusive!");
-    // }
-
     lazyLoad = true;
 
-    // Retrieve message from input
     std::shared_ptr<ImgFrame> leftIn, rightIn;
     {
         auto blockEvent = this->inputBlockEvent();
@@ -1937,11 +1877,9 @@ void StereoDepth::run() {
     leftSocket = static_cast<dai::CameraBoardSocket>(leftIn->getInstanceNum());
     rightSocket = static_cast<dai::CameraBoardSocket>(rightIn->getInstanceNum());
 
-    // Frame Size
     uint32_t inFrameWidth = leftIn->getWidth();
     uint32_t inFrameHeight = leftIn->getHeight();
 
-    // Some sanity checks
     if((leftIn->getWidth() != rightIn->getWidth()) || (leftIn->getHeight() != rightIn->getHeight())) {
         throw std::runtime_error(fmt::format("Left and right input frames have different sizes! Left: {}x{}, Right: {}x{}",
                                              leftIn->getWidth(),
@@ -1952,12 +1890,10 @@ void StereoDepth::run() {
 
     auto supportedTypes = {dai::ImgFrame::Type::RAW8, dai::ImgFrame::Type::GRAY8, dai::ImgFrame::Type::NV12, dai::ImgFrame::Type::YUV420p};
     for(auto& input : {leftIn, rightIn}) {
-        // Check if input type is supported
         if(std::find(supportedTypes.begin(), supportedTypes.end(), input->getType()) == supportedTypes.end()) {
             throw std::runtime_error("Input type is not supported! Please use GRAY8 or NV12 input types");
         }
 
-        // Strided inputs not supported yet
         if(input->getStride() != input->getWidth()) {
             throw std::runtime_error(
                 fmt::format("Input stride '{}' not being equal to width '{}' is not supported! Please use widths divisible by 128 (1280, 640, ...)",
@@ -1990,11 +1926,6 @@ void StereoDepth::run() {
 
     initCalib(_leftIn, _rightIn);
 
-    // if( outFrameWidth > 1280 || outFrameWidth < 64 ||
-    //     outFrameHeight < 64 || outFrameHeight > 720) {
-    //     throw std::runtime_error(fmt::format("Stereo input resolution {}x{} not supported!", outFrameWidth, outFrameHeight));
-    // }
-
     StereoInit stereoInit = {
         .bConfOutputEnable = true,
         .bSlicOutputEnable = false,
@@ -2026,8 +1957,6 @@ void StereoDepth::run() {
             "Stereo left and right input must have the same queue blocking behavior! Left: {} vs right: {}!", left.getBlocking(), right.getBlocking()));
     }
 
-    // Initialize the second depth node & pyramid image DS
-    // if Extended mode is is enabled
     auto rawCfg = *latestConfig;
 
     extendedMode = rawCfg.algorithmControl.enableExtended;

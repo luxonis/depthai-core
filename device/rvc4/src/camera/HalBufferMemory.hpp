@@ -3,12 +3,10 @@
 #include <hardware/camera3.h>
 #include <sys/mman.h>
 
-// std
 #include <cstdint>
 #include <cstring>
 #include <memory>
 
-// project
 #include "camera/CameraPool.hpp"
 #include "depthai/utility/Memory.hpp"
 #include "utilities/ErrorMacros.hpp"
@@ -16,7 +14,6 @@
 namespace dai {
 namespace gate {
 
-// memory as interface
 class HalBufferMemory : public Memory {
    public:
     uint64_t size{0};

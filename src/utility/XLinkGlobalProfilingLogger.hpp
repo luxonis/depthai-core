@@ -2,21 +2,18 @@
 #pragma once
 
 #include <cstdint>
+#include <depthai/device/Device.hpp>
+#include <depthai/device/DeviceBootloader.hpp>
+#include <depthai/openvino/OpenVINO.hpp>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
 #include <vector>
 
-// project
-#include <depthai/device/Device.hpp>
-#include <depthai/device/DeviceBootloader.hpp>
-#include <depthai/openvino/OpenVINO.hpp>
-
 namespace dai {
 
 class XLinkGlobalProfilingLogger {
-    // private constructor
     XLinkGlobalProfilingLogger();
     ~XLinkGlobalProfilingLogger();
 

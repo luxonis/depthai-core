@@ -29,7 +29,6 @@ class CircularBuffer {
         buffer.reserve(size);
     }
     virtual ~CircularBuffer() = default;
-    // Add a new element to the buffer after the last one or overwrite the oldest one
     T& add(T value) {
         if(buffer.size() < maxSize) {
             onAdd(value);
@@ -42,7 +41,6 @@ class CircularBuffer {
             return buffer[(index + maxSize - 1) % maxSize];
         }
     }
-    // Get the current buffer contents from oldest to newest
     std::vector<T> getBuffer() const {
         std::vector<T> result;
         if(buffer.size() < maxSize) {
@@ -53,7 +51,6 @@ class CircularBuffer {
         }
         return result;
     }
-    // Get the oldest element
     T first() const {
         if(buffer.empty()) {
             throw std::runtime_error("CircularBuffer is empty");
@@ -64,7 +61,6 @@ class CircularBuffer {
             return buffer[index];
         }
     }
-    // Get the newest element
     T last() const {
         if(buffer.empty()) {
             throw std::runtime_error("CircularBuffer is empty");
@@ -75,7 +71,6 @@ class CircularBuffer {
             return buffer[(index + maxSize - 1) % maxSize];
         }
     }
-    // Get current size of the buffer. When full, size() == maxSize
     size_t size() const {
         return buffer.size();
     }
@@ -96,9 +91,6 @@ class CircularBuffer {
         return buffer[(start() + pos) % buffer.size()];
     }
 
-    // ===========================================================
-    // Forward iterator
-    // ===========================================================
     class iterator {
        public:
         using iterator_category = std::forward_iterator_tag;
@@ -145,9 +137,6 @@ class CircularBuffer {
         return iterator(this, buffer.size());
     }
 
-    // ===========================================================
-    // Reverse iterator
-    // ===========================================================
     class reverse_iterator {
        public:
         using iterator_category = std::bidirectional_iterator_tag;
@@ -159,7 +148,6 @@ class CircularBuffer {
         reverse_iterator(CircularBuffer* parent, size_t pos) : parent(parent), pos(pos) {}
 
         reference operator*() {
-            // Map reverse position to logical order
             size_t logicalIndex = (parent->start() + parent->buffer.size() - 1 - pos) % parent->buffer.size();
             return parent->buffer[logicalIndex];
         }
@@ -206,7 +194,6 @@ class WindowedAverageBuffer : public CircularBuffer<T> {
     T sum{};
 
    public:
-    // Initialize with buffer size and optional initial sum value
     WindowedAverageBuffer(size_t size, T initialValue = T()) : CircularBuffer<T>(size), sum(initialValue) {}
 
     void onSwap(T& oldValue, T& newValue) override {

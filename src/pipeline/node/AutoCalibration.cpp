@@ -247,8 +247,7 @@ void addPoolsForAutoCalibration(const std::shared_ptr<Camera>& camera, int addit
     if(numIspPool > 0) {
         camera->setIspNumFramesPool(numIspPool + additionalPools);
     } else {
-        // If getIspNumFramesPool() is unavailable/non-positive, use a known-safe baseline via setIspNumFramesPool().
-        camera->setIspNumFramesPool(6);
+        camera->setIspNumFramesPool(6);  // 6 is a known-safe baseline pool size
     }
 }
 
@@ -290,9 +289,6 @@ std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Ca
 #endif
 }
 
-/**
- * Check if the node is set to run on host
- */
 bool AutoCalibration::runOnHost() const {
     return runOnHostVar;
 }
@@ -358,14 +354,9 @@ std::optional<WorldConstraints> AutoCalibration::getWorldConstraints() const {
     return dynamicCalibration->getWorldConstraints();
 }
 
-/**
-return calibration from DynamicCalibration node
-**/
 std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsigned int maxNumIteration, Report& report) {
-    auto startTime = std::chrono::steady_clock::now();  // Start timer
-    // Validation consumes coverage only, so rejected marker frames can leave informational results behind.
-    // Start with an empty pair of queues before the gate can produce new calibration messages.
-    dynamicCalibrationQueue.tryGetAll<dai::DynamicCalibrationResult>();
+    auto startTime = std::chrono::steady_clock::now();                   // Start timer
+    dynamicCalibrationQueue.tryGetAll<dai::DynamicCalibrationResult>();  // Drain: validation consumes only coverage, so stale results can stay queued
     coverageQueue.tryGetAll<dai::CoverageData>();
     gateControlQueue.send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
     {
@@ -412,8 +403,6 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
             }
         }
 
-        // One-shot command semantics: close and reset every attempt.
-
         if(coverage) {
             report.coveragesAcquired.push_back({coverage->coverageAcquired, coverage->dataAcquired});
         } else {
@@ -432,13 +421,6 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
     return nullptr;
 }
 
-/**
-1. load data
-2. if data OK -> check calibration
-   if data not OK -> go to 1.
-3. if calibration not OK -> recalibrate; go to 1.
-   if calibration OK -> set calibration
-**/
 bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationHandler> calibration) {
     if(initialConfig->validationSetSize < 0) {
         throw std::invalid_argument("AutoCalibration: validationSetSize must be non-negative");
@@ -535,7 +517,6 @@ void AutoCalibration::runContinuousMode() {
             nlohmann::json{{"mode", telemetryAutoCalibrationModeName(initialConfig->mode)}, {"passed", passed}, {"elapsed_seconds", elapsed.count()}});
         logger->info("AutoCalibration update took: {:.2f}s", elapsed.count());
         int elapsedSleeping = 0;
-        // Continue sleeping only if total time isn't met AND mainLoop is still true
         while(elapsedSleeping < initialConfig->sleepingTime && mainLoop()) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
             elapsedSleeping += 1;

@@ -45,7 +45,6 @@ AprilTag::Properties& AprilTag::getProperties() {
     return properties;
 }
 
-// Node properties configuration
 void AprilTag::setWaitForConfigInput(bool wait) {
     properties.inputConfigSync = wait;
 }
@@ -75,7 +74,6 @@ void AprilTag::buildInternal() {
         auto platform = device->getPlatform();
         runOnHostVar = platform == Platform::RVC2 || platform == Platform::RVC3;
     } else {
-        // No device, default to host
         runOnHostVar = true;
     }
     pimpl->logger->info("AprilTag node running on host: {}", runOnHostVar);
@@ -140,44 +138,36 @@ void destroyAprilTagFamily(apriltag_family_t* tf, dai::AprilTagConfig::Family fa
 }
 
 void handleErrors(int e) {
-    // Hamming distance error
-    if(e == ENOMEM) {
+    if(e == ENOMEM) {  // Hamming distance error
         throw std::runtime_error("AprilTag node: Unable to add family to detector due to insufficient memory to allocate the tag-family decoder.");
     }
 
-    // Memory allocation error
     if(e == EINVAL) {
         throw std::runtime_error("AprilTag node: memory error");
     }
 }
 
 void setDetectorConfig(apriltag_detector_t* td, apriltag_family_t*& tf, AprilTagConfig::Family& family, const dai::AprilTagConfig& config) {
-    // Remove old detector family
     apriltag_detector_clear_families(td);
 
-    // Destroy old detector family
     destroyAprilTagFamily(tf, family);
     tf = nullptr;
 
-    // Set new detector family
     tf = getAprilTagFamily(config.family);
     apriltag_detector_add_family(td, tf);
     family = config.family;
 
-    // Set detector config
     td->quad_decimate = static_cast<float>(config.quadDecimate);
     td->quad_sigma = config.quadSigma;
     td->refine_edges = config.refineEdges;
     td->decode_sharpening = static_cast<double>(config.decodeSharpening);
 
-    // Set detector thresholds
     td->qtp.min_cluster_pixels = config.quadThresholds.minClusterPixels;
     td->qtp.critical_rad = static_cast<float>((static_cast<double>(config.quadThresholds.criticalDegree) * (M_PI / 180.0)));  // Convert degrees to radians
     td->qtp.cos_critical_rad = cos(td->qtp.critical_rad);
     td->qtp.max_line_fit_mse = config.quadThresholds.maxLineFitMse;
     td->qtp.deglitch = static_cast<int>(config.quadThresholds.deglitch);
 
-    // We don't want to debug
     td->debug = false;
 }
 
@@ -188,18 +178,15 @@ void setDetectorProperties(apriltag_detector_t* td, const dai::AprilTagPropertie
 void AprilTag::run() {
     auto& logger = pimpl->logger;
     logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
-    // Retrieve properties and initial config
     const dai::AprilTagProperties& properties = getProperties();
     dai::AprilTagConfig config = properties.initialConfig;
 
-    // Prepare other variables
     std::shared_ptr<ImgFrame> inFrame = nullptr;
     std::shared_ptr<AprilTagConfig> inConfig = nullptr;
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     std::unique_ptr<cv::Mat> cvimgPtr = nullptr;
     #endif
 
-    // Setup april tag detector
     apriltag_family_t* tf = nullptr;
     AprilTagConfig::Family tfamily = config.family;
     std::unique_ptr<apriltag_detector_t, void (*)(apriltag_detector_t*)> td(apriltag_detector_create(), apriltag_detector_destroy);
@@ -214,18 +201,14 @@ void AprilTag::run() {
         }
     } detectorFamilyCleanup{td.get(), tf, tfamily};
 
-    // Set detector properties
     setDetectorProperties(td.get(), properties);
 
-    // Set detector config
     setDetectorConfig(td.get(), tf, tfamily, config);
 
-    // Handle possible errors during configuration
     handleErrors(errno);
 
     while(mainLoop()) {
         auto tAbsoluteBeginning = std::chrono::steady_clock::now();
-        // Preallocate data on stack for AprilTag detection
         int32_t width = 0;
         int32_t height = 0;
         int32_t stride = 0;
@@ -235,23 +218,19 @@ void AprilTag::run() {
         {
             auto blockEvent = this->inputBlockEvent();
 
-            // Retrieve config from user if available
             if(properties.inputConfigSync) {
                 inConfig = inputConfig.get<AprilTagConfig>();
             } else {
                 inConfig = inputConfig.tryGet<AprilTagConfig>();
             }
 
-            // Set config if there is one and handle possible errors
             if(inConfig != nullptr) {
                 setDetectorConfig(td.get(), tf, tfamily, *inConfig);
                 handleErrors(errno);
             }
 
-            // Get latest frame
             inFrame = inputImage.get<ImgFrame>();
 
-            // Prepare data for AprilTag detection based on input frame type
             frameType = inFrame->getType();
         }
         auto tGotInput = std::chrono::steady_clock::now();
@@ -269,8 +248,7 @@ void AprilTag::run() {
             }
             const auto pixels = inFrame->getData();
             const std::size_t offset = inFrame->fb.p1Offset;
-            // AprilTag can copy height * stride bytes, including the last row's padding.
-            if(pixels.data() == nullptr || offset > pixels.size() || frameHeight > (pixels.size() - offset) / frameStride) {
+            if(pixels.data() == nullptr || offset > pixels.size() || frameHeight > (pixels.size() - offset) / frameStride) {  // AprilTag reads height*stride
                 throw std::runtime_error("AprilTag node: first plane exceeds frame buffer");
             }
             width = static_cast<int32_t>(frameWidth);
@@ -290,10 +268,8 @@ void AprilTag::run() {
     #endif
         }
 
-        // Create AprilTag image
         image_u8_t aprilImg{width, height, stride, imgbuf};
 
-        // Detect AprilTags
         std::unique_ptr<zarray_t, void (*)(zarray_t*)> detections(apriltag_detector_detect(td.get(), &aprilImg), apriltag_detections_destroy);
 
         std::shared_ptr<dai::AprilTags> aprilTags = std::make_shared<dai::AprilTags>();
@@ -338,7 +314,6 @@ void AprilTag::run() {
             }
         }
 
-        // Inherit sequence number and timestamp from input image
         aprilTags->setBufferMetadataFrom(inFrame);
         aprilTags->setTransformation(inFrame->transformation);
 
@@ -346,14 +321,12 @@ void AprilTag::run() {
         {
             auto blockEvent = this->outputBlockEvent();
 
-            // Send detections and pass through input frame
             out.send(aprilTags);
             passthroughInputImage.send(inFrame);
         }
         auto tAbsoluteEnd = std::chrono::steady_clock::now();
         this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
 
-        // Logging
         logger->trace("Detected {} april tags", zarray_size(detections.get()));
     }
 }

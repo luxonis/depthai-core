@@ -26,7 +26,6 @@ std::shared_ptr<Thermal> Thermal::build(CameraBoardSocket boardSocket, float fps
     }
 
     auto cameraFeatures = device->getConnectedCameraFeatures();
-    // First handle the case if the boardSocket is set to AUTO
     bool found = false;
     if(boardSocket == CameraBoardSocket::AUTO) {
         auto defaultSockets = {CameraBoardSocket::CAM_E};
@@ -68,7 +67,6 @@ std::shared_ptr<Thermal> Thermal::build(CameraBoardSocket boardSocket, float fps
     return std::static_pointer_cast<Thermal>(shared_from_this());
 }
 
-// Get current board socket
 CameraBoardSocket Thermal::getBoardSocket() const {
     if(!isBuilt) {
         throw std::runtime_error("Thermal node must be built before calling getBoardSocket()");

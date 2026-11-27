@@ -6,5 +6,4 @@ void MapData::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datat
     metadata = utility::serialize(*this);
     datatype = DatatypeEnum::MapData;
 };
-// No implementation needed
 }  // namespace dai

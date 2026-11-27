@@ -4,15 +4,11 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/PipelineEvent.hpp"
 
-// pybind
 #include <pybind11/cast.h>
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_pipelineevent(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -22,18 +18,10 @@ void bind_pipelineevent(pybind11::module& m, void* pCallstack) {
     py::enum_<PipelineEvent::Interval> pipelineEventInterval(pipelineEvent, "Interval", DOC(dai, PipelineEvent, Interval));
     py::enum_<PipelineEvent::Status> pipelineEventStatus(pipelineEvent, "Status", DOC(dai, PipelineEvent, Status));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     pipelineEventType.value("CUSTOM", PipelineEvent::Type::CUSTOM)
         .value("LOOP", PipelineEvent::Type::LOOP)
@@ -48,7 +36,6 @@ void bind_pipelineevent(pybind11::module& m, void* pCallstack) {
         .value("BLOCKED", PipelineEvent::Status::BLOCKED)
         .value("CANCELLED", PipelineEvent::Status::CANCELLED);
 
-    // Message
     pipelineEvent.def(py::init<>())
         .def("__repr__", &PipelineEvent::str)
         .def_readwrite("nodeId", &PipelineEvent::nodeId, DOC(dai, PipelineEvent, nodeId))

@@ -13,31 +13,23 @@ namespace dai {
 namespace node {
 namespace detail {
 
-/// Intrinsics and distortion of the actual marker images, including any crop, resize or undistortion.
-/// Camera poses always come from the assembled candidate calibration.
-struct ObservationCamera {
+struct ObservationCamera {  // Intrinsics of the marker images as observed (after crop, resize, undistortion)
     std::vector<std::vector<float>> intrinsics;
     std::vector<float> distortion;
     CameraModel distortionModel = CameraModel::Perspective;
 };
 
-/// One configured measurement; measured is empty when the observations cannot reconstruct it.
-struct ConstraintResidual {
+struct ConstraintResidual {  // measured is empty when the observations cannot reconstruct it
     std::string what;
     double configured = 0.0;
     std::optional<double> measured;
-    /// Requires a finite reconstruction within 15 percent or 1 cm of the configured measurement.
-    bool fits() const;
+    bool fits() const;  // Finite and within 15 percent or 1 cm of the configured value
 };
 
-/// True if either epipolar error is invalid, or the candidate exceeds both 0.5 px and twice the current error.
-bool epipolarErrorContradictsConstraints(double currentPx, double newPx);
+bool epipolarErrorContradictsConstraints(double currentPx, double newPx);  // True if an error is invalid, or newPx > 0.5 px and > 2 * currentPx
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-/// Reconstructs every configured measurement using the final assembled calibration and the camera models
-/// of the observed images. Returns one result per measurement, including those that cannot be reconstructed.
-/// The base socket only selects the common reconstruction frame; socket distances use the candidate's poses.
-std::vector<ConstraintResidual> worldConstraintResiduals(const WorldConstraints& constraints,
+std::vector<ConstraintResidual> worldConstraintResiduals(const WorldConstraints& constraints,  // One result per measurement, also for ones not reconstructable
                                                          const std::deque<MarkerObservationSet>& observationSets,
                                                          const CalibrationHandler& calibration,
                                                          CameraBoardSocket base,

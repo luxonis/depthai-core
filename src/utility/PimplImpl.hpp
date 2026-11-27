@@ -1,5 +1,4 @@
-// https://herbsutter.com/gotw/_101/
-#pragma once
+#pragma once  // Pimpl pattern from https://herbsutter.com/gotw/_101/
 
 #include <utility>
 

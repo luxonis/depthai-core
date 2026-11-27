@@ -1,8 +1,6 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
-
-// shared
 #include <depthai/properties/internal/PipelineEventAggregationProperties.hpp>
 
 namespace dai {

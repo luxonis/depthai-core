@@ -68,7 +68,6 @@ std::vector<std::string> collectMessages(const nlohmann::json& json,
         {"deviceSKUs", deviceSKU},
     };
 
-    // Go over the messages and filter the ones relevant
     for(const auto& entry : *entries) {
         const auto message = entry.find("message");
         if(message == entry.end() || !message->is_string() || message->get_ref<const std::string&>().empty()) {
@@ -83,11 +82,9 @@ std::vector<std::string> collectMessages(const nlohmann::json& json,
                 break;
             }
 
-            // Check if all values are valid
             const bool validValues = std::all_of(
                 filter->begin(), filter->end(), [](const nlohmann::json& item) { return item.is_string() && !item.get_ref<const std::string&>().empty(); });
 
-            // Empty lists match all devices; a trailing '*' matches any suffix.
             const bool matchesDevice =
                 validValues && (filter->empty() || std::any_of(filter->begin(), filter->end(), [&value = value](const nlohmann::json& item) {
                                     const auto& pattern = item.get_ref<const std::string&>();

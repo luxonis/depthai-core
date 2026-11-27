@@ -25,23 +25,14 @@ class InputQueue {
     bool trySend(const std::shared_ptr<ADatatype>& msg);
 
    private:
-    /**
-     * @brief Construct a new Input Queue object. The constructor is private as we only want to expose the relevant methods - only send for now
-     *
-     * @param maxSize: Maximum size of the input queue
-     * @param blocking: Whether the input queue should block when full
-     */
     explicit InputQueue(unsigned int maxSize = 16, bool blocking = false);
 
     class InputQueueNode : public node::ThreadedHostNode {
        public:
-        /** Constructor*/
         InputQueueNode(unsigned int maxSize, bool blocking);
 
-        /** Send message from host*/
         void send(const std::shared_ptr<ADatatype>& msg);
 
-        /** Try to send message from host, without waiting for space in the queue*/
         bool trySend(const std::shared_ptr<ADatatype>& msg);
 
         void run() override;
@@ -54,7 +45,6 @@ class InputQueue {
         Node::Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
     };
 
-    // Helper access functions
     inline Node::Output& getNodeOutput() {
         return inputQueueNode->output;
     }
@@ -62,7 +52,6 @@ class InputQueue {
         return inputQueueNode;
     }
 
-    /** Pointer to InputQueueNode that does the actual communication between host and device */
     std::shared_ptr<InputQueueNode> inputQueueNode;
 };
 }  // namespace dai

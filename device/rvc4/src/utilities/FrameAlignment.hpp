@@ -11,11 +11,7 @@
 namespace dai {
 namespace gate {
 
-/**
- * Re-lays out NV12 and GRAY8 frames into the stride and plane alignment that the
- * vision accelerator expects (128-byte strides, 32/16-row planes, 4096-byte plane sizes).
- */
-class FrameAlignment {
+class FrameAlignment {  // Layout that the vision accelerator expects: 128-byte strides, 32/16-row planes, 4096-byte plane sizes
     static constexpr uint32_t alignUp(uint32_t value, uint32_t alignment) {
         return ((value + alignment - 1) / alignment) * alignment;
     }
@@ -66,35 +62,34 @@ class FrameAlignment {
             }
         }
 
-   public:
-    // Converts only NV12 and GRAY8. Leaves the rest as is.
-    static ImgFrame convertImgFrameMeta(const dai::ImgFrame& frame) {
-        ImgFrame dst = frame;
-        switch(frame.getType()) {
-            case dai::ImgFrame::Type::NV12: {
-                if(frame.getStride() != alignedWidth(frame.getStride()) || getFirstPlaneSize(frame) % 4096 != 0 || getSecondPlaneSize(frame) % 4096 != 0) {
-                    dst.fb.stride = alignedWidth(frame.getStride());
-                    const size_t yPlaneSize = dst.fb.stride * alignedHeight(frame.fb.height);
-                    const size_t uvPlaneSize = alignedSize(dst.fb.stride * alignedHeight2(frame.fb.height / 2));
+       public:
+        static ImgFrame convertImgFrameMeta(const dai::ImgFrame& frame) {
+            ImgFrame dst = frame;
+            switch(frame.getType()) {
+                case dai::ImgFrame::Type::NV12: {
+                    if(frame.getStride() != alignedWidth(frame.getStride()) || getFirstPlaneSize(frame) % 4096 != 0 || getSecondPlaneSize(frame) % 4096 != 0) {
+                        dst.fb.stride = alignedWidth(frame.getStride());
+                        const size_t yPlaneSize = dst.fb.stride * alignedHeight(frame.fb.height);
+                        const size_t uvPlaneSize = alignedSize(dst.fb.stride * alignedHeight2(frame.fb.height / 2));
 
-                    dst.fb.p2Offset = frame.fb.p1Offset + yPlaneSize;
-                    dst.fb.p3Offset = dst.fb.p2Offset + uvPlaneSize;
+                        dst.fb.p2Offset = frame.fb.p1Offset + yPlaneSize;
+                        dst.fb.p3Offset = dst.fb.p2Offset + uvPlaneSize;
+                    }
+                    break;
                 }
-                break;
-            }
-            case dai::ImgFrame::Type::GRAY8: {
-                if(frame.getStride() != alignedWidth(frame.getStride()) || getFirstPlaneSize(frame) % 4096 != 0) {
-                    dst.fb.stride = alignedWidth(frame.getStride());
-                    dst.fb.p2Offset = frame.fb.p1Offset + dst.fb.stride * alignedHeight(frame.fb.height);
-                    dst.fb.p3Offset = dst.fb.p2Offset;
+                case dai::ImgFrame::Type::GRAY8: {
+                    if(frame.getStride() != alignedWidth(frame.getStride()) || getFirstPlaneSize(frame) % 4096 != 0) {
+                        dst.fb.stride = alignedWidth(frame.getStride());
+                        dst.fb.p2Offset = frame.fb.p1Offset + dst.fb.stride * alignedHeight(frame.fb.height);
+                        dst.fb.p3Offset = dst.fb.p2Offset;
+                    }
+                    break;
                 }
-                break;
+                default:
+                    break;
             }
-            default:
-                break;
+            return dst;
         }
-        return dst;
-    }
 
     static ImgFrame convertImgFrame(const dai::ImgFrame& frame) {
         ImgFrame dst = convertImgFrameMeta(frame);

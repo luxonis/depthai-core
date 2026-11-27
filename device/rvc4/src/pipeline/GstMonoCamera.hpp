@@ -9,18 +9,14 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/properties/MonoCameraProperties.hpp"
-// FIXME refactor to move out and share with ColorCamera
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 
-// libraries
 #include "depthai/utility/Memory.hpp"
 
 class GstMonoCamera {
    public:
     GMainLoop* main_loop;
     GstElement* pipeline;
-    // By default a single element with multi-camera-ids,
-    // while in case of manual exposure, one element per camera
     std::vector<GstElement*> src;
     GstBus* bus;
     std::unordered_map<dai::CameraBoardSocket, int> socketToGstSrcIdx;
@@ -41,7 +37,6 @@ class GstMonoCamera {
     std::unordered_map<dai::CameraBoardSocket, Callback> callback;
     std::unordered_map<dai::CameraBoardSocket, std::shared_ptr<GstCallbackContext>> context;
 
-    // TBD private
     struct V4lDesc {
         int cameraFd = -1;
         int sensorFd = -1;

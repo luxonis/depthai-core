@@ -11,26 +11,14 @@ namespace dai {
 
 namespace {
 
-// Pixel-rate budgets. A shared offline pool serves its members sequentially,
-// so its usable rate is the engine's peak (785 MHz, ~1 pix/clk) derated for
-// the serving overhead between frames. BPS strips wide frames internally but
-// tops out lower once striping overlap is counted.
-constexpr double kPoolBudgetPixPerSec = 550e6;
+constexpr double kPoolBudgetPixPerSec = 550e6;  // Pool: 785 MHz peak (~1 pix/clk) derated for the serving overhead between frames
 constexpr double kBpsBudgetPixPerSec = 650e6;
-// Widest frame a single IFE processes inline; above this a sensor needs a
-// dual-IFE pair or BPS.
-constexpr uint32_t kMaxSingleIfeWidth = 5760;
+constexpr uint32_t kMaxSingleIfeWidth = 5760;  // Widest frame one IFE processes inline; wider needs two front ends or the BPS
 
 constexpr int kNumFullIfe = 3;
-// Only IFE0/IFE1 can host shared pools: the offline fetch is SFE BUS_RD ->
-// same-index CSID -> IFE, and there is no SFE2.
-constexpr int kNumPoolIfe = 2;
+constexpr int kNumPoolIfe = 2;  // Only IFE 0 and 1 host pools: offline fetch is SFE BUS_RD -> same-index CSID -> IFE, no SFE2
 
-// Ingress slots for pool/BPS members, in assignment preference order. The
-// lites are otherwise idle; SFE RDI writes coexist with the SFE's BUS_RD
-// fetch duty, but SFE_n shares CSID_n's receiver with a dedicated pixel path
-// on IFE_n, so a dedicated IFE_n blocks sfe_n ingress.
-const std::array<const char*, 4> kIngressNames = {"ife-lite0", "ife-lite1", "sfe0", "sfe1"};
+const std::array<const char*, 4> kIngressNames = {"ife-lite0", "ife-lite1", "sfe0", "sfe1"};  // Preference order; a dedicated IFE n blocks sfe_n ingress
 constexpr int kIngressSfe0 = 2;
 constexpr int kIngressSfe1 = 3;
 
@@ -171,12 +159,9 @@ IspRouteDecision manualDecision(const IspSensorRequest& req) {
     return decision;
 }
 
-// Result of trying to pack a set of automatic sensors into the open pools
-// (and, only when pools cannot take them, BPS).
 struct Packing {
     bool ok{false};
-    // socket -> (pool ife index, ingress slot); bps entries use pool -1
-    std::map<int, std::pair<int, int>> placement;
+    std::map<int, std::pair<int, int>> placement;  // socket -> (pool front end index, ingress slot); pool -1 = Bayer processing stage
 };
 
 Packing tryPack(const FleetState& base, const std::vector<const IspSensorRequest*>& pooled, bool allowBps) {
@@ -186,7 +171,6 @@ Packing tryPack(const FleetState& base, const std::vector<const IspSensorRequest
     std::vector<const IspSensorRequest*> toPool = pooled;
 
     while(true) {
-        // LPT: heaviest first into the least-loaded open pool.
         bool fits = true;
         FleetState attempt = state;
         std::map<int, std::pair<int, int>> placement;
@@ -243,7 +227,6 @@ Packing tryPack(const FleetState& base, const std::vector<const IspSensorRequest
             packing.placement = std::move(placement);
             return packing;
         }
-        // Pools cannot take the set: spill the lightest sensor to BPS and retry.
         if(!allowBps || toPool.empty()) {
             return packing;
         }
@@ -323,7 +306,6 @@ std::map<int, IspRouteDecision> IspRouteAllocator::allocate(std::vector<IspSenso
     bool anyManual = false;
     bool anyWide = false;
 
-    // Pin manual routes first: they consume their resources verbatim.
     for(auto& req : fleet) {
         if(!req.manualFullIfe.empty() || !req.manualSharedIsp.empty()) {
             anyManual = true;
@@ -358,7 +340,6 @@ std::map<int, IspRouteDecision> IspRouteAllocator::allocate(std::vector<IspSenso
         }
     }
 
-    // Deterministic order: heaviest first, socket index breaking ties.
     std::sort(autos.begin(), autos.end(), [](const IspSensorRequest* a, const IspSensorRequest* b) {
         const double loadA = sensorLoad(*a);
         const double loadB = sensorLoad(*b);
@@ -368,9 +349,6 @@ std::map<int, IspRouteDecision> IspRouteAllocator::allocate(std::vector<IspSenso
         return a->socket < b->socket;
     });
 
-    // With no manual routes, no wide sensors, and one free full IFE per
-    // camera, keep the legacy realtime path: the camera stack picks the
-    // physical IFE itself and nothing needs coordinating.
     if(!anyManual && !anyWide && static_cast<int>(autos.size()) <= kNumFullIfe) {
         for(const auto* req : autos) {
             IspRouteDecision decision;
@@ -393,10 +371,7 @@ std::map<int, IspRouteDecision> IspRouteAllocator::allocate(std::vector<IspSenso
         return decisions;
     };
 
-    // Wide sensors first: they have the largest regret. A free dual-IFE pair
-    // beats BPS (no RAW round-trip); the pairing prefers to include IFE2 so a
-    // pool-capable IFE survives.
-    std::vector<IspSensorRequest*> normals;
+    std::vector<IspSensorRequest*> normals;  // Wide first (largest regret); an IFE pair beats BPS (no RAW round-trip); pairs prefer IFE 2
     for(auto* req : autos) {
         if(req->width <= kMaxSingleIfeWidth) {
             normals.push_back(req);
@@ -438,19 +413,13 @@ std::map<int, IspRouteDecision> IspRouteAllocator::allocate(std::vector<IspSenso
         decisions[req->socket] = decision;
     }
 
-    // Dedication is a luxury, granted only while everyone left still fits the
-    // pools: try the largest number of dedicated sensors first and back off.
-    // IFE2 is handed out first (it can never host a pool), IFE0 last (its
-    // dedication also blocks sfe0 ingress).
-    std::vector<int> dedicationOrder;
+    std::vector<int> dedicationOrder;  // Most dedications first; IFE 2 first (never hosts a pool), IFE 0 last (blocks sfe0 ingress)
     for(const int n : {2, 1, 0}) {
         if(state.ifeFree(n)) {
             dedicationOrder.push_back(n);
         }
     }
 
-    // First pass keeps everyone off BPS; only if no dedication level packs
-    // the pools does the second pass allow spilling the lightest sensors.
     const int maxDedicated = std::min(static_cast<int>(dedicationOrder.size()), static_cast<int>(normals.size()));
     for(const bool allowBps : {false, true}) {
     for(int k = maxDedicated; k >= 0; k--) {

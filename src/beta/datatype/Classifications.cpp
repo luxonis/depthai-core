@@ -14,8 +14,7 @@ namespace beta {
 
 namespace {
 
-// Visualization constants matching the source implementation in depthai-nodes.
-constexpr float FONT_SIZE_PER_HEIGHT = 1.0f / 30.0f;
+constexpr float FONT_SIZE_PER_HEIGHT = 1.0f / 30.0f;  // Match the depthai-nodes implementation
 constexpr std::size_t MAX_VISUALIZED_CLASSES = 5;
 const Color FONT_COLOR{1.0f, 1.0f, 1.0f, 1.0f};
 const Color FONT_BACKGROUND_COLOR{0.0f, 0.0f, 0.0f, 0.0f};

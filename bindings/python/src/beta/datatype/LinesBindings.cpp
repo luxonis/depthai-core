@@ -12,13 +12,10 @@ void bind_beta_lines(pybind11::module& m, void* pCallstack) {
     py::class_<beta::Line> line(betaModule, "Line", DOC(dai, beta, Line));
     py::class_<beta::Lines, Py<beta::Lines>, Buffer, Transformable, py::smart_holder> lines(betaModule, "Lines", DOC(dai, beta, Lines));
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     line.def(py::init<>())
         .def_readwrite("startPoint", &beta::Line::startPoint, DOC(dai, beta, Line, startPoint))

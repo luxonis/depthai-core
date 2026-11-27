@@ -1,10 +1,8 @@
 #pragma once
 #include <stdint.h>
 
-// libraries
 #include "depthai/pipeline/node/StereoDepth.hpp"
 
-// shared
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -20,8 +18,6 @@ namespace dai {
 namespace gate {
 
 class StereoDepth : public dai::node::StereoDepth {
-    // private:
-    //     std::shared_ptr<GstStereoDepth> webcamPipeline;
    public:
     std::shared_ptr<spdlog::async_logger>& logger = ThreadedNode::pimpl->logger;
 
@@ -29,9 +25,7 @@ class StereoDepth : public dai::node::StereoDepth {
 
    public:
     StereoDepth() : StereoDepth(std::make_unique<dai::node::StereoDepth::Properties>()) {}
-    StereoDepth(std::unique_ptr<Properties> props) : dai::node::StereoDepth(std::move(props)) {
-        // override that this is a host node
-    }
+    StereoDepth(std::unique_ptr<Properties> props) : dai::node::StereoDepth(std::move(props)) {}
     bool runOnHost() const override {
         return true;
     }
@@ -43,7 +37,6 @@ class StereoDepth : public dai::node::StereoDepth {
    private:
     AtomicBool threadsRunning{true};
     StereoDepthDispatcher stereoDepth;
-    // We use other StereoDepthDispatcher instance for downscaled image (extended mode)
     StereoDepthDispatcher stereoDepthDs;
     PyrImgDispatcher pyrImg;
     WarpDispatcher warp;
@@ -51,7 +44,6 @@ class StereoDepth : public dai::node::StereoDepth {
 
     std::vector<std::shared_ptr<dai::ImgFrame> > outLeftPyrFrames;
     std::vector<std::shared_ptr<dai::ImgFrame> > outRightPyrFrames;
-    //
     std::shared_ptr<StereoDepthConfig> latestConfig;
 
     bool customInputPixelDescriptors;
@@ -63,7 +55,6 @@ class StereoDepth : public dai::node::StereoDepth {
     bool rectifiedLeftConnected;
     bool rectifiedRightConnected;
 
-    // unsupported
     bool outConfigConnected;
     bool debugDispLrCheckIt1Connected;
     bool debugDispLrCheckIt2Connected;
@@ -72,7 +63,6 @@ class StereoDepth : public dai::node::StereoDepth {
     bool debugDispCostDumpConnected;
     bool confidenceMapConnected;
 
-    //
     bool enableRectification = false;
     dai::CameraBoardSocket leftSocket, rightSocket, alignedSocket;
 

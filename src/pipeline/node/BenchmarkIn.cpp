@@ -34,14 +34,11 @@ void BenchmarkIn::run() {
 
     uint32_t numMessages = properties.reportEveryNMessages;
 
-    // Decide if we will store latencies or not
     bool storeLatencies = false;
     if(properties.attachLatencies) {
         if(numMessages <= 1000) {
-            // We'll store latencies for this batch
             storeLatencies = true;
         } else {
-            // Warn upfront if user wanted latencies but # messages is too high
             logger->warn("Number of messages > 1000, latencies not individually attached.");
         }
     }
@@ -66,12 +63,10 @@ void BenchmarkIn::run() {
         }
         auto tGotInput = steady_clock::now();
 
-        // If this is the first message of the batch, reset counters
         if(messageCount == 0) {
             start = steady_clock::now();
             totalLatency = 0.0f;
 
-            // Clear vector if we are storing latencies
             if(storeLatencies) {
                 latencies.clear();
                 latencies.reserve(numMessages);
@@ -90,17 +85,14 @@ void BenchmarkIn::run() {
             duration<float> diff = currentTs - messageTs;
             logger->trace("Frame latency: {} s", diff.count());
 
-            // Accumulate for average
             totalLatency += diff.count();
 
-            // Optionally store individual latencies
             if(storeLatencies) {
                 latencies.push_back(diff.count());
             }
 
             messageCount++;
         } else {
-            // We reached our batch size, so time to compute and send the report
             auto stop = steady_clock::now();
             duration<float> durationS = stop - start;
 
@@ -110,7 +102,6 @@ void BenchmarkIn::run() {
             reportMessage->fps = numMessages / durationS.count();
             reportMessage->averageLatency = totalLatency / numMessages;
 
-            // Attach latencies only if we're storing them
             if(storeLatencies) {
                 reportMessage->latencies = latencies;
             }
@@ -125,7 +116,6 @@ void BenchmarkIn::run() {
                 logger->trace("Average latency: {} s", reportMessage->averageLatency);
             }
 
-            // Reset for next batch
             messageCount = 0;
         }
 
@@ -134,12 +124,10 @@ void BenchmarkIn::run() {
             auto blockEvent = this->outputBlockEvent();
 
             if(reportMessage) {
-                // Send out the report
                 report.send(reportMessage);
                 logger->trace("Sent report message");
             }
 
-            // Passthrough the message
             passthrough.send(inMessage);
         }
         auto tAbsoluteEnd = steady_clock::now();

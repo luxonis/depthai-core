@@ -7,39 +7,27 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Node and Properties declare upfront
     py::class_<SpatialDetectionNetworkProperties, std::shared_ptr<SpatialDetectionNetworkProperties>> spatialDetectionNetworkProperties(
         m, "SpatialDetectionNetworkProperties", DOC(dai, SpatialDetectionNetworkProperties));
     auto spatialDetectionNetwork = ADD_NODE_DERIVED(SpatialDetectionNetwork, DeviceNode);
     spatialDetectionNetwork.attr("Model") = daiNodeModule.attr("NeuralNetwork").attr("Model");
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Properties
     spatialDetectionNetworkProperties.def_readwrite("detectedBBScaleFactor", &SpatialDetectionNetworkProperties::detectedBBScaleFactor)
         .def_readwrite("depthThresholds", &SpatialDetectionNetworkProperties::depthThresholds)
         .def_readwrite("calculationAlgorithm", &SpatialDetectionNetworkProperties::calculationAlgorithm)
         .def_readwrite("stepSize", &SpatialDetectionNetworkProperties::stepSize);
 
-    // Node
     spatialDetectionNetwork.def("setSpatialCalculationStepSize",
                                 &dai::node::SpatialDetectionNetwork::setSpatialCalculationStepSize,
                                 py::arg("stepSize"),
                                 DOC(dai, node, SpatialDetectionNetwork, setSpatialCalculationStepSize));
 
     spatialDetectionNetwork
-        // Build methods with DepthSource variant
         .def(
             "build",
             [](SpatialDetectionNetwork& self,
@@ -66,7 +54,6 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("model"),
             py::arg("capability"),
             DOC(dai, node, SpatialDetectionNetwork, build, 2))
-        // Backwards-compatible build methods forwarding to the consolidated Model path
         .def(
             "build",
             [](SpatialDetectionNetwork& self,
@@ -169,7 +156,6 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("setBackendProperties"),
              DOC(dai, node, SpatialDetectionNetwork, setBackendProperties))
 
-        // Detection parser
         .def("setConfidenceThreshold",
              &SpatialDetectionNetwork::setConfidenceThreshold,
              py::arg("thresh"),
@@ -239,6 +225,5 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
              &SpatialDetectionNetwork::setSpatialCalculationAlgorithm,
              py::arg("calculationAlgorithm"),
              DOC(dai, node, SpatialDetectionNetwork, setSpatialCalculationAlgorithm));
-    // ALIAS
     daiNodeModule.attr("SpatialDetectionNetwork").attr("Properties") = spatialDetectionNetworkProperties;
 }

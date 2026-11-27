@@ -1,8 +1,3 @@
-// The StereoDepth part of the C interface of the DSP offload (vendor/dai_device_dsp.h): the CPU side of StereoDepthDsp.
-// The node StereoDepth calls these functions directly (vendor/dai_device_dsp.h).
-//
-// dai_device_dsp_open_stereo, or else the first call of a function, opens the DSP session.
-
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -21,7 +16,6 @@ namespace {
 
 using hexagon::logMessage;
 
-// The FastRPC session of StereoDepthDsp
 class Session {
    public:
     Session() {
@@ -80,7 +74,6 @@ class Session {
     int id = DOMAIN_ID;
 };
 
-// Opens the session on the first call. Thread-safe. When the open throws, the next call tries again.
 Session& session() {
     static Session instance;
     return instance;

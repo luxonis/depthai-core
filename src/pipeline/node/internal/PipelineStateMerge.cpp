@@ -72,7 +72,6 @@ void PipelineStateMerge::run() {
             }
             if(hostState != nullptr) {
                 if(hasDeviceNodes) {
-                    // merge
                     mergeStates(outState, hostState);
                     auto minTimestamp = std::min(outState->getTimestamp(), hostState->getTimestamp());
                     outState->setTimestamp(minTimestamp);

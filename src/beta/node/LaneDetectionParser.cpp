@@ -23,7 +23,6 @@ namespace beta {
 namespace node {
 
 NNArchive LaneDetectionParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -94,8 +93,6 @@ void LaneDetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config)
 
     setConfig(laneDetectionHead);
 
-    // The input size is derived from the model input's declared shape and layout. A head carries
-    // no model input metadata, so this is only possible on the full-archive path.
     DAI_CHECK_V(configV1.model.inputs.size() == 1, "Only one input supported for LaneDetectionParser, got {} inputs.", configV1.model.inputs.size());
     const auto& modelInput = configV1.model.inputs.front();
     const std::string layout = modelInput.layout.value_or("");
@@ -118,9 +115,6 @@ void LaneDetectionParser::setConfig(const dai::nn_archive::v1::Head& head) {
     DAI_CHECK_V(numOutputs == 1, "Only one output layer supported for LaneDetectionParser, got {} layers.", numOutputs);
     setOutputLayerName(head.outputs->front());
 
-    // The lane-detection-specific keys without typed metadata fields live in the head metadata
-    // extra parameters. Missing keys keep the already configured values, mirroring the source
-    // parser behavior.
     const auto& extraParams = head.metadata.extraParams;
 
     if(extraParams.is_object() && extraParams.contains("row_anchors") && !extraParams.at("row_anchors").is_null()) {
@@ -211,8 +205,6 @@ void LaneDetectionParser::run() {
                 *properties.clsNumPerLane,
                 properties.rowAnchors.size());
 
-    // The resolved layer name persists across messages once auto-selected from a
-    // single-tensor NNData, mirroring the source parser behavior.
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
@@ -227,7 +219,6 @@ void LaneDetectionParser::run() {
         }
         auto tGotInput = std::chrono::steady_clock::now();
 
-        // Extract
         const auto layerNames = nnData->getAllLayerNames();
         if(resolvedOutputLayerName.empty()) {
             DAI_CHECK_V(layerNames.size() == 1,
@@ -236,11 +227,8 @@ void LaneDetectionParser::run() {
             resolvedOutputLayerName = layerNames.front();
         }
 
-        // The tensor is read in its stored order, matching the source parser's
-        // output.getTensor(name, dequantize=True) with the default storage order.
         auto tensor = utilities::ClassificationUtils::getShapedTensorData(*nnData, resolvedOutputLayerName);
 
-        // Compute. The number of lanes is derived from the tensor's last dimension.
         auto points = utilities::LaneDetectionUtils::decodeUfld(tensor.values,
                                                                 tensor.dims,
                                                                 properties.rowAnchors,
@@ -249,9 +237,7 @@ void LaneDetectionParser::run() {
                                                                 properties.inputSize->first,
                                                                 properties.inputSize->second);
 
-        // Emit. Every lane produces one cluster, including empty lanes, labeled sequentially
-        // from 0.
-        auto message = utilities::LaneDetectionUtils::createClustersMessage(points);
+        auto message = utilities::LaneDetectionUtils::createClustersMessage(points);  // Every lane gives one cluster, empty lanes too, labeled from 0
         if(nnData->transformation.has_value()) {
             message->setTransformation(*nnData->transformation);
         }

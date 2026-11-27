@@ -3,7 +3,6 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <memory>
 
-// shared
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/properties/StereoDepthProperties.hpp"
 
@@ -65,7 +64,6 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     Properties& getProperties();
 
    private:
-    // Platform specific profile presets
     void setRvc2ProfilePreset(PresetMode mode);
     void setRvc4ProfilePreset(PresetMode mode);
 

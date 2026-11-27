@@ -28,27 +28,20 @@ void Warp::setWarpMesh(const float* meshData, int numMeshPoints, int width, int 
     Asset asset("mesh");
     asset.alignment = 64;
 
-    // Align stride to 16B
     constexpr auto ALIGNMENT = 16;
     size_t meshStride = ((size_t)((sizeof(float) * 2 * width)) + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1);
-    // Specify final mesh size
     size_t meshSize = meshStride * height;
 
-    // Create mesh data
     asset.setData(std::vector<uint8_t>(meshSize));
 
-    // Fill out mesh points with stride
     for(int i = 0; i < height; i++) {
         for(int j = 0; j < width; j++) {
-            // get location in meshData
             size_t inputMeshIndex = (i * width + j) * 2;  // 2 float values per point
 
-            // get output offset
             size_t outputMeshOffset = (meshStride * i) + (j * sizeof(float) * 2);
             auto& point = reinterpret_cast<std::pair<float, float>&>(asset.getData().data()[outputMeshOffset]);
 
-            // Asign reversed mesh coordinates (HW specified)
-            point.first = meshData[inputMeshIndex + 1];
+            point.first = meshData[inputMeshIndex + 1];  // Reversed mesh coordinates: HW specified
             point.second = meshData[inputMeshIndex + 0];
         }
     }
@@ -59,7 +52,6 @@ void Warp::setWarpMesh(const float* meshData, int numMeshPoints, int width, int 
 }
 
 void Warp::setWarpMesh(const std::vector<Point2f>& meshData, int width, int height) {
-    // Convert to float array
     std::vector<float> meshDataFloat(meshData.size() * 2);
     for(size_t i = 0; i < meshData.size(); i++) {
         meshDataFloat[i * 2 + 0] = meshData[i].x;

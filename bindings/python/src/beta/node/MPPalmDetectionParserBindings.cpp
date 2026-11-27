@@ -11,13 +11,10 @@ void bind_beta_mppalmdetectionparser(pybind11::module& m, void* pCallstack) {
     py::class_<beta::MPPalmDetectionParserProperties> mpPalmDetectionParserProperties(betaModule, "MPPalmDetectionParserProperties");
     auto mpPalmDetectionParser = ADD_BETA_NODE_DERIVED(MPPalmDetectionParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     mpPalmDetectionParserProperties.def_readwrite("initialConfig", &beta::MPPalmDetectionParserProperties::initialConfig)
         .def_readwrite("outputLayerNames", &beta::MPPalmDetectionParserProperties::outputLayerNames)

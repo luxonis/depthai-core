@@ -70,14 +70,12 @@ def read_current_led():
         if not s:
             return None
 
-        # Support both comma- and space-separated formats
         parts = [p for p in s.replace(",", " ").split() if p]
         values = []
         for p in parts:
             try:
                 values.append(int(p))
             except ValueError:
-                # Unexpected content, treat as unreadable
                 return None
         return tuple(values)
     except Exception:
@@ -94,29 +92,23 @@ def led_matches(color_4tuple, current):
     if current is None:
         return False
 
-    # Exact match (brightness + RGB)
     if len(current) == 4:
         return tuple(current) == tuple(color_4tuple)
 
-    # Match RGB only if driver exposes just 3 values
-    if len(current) == 3:
+    if len(current) == 3:  # The driver may expose only RGB (3 values), without brightness
         return tuple(current) == tuple(color_4tuple[1:])
 
     return False
 
 
-# Load default LED from config (in correct device order)
 DEFAULT_LED = read_led_color_from_conf(
     "LED_COLOR_ONBOARDING",
     default=(255, 0, 0, 168),
 )
 
-# Static green LED for a running pipeline
 GREEN_LED = (255, 0, 15, 0)  # (brightness, R, G, B)
 
 def handle_led_on_exit():
-    # On exit, if the LED is set to our green we set it back to default,
-    # otherwise we let it as is.
     current_led = read_current_led()
     if led_matches(GREEN_LED, current_led):
         turn_on_led(*DEFAULT_LED)
@@ -125,8 +117,6 @@ def on_start():
     print("on_start")
     subprocess.call(['bash', str(current_dir / './on_start.sh')])
 
-    # If the LED is default we change it to our green,
-    # if it's not we let it be as is.
     current_led = read_current_led()
     if led_matches(DEFAULT_LED, current_led):
         turn_on_led(*GREEN_LED)

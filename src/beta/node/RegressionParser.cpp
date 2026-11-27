@@ -24,14 +24,6 @@ namespace node {
 
 namespace {
 
-/**
- * Squeeze all singleton dimensions off the tensor and return the remaining values as the
- * predictions, matching the source parser's np.squeeze() + np.atleast_1d() + tolist(). Any
- * tensor with at most one non-singleton dimension is accepted regardless of rank; a scalar
- * yields one prediction and an empty tensor yields no predictions. A tensor that stays
- * multi-dimensional after squeezing is rejected, matching the source message creator, which
- * only accepts flat float lists.
- */
 std::vector<float> computeRegressionPredictions(utilities::ClassificationUtils::ShapedTensorData tensor) {
     std::size_t nonSingletonDims = 0;
     for(const auto dim : tensor.dims) {
@@ -46,9 +38,6 @@ std::vector<float> computeRegressionPredictions(utilities::ClassificationUtils::
     return std::move(tensor.values);
 }
 
-/**
- * Create a Predictions message from the predicted values, order preserved.
- */
 std::shared_ptr<Predictions> createRegressionMessage(const std::vector<float>& predictions) {
     auto message = std::make_shared<Predictions>();
     message->predictions.reserve(predictions.size());
@@ -63,7 +52,6 @@ std::shared_ptr<Predictions> createRegressionMessage(const std::vector<float>& p
 }  // namespace
 
 NNArchive RegressionParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -141,10 +129,7 @@ void RegressionParser::setConfig(const dai::nn_archive::v1::Head& head) {
     const std::size_t numOutputs = head.outputs.has_value() ? head.outputs->size() : 0;
     DAI_CHECK_V(numOutputs == 1, "Only one output layer supported for RegressionParser, got {} layers.", numOutputs);
     setOutputLayerName(head.outputs->front());
-
-    // The source parser consumes no head metadata keys. In particular, a score_threshold key
-    // carried by some regression heads (e.g. the hand landmarker score head) is ignored.
-}
+}  // The score_threshold key of some regression heads is ignored, as in the source parser
 
 void RegressionParser::setOutputLayerName(const std::string& outputLayerName) {
     properties.outputLayerName = outputLayerName;
@@ -166,8 +151,6 @@ void RegressionParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
-    // The resolved layer name persists across messages once auto-selected from a
-    // single-tensor NNData, mirroring the source parser behavior.
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
@@ -182,7 +165,6 @@ void RegressionParser::run() {
         }
         auto tGotInput = std::chrono::steady_clock::now();
 
-        // Extract
         const auto layerNames = nnData->getAllLayerNames();
         if(resolvedOutputLayerName.empty()) {
             DAI_CHECK_V(
@@ -192,11 +174,9 @@ void RegressionParser::run() {
 
         auto tensor = utilities::ClassificationUtils::getShapedTensorData(*nnData, resolvedOutputLayerName);
 
-        // Compute
         auto predictions = computeRegressionPredictions(std::move(tensor));
 
-        // Emit. Predictions are kept in the order the model emitted them.
-        auto message = createRegressionMessage(predictions);
+        auto message = createRegressionMessage(predictions);  // Predictions are kept in the order the model emitted them
         if(nnData->transformation.has_value()) {
             message->setTransformation(*nnData->transformation);
         }

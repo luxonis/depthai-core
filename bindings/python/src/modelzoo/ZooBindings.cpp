@@ -1,30 +1,20 @@
 #include "ZooBindings.hpp"
 
-// depthai
 #include "depthai/modelzoo/Zoo.hpp"
 
 void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // modelzoo namespace
     py::module modelzoo = m.def_submodule("modelzoo", "Model Zoo");
 
-    // Type definitions
     py::class_<NNModelDescription> modelDescription(m, "NNModelDescription", DOC(dai, NNModelDescription));
     py::class_<SlugComponents> slugComponents(m, "SlugComponents", DOC(dai, SlugComponents));
     py::implicitly_convertible<std::string, NNModelDescription>();
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     m.def("getModelFromZoo",
           getModelFromZoo,
@@ -45,7 +35,6 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
           DOC(dai, downloadModelsFromZoo),
           py::call_guard<py::gil_scoped_release>());
 
-    // Bind NNModelDescription
     modelDescription.def(py::init<>())
         .def(py::init([](const std::string& model,
                          const std::string& platform,
@@ -76,7 +65,6 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("snpeVersion", &NNModelDescription::snpeVersion, DOC(dai, NNModelDescription, snpeVersion))
         .def_readwrite("modelPrecisionType", &NNModelDescription::modelPrecisionType, DOC(dai, NNModelDescription, modelPrecisionType));
 
-    // Bind SlugComponents
     slugComponents.def(py::init<>())
         .def(py::init<const std::string&, const std::string&, const std::string&, const std::string&>(),
              py::arg("teamName") = "",
@@ -90,7 +78,6 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("modelVariantSlug", &SlugComponents::modelVariantSlug, DOC(dai, SlugComponents, modelVariantSlug))
         .def_readwrite("modelRef", &SlugComponents::modelRef, DOC(dai, SlugComponents, modelRef));
 
-    // endpoints
     modelzoo.def("setHealthEndpoint", &modelzoo::setHealthEndpoint, py::arg("endpoint"), DOC(dai, modelzoo, setHealthEndpoint));
     modelzoo.def("setDownloadEndpoint", &modelzoo::setDownloadEndpoint, py::arg("endpoint"), DOC(dai, modelzoo, setDownloadEndpoint));
     modelzoo.def("setDefaultCachePath", &modelzoo::setDefaultCachePath, py::arg("path"), DOC(dai, modelzoo, setDefaultCachePath));

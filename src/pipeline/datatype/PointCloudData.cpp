@@ -26,8 +26,6 @@ std::vector<Point3f> PointCloudData::getPoints() const {
     if(isColor()) {
         span<const Point3fRGBA> pointData(reinterpret_cast<Point3fRGBA*>(data->getData().data()), data->getData().size() / sizeof(Point3fRGBA));
         std::vector<Point3fRGBA> points(pointData.begin(), pointData.end());
-        // Organized: points.size() == width * height
-        // Sparse: points.size() <= width (height == 1)
         assert(isOrganized() || points.size() <= width);
         assert(!isOrganized() || points.size() == width * height);
         std::vector<Point3f> points3f;
@@ -38,8 +36,6 @@ std::vector<Point3f> PointCloudData::getPoints() const {
     }
     span<const Point3f> pointData(reinterpret_cast<Point3f*>(data->getData().data()), data->getData().size() / sizeof(Point3f));
     std::vector<Point3f> points(pointData.begin(), pointData.end());
-    // Organized: points.size() == width * height
-    // Sparse: points.size() <= width (height == 1)
     assert(isOrganized() || points.size() <= width);
     assert(!isOrganized() || points.size() == width * height);
 
@@ -52,8 +48,6 @@ std::vector<Point3fRGBA> PointCloudData::getPointsRGB() const {
     }
     span<const Point3fRGBA> pointData(reinterpret_cast<Point3fRGBA*>(data->getData().data()), data->getData().size() / sizeof(Point3fRGBA));
     std::vector<Point3fRGBA> points(pointData.begin(), pointData.end());
-    // Organized: points.size() == width * height
-    // Sparse: points.size() <= width (height == 1)
     assert(isOrganized() || points.size() <= width);
     assert(!isOrganized() || points.size() == width * height);
 
@@ -177,14 +171,13 @@ PointCloudData& PointCloudData::setMaxZ(float val) {
     this->maxz = val;
     return *this;
 }
-PointCloudData& PointCloudData::setSparse(bool /*val*/) {
+PointCloudData& PointCloudData::setSparse(bool) {
     throw std::logic_error(
         "PointCloudData::setSparse() is deprecated and removed. "
         "Organization is now determined by width/height: set height=1 for sparse (N×1) or height>1 for organized.");
 }
 
-void PointCloudData::transformToInternal(const ImgTransformation&) {
-    // For efficiency reasons, point clouds should be created from aligned messages instead of tranforming them after the fact
+void PointCloudData::transformToInternal(const ImgTransformation&) {  // No-op: for efficiency, create point clouds from aligned messages instead
 }
 
 PointCloudData PointCloudData::transformTo(const ImgTransformation& target) const {

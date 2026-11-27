@@ -61,7 +61,6 @@ class PointCloudGpuBackend {
 };
 
 namespace internal {
-// Keep the internal spelling introduced after the original public type.
 using PointCloudGpuBackend = ::dai::node::PointCloudGpuBackend;
 }  // namespace internal
 }  // namespace node

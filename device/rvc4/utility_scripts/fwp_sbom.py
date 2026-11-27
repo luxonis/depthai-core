@@ -23,12 +23,7 @@ from urllib.parse import quote
 
 NOASSERTION = "NOASSERTION"
 FWP_LICENSE_REF = "LicenseRef-Luxonis-Firmware-Package"
-# depthai-core and the code that it compiles in are not in this SBOM: the firmware is distributed with
-# depthai-core, which has its own SBOM
 CORE_NOTE = "depthai-core is linked into the firmware and is described by its own SBOM"
-# Custom licenses: (readable name, public URL). The SBOM does not repeat their full text; it is in the
-# firmware package LICENSE bundle that is published next to the SBOM (its preamble is LICENSE.fwp in the
-# repository; the source code itself is under the MIT license of depthai-core).
 CUSTOM_LICENSES = {
     FWP_LICENSE_REF: ("Luxonis Firmware Package License", None),
     "LicenseRef-ST-SLA0106": (
@@ -37,15 +32,10 @@ CUSTOM_LICENSES = {
     ),
 }
 
-# The licensee-only Qualcomm/ST code lives in the private module depthai-device-rvc4-vendor (the vendor module)
-# (CMake: DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR, or its prebuilt vendor archive), outside this repository. The collector reports where it found that checkout
-# in payload["profile"]["private_module"]; when it is absent, the entries that need it are skipped.
 PRIVATE_MODULE_NAME = "depthai-device-rvc4-vendor"
 REPO_ROOT_NAME = "repo"
 
-# Code compiled into the firmware that the license collector does not list (no open-source notice):
-# (root, path, name, license, supplier, note); root is REPO_ROOT_NAME or PRIVATE_MODULE_NAME
-UNLISTED_SOURCES = (
+UNLISTED_SOURCES = (  # (root, path, name, license, supplier, note): code that the license collector does not list
     (
         PRIVATE_MODULE_NAME,
         "depthmapwrapper-vd55h1",
@@ -86,7 +76,6 @@ def read_vcpkg_status(install_root: Path, triplet: str) -> dict[str, dict[str, A
     if (database / "updates").is_dir():
         paths += sorted(path for path in (database / "updates").iterdir() if path.is_file())
 
-    # Later paragraphs (the update files) replace earlier ones
     records: dict[tuple[str, str, str], dict[str, str]] = {}
     for path in paths:
         if not path.is_file():
@@ -113,9 +102,8 @@ def read_vcpkg_status(install_root: Path, triplet: str) -> dict[str, dict[str, A
         for dependency in fields.get("Depends", "").split(","):
             dependency_name, _, dependency_triplet = dependency.strip().partition(":")
             dependency_name = dependency_name.split("[", 1)[0].strip()
-            # A dependency with another triplet is a host build tool, not linked into the firmware
             if dependency_name and dependency_name != name and dependency_triplet in ("", triplet):
-                entry["depends"].add(dependency_name)
+                entry["depends"].add(dependency_name)  # Same triplet only: other triplets are host build tools
     return packages
 
 
@@ -124,8 +112,7 @@ def elf_needed(data: bytes) -> list[str]:
     try:
         return _elf_needed(data)
     except (struct.error, ValueError, IndexError):
-        # A file that is not a well-formed ELF file does not stop the firmware build
-        return []
+        return []  # A malformed ELF file must not stop the firmware build
 
 
 def _elf_needed(data: bytes) -> list[str]:
@@ -200,8 +187,7 @@ def read_fwp_files(archive: Path) -> list[dict[str, Any]]:
 
 
 def git_output(path: Path, *args: str) -> str | None:
-    # The checkout can belong to another user than the build container user; the SBOM only reads it
-    try:
+    try:  # safe.directory=*: the checkout can belong to another user; the SBOM only reads it
         return subprocess.run(
             ["git", "-c", "safe.directory=*", "-C", str(path), *args], check=True, text=True, capture_output=True
         ).stdout.strip() or None
@@ -269,16 +255,14 @@ def build_inventory(
     runtime: dict[str, set[str]] = {}
     contains: list[str] = []
 
-    # vcpkg packages (all statically linked; the rvc4 triplet builds static libraries)
     vcpkg_refs: dict[str, str] = {}
     for package in payload.get("packages", []):
         if package.get("source_type") != "vcpkg":
             continue
         name = package["package"]
         installed = status.get(name, {})
-        # Some vcpkg ports write an unexpanded variable (for example ${VERSION}) into their SPDX file
         downloads = [url for url in package.get("resource_download_locations") or [] if "${" not in url and " " not in url]
-        download = downloads[0] if downloads else None
+        download = downloads[0] if downloads else None  # No ${VAR} URLs: some vcpkg ports leave them unexpanded in SPDX
         ref = f"vcpkg-{name}"
         vcpkg_refs[name] = ref
         entry = component(
@@ -317,10 +301,8 @@ def build_inventory(
         if ref not in reachable:
             reachable.add(ref)
             stack.extend(depends.get(ref, ()))
-    # A package that no edge reaches is still linked in; attach it to the root
-    depends["root"].update(ref for ref in vcpkg_refs.values() if ref not in reachable)
+    depends["root"].update(ref for ref in vcpkg_refs.values() if ref not in reachable)  # Unreached ones are linked too
 
-    # Submodules and in-tree code, from this repository and from the private module (when the collector found it)
     private_module = (payload.get("profile") or {}).get("private_module") or {}
     roots: dict[str, Path] = {REPO_ROOT_NAME: repo_root}
     if private_module.get("path"):
@@ -369,7 +351,6 @@ def build_inventory(
             depends["root"].add(add_source(root_name, path, name, license_expression, supplier, source, submodule_urls[root_name]))
             components[-1]["properties"]["depthai:note"] = note
 
-    # Files in the fwp archive, and the shared libraries that they load from the OS at runtime
     archive_sha256 = None
     files: list[dict[str, Any]] = []
     if fwp_archive and fwp_archive.is_file():
@@ -429,8 +410,7 @@ def to_spdx(
     license_output_name: str,
 ) -> dict[str, Any]:
     product, version = inventory["product"], inventory["version"]
-    # spdx_id() maps several characters to "-", so two refs can give the same id: make each one unique
-    ids: dict[str, str] = {}
+    ids: dict[str, str] = {}  # spdx_id() maps several characters to "-": two refs can give the same id
     refs = [("root", product)] + [(entry["ref"], f"package-{entry['ref']}") for entry in inventory["components"]]
     refs += [(f"file-{file['path']}", f"file-{file['path']}") for file in inventory["files"]]
     for ref, value in refs:

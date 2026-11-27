@@ -1,6 +1,5 @@
 #pragma once
 
-// libraries
 #include "depthai/pipeline/node/SystemLogger.hpp"
 #include "depthai/properties/SystemLoggerProperties.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
@@ -14,9 +13,7 @@ class SystemLogger : public dai::node::SystemLogger {
 
     constexpr static const char* NAME = node::SystemLogger::NAME;
     SystemLogger() : SystemLogger(std::make_unique<dai::node::SystemLogger::Properties>()) {}
-    SystemLogger(std::unique_ptr<Properties> props) : dai::node::SystemLogger(std::move(props)) {
-        // override that this is a host node
-    }
+    SystemLogger(std::unique_ptr<Properties> props) : dai::node::SystemLogger(std::move(props)) {}
     bool runOnHost() const override {
         return true;
     }

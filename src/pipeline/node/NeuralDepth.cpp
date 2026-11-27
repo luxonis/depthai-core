@@ -22,9 +22,7 @@ std::shared_ptr<NeuralDepth> NeuralDepth::build(Output& leftInput, Output& right
     (void)leftInput;
     (void)rightInput;
 #endif
-    // Set model
     neuralNetwork->setModelFromDeviceZoo(model);
-    // Set rectification output size based on model
     rectification->setOutputSize(getInputSize(model));
     return std::static_pointer_cast<NeuralDepth>(shared_from_this());
 }
@@ -76,24 +74,19 @@ void NeuralDepth::buildInternal() {
     auto defaultModel = DeviceModelZoo::NEURAL_DEPTH_480X300;
     neuralNetwork->setModelFromDeviceZoo(defaultModel);
     rectification->setOutputSize(getInputSize(defaultModel));
-    // Link sync outputs to message demux inputs
     sync->out.link(messageDemux->input);
 
-    // Link message demux outputs to rectification inputs
     messageDemux->outputs["left"].link(rectification->input1);
     messageDemux->outputs["right"].link(rectification->input2);
 
-    // Link left and right inputs to internal inputs
     rectification->output1.link(leftInternal);
     rectification->output2.link(rightInternal);
 
-    // Link rectification outputs to neural network
     rectification->output1.link(neuralNetwork->inputs["left"]);
     rectification->output2.link(neuralNetwork->inputs["right"]);
     neuralNetwork->inputs["left"].setBlocking(true);
     neuralNetwork->inputs["right"].setBlocking(true);
 
-    // Link neural network outputs to nnDataInput
     neuralNetwork->out.link(nnDataInput);
 }
 

@@ -114,7 +114,6 @@ std::vector<std::vector<float>> matMul(const std::vector<std::vector<float>>& A,
     size_t q = B[0].size();
     std::vector<std::vector<float>> res(n, std::vector<float>(q, 0.0f));
 
-    // Multiplying matrix firstMatrix and secondMatrix and storing in array mult.
     for(size_t i = 0; i < n; ++i) {
         for(size_t j = 0; j < q; ++j) {
             if(A[i].size() != m) {
@@ -194,16 +193,11 @@ void validateRotationMatrix3x3(const std::vector<std::vector<float>>& rotationMa
 static void getCofactor(std::vector<std::vector<float>>& A, std::vector<std::vector<float>>& temp, size_t p, size_t q, size_t n) {
     size_t i = 0, j = 0;
 
-    // Looping for each element of the matrix
     for(size_t row = 0; row < n; ++row) {
         for(size_t col = 0; col < n; ++col) {
-            //  Copying into temporary matrix only those element
-            //  which are not in given row and column
             if(row != p && col != q) {
                 temp[i][j++] = A[row][col];
 
-                // Row is filled, so increase row index and
-                // reset col index
                 if(j == n - 1) {
                     j = 0;
                     ++i;
@@ -216,19 +210,15 @@ static void getCofactor(std::vector<std::vector<float>>& A, std::vector<std::vec
 static float determinant(std::vector<std::vector<float>>& A, size_t n) {
     float D = 0;  // Initialize result
 
-    //  Base case : if matrix contains single element
     if(n == 1) return A[0][0];
 
     std::vector<std::vector<float>> temp(n, std::vector<float>(n, 0));  // To store cofactors
     int sign = 1;                                                       // To store sign multiplier
 
-    // Iterate for each element of first row
     for(size_t f = 0; f < n; ++f) {
-        // Getting Cofactor of A[0][f]
         getCofactor(A, temp, 0, f, n);
         D += sign * A[0][f] * determinant(temp, n - 1);
 
-        // terms are to be added with alternate sign
         sign = -sign;
     }
 
@@ -241,44 +231,34 @@ static void adjoint(std::vector<std::vector<float>>& A, std::vector<std::vector<
         return;
     }
 
-    // temp is used to store the final cofactors of A
     int sign = 1;
     std::vector<std::vector<float>> temp(A.size(), std::vector<float>(A.size(), 0));
 
     for(size_t i = 0; i < A.size(); ++i) {
         for(size_t j = 0; j < A.size(); ++j) {
-            // Get cofactor of A[i][j]
             getCofactor(A, temp, i, j, A.size());
 
-            // sign of adj[j][i] positive if sum of row
-            // and column indexes is even.
             sign = ((i + j) % 2 == 0) ? 1 : -1;
 
-            // Interchanging rows and columns to get the
-            // transpose of the cofactor matrix
             adj[j][i] = (sign) * (determinant(temp, A.size() - 1));
         }
     }
 }
 
 bool matInv(std::vector<std::vector<float>>& A, std::vector<std::vector<float>>& inverse) {
-    // Find determinant of A[][]
     if(A[0].size() != A.size()) {
         throw std::runtime_error("Not a Square Matrix ");
     }
 
     float det = determinant(A, A.size());
     if(det == 0) {
-        // cout << "Singular matrix, can't find its inverse";
         return false;
     }
 
-    // Find adjoint
     std::vector<std::vector<float>> adj(A.size(), std::vector<float>(A.size(), 0));
     adjoint(A, adj);
 
     std::vector<float> temp;
-    // Find Inverse using formula "inverse(A) = adj(A)/det(A)"
     for(size_t i = 0; i < A.size(); ++i) {
         for(size_t j = 0; j < A.size(); ++j) {
             temp.push_back(adj[i][j] / det);
@@ -392,9 +372,7 @@ std::vector<float> matrixToVector(const std::vector<std::vector<float>>& R) {
             rotation(row, col) = R[row][col];
         }
     }
-    // Eigen's quaternion-based conversion is stable near both zero and pi;
-    // acos(trace) loses small rotations when the input matrix contains floats.
-    const Eigen::AngleAxisd angleAxis(rotation);
+    const Eigen::AngleAxisd angleAxis(rotation);  // Stable near 0 and pi; acos(trace) loses small rotations with float input
     const Eigen::Vector3d rotationVector = angleAxis.angle() * angleAxis.axis();
     return {static_cast<float>(rotationVector.x()), static_cast<float>(rotationVector.y()), static_cast<float>(rotationVector.z())};
 }
@@ -445,12 +423,10 @@ std::vector<std::vector<float>> rvecToRotationMatrix(const double rvec[3]) {
     std::vector<std::vector<float>> R(3, std::vector<float>(3, 0.0f));
 
     if(theta < 1e-10) {
-        // Small angle: return identity
         R[0][0] = R[1][1] = R[2][2] = 1.0f;
         return R;
     }
 
-    // Normalize rotation vector
     double ux = rvec[0] / theta;
     double uy = rvec[1] / theta;
     double uz = rvec[2] / theta;
@@ -539,7 +515,6 @@ std::array<std::array<float, 2>, 2> getMatrixInverse(const std::array<std::array
 }
 
 std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrix_float) {
-    // Step 1: Convert to double
     std::array<std::array<double, 3>, 3> matrix;
     for(int i = 0; i < 3; ++i)
         for(int j = 0; j < 3; ++j) matrix[i][j] = static_cast<double>(matrix_float[i][j]);
@@ -654,12 +629,10 @@ void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
 
     const float tx = mat[0][3], ty = mat[1][3], tz = mat[2][3];
 
-    // t' = -R^T t
     mat[0][3] = -(r00 * tx + r10 * ty + r20 * tz);
     mat[1][3] = -(r01 * tx + r11 * ty + r21 * tz);
     mat[2][3] = -(r02 * tx + r12 * ty + r22 * tz);
 
-    // R' = R^T
     mat[0][0] = r00;
     mat[0][1] = r10;
     mat[0][2] = r20;
@@ -679,14 +652,12 @@ void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
 std::array<std::array<float, 4>, 4> invertSe3Matrix4x4(const std::array<std::array<float, 4>, 4>& matrix) {
     std::array<std::array<float, 4>, 4> inv = {{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}};
 
-    // Transpose rotation part (R^T)
     for(int i = 0; i < 3; ++i) {
         for(int j = 0; j < 3; ++j) {
             inv[i][j] = matrix[j][i];
         }
     }
 
-    // Invert translation: -R^T * t
     for(int i = 0; i < 3; ++i) {
         float newTrans = 0.0f;
         for(int j = 0; j < 3; ++j) {

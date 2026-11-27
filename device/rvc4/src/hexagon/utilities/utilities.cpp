@@ -1,6 +1,3 @@
-// The C function dai_device_dsp_status_name of the DSP offload (vendor/dai_device_dsp.h). AEEStdErr.h is a header of the
-// Hexagon SDK: the StereoDepthDsp library compiles this file, so that public code (hexagon::errorToString in
-// utilities.hpp) gets the names without the SDK.
 #include <cstdio>
 
 #include "AEEStdErr.h"
@@ -52,9 +49,10 @@ extern "C" const char* dai_device_dsp_status_name(int32_t errorCode) {
         case AEE_ENOTOWNER: return "AEE_ENOTOWNER";
         case AEE_EINVALIDITEM: return "AEE_EINVALIDITEM";
         case AEE_ENOTALLOWED: return "AEE_ENOTALLOWED";
-        case AEE_EINVHANDLE: return "AEE_EINVHANDLE";
-        // case AEE_EBADHANDLE: duplicate of AEE_EINVHANDLE
-        case AEE_ENOMORE: return "AEE_ENOMORE";
+        case AEE_EINVHANDLE:
+            return "AEE_EINVHANDLE";
+        case AEE_ENOMORE:
+            return "AEE_ENOMORE";
         case AEE_ECPUEXCEPTION: return "AEE_ECPUEXCEPTION";
         case AEE_EREADONLY: return "AEE_EREADONLY";
         case AEE_ERPC: return "AEE_ERPC";
@@ -126,11 +124,9 @@ extern "C" const char* dai_device_dsp_status_name(int32_t errorCode) {
         case AEE_EEVENTREAD: return "AEE_EEVENTREAD";
         case AEE_EMAXBUFS: return "AEE_EMAXBUFS";
         case AEE_EINVARGS: return "AEE_EINVARGS";
-        case AEE_ECONNREFUSED: return "AEE_ECONNREFUSED";
-        // case AEE_ENOSESSION: duplicate of AEE_ECONNREFUSED
-        // You can add more guards for undefined constants as needed
+        case AEE_ECONNREFUSED:
+            return "AEE_ECONNREFUSED";
         default: {
-            // The same text as before the C interface; one buffer for each thread
             thread_local char unknown[48];
             std::snprintf(unknown, sizeof(unknown), "Unknown error code: %d", static_cast<int>(errorCode));
             return unknown;

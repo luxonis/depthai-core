@@ -30,27 +30,22 @@ def getGithubRefUrl(ref: str) -> str:
     if clean_ref.upper() == "HEAD":
         return ""
 
-    # 1. Handle Pull Requests (refs/pull/<pr_number>/merge or /head)
     pr_match = re.match(r"^refs/pull/(\d+)/(?:merge|head)$", ref)
     if pr_match:
         pr_number = pr_match.group(1)
         return f"pull/{pr_number}"
 
-    # Helper function to match quote(s, safe='') in JavaScript's encodeURIComponent
     def encode_ref_path(path: str) -> str:
         return "/".join(quote(segment, safe="") for segment in path.split("/"))
 
-    # 2. Handle standard branch refs (refs/heads/<branch_name>)
     if ref.startswith("refs/heads/"):
         branch_name = ref[len("refs/heads/") :]
         return f"tree/{encode_ref_path(branch_name)}"
 
-    # 3. Handle tag refs (refs/tags/<tag_name>)
     if ref.startswith("refs/tags/"):
         tag_name = ref[len("refs/tags/") :]
         return f"releases/tag/{encode_ref_path(tag_name)}"
 
-    # 4. Fallback for Commit SHAs or un-prefixed custom refs
     return encode_ref_path(ref)
 
 def statusToEmoji(status):

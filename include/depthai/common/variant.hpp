@@ -34,7 +34,6 @@ struct VariantSwitch<0> {
 }  // namespace dai
 
 namespace nlohmann {
-// std::monostate carries no data: null in JSON.
 template <>
 struct adl_serializer<std::monostate> {
     static void to_json(json& j, const std::monostate&) {  // NOLINT this is a specialization, naming conventions don't apply
@@ -68,7 +67,6 @@ struct VariantReadNop {
     template <typename Variant, typename Reader>
     void operator()(int index, Reader* reader, Variant& v) const {
         if(index == N) {
-            // using Element = typename std::decay<std::variant_alternative_t<N, Variant>>::type;
             using Element = typename std::variant_alternative_t<N, Variant>;
             Element element{};
             const auto status = nop::Encoding<Element>::Read(&element, reader);
@@ -87,7 +85,6 @@ struct VariantReadNop<0> {
     template <typename Variant, typename Reader>
     void operator()(int index, Reader* reader, Variant& v) const {
         if(index == 0) {
-            // using Element = typename std::decay<std::variant_alternative_t<0, Variant>>::type;
             using Element = typename std::variant_alternative_t<0, Variant>;
             Element element{};
             const auto status = nop::Encoding<Element>::Read(&element, reader);
@@ -103,18 +100,11 @@ struct VariantReadNop<0> {
 }  // namespace internal
 }  // namespace dai
 
-// std::variant serialization for libnop
 namespace nop {
 
-// std::monostate encoding format (same as libnop's EmptyVariant):
-//
-// +-------+
-// | EMPTY |
-// +-------+
-//
 template <>
 struct Encoding<std::monostate> : EncodingIO<std::monostate> {
-    static constexpr EncodingByte Prefix(const std::monostate& /*value*/) {
+    static constexpr EncodingByte Prefix(const std::monostate&) {
         return EncodingByte::Empty;
     }
     static constexpr std::size_t Size(const std::monostate& value) {
@@ -124,42 +114,20 @@ struct Encoding<std::monostate> : EncodingIO<std::monostate> {
         return prefix == EncodingByte::Empty;
     }
     template <typename Writer>
-    static constexpr Status<void> WritePayload(EncodingByte /*prefix*/, const std::monostate& /*value*/, Writer* /*writer*/) {
+    static constexpr Status<void> WritePayload(EncodingByte, const std::monostate&, Writer*) {
         return {};
     }
     template <typename Reader>
-    static constexpr Status<void> ReadPayload(EncodingByte /*prefix*/, std::monostate* /*value*/, Reader* /*reader*/) {
+    static constexpr Status<void> ReadPayload(EncodingByte, std::monostate*, Reader*) {
         return {};
     }
 };
-
-//
-// std::variant<Ts...> encoding format:
-//
-// +-----+---------+-----------+
-// | VAR | INT32:I | ELEMENT I |
-// +-----+---------+-----------+
-//
-// Elements are expected to be valid encodings for their element type.
-//
-// EmptyVariant encoding format:
-//
-// +-----+
-// | NIL |
-// +-----+
-//
-// Therefore a Variant in the empty state has this specific encoding:
-//
-// +-----+----+-----+
-// | VAR | -1 | NIL |
-// +-----+----+-----+
-//
 
 template <typename... Ts>
 struct Encoding<std::variant<Ts...>> : EncodingIO<std::variant<Ts...>> {
     using Type = std::variant<Ts...>;
 
-    static constexpr EncodingByte Prefix(const Type& /*value*/) {
+    static constexpr EncodingByte Prefix(const Type&) {
         return EncodingByte::Variant;
     }
 
@@ -178,7 +146,7 @@ struct Encoding<std::variant<Ts...>> : EncodingIO<std::variant<Ts...>> {
     }
 
     template <typename Writer>
-    static constexpr Status<void> WritePayload(EncodingByte /*prefix*/, const Type& value, Writer* writer) {
+    static constexpr Status<void> WritePayload(EncodingByte, const Type& value, Writer* writer) {
         auto status = Encoding<std::int32_t>::Write(value.index(), writer);
         if(!status) return status;
 
@@ -191,7 +159,7 @@ struct Encoding<std::variant<Ts...>> : EncodingIO<std::variant<Ts...>> {
     }
 
     template <typename Reader>
-    static constexpr Status<void> ReadPayload(EncodingByte /*prefix*/, Type* value, Reader* reader) {
+    static constexpr Status<void> ReadPayload(EncodingByte, Type* value, Reader* reader) {
         std::int32_t index = 0;
         auto status = Encoding<std::int32_t>::Read(&index, reader);
         if(!status) {

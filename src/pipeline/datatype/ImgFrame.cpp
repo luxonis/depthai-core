@@ -18,7 +18,6 @@ void ImgFrame::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& data
 }
 
 ImgFrame::ImgFrame() {
-    // Set timestamp to now
     setTimestamp(std::chrono::steady_clock::now());
 }
 

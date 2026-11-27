@@ -4,14 +4,10 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -25,20 +21,11 @@ void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack)
     py::class_<SpatialLocationCalculatorConfig, Py<SpatialLocationCalculatorConfig>, Buffer, py::smart_holder>
         spatialLocationCalculatorConfig(m, "SpatialLocationCalculatorConfig", DOC(dai, SpatialLocationCalculatorConfig));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Metadata / raw
     spatialLocationCalculatorConfigThresholds.def(py::init<>())
         .def_readwrite("lowerThreshold", &SpatialLocationCalculatorConfigThresholds::lowerThreshold)
         .def_readwrite("upperThreshold", &SpatialLocationCalculatorConfigThresholds::upperThreshold);
@@ -58,7 +45,6 @@ void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack)
                        &SpatialLocationCalculatorConfigData::calculationAlgorithm,
                        DOC(dai, SpatialLocationCalculatorConfigData, calculationAlgorithm));
 
-    // Message
     spatialLocationCalculatorConfig.def(py::init<>())
         .def_readwrite("bBoxScaleFactor", &dai::SpatialLocationCalculatorConfig::bBoxScaleFactor, DOC(dai, SpatialLocationCalculatorConfig, bBoxScaleFactor))
         .def_readwrite("config", &dai::SpatialLocationCalculatorConfig::config, DOC(dai, SpatialLocationCalculatorConfig, config))
@@ -77,7 +63,6 @@ void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack)
         .def_readwrite("globalUpperThreshold", &SpatialLocationCalculatorConfig::globalUpperThreshold)
         .def_readwrite("calculateSpatialKeypoints", &SpatialLocationCalculatorConfig::calculateSpatialKeypoints)
         .def_readwrite("useSegmentation", &SpatialLocationCalculatorConfig::useSegmentation)
-        // setters
         .def("setROIs", &SpatialLocationCalculatorConfig::setROIs, py::arg("ROIs"), DOC(dai, SpatialLocationCalculatorConfig, setROIs))
         .def("addROI", &SpatialLocationCalculatorConfig::addROI, py::arg("ROI"), DOC(dai, SpatialLocationCalculatorConfig, addROI))
         .def("getConfigData", &SpatialLocationCalculatorConfig::getConfigData, DOC(dai, SpatialLocationCalculatorConfig, getConfigData))

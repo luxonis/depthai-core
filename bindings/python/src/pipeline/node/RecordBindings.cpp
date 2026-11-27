@@ -10,19 +10,10 @@ void bind_record(pybind11::module& m, void* pCallstack) {
     auto recordVideo = ADD_NODE_DERIVED(RecordVideo, ThreadedHostNode);
     auto recordMessage = ADD_NODE_DERIVED(RecordMetadataOnly, ThreadedHostNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Node
     recordVideo.def_readonly("input", &RecordVideo::input, DOC(dai, node, RecordVideo, input))
         .def("setFps", &RecordVideo::setFps, py::arg("fps"), DOC(dai, node, RecordVideo, setFps))
         .def("setRecordMetadataFile", &RecordVideo::setRecordMetadataFile, py::arg("recordFile"), DOC(dai, node, RecordVideo, setRecordMetadataFile))

@@ -26,7 +26,6 @@ enum class ImageFiltersPresetMode : std::uint32_t {
     TOF_HIGH_RANGE,
 };
 
-// union of all filter params
 typedef std::variant<MedianFilterParams, SpatialFilterParams, SpeckleFilterParams, TemporalFilterParams> FilterParams;
 
 class ImageFiltersConfig : public Buffer {

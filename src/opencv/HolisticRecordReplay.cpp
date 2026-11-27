@@ -114,7 +114,6 @@ bool setupHolisticRecord(Pipeline pipeline,
         if(!std::filesystem::is_directory(recordPath)) {
             throw std::runtime_error("Record output path " + recordPath.string() + " is not a directory.");
         }
-        // Get max requested fps & create sync and demux nodes
         float maxRequestedFps = 0.0f;
         const bool syncCameraOutputs = recordConfig.syncCameraOutputs;
         std::shared_ptr<dai::node::Sync> sync = nullptr;
@@ -147,7 +146,6 @@ bool setupHolisticRecord(Pipeline pipeline,
             }
         }
 
-        // Check if video encoding can be used (recorded output sizes must be aligned)
         for(auto& node : sources) {
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
                 size_t camWidth = 1920;
@@ -232,15 +230,12 @@ bool setupHolisticRecord(Pipeline pipeline,
         spdlog::warn("Record disabled: {}", e.what());
         return false;
     }
-    // Write recordConfig and camera info to output dir
     try {
-        // Config
         std::filesystem::path pathConfig = platform::joinPaths(recordPath, deviceId + "_record_config.json");
         std::ofstream file(pathConfig);
         json j = recordConfig;
         file << j.dump(4);
         file.close();
-        // Camera info
         std::filesystem::path pathCamInfo = platform::joinPaths(recordPath, deviceId + "_camera_info.json");
         auto calibData = pipeline.getDefaultDevice()->getCalibration().eepromToJson();
         auto cameraFeatures = pipeline.getDefaultDevice()->getConnectedCameraFeatures();
@@ -389,8 +384,6 @@ bool setupHolisticReplay(Pipeline pipeline,
                 throw std::runtime_error("Node is listed as a source node but does not implement the SourceNode interface.");
             }
             NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
-            // Needed for multi-device recordings, not yet supported
-            // std::string nodeName = (deviceId + "_").append(nodeParams.name);
             nodeNames.push_back(nodeParams.name);
             pipelineFilenames.push_back(nodeParams.name);
         }
@@ -400,7 +393,6 @@ bool setupHolisticReplay(Pipeline pipeline,
         outFiles.reserve(sources.size() * 2);
         if(allMatch(pipelineFilenames, tarNodenames)) {
             for(auto& nodeName : nodeNames) {
-                // auto filename = (deviceId + "_").append(nodeName);
                 auto filename = nodeName;
                 if(useTar) {
                     inFiles.push_back(tarRoot + filename + videoExt);
@@ -416,34 +408,6 @@ bool setupHolisticReplay(Pipeline pipeline,
             }
         } else {
             throw std::runtime_error("Recording does not match the pipeline configuration.");
-            // For multi-device recordings, where devices are not the same
-            // std::vector<std::string> mxIds;
-            // mxIds.reserve(tarFilenames.size());
-            // for(auto& filename : tarFilenames) {
-            //     mxIds.push_back(filename.substr(0, filename.find_first_of('_')));
-            // }
-            // // Get unique mxIds
-            // std::sort(mxIds.begin(), mxIds.end());
-            // mxIds.erase(std::unique(mxIds.begin(), mxIds.end()), mxIds.end());
-            // std::string mxIdRec = matchTo(mxIds, tarFilenames, nodeNames);
-            // if(mxIdRec.empty()) {
-            //     throw std::runtime_error("No recordings match the pipeline configuration.");
-            // }
-            // for(auto& nodeName : nodeNames) {
-            //     auto inFilename = (mxIdRec + "_").append(nodeName).append(".rec");
-            //     auto outFilename = (mxId + "_").append(nodeName).append(".rec");
-            //     inFiles.push_back(inFilename + ".mp4");
-            //     inFiles.push_back(inFilename + ".mcap");
-            //     std::string filePath = platform::joinPaths(rootPath, outFilename);
-            //     outFiles.push_back(filePath + ".mp4");
-            //     outFiles.push_back(filePath + ".mcap");
-            //     outFilenames[nodeName] = filePath;
-            // }
-            // inFiles.emplace_back("record_config.json");
-            // configPath = platform::joinPaths(rootPath, mxId + "_record_config.json");
-            // outFiles.push_back(configPath);
-            // outFilenames["record_config"] = configPath;
-            // extractFiles(replayPath, inFiles, outFiles);
         }
 
         recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
@@ -461,9 +425,7 @@ bool setupHolisticReplay(Pipeline pipeline,
             auto monoCameraNode = std::dynamic_pointer_cast<node::MonoCamera>(node);
             if(cameraNode || colorCameraNode || monoCameraNode) {
                 auto replay = pipeline.create<dai::node::ReplayVideo>();
-                // replay->setReplayFile(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mcap")));
                 replay->setReplayMetadataFile(platform::joinPaths(rootPath, nodeName + ".mcap"));
-                // replay->setReplayVideo(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mp4")));
                 replay->setReplayVideoFile(platform::joinPaths(rootPath, nodeName + videoExt));
                 replay->setOutFrameType(legacy ? ImgFrame::Type::YUV420p : ImgFrame::Type::NV12);
 

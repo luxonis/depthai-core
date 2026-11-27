@@ -4,14 +4,10 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/NeuralDepthConfig.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_neuraldepthconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -21,18 +17,10 @@ void bind_neuraldepthconfig(pybind11::module& m, void* pCallstack) {
     py::class_<NeuralDepthConfig::AlgorithmControl> algorithmControl(neuralDepthConfig, "AlgorithmControl", DOC(dai, NeuralDepthConfig, AlgorithmControl));
     py::class_<NeuralDepthConfig::PostProcessing> postProcessing(neuralDepthConfig, "PostProcessing", DOC(dai, NeuralDepthConfig, PostProcessing));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     algorithmControl.def(py::init<>())
         .def_readwrite("depthUnit", &dai::NeuralDepthConfig::AlgorithmControl::depthUnit, DOC(dai, NeuralDepthConfig, AlgorithmControl, depthUnit))
@@ -41,7 +29,6 @@ void bind_neuraldepthconfig(pybind11::module& m, void* pCallstack) {
                        DOC(dai, NeuralDepthConfig, AlgorithmControl, customDepthUnitMultiplier));
     algorithmControl.attr("DepthUnit") = m.attr("DepthUnit");
 
-    // Message
     neuralDepthConfig.def(py::init<>())
         .def_readwrite("algorithmControl", &dai::NeuralDepthConfig::algorithmControl, DOC(dai, NeuralDepthConfig, algorithmControl))
         .def("__repr__", &NeuralDepthConfig::str)
@@ -61,7 +48,6 @@ void bind_neuraldepthconfig(pybind11::module& m, void* pCallstack) {
         .def("getCustomDepthUnitMultiplier", &NeuralDepthConfig::getCustomDepthUnitMultiplier, DOC(dai, NeuralDepthConfig, getCustomDepthUnitMultiplier))
         .def_readwrite("postProcessing", &NeuralDepthConfig::postProcessing, DOC(dai, NeuralDepthConfig, postProcessing));
 
-    // PostProcessing
     postProcessing.def(py::init<>())
         .def_readwrite(
             "confidenceThreshold", &NeuralDepthConfig::PostProcessing::confidenceThreshold, DOC(dai, NeuralDepthConfig, PostProcessing, confidenceThreshold))

@@ -8,9 +8,6 @@
 
 namespace dai {
 
-/**
- * Represents a frame split into smaller packets, sent incrementally.
- */
 struct PacketizedData : public Buffer {
    public:
     PacketizedData() = default;

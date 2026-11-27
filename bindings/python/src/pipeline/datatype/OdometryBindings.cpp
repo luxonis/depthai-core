@@ -3,7 +3,6 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/Odometry.hpp"
 
 void bind_odometry(pybind11::module& m, void* pCallstack) {
@@ -11,18 +10,10 @@ void bind_odometry(pybind11::module& m, void* pCallstack) {
 
     py::class_<Odometry, Py<Odometry>, TransformData, py::smart_holder> odometry(m, "Odometry", DOC(dai, Odometry));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     odometry.def(py::init<>())
         .def(py::init<double, double, double, double, double, double, double, const Point3d&>(),

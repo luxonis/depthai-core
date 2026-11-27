@@ -53,8 +53,7 @@ void DeviceTreeDiscovery::EnumerateCams()
                 std::stringstream aliasPath;
                 aliasPath << alias.rdbuf();
                 alias.close();
-                // NOTE: DTS names have \0 appended, the above file contains \0. We need to get rid of it.
-                absPath = std::string(aliasPath.str().c_str());
+                absPath = std::string(aliasPath.str().c_str());  // DTS names end with \0; going through c_str() drops it
             } catch(...) {
                 DAI_ERROR("DeviceTreeDiscovery: Error reading alias file for cam_{}!", index);
                 continue;
@@ -136,8 +135,7 @@ void DeviceTreeDiscovery::EnumerateSTMFSync()
         std::stringstream aliasPath;
         aliasPath << alias.rdbuf();
         alias.close();
-        // NOTE: DTS names have \0 appended, the above file contains \0. We need to get rid of it.
-        absPath = std::string(aliasPath.str().c_str());
+        absPath = std::string(aliasPath.str().c_str());  // DTS names end with \0; going through c_str() drops it
     } catch(...) {
         DAI_ERROR("Error reading stm fsync alias file!")
         return;

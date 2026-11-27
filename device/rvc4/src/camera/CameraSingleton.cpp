@@ -40,7 +40,6 @@ using VendorTagDescriptor = android::hardware::camera::common::V1_0::helper::Ven
 
 extern dai::EepromData getCalibration();
 
-// #define ENABLE_DEBUG
 #ifdef ENALBE_DEBUG
     #define DEBUG(...) fprintf(stderr, ##__VA_ARGS__)
 #else
@@ -134,7 +133,6 @@ std::vector<int> getI2cBusesForCci(const std::filesystem::path& cciSysPath) {
     return buses;
 }
 
-// I2C bus of every camera port (CSI) in the device tree, whether or not a camera is connected to it
 std::map<uint32_t, int> findI2cBusesForCsis() {
     namespace fs = std::filesystem;
 
@@ -185,9 +183,7 @@ std::map<uint32_t, int> findI2cBusesForCsis() {
     return busesForCsis;
 }
 
-// Camera ports (CSI) per I2C bus as wired in the device tree, whether or not cameras are connected. EEPROMs at
-// the same address on a bus shared by several ports can't be told apart
-std::map<int, std::vector<uint32_t>> findCsisPerI2cBus() {
+std::map<int, std::vector<uint32_t>> findCsisPerI2cBus() {  // Includes ports without a camera; same-address EEPROMs on a shared bus can't be told apart
     std::map<int, std::vector<uint32_t>> csisPerBus;
     for(const auto& [csi, bus] : findI2cBusesForCsis()) {
         csisPerBus[bus].push_back(csi);
@@ -250,7 +246,6 @@ std::optional<uint32_t> findCsiForSocket(dai::CameraBoardSocket socket) {
     return std::nullopt;
 }
 
-// Camera socket names of the camera ports (CSI); "CSI<n>" for a port without a socket
 std::string cameraSocketNames(const std::vector<uint32_t>& csis) {
     auto* sidechannel = LuxonisSidechannel::tryGetInstance();
     const auto socketForCsi = sidechannel != nullptr ? sidechannel->ops.camera_socket_for_csi_get : nullptr;
@@ -269,16 +264,13 @@ std::string cameraSocketNames(const std::vector<uint32_t>& csis) {
     return names;
 }
 
-// Removes an at24 device that earlier firmware registered at `address`. A bound kernel driver would block
-// /dev/i2c access at that address and, on a shared bus, expose every module's EEPROM at once.
-void deleteAt24Device(int bus, uint16_t address) {
+void deleteAt24Device(int bus, uint16_t address) {  // A bound at24 driver blocks /dev/i2c access there and exposes every EEPROM of a shared bus
     const auto busPath = std::filesystem::path("/sys/bus/i2c/devices") / fmt::format("i2c-{}", bus);
     if(std::filesystem::exists(busPath / fmt::format("{}-{:04x}", bus, address))) {
         std::ofstream(busPath / "delete_device") << fmt::format("0x{:02x}\n", address);
     }
 }
 
-// Reads one byte through /dev/i2c-<bus> to check whether an EEPROM answers at `address`
 bool i2cEepromResponds(int bus, uint16_t address) {
     std::string error;
     const int fd = i2c_eeprom_open(bus, address, error);
@@ -292,8 +284,6 @@ bool i2cEepromResponds(int bus, uint16_t address) {
     return error.empty();
 }
 
-// Address a CBA EEPROM on `bus` answers at, if any. One EEPROM per bus, and which of its two addresses it is at
-// depends on the state of the sensor's RESET line, so probe both
 std::optional<uint16_t> findCbaEepromAddress(int bus) {
     for(const auto address : CameraSingleton::CBA_EEPROM_ADDRESSES) {
         deleteAt24Device(bus, address);
@@ -304,12 +294,8 @@ std::optional<uint16_t> findCbaEepromAddress(int bus) {
     return std::nullopt;
 }
 
-// Board config of the CBA EEPROM at `address` on `bus`. Runs inside CameraSingleton::init() (initializeCameraModule()),
-// so calling CameraSingleton::getInstance() from here would re-enter the singleton's construction. That is why the
-// EEPROM is opened by bus and address directly
-std::optional<dai::EepromData> readCbaBoardConfig(int bus, uint16_t address) {
-    // eeprom.cpp keeps open EEPROMs per socket. None can be open yet because eeprom_open(socket) needs CameraSingleton, so CAM_A's slot is free
-    constexpr auto socket = dai::CameraBoardSocket::CAM_A;
+std::optional<dai::EepromData> readCbaBoardConfig(int bus, uint16_t address) {  // Runs in CameraSingleton::init(): getInstance() here would re-enter it
+    constexpr auto socket = dai::CameraBoardSocket::CAM_A;  // No EEPROM can be open yet (eeprom_open needs CameraSingleton), so the CAM_A slot is free
     if(eeprom_open_cba(socket, bus, address) < 0) {
         return std::nullopt;
     }
@@ -337,10 +323,7 @@ struct CbaSensorSelection {
     std::string_view driver;
 };
 
-// The sensor driver that the CBA EEPROM on `bus`, the I2C bus of camera port `csi`, selects. Only the device tree,
-// sysfs and /dev/i2c are used, CamX isn't loaded yet
 std::optional<CbaSensorSelection> selectSensorDriverFromCbaEeprom(uint32_t csi, int bus, const std::map<uint32_t, int>& busesForCsis) {
-    // EEPROMs at the same address on a shared bus can't be told apart
     if(std::count_if(busesForCsis.begin(), busesForCsis.end(), [bus](const auto& csiBus) { return csiBus.second == bus; }) > 1) {
         DAI_LOG("Not selecting a sensor driver for CSI{}: its CBA EEPROM shares I2C bus {} with other camera ports", csi, bus);
         return std::nullopt;
@@ -363,8 +346,6 @@ std::optional<CbaSensorSelection> selectSensorDriverFromCbaEeprom(uint32_t csi, 
     return CbaSensorSelection{bus, *address, std::move(boardConfig->boardConf), *driver};
 }
 
-// Value of LUX_SC_CLIENT_SENSOR_SELECT: "<csi>:<driver>" for every camera port whose CBA EEPROM selects a sensor
-// driver, comma separated
 std::string selectSensorDriversFromCbaEeproms() {
     const auto busesForCsis = findI2cBusesForCsis();
     std::string value;
@@ -373,9 +354,7 @@ std::string selectSensorDriversFromCbaEeproms() {
         if(!selection.has_value()) {
             continue;
         }
-        // The firmware's early log lines don't always reach the host, stdout ends up in the depthai_gate journal. Flush so the
-        // line is there even if the process dies while CamX is still starting
-        printf("CBA EEPROM csi %u bus %d addr 0x%02x board config %s selects sensor driver %.*s\n",
+        printf("CBA EEPROM csi %u bus %d addr 0x%02x board config %s selects sensor driver %.*s\n",  // Early logs can miss host; stdout lands in gate journal
                csi,
                selection->bus,
                static_cast<unsigned>(selection->address),
@@ -391,13 +370,9 @@ std::string selectSensorDriversFromCbaEeproms() {
     return value;
 }
 
-// CamX reads the same name, like LUX_SC_CLIENT_VERSION_MAJOR and LUX_SC_CLIENT_VERSION_MINOR
-constexpr const char* SENSOR_SELECT_ENV = "LUX_SC_CLIENT_SENSOR_SELECT";
+constexpr const char* SENSOR_SELECT_ENV = "LUX_SC_CLIENT_SENSOR_SELECT";  // The camera HAL reads the same name
 
-// CamX enumerates and probes the sensors while camera.qcom.so is being loaded by hw_get_module(), so the selection has to
-// be in the environment by then. It is only a preference, CamX falls back to probing for the sensor's chip ID. Always
-// set, so a value inherited from the parent process never leaks in
-void setSensorSelectionEnv() {
+void setSensorSelectionEnv() {  // The HAL probes sensors in hw_get_module(), so set it before; always set so a parent value never leaks in
     std::string value;
     try {
         value = selectSensorDriversFromCbaEeproms();
@@ -663,8 +638,7 @@ void CameraSingleton::checkCcmEepromBuses() {
             }
         }
     } catch(const std::exception& ex) {
-        // Optional EEPROM access must not prevent camera use.
-        DAI_ERROR("CCM EEPROM bus check failed: {}", ex.what());
+        DAI_ERROR("CCM EEPROM bus check failed: {}", ex.what());  // Optional EEPROM access must not prevent camera use
     }
 }
 
@@ -676,8 +650,7 @@ int CameraSingleton::getCcmEepromBus(dai::CameraBoardSocket socket) {
                 continue;
             }
             if(csis.size() > 1) {
-                // On a shared bus 0x50 is the EEPROM of whichever modules are powered, i.e. of the active cameras
-                std::vector<uint32_t> activeCsis;
+                std::vector<uint32_t> activeCsis;  // On a shared bus, 0x50 is the EEPROM of the powered modules, i.e. the active cameras
                 for(const auto active : getActiveCameras()) {
                     const auto activeCsi = findCsiForSocket(active);
                     if(activeCsi.has_value() && std::find(csis.begin(), csis.end(), *activeCsi) != csis.end()) {
@@ -746,7 +719,6 @@ void CameraSingleton::probeCbaEeproms() {
         }
     }
 
-    // One CBA EEPROM per bus, shared by the sockets on it
     std::map<int, std::optional<uint16_t>> addressByBus;
     for(const auto socket : socketsToProbe) {
         const auto csiIndex = findCsiForSocket(socket);

@@ -12,8 +12,6 @@ void bind_gate(pybind11::module& m, void* pCallstack) {
     py::class_<GateProperties> gateProperties(m, "GateProperties", DOC(dai, GateProperties));
     auto gate = ADD_NODE(Gate);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
@@ -21,8 +19,6 @@ void bind_gate(pybind11::module& m, void* pCallstack) {
     gateProperties.def(py::init<>());
 
     gateProperties.def_readwrite("initialConfig", &dai::GateProperties::initialConfig, DOC(dai, GateProperties, initialConfig));
-
-    ///////////////////////////////////////////////////////////////////////
 
     gate.def_readonly("input", &Gate::input, DOC(dai, node, Gate, input))
 

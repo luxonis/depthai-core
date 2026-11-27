@@ -5,23 +5,11 @@
 namespace dai {
 namespace utility {
 
-/// @brief Splits given string by delimiter
-/// @param s string to split
-/// @param delimiter character by which to split
-/// @return vector of split strings
 std::vector<std::string> split(const std::string& s, char delimiter);
 
-/// @brief Parses product name from given EepromData combination
-/// @param eeprom EepromData containing fields to parse product name from
-/// @param eepromFactory Additional factory eeprom which takes precedence when parsing
-/// @return string contaning product name or empty
-std::string parseProductName(const EepromData& eeprom, const EepromData& eepromFactory = {});
+std::string parseProductName(const EepromData& eeprom, const EepromData& eepromFactory = {});  // eepromFactory takes precedence; empty if not found
 
-/// @brief Parses device name from given EepromData combination
-/// @param eeprom EepromData containing fields to parse device name from
-/// @param eepromFactory Additional factory eeprom which takes precedence when parsing
-/// @return string contaning device name or empty
-std::string parseDeviceName(const EepromData& eeprom, const EepromData& eepromFactory = {});
+std::string parseDeviceName(const EepromData& eeprom, const EepromData& eepromFactory = {});  // eepromFactory takes precedence; empty if not found
 
 }  // namespace utility
 }  // namespace dai

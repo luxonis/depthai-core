@@ -37,7 +37,6 @@ namespace dai {
 namespace utilities {
 namespace DetectionParserUtils {
 
-// YOLOv6 R1 predicts raw center/size values for each grid cell.
 void decodeR1AF(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
@@ -165,9 +164,6 @@ void decodeR1AF(const dai::NNData& nnData,
     }
 }
 
-/*
-Decode anchor based yolo v3 and v3-Tiny
-*/
 void decodeV3AB(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
@@ -253,7 +249,6 @@ void decodeV3AB(const dai::NNData& nnData,
                     const float conf = obj * sigmoid(clsLogit);
                     if(conf < confidenceThr) continue;
 
-                    // YOLOv3 decode
                     const float cx = (static_cast<float>(col) + tx) * static_cast<float>(stride);
                     const float cy = (static_cast<float>(row) + ty) * static_cast<float>(stride);
                     const float w_exp = std::exp(tw);
@@ -309,13 +304,8 @@ void decodeV3AB(const dai::NNData& nnData,
         logger->trace("Keypoints decoding.");
         keypointDecode(nnData, keepCandidates, outDetections, properties, logger);
     }
-
-    //
 }
 
-/*
-Decode anchor based networks, e.g., yolo v5, v7, P
-*/
 void decodeV5AB(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
@@ -401,7 +391,6 @@ void decodeV5AB(const dai::NNData& nnData,
                     const float conf = obj * bestConf;
                     if(conf < confidenceThr) continue;
 
-                    // YOLOv5 decode
                     const float cx = ((tx * 2.0f - 0.5f) + static_cast<float>(col)) * static_cast<float>(stride);
                     const float cy = ((ty * 2.0f - 0.5f) + static_cast<float>(row)) * static_cast<float>(stride);
 
@@ -457,9 +446,6 @@ void decodeV5AB(const dai::NNData& nnData,
     }
 }
 
-/*
-Decode TLBR (top left bottom right) style networks, e.g., yolo v6r2, v8, v10, v11
-*/
 void decodeTLBR(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
@@ -570,7 +556,6 @@ void decodeTLBR(const dai::NNData& nnData,
     }
 }
 
-// End to end models that directly output TLBR boxes without any anchor, e.g., YOLO26
 void decodeEndToEnd(const dai::NNData& nnData,
                     dai::ImgDetections& outDetections,
                     DetectionParserProperties& properties,
@@ -908,9 +893,6 @@ void segmentationDecode(const dai::NNData& nnData,
 
         Eigen::Map<Eigen::RowVectorXf> logits(maskLow.ptr<float>(), protoHeight * protoWidth);
         logits.noalias() = coeffs * protos2d;
-
-        // no need to do sigmoid
-        // logits = (1.0f / (1.0f + (-logits.array()).exp())).matrix();
     };
 
     std::map<int, NNDataViewer> maskValues;
@@ -958,7 +940,6 @@ void segmentationDecode(const dai::NNData& nnData,
         cv::Mat roiProb;
         cv::resize(maskLow(protoROI), roiProb, roi.size(), 0, 0, cv::INTER_LINEAR);
 
-        // Threshold & paint only unassigned pixels
         cv::Mat roiBin;
         cv::compare(roiProb, 0.0, roiBin, cv::CMP_GT);
         cv::Mat roiOut = indexMask(roi);
@@ -1036,10 +1017,6 @@ void keypointDecode(const dai::NNData& nnData,
         for(int k = 0; k < nKeypoints; ++k) {
             int base = 3 * k;
 
-            // keypointValues tensor storage order HWC
-            //  H == 0
-            //  W == flattened spatial dimensions of row x col of the feature map
-            //  C == 51 == 17 * 3 (x, y, conf for each keypoint)
             float x = std::clamp(keypointMask.get(base + 0, 0, flattenedIndex) / inputWidth, 0.0f, 1.0f);
             float y = std::clamp(keypointMask.get(base + 1, 0, flattenedIndex) / inputHeight, 0.0f, 1.0f);
             float conf = 1.f / (1.f + std::exp(-(keypointMask.get(base + 2, 0, flattenedIndex))));

@@ -27,7 +27,6 @@ struct DsImgConfig {
     dai::gate::ScaledownInterpolation eDsInterpolation = dai::gate::ScaledownInterpolation::BILINEAR;
 };
 
-/// The hardware downscaler (accelerator scaledown) of the vendor module: dai_device_dsimg_* of vendor/dai_device_accel.h
 class DsImgDispatcher {
    public:
     DsImgDispatcher();
@@ -52,11 +51,8 @@ class DsImgDispatcher {
     void PrintFrameInfo(int width, int height, spdlog::logger& logger);
 
    private:
-    // The accelerator buffers of the last RunAsync: the hardware uses them until Wait
-    std::shared_ptr<dai::AcceleratorMemory> inMem;
+    std::shared_ptr<dai::AcceleratorMemory> inMem;  // Kept alive: the hardware uses them from RunAsync until Wait
     std::shared_ptr<dai::AcceleratorMemory> outMem;
-    // The color format of the last successful Init, for PrintFrameInfo
     dai::ImgFrame::Type initColorFormat = dai::ImgFrame::Type::GRAY8;
-    // Declared last: destroyed (and closed) before the buffers are released
-    std::unique_ptr<dai_device_dsimg, void (*)(dai_device_dsimg*)> handle;
+    std::unique_ptr<dai_device_dsimg, void (*)(dai_device_dsimg*)> handle;  // Declared last: closed before the buffers above are released
 };

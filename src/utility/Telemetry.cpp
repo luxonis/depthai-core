@@ -338,8 +338,7 @@ class TemporaryIdsManager {
    public:
     std::string getHostId() {
         std::lock_guard<std::mutex> guard(mutex);
-        // Keep a stable host distinct_id for the lifetime of the process.
-        if(cachedHost.has_value()) {
+        if(cachedHost.has_value()) {  // Keep a stable host distinct_id for the lifetime of the process
             return cachedHost->id;
         }
 
@@ -502,10 +501,7 @@ TelemetrySharedState& telemetrySharedState() {
             return state->telemetry;
         }
 
-        // fork() copies the parent telemetry state but not its worker threads.
-        // Leave that inherited state untouched and install a fresh state for
-        // the child process on its first telemetry call.
-        auto* childState = new ProcessTelemetryState(processId);
+        auto* childState = new ProcessTelemetryState(processId);  // fork() copies the state but not its worker threads: the child gets a fresh one
         if(holder.current.compare_exchange_strong(state, childState, std::memory_order_acq_rel, std::memory_order_acquire)) {
             return childState->telemetry;
         }
@@ -560,13 +556,7 @@ TelemetrySharedState::TelemetrySharedState() {
         logger::debug("Telemetry curl global init failed: {}", curl_easy_strerror(curlInitResult));
     }
 
-    // Only the side effect is needed: create cpr's private, function-local static mutex that guards
-    // curl_easy_init(). Statics are destroyed in the reverse order of their construction. This constructor runs
-    // inside the construction of the static TelemetryStateHolder, so the mutex is constructed first and destroyed
-    // after this state. Without this, the mutex is first created by a later request and destroyed first at exit().
-    // The final flush in the destructor then locks a destroyed mutex: on macOS this throws "mutex lock failed:
-    // Invalid argument" and all queued events are lost. The braces release the curl handle at once.
-    { cpr::CurlHolder createInitMutex; }
+    { cpr::CurlHolder createInitMutex; }  // Creates cpr's static curl_easy_init mutex first, so it outlives this state at exit()
 
     worker = std::thread([this]() { workerLoop(); });
 #else
@@ -865,9 +855,7 @@ void TelemetrySharedState::workerLoop() {
     }
     lock.unlock();
 
-    // Best effort flush on shutdown. This intentionally mirrors the one-shot
-    // behavior of the iOS queue rather than draining the entire backlog.
-    flushOneBatch();
+    flushOneBatch();  // One batch only, as the iOS queue does; the backlog is not drained
 }
 
 void TelemetrySharedState::flushOneBatch() {

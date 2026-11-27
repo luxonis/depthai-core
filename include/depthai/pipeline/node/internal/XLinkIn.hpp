@@ -1,8 +1,6 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
-
-// shared
 #include <depthai/properties/internal/XLinkInProperties.hpp>
 
 namespace dai {
@@ -25,7 +23,6 @@ class XLinkIn : public DeviceNodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
     /**
      * Outputs message of same type as send from host.
      */
-    // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     /**

@@ -185,20 +185,10 @@ class SpatialLocationCalculatorConfig : public Buffer {
      */
     std::vector<SpatialLocationCalculatorConfigData> getConfigData() const;
 
-    /*
-     * Retrieve the lower and upper depth value thresholds used in the spatial calculations.
-     * @returns Pair of lower and upper thresholds in depth units (millimeter by default).
-     */
-    std::pair<int32_t, int32_t> getDepthThresholds() const;
+    std::pair<int32_t, int32_t> getDepthThresholds() const;  // Lower and upper thresholds in depth units (millimeter by default)
 
-    /*
-     * Retrieve spatial location calculation algorithm.
-     */
     SpatialLocationCalculatorAlgorithm getCalculationAlgorithm() const;
 
-    /*
-     * Retrieve step size for spatial location calculation.
-     */
     int32_t getStepSize() const;
 
     /**

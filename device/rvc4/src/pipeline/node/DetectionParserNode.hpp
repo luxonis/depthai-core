@@ -1,10 +1,8 @@
 #pragma once
 
-// C++ std
 #include <memory>
 #include <vector>
 
-// libraries
 #include <spdlog/async_logger.h>
 
 #include "depthai/pipeline/node/DetectionParser.hpp"

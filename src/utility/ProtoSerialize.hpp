@@ -45,14 +45,12 @@ namespace utility {
 
 std::vector<std::uint8_t> serializeProto(std::unique_ptr<google::protobuf::Message> protoMessage);
 
-// Common functions for serializing
 void serializeImgTransformation(proto::common::ImgTransformation* imgTransformation, const ImgTransformation& transformation);
 ImgTransformation deserializeImgTransformation(const proto::common::ImgTransformation& imgTransformation);
 
 DatatypeEnum schemaNameToDatatype(const std::string& schemaName);
 
-// Returns true if deserialization is supported for given datatype, extend for new datatypes
-bool deserializationSupported(DatatypeEnum datatype);
+bool deserializationSupported(DatatypeEnum datatype);  // Extend for each new deserializable datatype
 
 template <typename Clock>
 inline std::chrono::time_point<Clock> fromProtoTimestamp(const dai::proto::common::Timestamp& ts) {
@@ -69,7 +67,6 @@ std::chrono::time_point<Clock> safeTimestamp(const dai::proto::common::Timestamp
     return hasField ? fromProtoTimestamp<Clock>(protoTs) : tp{};
 };
 
-// Helpers to serialize messages to protobuf
 template <typename T>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const T*, bool = false) {
     throw std::runtime_error("getProtoMessage not implemented for this type");
@@ -78,7 +75,6 @@ template <typename T>
 ProtoSerializable::SchemaPair getProtoSchema() {
     throw std::runtime_error("getProtoSchema not implemented for this type");
 }
-// Helpers to deserialize messages from protobuf
 template <typename T>
 void setProtoMessage(T&, const google::protobuf::Message*, bool = false);
 

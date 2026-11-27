@@ -8,15 +8,10 @@ void bind_neuraldepth(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Node and Properties declare upfront
     py::class_<NeuralDepthProperties> properties(m, "NeuralDepthProperties", DOC(dai, NeuralDepthProperties));
 
     auto node = ADD_NODE(NeuralDepth);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
@@ -25,12 +20,6 @@ void bind_neuraldepth(pybind11::module& m, void* pCallstack) {
 
     properties.def_readwrite("initialConfig", &dai::NeuralDepthProperties::initialConfig, DOC(dai, NeuralDepthProperties, initialConfig));
 
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-
-    // Node
     node.def_property_readonly(
             "left",
             [](const NeuralDepth& n) { return &n.sync->inputs["left"]; },
@@ -82,6 +71,5 @@ void bind_neuraldepth(pybind11::module& m, void* pCallstack) {
             [](NeuralDepth& n) { return &(*n.rectification); },
             py::return_value_policy::reference_internal,
             DOC(dai, node, NeuralDepth, rectification));
-    // ALIAS
     daiNodeModule.attr("NeuralDepth").attr("Properties") = properties;
 }

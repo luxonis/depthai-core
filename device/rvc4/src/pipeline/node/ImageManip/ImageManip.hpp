@@ -1,6 +1,5 @@
 #pragma once
 
-// libraries
 #include <stdexcept>
 
 #include "depthai/pipeline/node/ImageManip.hpp"

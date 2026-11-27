@@ -33,9 +33,6 @@ class BasaltVIO::Impl {
     basalt::OpticalFlowBase::Ptr optFlowPtr;
     basalt::VioEstimatorBase::Ptr vio;
     basalt::OpticalFlowInput::Ptr lastImgData;
-    /**
-     * VIO configuration file.
-     */
     basalt::VioConfig vioConfig;
 
     std::vector<int64_t> vioTNSec;
@@ -58,8 +55,7 @@ void BasaltVIO::buildInternal() {
     R << 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0;
     Eigen::Quaterniond q(R);
     basalt::PoseState<double>::SE3 initialRotation(q, Eigen::Vector3d(0, 0, 0));
-    // Keep Basalt output in FLU world coordinates.
-    pimpl->localTransform = std::make_shared<basalt::PoseState<double>::SE3>(initTrans * initialRotation.inverse());
+    pimpl->localTransform = std::make_shared<basalt::PoseState<double>::SE3>(initTrans * initialRotation.inverse());  // Basalt output in FLU world coordinates
     setDefaultVIOConfig();
 }
 
@@ -83,8 +79,7 @@ void BasaltVIO::run() {
         if(!data.get()) continue;
         basalt::PoseState<double>::SE3 pose = (*pimpl->localTransform * data->T_w_i * pimpl->calib->T_i_c[0]);
 
-        // Basalt pose is RDF; convert to FLU for API output.
-        auto finalPose = pose * opticalTransform.inverse();
+        auto finalPose = pose * opticalTransform.inverse();  // Basalt pose is RDF; the API outputs FLU
         auto trans = finalPose.translation();
         auto rot = finalPose.unit_quaternion();
         const auto velocity = pimpl->localTransform->unit_quaternion() * data->vel_w_i;
@@ -101,8 +96,7 @@ void BasaltVIO::stereoCB(std::shared_ptr<ADatatype> in) {
     auto group = std::dynamic_pointer_cast<MessageGroup>(in);
     if(group == nullptr) return;
     if(!initialized) {
-        // Don't start Basalt until the IMU stream is live; otherwise its first frames have no IMU data.
-        if(!pimpl->imuStarted) return;
+        if(!pimpl->imuStarted) return;  // Wait for IMU; else Basalt's first frames have no IMU data
         std::vector<std::shared_ptr<ImgFrame>> imgFrames;
         for(auto& msg : *group) {
             imgFrames.emplace_back(std::dynamic_pointer_cast<ImgFrame>(msg.second));
@@ -152,8 +146,7 @@ void BasaltVIO::imuCB(std::shared_ptr<ADatatype> imuData) {
     for(auto& imuPacket : imuPackets->packets) {
         auto t = imuPacket.acceleroMeter.getTimestamp();
         int64_t t_ns = std::chrono::time_point_cast<std::chrono::nanoseconds>(t).time_since_epoch().count();
-        // Basalt aborts the process on IMU samples that are not strictly increasing in time.
-        if(t_ns <= pimpl->lastImuTNs) {
+        if(t_ns <= pimpl->lastImuTNs) {  // Basalt aborts on IMU samples that are not strictly increasing in time
             ThreadedNode::pimpl->logger->warn("Dropping IMU sample that is not newer than the previous one ({} us back)", (pimpl->lastImuTNs - t_ns) / 1000);
             continue;
         }
@@ -223,7 +216,6 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
         resolution << frame->getWidth(), frame->getHeight();
         pimpl->calib->resolution.push_back(resolution);
         auto camID = static_cast<CameraBoardSocket>(frame->getInstanceNum());
-        // imu extrinsics
         if(imuExtrinsics.has_value()) {
             Eigen::Vector3d trans(
                 imuExtrinsics.value()->getTranslation().x, imuExtrinsics.value()->getTranslation().y, imuExtrinsics.value()->getTranslation().z);
@@ -270,14 +262,12 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
             pimpl->calib->gyro_noise_std = Eigen::Vector3d(gyroNoiseStd.value()[0], gyroNoiseStd.value()[1], gyroNoiseStd.value()[2]).cwiseSqrt();
         }
 
-        // camera intrinsics
         auto intrinsics = calibHandler.getCameraIntrinsics(camID, frame->getWidth(), frame->getHeight());
         auto model = calibHandler.getDistortionModel(camID);
         auto distCoeffs = calibHandler.getDistortionCoefficients(camID);
         basalt::GenericCamera<Scalar> camera;
         if(model == CameraModel::Perspective) {
             basalt::PinholeRadtan8Camera<Scalar>::VecN params;
-            // fx, fy, cx, cy
             double fx = double(intrinsics[0][0]);
             double fy = double(intrinsics[1][1]);
             double cx = double(intrinsics[0][2]);
@@ -294,7 +284,6 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
             basalt::PinholeRadtan8Camera<Scalar> pinhole(params);
             camera.variant = pinhole;
         } else if(model == CameraModel::Fisheye) {
-            // fx, fy, cx, cy
             double fx = double(intrinsics[0][0]);
             double fy = double(intrinsics[1][1]);
             double cx = double(intrinsics[0][2]);

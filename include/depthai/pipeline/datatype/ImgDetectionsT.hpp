@@ -14,8 +14,6 @@
     #include <opencv2/opencv.hpp>
 #endif
 
-// Template for ImgDetections
-
 namespace dai {
 
 template <class DetectionT>
@@ -29,10 +27,6 @@ class ImgDetectionsT : public Buffer {
 
     ImgDetectionsT() = default;
     ~ImgDetectionsT() override = default;
-
-    /*
-     * Common API
-     */
 
     /**
      * Returns the width of the segmentation mask.
@@ -66,7 +60,6 @@ class ImgDetectionsT : public Buffer {
      */
     std::optional<dai::ImgFrame> getSegmentationMask() const;
 
-// Optional - OpenCV support
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
      * @note This API only available if OpenCV support is enabled

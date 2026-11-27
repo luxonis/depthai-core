@@ -8,25 +8,15 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
     using namespace dai::node;
     using namespace pybind11::literals;
 
-    // Node and Properties declare upfront
     py::class_<ToFProperties> tofProperties(m, "ToFProperties", DOC(dai, ToFProperties));
     auto tofBase = ADD_NODE(ToFBase);
     auto tof = ADD_NODE_DERIVED(ToF, DeviceNodeGroup);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Properties
     tofProperties.def(py::init<>());
 
     tofProperties.def_readwrite("boardSocket", &dai::ToFProperties::boardSocket, DOC(dai, ToFProperties, boardSocket))
@@ -40,7 +30,6 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_readwrite("warpHwIds", &ToFProperties::warpHwIds, DOC(dai, ToFProperties, warpHwIds))
         .def_readwrite("enableUndistortion", &ToFProperties::enableUndistortion, DOC(dai, ToFProperties, enableUndistortion));
 
-    // ToFBase Node
     tofBase.def_readonly("inputConfig", &ToFBase::inputConfig, DOC(dai, node, ToFBase, inputConfig), DOC(dai, node, ToFBase, inputConfig))
         .def_readonly("depth", &ToFBase::depth, DOC(dai, node, ToFBase, depth), DOC(dai, node, ToFBase, depth))
         .def_readonly("amplitude", &ToFBase::amplitude, DOC(dai, node, ToFBase, amplitude), DOC(dai, node, ToFBase, amplitude))
@@ -58,7 +47,6 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def("setOutputUndistortion", &ToFBase::setOutputUndistortion, "enable"_a, DOC(dai, node, ToFBase, setOutputUndistortion))
         .def("getBoardSocket", &ToFBase::getBoardSocket, DOC(dai, node, ToFBase, getBoardSocket));
 
-    // ToF Node (DeviceNodeGroup)
     DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     tof.def_property_readonly(
            "tofBaseNode", [](const ToF& self) -> const dai::node::ToFBase& { return self.tofBaseNode; }, DOC(dai, node, ToF, tofBaseNode))
@@ -128,6 +116,5 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
     #endif
 #endif
 
-    // ALIAS
     daiNodeModule.attr("ToFBase").attr("Properties") = tofProperties;
 }

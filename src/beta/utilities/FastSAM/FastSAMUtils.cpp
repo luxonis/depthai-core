@@ -1,11 +1,3 @@
-// This file contains utility functions for decoding the output of the FastSAM instance
-// segmentation model, ported from the depthai-nodes parser utilities (utils/fastsam.py,
-// utils/yolo.py, utils/nms.py and utils/masks_utils.py).
-//
-// Several functions are based on code from the Ultralytics FastSAM implementation; the
-// original per-function source attributions of the depthai-nodes utilities are retained
-// verbatim in the function documentation in FastSAMUtils.hpp.
-
 #include "beta/utilities/FastSAM/FastSAMUtils.hpp"
 
 #include <algorithm>
@@ -25,19 +17,12 @@ namespace FastSAMUtils {
 
 namespace {
 
-// The source non_max_suppression() defaults; the FastSAM parser never overrides them.
 constexpr std::size_t kMaxNms = 3000;      // decode_yolo_output max_nms
 constexpr std::size_t kMaxDet = 300;       // non_max_suppression max_det
 constexpr double kMaxWh = 7680.0;          // non_max_suppression max_wh class offset
 constexpr double kFullBoxIouThres = 0.9;   // decode_fastsam_output bbox_iou threshold
 constexpr std::int64_t kBorderThres = 20;  // adjust_bboxes_to_image_border threshold
 
-/**
- * A per-grid-cell candidate produced by the anchorless YOLO parse, before non-maximum
- * suppression. Matches one row of the source parse_yolo_output() segmentation output
- * [cx, cy, w, h, obj, cls..., head, anchor, x, y] with the class scores already reduced to
- * their maximum and its index (the source single-label path computes the same reduction).
- */
 struct Candidate {
     double cx = 0.0, cy = 0.0, w = 0.0, h = 0.0;
     double obj = 0.0;
@@ -46,10 +31,6 @@ struct Candidate {
     std::int64_t head = 0, anchor = 0, gx = 0, gy = 0;
 };
 
-/**
- * Parse a single anchorless YOLO head output in segmentation mode, mirroring the source
- * parse_yolo_output() with anchors=None, kpts=None, det_mode=False and the DEFAULT subtype.
- */
 std::vector<Candidate> parseYoloHead(const ClassificationUtils::ShapedTensorData& tensor, std::int64_t stride, std::int32_t numClasses, std::int64_t headId) {
     DAI_CHECK_V(tensor.dims.size() == 4, "FastSAM YOLO output at index {} must be a 4D NCHW tensor, got {} dimensions.", headId, tensor.dims.size());
     DAI_CHECK_V(tensor.dims[0] == 1, "FastSAM YOLO output at index {} must have batch size 1, got {}.", headId, tensor.dims[0]);
@@ -74,15 +55,10 @@ std::vector<Candidate> parseYoloHead(const ClassificationUtils::ShapedTensorData
 
     std::vector<Candidate> candidates;
     candidates.reserve(ny * nx);
-    // Row order matches the source reshape(bs, na * ny * nx, -1): y-major, then x (na = 1).
     for(std::size_t y = 0; y < ny; ++y) {
         for(std::size_t x = 0; x < nx; ++x) {
             Candidate c;
-            // Anchorless box decode: x1y1 = grid - out[0:2] + 0.5, x2y2 = grid + out[2:4] + 0.5,
-            // then center/size scaled by the stride. The results are stored into the float32
-            // array in the source (out[..., 0:2] = c_xy * stride), so they round through
-            // float32 before the float64 concatenation.
-            const double x1 = static_cast<double>(x) - static_cast<double>(at(0, y, x)) + 0.5;
+            const double x1 = static_cast<double>(x) - static_cast<double>(at(0, y, x)) + 0.5;  // cx/cy/w/h round through float32, as the source float32 store
             const double y1 = static_cast<double>(y) - static_cast<double>(at(1, y, x)) + 0.5;
             const double x2 = static_cast<double>(x) + static_cast<double>(at(2, y, x)) + 0.5;
             const double y2 = static_cast<double>(y) + static_cast<double>(at(3, y, x)) + 0.5;
@@ -92,9 +68,6 @@ std::vector<Candidate> parseYoloHead(const ClassificationUtils::ShapedTensorData
             c.h = static_cast<double>(static_cast<float>((y2 - y1) * static_cast<double>(stride)));
             c.obj = static_cast<double>(at(4, y, x));
 
-            // Single-label reduction (multi_label is always False here): the class with the
-            // maximum score wins, following numpy argmax semantics (first occurrence on ties,
-            // the first NaN wins when present).
             double best = static_cast<double>(at(5, y, x));
             std::int64_t bestIdx = 0;
             for(std::int32_t k = 1; k < numClasses; ++k) {
@@ -117,8 +90,7 @@ std::vector<Candidate> parseYoloHead(const ClassificationUtils::ShapedTensorData
     return candidates;
 }
 
-/// numpy argmax over doubles: first occurrence of the maximum, the first NaN wins when present.
-std::size_t argmaxNumpy(const std::vector<double>& values) {
+std::size_t argmaxNumpy(const std::vector<double>& values) {  // First maximum wins; the first NaN wins when present
     std::size_t bestIdx = 0;
     double best = values[0];
     for(std::size_t i = 1; i < values.size(); ++i) {
@@ -137,16 +109,12 @@ std::vector<std::size_t> nms(const std::vector<std::array<float, 4>>& boxes, con
     DAI_CHECK_V(boxes.size() == scores.size(), "NMS requires one score per box, got {} boxes and {} scores.", boxes.size(), scores.size());
     const std::size_t n = boxes.size();
 
-    // areas = (x2 - x1 + 1) * (y2 - y1 + 1), computed in float32 like the source, which casts
-    // the stacked (boxes, scores) array to float32 before calling nms().
     std::vector<float> areas(n);
     for(std::size_t i = 0; i < n; ++i) {
         areas[i] = (boxes[i][2] - boxes[i][0] + 1.0f) * (boxes[i][3] - boxes[i][1] + 1.0f);
     }
 
-    // order = scores.argsort()[::-1]: ascending stable argsort reversed, so equal scores are
-    // visited with the later index first.
-    std::vector<std::size_t> order(n);
+    std::vector<std::size_t> order(n);  // Reversed ascending argsort: equal scores visit the later index first
     std::iota(order.begin(), order.end(), 0);
     std::stable_sort(order.begin(), order.end(), [&scores](std::size_t a, std::size_t b) { return scores[a] < scores[b]; });
     std::reverse(order.begin(), order.end());
@@ -167,9 +135,7 @@ std::vector<std::size_t> nms(const std::vector<std::array<float, 4>>& boxes, con
             const float h = std::max(0.0f, yy2 - yy1 + 1.0f);
             const float inter = w * h;
             const float ovr = inter / (areas[i] + areas[j] - inter);
-            // Keep boxes with ovr <= thresh; a NaN overlap compares false and is suppressed,
-            // matching the numpy comparison.
-            if(ovr <= nmsThreshold) {
+            if(ovr <= nmsThreshold) {  // A NaN overlap compares false and is suppressed, as in numpy
                 remaining.push_back(j);
             }
         }
@@ -189,9 +155,7 @@ void adjustBboxesToImageBorder(std::vector<DetectionRow>& rows, std::int64_t img
 
 std::vector<std::size_t> bboxIou(
     const std::array<double, 4>& box1, std::vector<DetectionRow>& rows, std::int64_t imgHeight, std::int64_t imgWidth, double iouThres) {
-    // The source bbox_iou() border-snaps the boxes in place before computing the IoU; the
-    // mutation is visible to the caller and drives the later mask cropping.
-    adjustBboxesToImageBorder(rows, imgHeight, imgWidth, kBorderThres);
+    adjustBboxesToImageBorder(rows, imgHeight, imgWidth, kBorderThres);  // In place, as the source bbox_iou(): the later mask cropping uses the snapped boxes
 
     const double box1Area = (box1[2] - box1[0]) * (box1[3] - box1[1]);
     std::vector<std::size_t> indices;
@@ -218,8 +182,6 @@ std::vector<DetectionRow> decodeFastsamOutput(const std::vector<ClassificationUt
                                               float confThres,
                                               float iouThres,
                                               std::int32_t numClasses) {
-    // The source compute_fastsam_mask() always decodes with strides [8, 16, 32] and no
-    // anchors; decode_yolo_output() validates the stride/output count match.
     const std::vector<std::int64_t> strides = {8, 16, 32};
     DAI_CHECK_V(strides.size() == yoloOutputs.size(),
                 "Number of `strides` must match number of YOLO outputs. Got {} strides for {} outputs.",
@@ -228,8 +190,6 @@ std::vector<DetectionRow> decodeFastsamOutput(const std::vector<ClassificationUt
     DAI_CHECK_V(confThres >= 0.0f && confThres <= 1.0f, "Invalid Confidence threshold {}, valid values are between 0.0 and 1.0.", confThres);
     DAI_CHECK_V(iouThres >= 0.0f && iouThres <= 1.0f, "Invalid IoU {}, valid values are between 0.0 and 1.0.", iouThres);
 
-    // 1. Parse all head outputs and keep only candidates with objectness > confThres (the
-    // source early filter; the non_max_suppression objectness re-filter selects the same set).
     std::vector<Candidate> candidates;
     for(std::size_t i = 0; i < yoloOutputs.size(); ++i) {
         const auto headCandidates = parseYoloHead(yoloOutputs[i], strides[i], numClasses, static_cast<std::int64_t>(i));
@@ -243,9 +203,6 @@ std::vector<DetectionRow> decodeFastsamOutput(const std::vector<ClassificationUt
         return {};
     }
 
-    // 2. When more than max_nms candidates with non-identical objectness remain, keep the
-    // max_nms highest-objectness candidates (descending sort; equal values keep the reversed
-    // ascending-argsort order, i.e. the later index first).
     if(candidates.size() > kMaxNms) {
         const bool allEqual = std::all_of(candidates.begin(), candidates.end(), [&candidates](const Candidate& c) { return c.obj == candidates.front().obj; });
         if(!allEqual) {
@@ -263,8 +220,6 @@ std::vector<DetectionRow> decodeFastsamOutput(const std::vector<ClassificationUt
         }
     }
 
-    // 3. Non-maximum suppression (source non_max_suppression(), single-label path): convert
-    // boxes to corner form and re-filter with the class confidence.
     struct NmsRow {
         double x1, y1, x2, y2;
         double conf;
@@ -293,10 +248,7 @@ std::vector<DetectionRow> decodeFastsamOutput(const std::vector<ClassificationUt
         return {};
     }
 
-    // Source quirk kept for parity: when more than max_nms boxes remain, the source sorts by
-    // ascending confidence and keeps the first max_nms rows (x[x[:, 4].argsort()[:max_nms]]),
-    // i.e. the lowest-confidence rows, and the boxes enter NMS in that ascending order.
-    if(nmsRows.size() > kMaxNms) {
+    if(nmsRows.size() > kMaxNms) {  // Source quirk kept for parity: keeps the max_nms lowest-confidence rows, in ascending order
         std::vector<std::size_t> order(nmsRows.size());
         std::iota(order.begin(), order.end(), 0);
         std::stable_sort(order.begin(), order.end(), [&nmsRows](std::size_t a, std::size_t b) { return nmsRows[a].conf < nmsRows[b].conf; });
@@ -309,7 +261,6 @@ std::vector<DetectionRow> decodeFastsamOutput(const std::vector<ClassificationUt
         nmsRows = std::move(truncated);
     }
 
-    // Batched NMS: boxes offset by class * max_wh, then the float32 nms() of utils/nms.py.
     std::vector<std::array<float, 4>> nmsBoxes(nmsRows.size());
     std::vector<float> nmsScores(nmsRows.size());
     for(std::size_t i = 0; i < nmsRows.size(); ++i) {
@@ -341,10 +292,6 @@ std::vector<DetectionRow> decodeFastsamOutput(const std::vector<ClassificationUt
                                     static_cast<double>(r.gy)});
     }
 
-    // 4. Full-box augmentation (source decode_fastsam_output()): border-snap all boxes in
-    // place through bboxIou() and replace the highest-confidence box overlapping the full
-    // image (IoU > 0.9) with the full-image box, keeping its confidence and grid-cell columns
-    // and setting its class to 0.
     const std::array<double, 4> fullBox = {0.0, 0.0, static_cast<double>(imgWidth), static_cast<double>(imgHeight)};
     const std::vector<std::size_t> criticalIndices = bboxIou(fullBox, rows, imgHeight, imgWidth, kFullBoxIouThres);
     if(!criticalIndices.empty()) {
@@ -358,7 +305,6 @@ std::vector<DetectionRow> decodeFastsamOutput(const std::vector<ClassificationUt
         rows[idx][2] = static_cast<double>(imgWidth);
         rows[idx][3] = static_cast<double>(imgHeight);
         rows[idx][5] = 0.0;
-        // Columns 4 (confidence) and 6..9 (head, anchor, x, y) keep the replaced row's values.
     }
 
     return rows;
@@ -367,9 +313,7 @@ std::vector<DetectionRow> decodeFastsamOutput(const std::vector<ClassificationUt
 std::vector<float> buildMaskCoeffs(const std::vector<DetectionRow>& rows,
                                    const std::vector<ClassificationUtils::ShapedTensorData>& maskOutputs,
                                    std::size_t protosLen) {
-    // The source leaves rows whose head index matches no mask output uninitialized
-    // (np.empty); this port zero-initializes them instead.
-    std::vector<float> coeffs(rows.size() * protosLen, 0.0f);
+    std::vector<float> coeffs(rows.size() * protosLen, 0.0f);  // Zero-initialized; the source leaves unmatched rows uninitialized (np.empty)
     for(std::size_t i = 0; i < rows.size(); ++i) {
         const auto headIdx = static_cast<std::int64_t>(rows[i][6]);
         const auto anchorIdx = static_cast<std::int64_t>(rows[i][7]);
@@ -432,8 +376,6 @@ std::vector<std::uint8_t> processMasks(const std::vector<DetectionRow>& rows,
     std::vector<std::uint8_t> masks(rows.size() * outHeight * outWidth);
     std::vector<float> maskSmall(protoHeight * protoWidth);
     for(std::size_t i = 0; i < rows.size(); ++i) {
-        // mask_small = sigmoid(sum(protos * coeffs, axis=0)): sequential float32 accumulation
-        // over the prototypes, matching numpy's axis-0 sum of a float32 array.
         std::fill(maskSmall.begin(), maskSmall.end(), 0.0f);
         for(std::size_t c = 0; c < protosLen; ++c) {
             const float coeff = maskCoeffs[i * protosLen + c];
@@ -448,8 +390,6 @@ std::vector<std::uint8_t> processMasks(const std::vector<DetectionRow>& rows,
 
         const std::vector<float> resized = MaskUtils::resizeNearest(maskSmall, protoHeight, protoWidth, outHeight, outWidth);
 
-        // Bounding box truncated to int and clamped to [0, outWidth/outHeight]; the mask is
-        // zeroed outside the box before the strict greater-than threshold.
         const auto clampBox = [](double v, std::int64_t hi) { return std::min(std::max(static_cast<std::int64_t>(v), std::int64_t{0}), hi); };
         const std::int64_t x1 = clampBox(rows[i][0], static_cast<std::int64_t>(outWidth));
         const std::int64_t y1 = clampBox(rows[i][1], static_cast<std::int64_t>(outHeight));
@@ -473,8 +413,6 @@ std::vector<std::uint8_t> boxPrompt(
     DAI_CHECK(maskCount > 0, "FastSAM box prompt requires at least one mask.");
     DAI_CHECK(bbox[2] != 0 && bbox[3] != 0, "FastSAM box prompt requires a bounding box with non-zero x2 and y2 coordinates.");
 
-    // The source rescales the box when the mask shape differs from the original shape; in this
-    // parser both are the model input size, so only the clamp applies.
     const std::int64_t x1 = std::clamp(static_cast<std::int64_t>(bbox[0]), std::int64_t{0}, static_cast<std::int64_t>(width));
     const std::int64_t y1 = std::clamp(static_cast<std::int64_t>(bbox[1]), std::int64_t{0}, static_cast<std::int64_t>(height));
     const std::int64_t x2 = std::clamp(static_cast<std::int64_t>(bbox[2]), std::int64_t{0}, static_cast<std::int64_t>(width));
@@ -496,8 +434,6 @@ std::vector<std::uint8_t> boxPrompt(
             origMasksArea += mask[p];
         }
         const std::int64_t unionArea = bboxArea + origMasksArea - masksArea;
-        // Integer / integer promotes to float64 in the source; 0/0 yields NaN, which wins the
-        // argmax like numpy.
         ious[i] = static_cast<double>(masksArea) / static_cast<double>(unionArea);
     }
     const std::size_t maxIouIndex = argmaxNumpy(ious);
@@ -515,9 +451,7 @@ std::vector<std::uint8_t> pointPrompt(const std::vector<std::uint8_t>& masks,
                                       std::int32_t pointLabel) {
     DAI_CHECK(maskCount > 0, "FastSAM point prompt requires at least one mask.");
 
-    // Negative coordinates wrap around like numpy indexing; out-of-range coordinates raise
-    // like the source IndexError.
-    std::int64_t px = point.first;
+    std::int64_t px = point.first;  // Negative coordinates wrap like numpy indexing
     std::int64_t py = point.second;
     if(px < 0) px += static_cast<std::int64_t>(width);
     if(py < 0) py += static_cast<std::int64_t>(height);
@@ -560,8 +494,6 @@ std::vector<std::uint8_t> mergeMasks(const std::vector<std::uint8_t>& masks, std
                 maskCount,
                 height,
                 width);
-    // Instance index 256 does not fit uint8 (the source numpy assignment raises an
-    // OverflowError); 255 is the background value.
     DAI_CHECK_V(maskCount <= 256, "FastSAM cannot merge {} masks; at most 256 instance indices fit into a uint8 segmentation mask.", maskCount);
 
     std::vector<std::uint8_t> merged(height * width, 255);
@@ -589,8 +521,7 @@ FastsamResult computeFastsamMask(const std::vector<ClassificationUtils::ShapedTe
     DAI_CHECK_V(
         yoloOutputs.front().dims.size() == 4, "FastSAM YOLO output at index 0 must be a 4D NCHW tensor, got {} dimensions.", yoloOutputs.front().dims.size());
 
-    // The model input size is derived from the first (sorted) YOLO output, the stride-8 head.
-    const std::size_t width = yoloOutputs.front().dims[3] * 8;
+    const std::size_t width = yoloOutputs.front().dims[3] * 8;  // The first (sorted) YOLO output is the stride-8 head
     const std::size_t height = yoloOutputs.front().dims[2] * 8;
 
     FastsamResult result;
@@ -601,8 +532,6 @@ FastsamResult computeFastsamMask(const std::vector<ClassificationUtils::ShapedTe
         decodeFastsamOutput(yoloOutputs, static_cast<std::int64_t>(height), static_cast<std::int64_t>(width), confThreshold, iouThreshold, numClasses);
 
     if(rows.empty()) {
-        // The source merges a sentinel np.full((1, height, width), -1, np.int16) array with a
-        // mask count of 0, producing a fully-background (255) mask.
         result.mergedMask.assign(height * width, 255);
         result.maskCount = 0;
         return result;

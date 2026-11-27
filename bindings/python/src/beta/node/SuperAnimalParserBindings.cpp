@@ -11,13 +11,10 @@ void bind_beta_superanimalparser(pybind11::module& m, void* pCallstack) {
     py::class_<beta::SuperAnimalParserProperties> properties(betaModule, "SuperAnimalParserProperties");
     auto superAnimalParser = ADD_BETA_NODE_DERIVED(SuperAnimalParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     properties.def_readwrite("initialConfig", &beta::SuperAnimalParserProperties::initialConfig)
         .def_readwrite("outputLayerName", &beta::SuperAnimalParserProperties::outputLayerName)

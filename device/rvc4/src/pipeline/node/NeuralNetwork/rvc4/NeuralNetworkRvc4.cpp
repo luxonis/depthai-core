@@ -3,7 +3,6 @@
 #include "../CreateUserBuffer.hpp"
 #include "../NeuralNetwork.hpp"
 
-// std
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -21,7 +20,6 @@
 #include <unordered_set>
 #include <variant>
 
-// shared
 #include "DlSystem/IBufferAttributes.hpp"
 #include "DlSystem/IUserBuffer.hpp"
 #include "DlSystem/IUserBufferFactory.hpp"
@@ -37,37 +35,6 @@
 #include "spdlog/fmt/ostr.h"
 #include "utilities/fmtUtils.hpp"
 
-// static void printInputAndOutputsInfo(const ov::CompiledModel& network, std::stringstream& out) {
-//     out << "Print out model properties!\n";
-//     const std::vector<ov::Output<const ov::Node>> inputs = network.inputs();
-//     for(const ov::Output<const ov::Node> input : inputs) {
-//         out << "    inputs" << std::endl;
-
-//         const std::string name = input.get_names().empty() ? "NONE" : input.get_any_name();
-//         out << "        input name: " << name << std::endl;
-
-//         const ov::element::Type type = input.get_element_type();
-//         out << "        input type: " << type << std::endl;
-
-//         const ov::Shape shape = input.get_shape();
-//         out << "        input shape: " << shape << std::endl;
-//     }
-
-//     const std::vector<ov::Output<const ov::Node>> outputs = network.outputs();
-//     for(const ov::Output<const ov::Node> output : outputs) {
-//         out << "    outputs" << std::endl;
-
-//         const std::string name = output.get_names().empty() ? "NONE" : output.get_any_name();
-//         out << "        output name: " << name << std::endl;
-
-//         const ov::element::Type type = output.get_element_type();
-//         out << "        output type: " << type << std::endl;
-
-//         const ov::Shape shape = output.get_shape();
-//         out << "        output shape: " << shape << std::endl;
-//     }
-// }
-
 namespace {
 
 
@@ -81,13 +48,11 @@ uint8_t seed[SEED_LEN] = {
 };
 
 std::vector<uint8_t> xor_file_with_seed(const std::string& input_path) {
-    // Open and read entire file
     std::ifstream in(input_path, std::ios::binary);
     if (!in) {
         throw std::runtime_error("Cannot open file: " + input_path);
     }
 
-    // Get size
     in.seekg(0, std::ios::end);
     std::streamsize size = in.tellg();
     in.seekg(0, std::ios::beg);
@@ -96,14 +61,12 @@ std::vector<uint8_t> xor_file_with_seed(const std::string& input_path) {
         throw std::runtime_error("Invalid file size");
     }
 
-    // Read into vector
     std::vector<uint8_t> data(static_cast<size_t>(size));
     if (!in.read(reinterpret_cast<char*>(data.data()), size)) {
         throw std::runtime_error("Failed to read file");
     }
 
-    // XOR in-place with cycling seed
-    for (size_t i = 0; i < data.size(); ++i) {
+    for(size_t i = 0; i < data.size(); ++i) {
         data[i] ^= seed[i % SEED_LEN];
     }
 
@@ -124,7 +87,6 @@ struct LensUdoPackage {
     std::filesystem::path implementation;
 };
 
-// Explicit dependencies for the DLCs installed in the OS. Unmapped models do not register UDOs.
 const std::unordered_map<std::string, LensUdoPackage> lensUdoPackagesByDlc = {
     {"/etc/models/luxonis/LENS_UDO_2XL_input_600x960_output_600x960_v1_3_2410.dlc",
      {"/etc/models/luxonis/LENS_UDO_2XL_input_600x960_output_600x960_v1_3_2410_libUdoExactLensPackageReg.so",
@@ -150,7 +112,7 @@ const std::unordered_map<std::string, LensUdoPackage> lensUdoPackagesByDlc = {
     {"/etc/models/luxonis/LENS_UDO_XL_input_540x864_output_540x864_v1_3_2410.dlc",
      {"/etc/models/luxonis/LENS_UDO_XL_input_540x864_output_540x864_v1_3_2410_libUdoExactLensPackageReg.so",
       "/etc/models/luxonis/LENS_UDO_XL_input_540x864_output_540x864_v1_3_2410_libUdoExactLensPackageImplDsp.so"}},
-};
+};  // Models that are not in this map register no UDOs
 
 std::optional<LensUdoPackage> getLensUdoPackage(const std::string& modelPath) {
     const auto it = lensUdoPackagesByDlc.find(modelPath);
@@ -175,9 +137,7 @@ void registerModelUdoPackage(const std::string& modelPath) {
     }
     const auto registrationPath = package->registration.string();
 
-    // SNPE packages are process-wide, even when different NN nodes select them.
-    // Retain successful registrations if a later package fails and is retried.
-    static std::mutex registrationMutex;
+    static std::mutex registrationMutex;  // Static: SNPE op packages are process-wide, also across NN nodes
     static std::unordered_set<std::string> registeredPaths;
     std::lock_guard<std::mutex> lock(registrationMutex);
     if(registeredPaths.count(registrationPath) != 0) return;
@@ -386,7 +346,6 @@ void NeuralNetwork::buildStage1() {
                                          {"normal", zdl::DlSystem::ExecutionPriorityHint_t::NORMAL},
                                          {"normal_high", zdl::DlSystem::ExecutionPriorityHint_t::NORMAL_HIGH},
                                          {"high", zdl::DlSystem::ExecutionPriorityHint_t::HIGH}};
-    // Throw if both modelData and modelUri are empty or if both are set
     if(!properties.deviceModel.has_value() && properties.modelUri.empty()) {
         logger->error("Either modelData or modelUri must be set.");
         throw std::runtime_error("Either modelData or modelUri must be set.");
@@ -452,10 +411,8 @@ void NeuralNetwork::run() {
 }
 
 void NeuralNetwork::threadedRun(int threadId) {
-    // Per thread conversion buffers (if needed they will be lazy allocated)
     ConversionBuffers conversionBuffers;
 
-    // Hold the input tensors in case they are to be reused
     InputVariant inputs;
     if(input.isConnected()) {
         inputs = nullptr;  // Initialize the main input to nullptr
@@ -468,14 +425,10 @@ void NeuralNetwork::threadedRun(int threadId) {
         this->pipelineEventDispatcher->endTrackedEvent(PipelineEvent::Type::LOOP, "_mainLoop", threadId);
         this->pipelineEventDispatcher->startTrackedEvent(PipelineEvent::Type::LOOP, "_mainLoop", threadId);
         bool skipInference = false;
-        // First get all the inputs
         uint32_t taskId = 0;
         {
-            // Lock task queue - first thread that arrives will handle the current inference request
             std::lock_guard<std::mutex> uTaskMtx(commonTaskMtx);
-            // Get taskId for this task (its okay if it wraps around)
-            taskId = ++lastTaskId;
-            // Get the input tensor
+            taskId = ++lastTaskId;  // Wrap-around is fine
             auto tBeforeGetInputs = std::chrono::steady_clock::now();
             bool success = false;
             {
@@ -489,22 +442,18 @@ void NeuralNetwork::threadedRun(int threadId) {
                 logger->error("Error while getting NN inputs.");
                 continue;
             }
-            // Push the task to the stack
             {
                 std::lock_guard<std::mutex> l(queueMtx);
                 taskQueue.push(taskId);
             }
         }
         auto tGotInput = std::chrono::steady_clock::now();
-        // Preapre the NNData for the outputs
         auto nnData = std::make_shared<dai::NNData>();
 
         auto tBeforePrepareInputs = std::chrono::steady_clock::now();
-        // Prepare the input tensors (ideally just map, otherwise also convert the inputs to a suitable format)
         std::vector<std::unique_ptr<zdl::DlSystem::IUserBuffer>> snpeUserBackedBuffers;
         auto inputBufferMap = createInputBufferMap(inputs, conversionBuffers, models[threadId], snpeUserBackedBuffers);
         auto tAfterPrepareInputs = std::chrono::steady_clock::now();
-        // Prepare the output tensors (pre-allocate the buffers)
         auto outputBufferMap = createOutputBufferMap(nnData, models[threadId], snpeUserBackedBuffers);
         auto tAfterPrepareOutputs = std::chrono::steady_clock::now();
         logger->debug("Preparing inputs took: {} ms",
@@ -512,7 +461,6 @@ void NeuralNetwork::threadedRun(int threadId) {
         logger->debug("Preparing outputs took: {} ms",
                       std::chrono::duration_cast<std::chrono::microseconds>(tAfterPrepareOutputs - tAfterPrepareInputs).count() / 1000.0);
 
-        // Execute the model
         auto tBeforeExecute = std::chrono::steady_clock::now();
         auto execStatus = models[threadId]->execute(inputBufferMap, outputBufferMap);  // TODO(Morato) Using the C API should allow better error handling
         if(!execStatus) {
@@ -525,16 +473,13 @@ void NeuralNetwork::threadedRun(int threadId) {
 
         auto tProcessed = std::chrono::steady_clock::now();
 
-        // Send out the outputs and the passthroughs
         {
             std::unique_lock<std::mutex> uLock(queueMtx);
             auto condition = [&]() { return !taskQueue.empty() && taskQueue.front() == taskId; };
 
-            // Wait so this task is the next one to send outputs
-            taskDoneCondVar.wait(uLock, condition);
+            taskDoneCondVar.wait(uLock, condition);  // Outputs leave in input order: wait until this task is first in the queue
 
             if(!skipInference) {
-                // Send the outputs
                 auto tBeforeSendOutputs = std::chrono::steady_clock::now();
                 {
                     auto blockEvent = this->outputBlockEvent();
@@ -554,7 +499,6 @@ void NeuralNetwork::threadedRun(int threadId) {
 }
 
 bool NeuralNetwork::validateSettings() {
-    // Check that only main input or inputs are connected, but not neither or both
     if(input.isConnected() && inputs.size() > 0) {
         logger->error("Either the main input or the inputs should be connected, but not both, detected main input and {} inputs", inputs.size());
         return false;
@@ -579,11 +523,6 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createInputBufferMap(const InputVari
                                                                  ConversionBuffers& conversionBuffers,
                                                                  const std::unique_ptr<zdl::SNPE::SNPE>& model,
                                                                  std::vector<std::unique_ptr<zdl::DlSystem::IUserBuffer>>& snpeUserBackedBuffers) {
-    // Handle four separate cases:
-    // 1. Main input is connected and type is ImgFrame, NNData with single channel, or Buffer
-    // 2. Main input is connected and type is NNData with multiple channels
-    // 3. Inputs are connected
-
     if(std::holds_alternative<std::shared_ptr<dai::Buffer>>(inputs)) {
         auto input = std::get<std::shared_ptr<dai::Buffer>>(inputs);
         if(input == nullptr) {
@@ -592,13 +531,10 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createInputBufferMap(const InputVari
         auto imgFrame = std::dynamic_pointer_cast<dai::ImgFrame>(input);
         auto nnData = std::dynamic_pointer_cast<dai::NNData>(input);
         if(imgFrame) {
-            // Handle the image frame
             return createInputBufferMap(imgFrame, conversionBuffers, model, snpeUserBackedBuffers);
         } else if(nnData) {
-            // Handle the NNData
             return createInputBufferMap(nnData, conversionBuffers, model, snpeUserBackedBuffers);
         } else {
-            // Handle the buffer
             return createInputBufferMap(input, conversionBuffers, model, snpeUserBackedBuffers);
         }
     } else {
@@ -627,12 +563,10 @@ std::optional<dai::span<uint8_t>> NeuralNetwork::prepareImgFrameForNN(const std:
     if(modelInputRank < 3) {
         throw std::runtime_error("Only 4D input shape is supported.");
     }
-    // Check that sizes match
     uint32_t width = bufferAtributes.getDims()[modelInputRank - 2];
     uint32_t height = bufferAtributes.getDims()[modelInputRank - 3];
     uint32_t channels = bufferAtributes.getDims()[modelInputRank - 1];
 
-    // Validate the input
     if(width != input->getWidth() || height != input->getHeight()) {
         logger->error("Input image size doesn't match the model input size.");
         logger->error("Model input size: {}x{}x{}", width, height, channels);
@@ -643,7 +577,6 @@ std::optional<dai::span<uint8_t>> NeuralNetwork::prepareImgFrameForNN(const std:
     auto daiType = input->getType();
     auto snpeType = bufferAtributes.getEncoding();
 
-    // First do some basic checks, that DAI type is supported
     using Type = ImgFrame::Type;
     auto supportedTypes = {Type::BGR888i, Type::RGB888i, Type::GRAY8, Type::RAW8};
     if(std::find(supportedTypes.begin(), supportedTypes.end(), daiType) == supportedTypes.end()) {
@@ -655,7 +588,6 @@ std::optional<dai::span<uint8_t>> NeuralNetwork::prepareImgFrameForNN(const std:
     using ElementType = DlSystem::UserBufferEncoding::ElementType_t;
     switch(elementType) {
         case ElementType::TF8: {
-            // Make sure that
             auto userBufferEncodingTf8 = dynamic_cast<const DlSystem::UserBufferEncodingTf8*>(snpeType);
             if(userBufferEncodingTf8 == nullptr) {
                 logger->error("Error while casting the user buffer encoding to TF8.");
@@ -694,10 +626,8 @@ std::optional<dai::span<uint8_t>> NeuralNetwork::prepareImgFrameForNN(const std:
             const auto dataSpan = input->getData();
             const auto tBeforeConversion = std::chrono::steady_clock::now();
             conversionBuffer.resize(dataSpan.size() * sizeof(uint16_t));
-            // The conversion buffer stores native-endian TF16 words for SNPE, as in the other conversion paths.
-            auto* const conversionPtr = reinterpret_cast<uint16_t*>(conversionBuffer.data());
+            auto* const conversionPtr = reinterpret_cast<uint16_t*>(conversionBuffer.data());  // SNPE takes native-endian TF16 words
             if(stepExactly0 == 0 && quantizedStepSize == 255 / 65535.0f) {
-                // For the standard encoding, each byte maps exactly to byte * 257.
                 for(size_t i = 0; i < dataSpan.size(); ++i) {
                     conversionPtr[i] = static_cast<uint16_t>(dataSpan[i] * 257u);
                 }
@@ -712,7 +642,6 @@ std::optional<dai::span<uint8_t>> NeuralNetwork::prepareImgFrameForNN(const std:
             return conversionBuffer;
         }
         case ElementType::FLOAT16: {
-            // Convert the image to float16
             if(input->getBytesPerPixel() != 1 && input->getBytesPerPixel() != 3) {
                 logger->error("Only 1 byte per (sub)pixel is supported as the NN input");
                 return std::nullopt;
@@ -722,7 +651,6 @@ std::optional<dai::span<uint8_t>> NeuralNetwork::prepareImgFrameForNN(const std:
             conversionBuffer.resize(dataSpan.size() * sizeof(uint16_t));
             auto conversionPtr = reinterpret_cast<uint16_t*>(conversionBuffer.data());
             auto numPixels = input->getData().size();
-            // #pragma omp parallel for schedule(static, 1000) num_threads(4)
             for(size_t i = 0; i < numPixels; i++) {
                 conversionPtr[i] = fp16_ieee_from_fp32_value(static_cast<float>(dataSpan[i]));
             }
@@ -733,7 +661,6 @@ std::optional<dai::span<uint8_t>> NeuralNetwork::prepareImgFrameForNN(const std:
         }
 
         case ElementType::FLOAT: {
-            // Convert the image to float
             if(input->getBytesPerPixel() != 1 && input->getBytesPerPixel() != 3) {
                 logger->error("Only 1 byte per (sub)pixel is supported as NN input");
                 return std::nullopt;
@@ -743,7 +670,6 @@ std::optional<dai::span<uint8_t>> NeuralNetwork::prepareImgFrameForNN(const std:
             conversionBuffer.resize(dataSpan.size() * sizeof(float));
             auto conversionPtr = reinterpret_cast<float*>(conversionBuffer.data());
             auto numPixels = input->getData().size();
-            // #pragma omp parallel for schedule(static) num_threads(4)
             for(size_t i = 0; i < numPixels; i++) {
                 conversionPtr[i] = static_cast<float>(dataSpan[i]);
             }
@@ -782,7 +708,6 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createInputBufferMap(const std::shar
         conversionBuffers = std::vector<uint8_t>();
     }
 
-    // Get the conversion buffer from the variant
     auto& conversionBuffer = std::get<std::vector<uint8_t>>(conversionBuffers);
     auto inputBuffer = prepareImgFrameForNN(input, conversionBuffer, *bufferAttributes);
     if(!inputBuffer) {
@@ -828,7 +753,6 @@ bool NeuralNetwork::validateTensorInfoWithSNPE(const dai::TensorInfo& tensorInfo
         return false;
     }
 
-    // Check that the dimensions match
     for(size_t i = 0; i < tensorInfo.dims.size(); i++) {
         if(tensorInfo.dims[i] != dims[i]) {
             logger->error("Dimension of the tensor info doesn't match the dimension of the buffer attributes.");
@@ -837,7 +761,6 @@ bool NeuralNetwork::validateTensorInfoWithSNPE(const dai::TensorInfo& tensorInfo
         }
     }
 
-    // Check that the type matches
     auto elementType = bufferAttributes.getEncoding()->getElementType();
     using SNPEType = zdl::DlSystem::UserBufferEncoding::ElementType_t;
     using DAIType = dai::TensorInfo::DataType;
@@ -896,7 +819,6 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createInputBufferMap(const std::shar
                                                                  ConversionBuffers& conversionBuffers,
                                                                  const std::unique_ptr<zdl::SNPE::SNPE>& model,
                                                                  std::vector<std::unique_ptr<zdl::DlSystem::IUserBuffer>>& snpeUserBackedBuffers) {
-    // Get the first input of the model
     auto inputNamesOp = model->getInputTensorNames();
     if(!inputNamesOp) {
         throw std::runtime_error("Couldn't get the input tensor names.");
@@ -925,8 +847,6 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createInputBufferMap(const std::shar
         return createInputBufferMap(bufferCast, conversionBuffers, model, snpeUserBackedBuffers);
     }
 
-    // Handle the case when there are multiple layers both to the model and to the NNData
-    // First verify that the layers match
     auto nnDataLayerNames = input->getAllLayerNames();
     if(nnDataLayerNames.size() != inputNames.size()) {
         auto error =
@@ -936,16 +856,13 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createInputBufferMap(const std::shar
         throw std::runtime_error(error);
     }
 
-    // Check that the layer names match
     for(size_t i = 0; i < nnDataLayerNames.size(); i++) {
-        // Check that nnDataLayerNames[i] is in the model input tensor names
         if(std::find(inputNames.begin(), inputNames.end(), nnDataLayerNames[i]) == inputNames.end()) {
             auto error = fmt::format("Layer name from NNData is not in the model input tensor names. Layer name: {}", nnDataLayerNames[i]);
             throw std::runtime_error(error);
         }
     }
 
-    // Now create the input buffer map
     zdl::DlSystem::UserBufferMap inputBufferMap;
     for(size_t i = 0; i < nnDataLayerNames.size(); i++) {
         auto layerName = nnDataLayerNames[i];
@@ -962,7 +879,6 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createInputBufferMap(const std::shar
         if(!validateTensorInfoWithSNPE(*layer, *bufferAttributes)) {
             throw std::runtime_error("Tensor info doesn't match the buffer attributes.");
         }
-        // Add the layer to the input buffer map
         dai::span<uint8_t> tensorData = {input->getData().data() + layer->offset, layer->getTensorSize()};
         auto bufferShape = bufferAttributes->getDims();
         auto bufferElementSize = bufferAttributes->getElementSize();
@@ -997,7 +913,6 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createInputBufferMap(const std::shar
                                                                  ConversionBuffers& conversionBuffers,
                                                                  const std::unique_ptr<zdl::SNPE::SNPE>& model,
                                                                  std::vector<std::unique_ptr<zdl::DlSystem::IUserBuffer>>& snpeUserBackedBuffers) {
-    // Check that the model has only one input
     auto inputNamesOp = model->getInputTensorNames();
     if(!inputNamesOp) {
         throw std::runtime_error("Couldn't get the input tensor names.");
@@ -1013,7 +928,6 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createInputBufferMap(const std::shar
         throw std::runtime_error("Couldn't get the buffer attributes for input tensor.");
     }
     const auto& bufferAttributes = *bufferAttributesOp;
-    // Get the expected input size
     auto requiredSize = calcSizeFromDims(bufferAttributes->getDims().getDimensions(), bufferAttributes->getDims().rank(), bufferAttributes->getElementSize());
     if(input->getData().size() < requiredSize) {
         auto error =
@@ -1047,7 +961,6 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createInputBufferMap(std::map<std::s
                                                                  std::vector<std::unique_ptr<zdl::DlSystem::IUserBuffer>>& snpeUserBackedBuffers) {
     zdl::DlSystem::UserBufferMap inputBufferMap;
 
-    // Check that the model and inputs match
     auto inputNamesOp = model->getInputTensorNames();
     if(!inputNamesOp) {
         throw std::runtime_error("Couldn't get the input tensor names.");
@@ -1059,7 +972,6 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createInputBufferMap(std::map<std::s
         throw std::runtime_error(error);
     }
 
-    // Check that all the inputs that are in the model are in the inputs
     for(auto& inputName : inputNames) {
         if(inputs.find(inputName) == inputs.end()) {
             auto error = fmt::format("Input tensor name from the model is not in the inputs. Input tensor name: {}", inputName);
@@ -1074,7 +986,6 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createInputBufferMap(std::map<std::s
         }
         const auto& bufferAttributes = *bufferAttributesOp;
         if(std::dynamic_pointer_cast<dai::ImgFrame>(input)) {
-            // Do all checks and potential conversions
             auto imgFrame = std::dynamic_pointer_cast<dai::ImgFrame>(input);
             // Error checking
             // TODO - Validate the input
@@ -1082,7 +993,6 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createInputBufferMap(std::map<std::s
                 conversionBuffers = std::map<std::string, std::vector<uint8_t>>();
             }
 
-            // Get the conversion buffer from the variant
             auto& conversionBuffer = std::get<std::map<std::string, std::vector<uint8_t>>>(conversionBuffers);
             auto inputBuffer = prepareImgFrameForNN(imgFrame, conversionBuffer[inputName], *bufferAttributes);
             if(!inputBuffer) {
@@ -1112,10 +1022,8 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createInputBufferMap(std::map<std::s
             auto buffer = ubFactory.createUserBuffer(inputBuffer->data(), requiredSize, strides, bufferAttributes->getEncoding());
             inputBufferMap.add(inputName.c_str(), buffer.get());
             snpeUserBackedBuffers.push_back(std::move(buffer));
-            // Add the data to the buffer map
         } else if(std::dynamic_pointer_cast<dai::NNData>(input)) {
             auto nnData = std::dynamic_pointer_cast<dai::NNData>(input);
-            // Check that there is only one layer
             if(nnData->getAllLayerNames().size() != 1) {
                 auto error = fmt::format("Only single layer NNData is supported, detected {} layers on input {}", nnData->getAllLayerNames().size(), inputName);
                 throw std::runtime_error(error);
@@ -1128,7 +1036,6 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createInputBufferMap(std::map<std::s
             if(!validateTensorInfoWithSNPE(tensorInfo, *bufferAttributes)) {
                 throw std::runtime_error("Tensor info doesn't match the buffer attributes.");
             }
-            // Fill out the buffer map
             auto bufferShape = bufferAttributes->getDims();
             auto bufferElementSize = bufferAttributes->getElementSize();
             std::vector<size_t> strides(bufferShape.rank());
@@ -1153,7 +1060,6 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createInputBufferMap(std::map<std::s
             inputBufferMap.add(inputName.c_str(), buffer.get());
             snpeUserBackedBuffers.push_back(std::move(buffer));
         } else {
-            // Fill out the buffer map
             auto bufferShape = bufferAttributes->getDims();
             auto bufferElementSize = bufferAttributes->getElementSize();
             std::vector<size_t> strides(bufferShape.rank());
@@ -1220,7 +1126,6 @@ std::optional<dai::TensorInfo::DataType> snpeToDaiDatatype(DlSystem::UserBufferE
 }
 
 void fillOutTensorInfoFromSNPE(const DlSystem::IBufferAttributes& bufferAttributes, TensorInfo& tensorInfo) {
-    // Fill out the dimensions and strides
     auto bufferShape = bufferAttributes.getDims();
     auto bufferElementSize = bufferAttributes.getElementSize();
     std::vector<unsigned> strides(bufferShape.rank());
@@ -1250,8 +1155,7 @@ void fillOutTensorInfoFromSNPE(const DlSystem::IBufferAttributes& bufferAttribut
         tensorInfo.order = dai::TensorInfo::StorageOrder::C;
     }
 
-    // Note: First Dimension is batch size and it is always 1
-    tensorInfo.numDimensions = bufferShape.rank() - 1;
+    tensorInfo.numDimensions = bufferShape.rank() - 1;  // The first dimension is the batch size, always 1
 
     auto dataTypeOpt = snpeToDaiDatatype(bufferAttributes.getEncodingType());
     if(!dataTypeOpt) {
@@ -1277,7 +1181,6 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createOutputBufferMap(std::shared_pt
         logger->error("Couldn't get the output tensor names.");
         return outputBufferMap;
     }
-    // Get total size for the output tensors
     size_t totalSize = 0;
     for(const auto& outputName : *outputNames) {
         auto bufferAttributesOpt = model->getInputOutputBufferAttributes(outputName);
@@ -1287,7 +1190,6 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createOutputBufferMap(std::shared_pt
         }
         const auto& bufferAttributes = *bufferAttributesOpt;
         totalSize += calcSizeFromDims(bufferAttributes->getDims().getDimensions(), bufferAttributes->getDims().rank(), bufferAttributes->getElementSize());
-        // Ensure 64 byte alignment
         totalSize = (totalSize + 63) & ~63;
     }
     auto dataHolder = nnData->data;
@@ -1340,9 +1242,6 @@ zdl::DlSystem::UserBufferMap NeuralNetwork::createOutputBufferMap(std::shared_pt
 }
 
 void NeuralNetwork::sendOutputs(InputVariant& inputs, std::shared_ptr<dai::NNData>& nnData) {
-    // First, send the output
-
-    // Based on inputs, either passthrough the main input or the inputs
     if(std::holds_alternative<std::shared_ptr<dai::Buffer>>(inputs)) {
         auto inputBuffer = std::get<std::shared_ptr<dai::Buffer>>(inputs);
         nnData->setBufferMetadataFrom(inputBuffer);
@@ -1357,7 +1256,6 @@ void NeuralNetwork::sendOutputs(InputVariant& inputs, std::shared_ptr<dai::NNDat
     } else if(std::holds_alternative<std::map<std::string, std::shared_ptr<dai::Buffer>>>(inputs)) {
         auto inputBuffers = std::get<std::map<std::string, std::shared_ptr<dai::Buffer>>>(inputs);
         for(auto& passthroughInput : passthroughs) {
-            // Check that the input is in the map
             if(inputBuffers.find(passthroughInput.first.second) == inputBuffers.end()) {
                 logger->error("Passthrough input with name {} not found in the inputs map.", passthroughInput.first.first);
                 continue;
@@ -1365,13 +1263,11 @@ void NeuralNetwork::sendOutputs(InputVariant& inputs, std::shared_ptr<dai::NNDat
             passthroughInput.second.send(inputBuffers[passthroughInput.first.second]);
         }
 
-        // Get the newest buffer for setting nnData timestamps, sequence number
         std::shared_ptr<Buffer> latestBuffer;
         std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> latestTimestamp = std::chrono::steady_clock::time_point::min();
         ImgTransformation transform;
         int transfCount = 0;
         for(auto& [name, buffer] : inputBuffers) {
-            // check if there is only one ImgFrame or NNData containing transformations in inputs, if yes, pass its transformations
             if(std::dynamic_pointer_cast<dai::ImgFrame>(buffer)) {
                 transform = std::dynamic_pointer_cast<dai::ImgFrame>(buffer)->transformation;
                 transfCount++;
@@ -1402,7 +1298,6 @@ void NeuralNetwork::sendOutputs(InputVariant& inputs, std::shared_ptr<dai::NNDat
 }
 
 bool NeuralNetwork::getInputs(InputVariant& inputVariant) {
-    // Check whether main input is connected
     if(input.isConnected()) {
         auto inputBuffer = input.get<dai::Buffer>();
         if(inputBuffer == nullptr) {
@@ -1415,7 +1310,6 @@ bool NeuralNetwork::getInputs(InputVariant& inputVariant) {
             logger->error("No inputs connected.");
             return false;
         }
-        // Get a reference to the map of the inputVariant
         if(!std::holds_alternative<std::map<std::string, std::shared_ptr<dai::Buffer>>>(inputVariant)) {
             logger->error("InputVariant is not a map of strings to buffers.");
             return false;
@@ -1423,7 +1317,6 @@ bool NeuralNetwork::getInputs(InputVariant& inputVariant) {
         auto& inputTensors = std::get<std::map<std::string, std::shared_ptr<dai::Buffer>>>(inputVariant);
         for(auto& input : inputs) {
             auto name = input.first.second;
-            // If input name is not yet in inputTensors, add it no matter what
             if(inputTensors.find(name) == inputTensors.end() || inputTensors[name] == nullptr) {
                 inputTensors[name] = input.second.get<dai::Buffer>();
                 if(inputTensors[name] == nullptr) {
@@ -1433,7 +1326,6 @@ bool NeuralNetwork::getInputs(InputVariant& inputVariant) {
                 continue;
             }
 
-            // For all other inputs, get if waitForInput is true, otherwise tryGet()
             if(input.second.getWaitForMessage()) {
                 auto inputBuffer = input.second.get<dai::Buffer>();
                 if(inputBuffer == nullptr) {
@@ -1506,7 +1398,6 @@ void NeuralNetwork::SNPEBackendBuild(const uint8_t* modelData, std::size_t model
 void NeuralNetwork::SNPEBackendRun() {
     logger->debug("Running SNPE backend");
     try {
-        // // Start the execution
         std::vector<std::thread> runningThreads;
 
         int numThreads = getNumInferenceThreads();
@@ -1529,7 +1420,6 @@ void NeuralNetwork::SNPEBackendRun() {
             std::thread runningThread(runAndCatchExceptions, i);
             runningThreads.push_back(std::move(runningThread));
         }
-        // Join threads after the node is shut down.
         for(auto& thread : runningThreads) {
             thread.join();
         }
@@ -1543,7 +1433,6 @@ void NeuralNetwork::SNPEBackendRun() {
 void NeuralNetwork::getModel(std::filesystem::path& modelPath) {
     auto assetXml = loadResource(properties.modelUri);
 
-    // Only works on Linux for now
     modelPath = "/tmp/depthai_nn_" + std::to_string(id) + "_model.dlc";
     std::ofstream modelFile{modelPath, std::ios::out | std::ios::trunc | std::ios::binary};
     modelFile.write(reinterpret_cast<const char*>(assetXml.data()), assetXml.size());

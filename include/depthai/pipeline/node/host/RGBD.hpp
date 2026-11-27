@@ -1,20 +1,17 @@
 #pragma once
 
+#include <depthai/pipeline/node/Depth.hpp>
 #include <variant>
 
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
-#include "depthai/pipeline/node/Sync.hpp"
-#include "depthai/utility/Pimpl.hpp"
-
-// depth map source nodes
-#include <depthai/pipeline/node/Depth.hpp>
-
 #include "depthai/pipeline/node/NeuralDepth.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
+#include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/pipeline/node/ToF.hpp"
+#include "depthai/utility/Pimpl.hpp"
 
 namespace dai {
 namespace node {
@@ -102,10 +99,8 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     void run() override;
     void initialize(const std::shared_ptr<MessageGroup>& frames);
 
-    // Unified depth alignment helper
     void alignDepth(const DepthSource& depthSource, const std::shared_ptr<Camera>& camera, std::pair<int, int> frameSize, std::optional<float> fps);
 
-    // Type-specific alignment implementations
     void alignDepthImpl(const std::shared_ptr<Depth>& depth,
                         const std::shared_ptr<Camera>& camera,
                         const std::pair<int, int>& frameSize,

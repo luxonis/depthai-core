@@ -95,7 +95,6 @@ class Pool : public std::enable_shared_from_this<Pool<T>> {
             throw std::runtime_error("Failed to retrieve object from pool");
         }
 
-        // Capture a weak_ptr to *this
         std::weak_ptr<Pool<T>> weak_this = this->shared_from_this();
 
         return std::shared_ptr<T>(msg.release(), [weak_this](T* msg) {
@@ -103,11 +102,9 @@ class Pool : public std::enable_shared_from_this<Pool<T>> {
             newMsg->data = std::move(msg->data);
             delete msg;
 
-            // Check if the Pool still exists
             if(auto shared_this = weak_this.lock()) {
                 shared_this->pool.push(std::move(newMsg));
             }
-            // else: Pool has been destroyed, newMsg will be destroyed when it goes out of scope
         });
     }
 

@@ -4,29 +4,23 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <tuple>
 #include <unordered_set>
 #include <utility>
 
-// project
+#include "depthai/capabilities/Capability.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/AssetManager.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
-#include "depthai/utility/RecordReplay.hpp"
-
-// depthai
-#include "depthai/capabilities/Capability.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/properties/Properties.hpp"
 #include "depthai/utility/PipelineEventDispatcherInterface.hpp"
-
-// libraries
-#include <optional>
+#include "depthai/utility/RecordReplay.hpp"
 
 namespace dai {
-// fwd declare Pipeline
 class Pipeline;
 class PipelineImpl;
 class Device;
@@ -34,10 +28,8 @@ namespace utility {
 class PipelineImplHelper;
 }
 
-// fwd declare input queue class
 class InputQueue;
 
-// fwd declare XLink node classes
 namespace node {
 namespace internal {
 class XLinkIn;
@@ -75,7 +67,6 @@ class Node : public std::enable_shared_from_this<Node> {
     friend class Device;
 
    public:
-    // Nodes must always be managed
     Node(const Node&) = delete;
     Node& operator=(const Node&) = delete;
     Node(Node&&) = delete;
@@ -85,7 +76,6 @@ class Node : public std::enable_shared_from_this<Node> {
     using Id = std::int64_t;
     struct Connection;
     struct ConnectionInternal;
-    // fwd declare classes
     class Input;
     class Output;
     class InputMap;
@@ -119,7 +109,6 @@ class Node : public std::enable_shared_from_this<Node> {
 
     std::unique_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher;
 
-    // helpers for setting refs
     void setOutputRefs(Output* outRef);
     void setInputRefs(Input* inRef);
     void setOutputMapRefs(OutputMap* outMapRef);
@@ -165,11 +154,8 @@ class Node : public std::enable_shared_from_this<Node> {
         std::shared_ptr<dai::node::internal::XLinkOutBridge> xLinkBridge;
 
        public:
-        // std::vector<Capability> possibleCapabilities;
-
         Output(Node& par, OutputDescription desc, bool ref = true)
             : parent(par), desc(std::move(desc)), pipelineEventDispatcher(par.pipelineEventDispatcher.get()) {
-            // Place oneself to the parents references
             if(ref) {
                 par.setOutputRefs(this);
             }
@@ -356,7 +342,6 @@ class Node : public std::enable_shared_from_this<Node> {
         Output& operator[](std::pair<std::string, std::string> groupKey);
     };
 
-    // Input extends the message queue with additional option that specifies whether to wait for message or not
     struct InputDescription {
         std::string name = DEFAULT_NAME;                     // Name of the input
         std::string group = DEFAULT_GROUP;                   // Group of the input
@@ -381,7 +366,6 @@ class Node : public std::enable_shared_from_this<Node> {
 
        private:
         std::reference_wrapper<Node> parent;
-        // Options - more information about the input
         bool waitForMessage{false};
         std::string group;
         Type type = Type::SReceiver;
@@ -516,15 +500,12 @@ class Node : public std::enable_shared_from_this<Node> {
 
        public:
         std::string name;
-        // InputMap(Input defaultInput);
-        // InputMap(std::string name, Input defaultInput);
         InputMap(Node& parent, InputDescription defaultInput);
         InputMap(Node& parent, std::string name, InputDescription defaultInput);
         /// Create or modify an input
         Input& operator[](const std::string& key);
         /// Create or modify an input with specified group
         Input& operator[](std::pair<std::string, std::string> groupKey);
-        // Check if the input exists
         bool has(const std::string& key) const;
 
         /**
@@ -570,14 +551,10 @@ class Node : public std::enable_shared_from_this<Node> {
    protected:
     bool configureMode{false};
 
-    // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
     std::weak_ptr<PipelineImpl> parent;
 
-    // Node ID of the parent node
     int parentId{-1};
 
-    // used to improve error messages
-    // when pipeline starts all nodes are checked
     virtual bool needsBuild() {
         return false;
     }
@@ -586,7 +563,6 @@ class Node : public std::enable_shared_from_this<Node> {
     // TODO(themarpe) - restrict access
     /// Id of node. Assigned after being placed on the pipeline
     Id id{-1};
-    // used for naming inputs/outputs
     Id inputId{0};
     Id outputId{0};
 
@@ -596,19 +572,14 @@ class Node : public std::enable_shared_from_this<Node> {
    protected:
     AssetManager assetManager;
 
-    // Optimized for adding, searching and removing connections
-    // using NodeMap = std::unordered_map<Node::Id, std::shared_ptr<Node>>;
     using NodeMap = std::vector<std::shared_ptr<Node>>;
     NodeMap nodeMap;
 
-    // Connection map, NodeId represents id of node connected TO (input)
-    // using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
     using SetConnectionInternal = std::unordered_set<ConnectionInternal, ConnectionInternal::Hash>;
     SetConnectionInternal connections;
     using ConnectionMap = std::unordered_map<std::shared_ptr<Node>, SetConnectionInternal>;
 
    public:
-    // access
     Pipeline getParentPipeline();
     const Pipeline getParentPipeline() const;
 
@@ -681,7 +652,6 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Retrieves reference to specific input map
     InputMap* getInputMapRef(const std::string& group);
 
-    // For record and replay
     virtual bool isSourceNode() const;
 
    protected:
@@ -707,20 +677,15 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Create and place Node to this Node
     template <class N>
     std::shared_ptr<N> create() {
-        // Check that passed type 'N' is subclass of Node
         static_assert(std::is_base_of<Node, N>::value, "Specified class is not a subclass of Node");
-        // Create and store the node in the map
         auto node = std::make_shared<N>();
-        // Add
         add(node);
-        // Return shared pointer to this node
         return node;
     }
 
     /// Add existing node to nodeMap
     void add(const std::shared_ptr<Node>& node);
 
-    // Access to nodes
     std::vector<std::shared_ptr<Node>> getAllNodes() const;
     std::shared_ptr<const Node> getNode(Node::Id id) const;
     std::shared_ptr<Node> getNode(Node::Id id);
@@ -766,7 +731,6 @@ class SourceNode {
     virtual Node::Input& getReplayInput();
 };
 
-// Node CRTP class
 template <typename Base, typename Derived, bool BuiltInNode = true>
 class NodeCRTP : public Base {
    public:
@@ -780,11 +744,6 @@ class NodeCRTP : public Base {
         return BuiltInNode;
     }
 
-    // std::unique_ptr<Node> clone() const override {
-    //     return std::make_unique<Derived>(static_cast<const Derived&>(*this));
-    // };
-
-    // No public constructor, only a factory function.
     template <typename... Args>
     [[nodiscard]] static std::shared_ptr<Derived> create(Args&&... args) {
         auto nodePtr = std::shared_ptr<Derived>(new Derived(std::forward<Args>(args)...));
@@ -801,7 +760,6 @@ class NodeCRTP : public Base {
 
 }  // namespace dai
 
-// Specialization of std::hash for Node::Connection
 namespace std {
 template <>
 struct hash<dai::Node::Connection> {

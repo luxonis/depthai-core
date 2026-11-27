@@ -22,8 +22,6 @@
 
 namespace dai {
 
-// SpatialImgDetection functions
-
 SpatialImgDetection::SpatialImgDetection(const dai::RotatedRect& boundingBox, Point3f spatialCoordinates, float conf, uint32_t label) {
     setBoundingBox(boundingBox);
     this->spatialCoordinates = spatialCoordinates;
@@ -80,7 +78,6 @@ RotatedRect SpatialImgDetection::getBoundingBox() const {
         throw std::runtime_error("All bounding box values are zero, no bounding box can be built.");
     }
 
-    // construct from legacy values
     RotatedRect rect = RotatedRect{dai::Rect{Point2f{xmin, ymin}, Point2f{xmax, ymax}}};
     return rect;
 }
@@ -235,7 +232,6 @@ void SpatialImgDetection::transform(const ImgTransformation& source, const ImgTr
     float depth = spatialCoordinates.z * getDistanceUnitScale(LengthUnit::MILLIMETER, lengthUnit);
     RotatedRect rect = getBoundingBox();
 
-    // The bounding box is the minimum outer rotated rectangle of the mapped corners; the bounds enclose it.
     const auto size = target.getSize();
     const auto width = static_cast<unsigned int>(size.first);
     const auto height = static_cast<unsigned int>(size.second);

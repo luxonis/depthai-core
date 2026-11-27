@@ -1,6 +1,4 @@
-// https://herbsutter.com/gotw/_101/
-
-#pragma once
+#pragma once  // Pimpl from https://herbsutter.com/gotw/_101/
 
 #include <memory>
 

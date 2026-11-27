@@ -1,5 +1,3 @@
-// Only the StereoDepthDsp library compiles this file (the ImageAlignDsp library links StereoDepthDsp), so the log state
-// and dai_device_dsp_set_log are defined once.
 #include "DspCommon.hpp"
 
 #include <cstdarg>
@@ -47,8 +45,7 @@ void logMessage(int32_t level, const char* format, ...) noexcept {
             return;
         }
         state.fn(state.user, level, message);
-    } catch(...) {
-        // The log must not throw out of the C interface
+    } catch(...) {  // The log must not throw out of the C interface
     }
 }
 

@@ -1,6 +1,5 @@
 #pragma once
 
-// libraries
 #include "depthai/pipeline/node/internal/PipelineEventAggregation.hpp"
 
 namespace dai {
@@ -11,7 +10,6 @@ class PipelineEventAggregation : public node::internal::PipelineEventAggregation
     constexpr static const char* NAME = node::internal::PipelineEventAggregation::NAME;
     PipelineEventAggregation() : PipelineEventAggregation(std::make_unique<dai::node::internal::PipelineEventAggregation::Properties>()) {}
     PipelineEventAggregation(std::unique_ptr<Properties> props) : dai::node::internal::PipelineEventAggregation(std::move(props)) {}
-    // override that this is a host node
     bool runOnHost() const override {
         return true;
     }

@@ -1,18 +1,14 @@
 #pragma once
 
-// C++ std
 #include <cstdint>
-#include <optional>
-
-// libraries
-#include "depthai/utility/spimpl.h"
-
-// depthai public
 #include <depthai/capabilities/Capability.hpp>
 #include <depthai/capabilities/CapabilityRange.hpp>
 #include <depthai/common/optional.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 #include <depthai/utility/Serialization.hpp>
+#include <optional>
+
+#include "depthai/utility/spimpl.h"
 
 namespace dai {
 
@@ -40,7 +36,6 @@ enum struct ImgResizeMode {
 class ImgFrameCapability : public CapabilityCRTP<Capability, ImgFrameCapability> {
    public:
     constexpr static const char* NAME = "dai/img-frame";
-    // Capability getIntersection(const Capability& other) override;
 
     CapabilityRange<std::pair<uint32_t, uint32_t>> size;
     CapabilityRange<float> fps;

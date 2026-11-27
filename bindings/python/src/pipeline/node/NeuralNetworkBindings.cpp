@@ -12,7 +12,6 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Node and Properties declare upfront
     py::class_<NeuralNetworkProperties, std::shared_ptr<NeuralNetworkProperties>> neuralNetworkProperties(
         m, "NeuralNetworkProperties", DOC(dai, NeuralNetworkProperties));
     py::enum_<NeuralNetworkProperties::ModelSource> modelSource(neuralNetworkProperties, "ModelSource", DOC(dai, NeuralNetworkProperties, ModelSource));
@@ -22,22 +21,13 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
         .def(py::init<const NNArchive&>(), py::arg("nnArchive"))
         .def(py::init<const std::string&>(), py::arg("model_id"));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     modelSource.value("BLOB", NeuralNetworkProperties::ModelSource::BLOB).value("CUSTOM_MODEL", NeuralNetworkProperties::ModelSource::CUSTOM_MODEL);
 
-    // Properties
     neuralNetworkProperties.def(py::init<>());
 
     neuralNetworkProperties.def_readwrite("modelSource", &NeuralNetworkProperties::modelSource, DOC(dai, NeuralNetworkProperties, modelSource))
@@ -52,7 +42,6 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
         .def_readwrite("numThreads", &NeuralNetworkProperties::numThreads)
         .def_readwrite("numNCEPerThread", &NeuralNetworkProperties::numNCEPerThread);
 
-    // Node
     neuralNetwork
         .def(
             "setOtherModelFormat",
@@ -122,7 +111,6 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("model"),
             py::arg("capability"),
             DOC(dai, node, NeuralNetwork, build, 3))
-        // Backwards-compatible Camera build methods forwarding to the consolidated Model path
         .def(
             "build",
             [](NeuralNetwork& self,
@@ -169,7 +157,6 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("model"),
             py::arg("fps") = std::nullopt,
             DOC(dai, node, NeuralNetwork, build, 4))
-        // Backwards-compatible ReplayVideo build methods forwarding to the consolidated Model path
         .def(
             "build",
             [](NeuralNetwork& self, const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps) {
@@ -233,6 +220,5 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
         .def_readonly("passthroughs", &NeuralNetwork::passthroughs, DOC(dai, node, NeuralNetwork, passthroughs))
 
         ;
-    // Properties alias
     daiNodeModule.attr("NeuralNetwork").attr("Properties") = neuralNetworkProperties;
 }

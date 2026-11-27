@@ -1,7 +1,6 @@
 // IWYU pragma: private, include "depthai/depthai.hpp"
 #pragma once
 
-// standard
 #include <chrono>
 #include <filesystem>
 #include <memory>
@@ -12,26 +11,23 @@
 #include <utility>
 #include <vector>
 
-// project
 #include "AssetManager.hpp"
 #include "DeviceNode.hpp"
 #include "Node.hpp"
 #include "PipelineStateApi.hpp"
-#include "depthai/device/CalibrationHandler.hpp"
-#include "depthai/device/Device.hpp"
-#include "depthai/openvino/OpenVINO.hpp"
-#include "depthai/pipeline/datatype/PipelineEventAggregationConfig.hpp"
-#include "depthai/utility/AtomicBool.hpp"
-
-// shared
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/WorldConstraints.hpp"
 #include "depthai/device/BoardConfig.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/device/Device.hpp"
+#include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
+#include "depthai/pipeline/datatype/PipelineEventAggregationConfig.hpp"
 #include "depthai/pipeline/datatype/PipelineState.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
+#include "depthai/utility/AtomicBool.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 
 namespace dai {
@@ -73,24 +69,20 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     ~PipelineImpl();
 
    protected:
-    // Record and Replay
     RecordConfig recordConfig;
     bool enableHolisticRecordReplay = false;
     std::unordered_map<std::string, std::filesystem::path> recordReplayFilenames;
     bool removeRecordReplayFiles = true;
     std::string defaultDeviceId;
     std::unordered_map<Node::Id, std::shared_ptr<Device>> bridgeHostDevices;
-    // Is the pipeline building on host? Some steps should be skipped when building on device
     bool buildingOnHost = true;
 
-    // Pipeline events
     bool enablePipelineDebugging = false;
     std::shared_ptr<MessageQueue> pipelineStateOut;
     std::shared_ptr<InputQueue> pipelineStateRequest;
     std::shared_ptr<MessageQueue> pipelineStateTraceOut;
     std::shared_ptr<InputQueue> pipelineStateTraceRequest;
 
-    // Access to nodes
     std::vector<std::shared_ptr<Node>> getAllNodes() const;
     std::shared_ptr<Node> getNode(Node::Id id) const;
     std::vector<std::shared_ptr<Node>> getSourceNodes();
@@ -98,7 +90,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
    private:
     static std::string createTelemetryPipelineId();
 
-    // Functions
     Node::Id getNextUniqueId();
     PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
     PipelineSchema getDevicePipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE,
@@ -109,9 +100,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setCameraTuningBlobPath(CameraBoardSocket socket, const fs::path& path);
     void setXLinkChunkSize(int sizeBytes);
 
-    // Per-device variants of the pipeline-level device setters/getters. The device
-    // must already be part of this pipeline; the no-device forms target the master.
-    std::shared_ptr<Device> resolvePipelineDevice(const std::shared_ptr<Device>& device) const;
+    std::shared_ptr<Device> resolvePipelineDevice(const std::shared_ptr<Device>& device) const;  // Device must be in this pipeline; no-device forms use master
     Device::Config getDeviceConfig(const std::shared_ptr<Device>& device) const;
     void setCameraTuningBlobPath(const std::shared_ptr<Device>& device, const fs::path& path);
     void setCameraTuningBlobPath(const std::shared_ptr<Device>& device, CameraBoardSocket socket, const fs::path& path);
@@ -129,8 +118,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setDeviceProperties(const std::shared_ptr<Device>& device, const DeviceProperties& deviceProperties);
     DeviceProperties getDeviceProperties(const std::shared_ptr<Device>& device) const;
 
-    // Board configuration per non-master device; the master keeps using 'board'
-    std::unordered_map<const Device*, BoardConfig> deviceBoardConfigs;
+    std::unordered_map<const Device*, BoardConfig> deviceBoardConfigs;  // Non-master devices only; the master uses 'board'
     GlobalProperties getGlobalProperties() const;
     void setGlobalProperties(const GlobalProperties& globalProperties);
     void setDefaultDeviceProperties(const DeviceProperties& deviceProperties);
@@ -174,124 +162,72 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     bool isHostOnly() const;
     std::vector<std::shared_ptr<Device>> getAllAssignedDevices() const;
 
-    // Pipeline state getters
     PipelineStateApi getPipelineState();
 
-    // Must be incremented and unique for each node
     Node::Id latestId = 0;
-    // Pipeline asset manager
     AssetManager assetManager;
-    // Optionally forced version
     std::optional<OpenVINO::Version> forceRequiredOpenVINOVersion;
-    // Global pipeline properties
     GlobalProperties globalProperties;
-    // // Optimized for adding, searching and removing connections
-    // using NodeMap = std::unordered_map<Node::Id, std::shared_ptr<Node>>;
-    // NodeMap nodeMap;
     std::vector<std::shared_ptr<Node>> nodes;
     std::vector<std::pair<int64_t, int64_t>> xlinkBridges;
 
     // TODO(themarpe) - refactor, connections are now carried by nodes instead
     using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::ConnectionInternal, Node::ConnectionInternal::Hash>>;
-    // // Connection map, NodeId represents id of node connected TO (input)
-    // NodeConnectionMap nodeConnectionMap;
-    /// Get a reference to internal connection representation
     NodeConnectionMap getConnectionMap() const;
 
-    // Board configuration
     BoardConfig board;
 
-    // Build-time automatic calibration policy for implicit AutoCalibration node creation.
     PipelineAutoCalibrationMode autoCalibrationMode = PipelineAutoCalibrationMode::ON_START;
     bool autoCalibrationModeSetByApi = false;
-    // World constraints handed to the implicit AutoCalibration node, see Pipeline::setAutoCalibrationWorldConstraints().
     std::optional<WorldConstraints> autoCalibrationWorldConstraints;
 
-    // Output queues
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;
 
-    // is pipeline running - stays set until stop() has completed, so isRunning()/run()
-    // cover the whole teardown (device close included)
-    AtomicBool running{false};
-    // set for the duration of stop(): device state transitions reported while the devices
-    // are being closed must not re-trigger a stop or user callbacks
-    AtomicBool stopping{false};
-    // Thread stopping the pipeline after a device loss (spawned from the device's monitor thread,
-    // which stop() joins indirectly) or on Node::stopPipeline() (called from node threads and
-    // pipeline tasks). It owns no reference to the pipeline; wait(), start() and the destructor
-    // join it, so run() returns only after the stop has completed.
-    std::thread asyncStopThread;
+    AtomicBool running{false};    // Stays set until stop() completes, so isRunning()/run() cover the whole teardown
+    AtomicBool stopping{false};   // Set during stop(): state changes while closing devices must not re-trigger stop or callbacks
+    std::thread asyncStopThread;  // Owns no pipeline reference; wait(), start() and the destructor join it
     std::mutex asyncStopMtx;
-    // Stops the pipeline on asyncStopThread, unless a stop on it was already requested
-    void stopAsync();
+    void stopAsync();  // No-op when a stop on asyncStopThread was already requested
     void joinAsyncStop();
     std::string telemetryPipelineId{createTelemetryPipelineId()};
     std::optional<std::chrono::steady_clock::time_point> telemetryPipelineStartedAt;
 
-    // was pipeline built
     AtomicBool isBuild{false};
 
-    // Add a mutex for any state change
     std::mutex stateMtx;
 
-    // Calibration mutex
     mutable std::mutex calibMtx;
-    // Serializes multi-device calibration updates (read previous, push to devices, rollback, store).
-    mutable std::mutex multiDeviceCalibMtx;
+    mutable std::mutex multiDeviceCalibMtx;  // Held across read previous, push to devices, rollback and store
 
-    // DeviceBase for hybrid pipelines
     std::shared_ptr<Device> defaultDevice;
     std::optional<DeviceProperties> hostProperties;
     DeviceProperties* defaultDeviceProperties = nullptr;
 
-    // Queue for tasks
     LockingQueue<std::function<void()>> tasks;
 
-    // Devices that are part of this pipeline. Registered explicitly via addDevice
-    // or implicitly on first use (node created with an explicit device).
-    // defaultDevice is the master and is not necessarily contained here.
-    std::vector<std::shared_ptr<Device>> devices;
+    std::vector<std::shared_ptr<Device>> devices;  // defaultDevice (the master) is not necessarily in this list
 
-    // Serializes concurrent per-device schema serialization (devices start in parallel)
-    mutable std::mutex serializeMtx;
+    mutable std::mutex serializeMtx;  // Devices start in parallel
 
-    // Input -> distinct source devices (nullptr entry = host), resolved from the user
-    // graph at build() before bridge insertion. See Node::Input::getSourceDevice.
-    std::unordered_map<const Node::Input*, std::vector<std::shared_ptr<Device>>> inputSourceDevices;
+    std::unordered_map<const Node::Input*, std::vector<std::shared_ptr<Device>>> inputSourceDevices;  // nullptr entry = host; set at build() before bridges
 
-    // Source device of an input: the device of the upstream node, nullptr if the
-    // upstream node runs on host. Uses the map above after build, resolves live before.
-    std::shared_ptr<Device> getInputSourceDevice(const Node::Input* input) const;
+    std::shared_ptr<Device> getInputSourceDevice(const Node::Input* input) const;  // nullptr if the upstream node runs on host
 
-    // Per-device pipeline state (guarded by deviceStateMtx)
     mutable std::mutex deviceStateMtx;
     std::unordered_map<const DeviceBase*, DeviceState> deviceStates;
     std::function<void(std::shared_ptr<Device>, DeviceState)> deviceStateCallback;
-    // Devices that consume other devices' streams (B side of a relay feeding a device
-    // node); losing one of these for good stops the pipeline. Derived at build().
-    std::unordered_set<const Device*> fatalDevices;
-    // When set, losing any device that carries a node stops the pipeline (strict mode).
-    // Off by default: a lost device only idles its streams (permissive mode).
+    std::unordered_set<const Device*> fatalDevices;  // Consumers of other devices' streams; losing one stops the pipeline. Set at build()
     AtomicBool stopOnDeviceLoss{false};
 
-    // Called from a device's monitor thread on state transitions. On FAILED, idles the
-    // device's XLink host nodes and stops the pipeline when the device was fatal, the
-    // last one alive, or stopOnDeviceLoss is set.
-    void onDeviceStateChanged(DeviceBase* device, DeviceState state);
+    void onDeviceStateChanged(DeviceBase* device, DeviceState state);  // Called from the device's monitor thread
 
     DeviceState getDeviceState(const std::shared_ptr<Device>& device) const;
     void setDeviceStateCallback(std::function<void(std::shared_ptr<Device>, DeviceState)> callback);
 
-    // Register a device with this pipeline. The first registered device is promoted
-    // to master (default device) if none exists. Registering the same device twice is a no-op.
-    std::shared_ptr<Device> registerDevice(std::shared_ptr<Device> device);
-    // Make the device the master: binds the device nodes adopted without a device to it and
-    // carries over the settings parked in the host-side properties before there was a master
+    std::shared_ptr<Device> registerDevice(std::shared_ptr<Device> device);  // First device becomes master if none; registering twice is a no-op
     void promoteToMaster(const std::shared_ptr<Device>& device);
 
-    // All devices that are part of this pipeline: master (default device) first,
-    // then the rest in registration order.
-    std::vector<std::shared_ptr<Device>> getDevices() const;
+    std::vector<std::shared_ptr<Device>> getDevices() const;  // Master first, then the rest in registration order
 
     void addTask(std::function<void()> task) {
         tasks.push(std::move(task));
@@ -312,13 +248,11 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
             }
             task();
         }
-        // Regardless if we should wait or not, run all remaining tasks
         while(!tasks.empty()) {
             std::function<void()> task;
             bool success = false;
             success = tasks.tryPop(task);
             if(!success) {
-                // No more tasks
                 break;
             }
             task();
@@ -387,17 +321,12 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
         return N::create(std::forward<Args>(args)...);
     }
 
-    // Template create function
     template <class N, typename... Args>
     std::shared_ptr<N> create(const std::shared_ptr<PipelineImpl>& itself, Args&&... args) {
         (void)itself;
-        // Check that passed type 'N' is subclass of Node
         static_assert(std::is_base_of<Node, N>::value, "Specified class is not a subclass of Node");
-        // Create and store the node in the map
         auto node = createNode<N>(std::forward<Args>(args)...);
-        // std::shared_ptr<N> node = nullptr;
         add(node);
-        // Return shared pointer to this node
         return node;
     }
 
@@ -415,16 +344,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
         return node;
     }
 
-    // Add a node to nodeMap
     void add(const std::shared_ptr<Node>& node);
 
-    /**
-     * Wire subtree into this pipeline (assign ids, parent weak_ptr, default device).
-     * Used when a node that is already in the pipeline gains new children (lazy subgraphs).
-     */
     void adoptSubtree(std::shared_ptr<Node> root);
 
-    // Run only host side, if any device nodes are present, error out
     bool isRunning() const;
     bool isBuilt() const;
     void build();
@@ -433,13 +356,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void stop();
     void run();
 
-    // Reset connections and re-send the pipeline; restricted to one device when given
-    void resetConnections(DeviceBase* device = nullptr);
-    // Make XLink host nodes of the given device (all when null) exit quietly
-    void disconnectXLinkHosts(DeviceBase* device = nullptr);
+    void resetConnections(DeviceBase* device = nullptr);      // nullptr = all devices; also re-sends the pipeline
+    void disconnectXLinkHosts(DeviceBase* device = nullptr);  // nullptr = all devices
 
    private:
-    // Resource
     std::vector<uint8_t> loadResource(const fs::path& uri);
     std::vector<uint8_t> loadResourceCwd(fs::path uri, fs::path cwd, bool moveAsset = false);
 };
@@ -528,7 +448,6 @@ class Pipeline {
      */
     PipelineSchema getDevicePipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
 
-    // void loadAssets(AssetManager& assetManager);
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {
         impl()->serialize(schema, assets, assetStorage);
     }
@@ -830,10 +749,7 @@ class Pipeline {
     void run() {
         impl()->run();
     }
-    /*
-     * @note In case of a host only pipeline, this function returns a nullptr
-     */
-    std::shared_ptr<Device> getDefaultDevice() {
+    std::shared_ptr<Device> getDefaultDevice() {  // nullptr for a host-only pipeline
         return impl()->defaultDevice;
     }
     std::shared_ptr<const Device> getDefaultDevice() const {
@@ -984,11 +900,9 @@ class Pipeline {
     void enablePipelineDebugging(bool enable = true);
     bool isPipelineDebuggingEnabled() const;
 
-    // Access to pipeline state queues
     std::shared_ptr<MessageQueue> getPipelineStateOut() const;
     std::shared_ptr<InputQueue> getPipelineStateRequest() const;
 
-    // Pipeline state getters
     PipelineStateApi getPipelineState();
 };
 

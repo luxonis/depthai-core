@@ -1,16 +1,14 @@
 #pragma once
 
 #include <depthai/modelzoo/Zoo.hpp>
-#include <depthai/pipeline/DeviceNode.hpp>
-
-#include "depthai/pipeline/datatype/SegmentationParserConfig.hpp"
-
-// standard
 #include <depthai/nn_archive/NNArchive.hpp>
 #include <depthai/nn_archive/NNArchiveVersionedConfig.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/properties/SegmentationParserProperties.hpp>
 #include <memory>
 #include <optional>
+
+#include "depthai/pipeline/datatype/SegmentationParserConfig.hpp"
 
 namespace dai {
 namespace node {

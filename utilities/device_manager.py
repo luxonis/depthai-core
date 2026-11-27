@@ -13,7 +13,6 @@ import os
 import numpy
 
 if USE_OPENCV:
-    # import cv2
     pass
 else:
     import io
@@ -27,7 +26,6 @@ if platform.system() == 'Windows':
 else:
     PLATFORM_ICON_PATH = f'{SCRIPT_DIR}/assets/icon.png'
 
-# Apply icon globally
 sg.set_global_icon(PLATFORM_ICON_PATH)
 
 CONF_TEXT_POE = ['ipTypeText', 'ipText', 'maskText', 'gatewayText', 'dnsText', 'dnsAltText', 'networkTimeoutText', 'macText']
@@ -46,7 +44,6 @@ def PrintException():
 def Popup(msg, window):
     main_window_location = window.CurrentLocation()
     main_window_size = window.size
-    # Calculate the centered location for the new window
     centered_location = (main_window_location[0] + (main_window_size[0] - 50) // 2,
                          main_window_location[1] + (main_window_size[1] - 50) // 2)
     return sg.Popup(msg, location=centered_location)
@@ -141,7 +138,6 @@ class SelectIP:
         main_window_location = window.CurrentLocation()
         main_window_size = window.size
         new_window_size = self.window.size
-        # Calculate the centered location for the new window
         centered_location = (main_window_location[0] + (main_window_size[0] - new_window_size[0]) // 2,
                          main_window_location[1] + (main_window_size[1] - new_window_size[1]) // 2)
         self.window.move(*centered_location)
@@ -159,17 +155,12 @@ class SearchDevice:
         layout = [
             [sg.Text("Select an OAK camera you would like to connect to.", font=('Arial', 10, 'bold'))],
             [sg.Table(values=[], headings=["DeviceId", "Name", "State"],
-                # col_widths=[25, 17, 17],
-                # def_col_width=25,
-                # max_col_width=200,
-                # background_color='light blue',
                 display_row_numbers=True,
                 justification='right',
                 num_rows=8,
                 alternating_row_color='lightyellow',
                 key='table',
                 row_height=35,
-                # size=(500, 300)
                 expand_x = True,
                 enable_events = True,
                 enable_click_events = True,
@@ -182,7 +173,6 @@ class SearchDevice:
         main_window_location = window.CurrentLocation()
         main_window_size = window.size
         new_window_size = self.window.size
-        # Calculate the centered location for the new window
         centered_location = (main_window_location[0] + (main_window_size[0] - new_window_size[0]) // 2,
                          main_window_location[1] + (main_window_size[1] - new_window_size[1]) // 2)
         self.window.move(*centered_location)
@@ -193,7 +183,6 @@ class SearchDevice:
         self.infos = dai.XLinkConnection.getAllConnectedDevices()
         if not self.infos:
             pass
-            # sg.Popup("No devices found.")
         else:
             rows = []
             for info in self.infos:
@@ -210,7 +199,6 @@ class SearchDevice:
             elif str(event) == 'Search':
                 self.search_devices()
             elif len(event) == 3 and event[0] == "table" and event[1] == "+CLICKED+":
-                # User selected a device
                 deviceIndex = event[2][0]
                 if deviceIndex is not None:
                     deviceSelected = self.infos[deviceIndex]
@@ -252,7 +240,6 @@ Proceed with caution
     return True
 
 
-# Danger
 def flashFactoryBootloader(device: dai.DeviceInfo, type: dai.DeviceBootloader.Type):
     try:
         pr = Progress('Connecting...')
@@ -278,15 +265,13 @@ def factoryReset(device: dai.DeviceInfo, type: dai.DeviceBootloader.Type):
         tmpBlFw = None
         try:
             blBinary = dai.DeviceBootloader.getEmbeddedBootloaderBinary(type)
-            # Clear 1 MiB for USB BL and 8 MiB for NETWORK BL
             mib = 1 if type == dai.DeviceBootloader.Type.USB else 8
             blBinary = blBinary + ([0xFF] * ((mib * 1024 * 1024 + 512) - len(blBinary)))
             tmpBlFw = tempfile.NamedTemporaryFile(delete=False)
             tmpBlFw.write(bytes(blBinary))
             tmpBlFw.flush()
             success, msg = bl.flashBootloader(progress, tmpBlFw.name)
-        except Exception as ex:
-            # In some depthai Python builds vector<uint8_t> return conversion is unavailable.
+        except Exception as ex:  # Some depthai Python builds cannot convert a vector<uint8_t> return value
             if "Unable to convert function return value to a Python type" in str(ex):
                 success, msg = bl.flashBootloader(
                     memory=dai.DeviceBootloader.Memory.FLASH,
@@ -325,11 +310,8 @@ def connectToDevice(device: dai.DeviceInfo) -> dai.DeviceBootloader:
 def deviceStateTxt(state: dai.XLinkDeviceState) -> str:
     return str(state).replace("XLinkDeviceState.X_LINK_", "")
 
-# Start defying layout
-
 sg.theme('LightGrey2')
 
-# layout for device tab
 aboutDeviceLayout = [
     [sg.Text("About device", size=(30, 1), font=('Arial', 30, 'bold'), text_color="black")],
     [sg.HSeparator()],
@@ -383,7 +365,6 @@ aboutDeviceLayout = [
     ]
 ]
 
-# layout for config tab
 deviceConfigLayout = [
     [sg.Text("Configuration settings", size=(20, 1), font=('Arial', 30, 'bold'), text_color="black")],
     [sg.HSeparator()],
@@ -446,7 +427,6 @@ deviceConfigLayout = [
     ],
 ]
 
-# layout for danger tab
 dangerLayout = [
     [sg.Text("Danger Zone", size=(20, 1), font=('Arial', 30, 'bold'), text_color="black")],
     [sg.HSeparator()],
@@ -472,7 +452,6 @@ dangerLayout = [
 ]
 
 
-# layout of whole GUI with closed tabs set to false
 layout = [
     [
         sg.Column(aboutDeviceLayout, key='-COL1-'),
@@ -496,7 +475,6 @@ class DeviceManager:
 
         self.bl: dai.DeviceBootloader = None
 
-        # First device search
         self.getDevices()
 
     def isPoE(self) -> bool:
@@ -518,13 +496,8 @@ class DeviceManager:
 
             if event == "devices":
                 if dev != "Select device":
-                    # "allow flashing bootloader" boots latest bootloader first
-                    # which makes the information of current bootloader, etc.. not correct (can be checked by "isEmbeddedVersion")
-                    # So leave it to false, uncomment the isEmbeddedVersion below and only boot into latest bootlaoder upon the request to flash new bootloader
-                    # bl = dai.DeviceBootloader(devices[values['devices']], False)
-                    device = self.device
+                    device = self.device  # allowFlashingBootloader boots the newest BL: current BL info would be wrong
                     if deviceStateTxt(device.state) == "BOOTED":
-                        # device is already booted somewhere else
                         Popup("Device is already booted somewhere else!", self.window)
                     else:
                         self.resetGui()
@@ -564,11 +537,8 @@ class DeviceManager:
                     self.getConfigs()
                 self.unlockConfig()
 
-            # Danger
             elif event == "Update Bootloader":
-                # Use current type
                 if flashBootloader(self.bl, self.device, self.bl.getType()):
-                    # Device will reboot, close previous and reset GUI
                     self.closeDevice()
                     self.resetGui()
                     self.getDevices()
@@ -578,10 +548,8 @@ class DeviceManager:
                 sel = SelectBootloader(['AUTO', 'USB', 'NETWORK'], "Select bootloader type to flash.")
                 ok, type = sel.wait()
                 if ok:
-                    # We will reconnect, as we need to set allowFlashingBootloader to True
-                    self.closeDevice()
+                    self.closeDevice()  # Reconnect: flashing needs allowFlashingBootloader=True
                     flashFactoryBootloader(self.device, type)
-                    # Device will reboot, close previous and reset GUI
                     self.closeDevice()
                     self.resetGui()
                     self.getDevices()
@@ -592,10 +560,8 @@ class DeviceManager:
                 sel = SelectBootloader(['NETWORK', 'USB'], "Select bootloader type used for factory reset.")
                 ok, type = sel.wait()
                 if ok:
-                    # We will reconnect, as we need to set allowFlashingBootloader to True
-                    self.closeDevice()
+                    self.closeDevice()  # Reconnect: flashing needs allowFlashingBootloader=True
                     factoryReset(self.device, type)
-                    # Device will reboot, close previous and reset GUI
                     self.closeDevice()
                     self.resetGui()
                     self.getDevices()
@@ -654,12 +620,10 @@ class DeviceManager:
             elif event == "recoveryMode":
                 if recoveryMode(self.bl):
                     Popup(f'Device successfully put into USB recovery mode.', self.window)
-                # Device will reboot, close previous and reset GUI
                 self.closeDevice()
                 self.resetGui()
                 self.getDevices()
             elif event == "dynamicBut":
-                # Clear out IPv4 settings to default to
                 self.window.Element('ip').update('')
                 self.window.Element('mask').update('')
                 self.window.Element('gateway').update('')
@@ -676,7 +640,6 @@ class DeviceManager:
 
     def addDeviceInfo(self, deviceInfo: dai.DeviceInfo):
         if deviceInfo.getDeviceId() not in self.devices:
-            # Add the new deviceInfo
             self.devices[deviceInfo.getDeviceId()] = deviceInfo
 
     def getConfigs(self):
@@ -730,11 +693,8 @@ class DeviceManager:
                 self.window.Element('usbSpeed').update(str(conf.getUsbMaxSpeed()).split('.')[1])
 
             self.window.Element('devName').update(device.name)
-            # self.window.Element('devNameConf').update(device.getDeviceId())
             self.window.Element('newBoot').update(dai.DeviceBootloader.getEmbeddedBootloaderVersion())
 
-            # The "isEmbeddedVersion" tells you whether BL had to be booted,
-            # or we connected to an already flashed Bootloader.
             if self.bl.isEmbeddedVersion():
                 self.window.Element('currBoot').update('Not Flashed')
             else:
@@ -802,14 +762,12 @@ class DeviceManager:
         self.window['recoveryMode'].update(disabled=True)
 
         self.window.Element('devName').update("-name-")
-        # self.window.Element('devNameConf').update("")
         self.window.Element('newBoot').update("-version-")
         self.window.Element('currBoot').update("-version-")
         self.window.Element('version').update("-version-")
         self.window.Element('commit').update("-version-")
         self.window.Element('devState').update("-state-")
 
-        # Move back to 'About' page
         self.window['-COL1-'].update(visible=True)
         self.window['-COL2-'].update(visible=False)
         self.window['-COL4-'].update(visible=False)
@@ -827,7 +785,6 @@ class DeviceManager:
             deviceInfos = dai.XLinkConnection.getAllConnectedDevices()
             if not deviceInfos:
                 self.window.Element('devices').update("No devices")
-                # sg.Popup("No devices found.")
             else:
                 for deviceInfo in deviceInfos:
                     deviceTxt = deviceInfo.getDeviceId()
@@ -836,7 +793,6 @@ class DeviceManager:
                     listedDevices.append(deviceTxt)
                     self.devices[deviceTxt] = deviceInfo
 
-            # Update the list regardless
             self.window.Element('devices').update("Select device", values=listedDevices)
         except Exception as ex:
             PrintException()
@@ -845,9 +801,7 @@ class DeviceManager:
     def flashConfig(self):
         values = self.values
 
-        # Read modify write instead of flashing over
-        # clearConfig can be used to start from scratch
-        conf = dai.DeviceBootloader.Config()
+        conf = dai.DeviceBootloader.Config()  # Read-modify-write, not a new config; clearConfig starts from scratch
         try:
             conf = self.bl.readConfig()
         except:

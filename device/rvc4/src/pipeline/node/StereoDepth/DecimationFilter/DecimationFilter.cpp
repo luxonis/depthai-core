@@ -19,16 +19,7 @@ namespace dai {
 #define PIX_MIN(a, b) ((a) > (b)) ? (b) : (a)
 #define PIX_MAX(a, b) ((a) > (b)) ? (a) : (b)
 
-/*----------------------------------------------------------------------------
-Function :   opt_med3()
-In       :   pointer to array of 3 pixel values
-Out      :   a pixelvalue
-Job      :   optimized search of the median of 3 pixel values
-Notice   :   found on sci.image.processing
-cannot go faster unless assumptions are made
-on the nature of the input signal.
----------------------------------------------------------------------------*/
-template <class pixelvalue>
+template <class pixelvalue>  // From sci.image.processing
 inline pixelvalue opt_med3(pixelvalue* p) {
     PIX_SORT(p[0], p[1]);
     PIX_SORT(p[1], p[2]);
@@ -36,10 +27,6 @@ inline pixelvalue opt_med3(pixelvalue* p) {
     return p[1];
 }
 
-/*
-** opt_med4()
-hacked version
-**/
 template <class pixelvalue>
 inline pixelvalue opt_med4(pixelvalue* p) {
     PIX_SORT(p[0], p[1]);
@@ -49,16 +36,7 @@ inline pixelvalue opt_med4(pixelvalue* p) {
     return PIX_MIN(p[1], p[2]);
 }
 
-/*----------------------------------------------------------------------------
-Function :   opt_med5()
-In       :   pointer to array of 5 pixel values
-Out      :   a pixelvalue
-Job      :   optimized search of the median of 5 pixel values
-Notice   :   found on sci.image.processing
-cannot go faster unless assumptions are made
-on the nature of the input signal.
----------------------------------------------------------------------------*/
-template <class pixelvalue>
+template <class pixelvalue>  // From sci.image.processing
 inline pixelvalue opt_med5(pixelvalue* p) {
     PIX_SORT(p[0], p[1]);
     PIX_SORT(p[3], p[4]);
@@ -69,18 +47,7 @@ inline pixelvalue opt_med5(pixelvalue* p) {
     return PIX_MAX(p[1], p[2]);
 }
 
-/*----------------------------------------------------------------------------
-Function :   opt_med6()
-In       :   pointer to array of 6 pixel values
-Out      :   a pixelvalue
-Job      :   optimized search of the median of 6 pixel values
-Notice   :   from Christoph_John@gmx.de
-based on a selection network which was proposed in
-"FAST, EFFICIENT MEDIAN FILTERS WITH EVEN LENGTH WINDOWS"
-J.P. HAVLICEK, K.A. SAKADY, G.R.KATZ
-If you need larger even length kernels check the paper
----------------------------------------------------------------------------*/
-template <class pixelvalue>
+template <class pixelvalue>  // Selection network from Havlicek, Sakady, Katz: Fast, efficient median filters with even length windows
 inline pixelvalue opt_med6(pixelvalue* p) {
     PIX_SORT(p[1], p[2]);
     PIX_SORT(p[3], p[4]);
@@ -97,16 +64,7 @@ inline pixelvalue opt_med6(pixelvalue* p) {
     return PIX_MIN(p[2], p[3]);
 }
 
-/*----------------------------------------------------------------------------
-Function :   opt_med7()
-In       :   pointer to array of 7 pixel values
-Out      :   a pixelvalue
-Job      :   optimized search of the median of 7 pixel values
-Notice   :   found on sci.image.processing
-cannot go faster unless assumptions are made
-on the nature of the input signal.
----------------------------------------------------------------------------*/
-template <class pixelvalue>
+template <class pixelvalue>  // From sci.image.processing
 inline pixelvalue opt_med7(pixelvalue* p) {
     PIX_SORT(p[0], p[5]);
     PIX_SORT(p[0], p[3]);
@@ -123,10 +81,6 @@ inline pixelvalue opt_med7(pixelvalue* p) {
     return PIX_MIN(p[3], p[4]);
 }
 
-/*----------------------------------------------------------------------------
-Function :   opt_med9()
-Hacked version of opt_med9()
-*/
 template <class pixelvalue>
 inline pixelvalue opt_med8(pixelvalue* p) {
     PIX_SORT(p[0], p[1]);
@@ -147,22 +101,7 @@ inline pixelvalue opt_med8(pixelvalue* p) {
     return PIX_MIN(p[3], p[1]);
 }
 
-/*----------------------------------------------------------------------------
-Function :   opt_med9()
-In       :   pointer to an array of 9 pixelvalues
-Out      :   a pixelvalue
-Job      :   optimized search of the median of 9 pixelvalues
-Notice   :   in theory, cannot go faster without assumptions on the
-signal.
-Formula from:
-XILINX XCELL magazine, vol. 23 by John L. Smith
-
-The input array is modified in the process
-The result array is guaranteed to contain the median
-value
-in middle position, but other elements are NOT sorted.
----------------------------------------------------------------------------*/
-template <class pixelvalue>
+template <class pixelvalue>  // Formula from XILINX XCELL vol. 23 (John L. Smith); modifies the input array
 inline pixelvalue opt_med9(pixelvalue* p) {
     PIX_SORT(p[1], p[2]);
     PIX_SORT(p[4], p[5]);
@@ -189,7 +128,6 @@ template <typename T>
 void decimate(DecimationFilterParams* params) {
     int _width = params->currentFrame->getWidth();
     int _height = params->currentFrame->getHeight();
-    // int _stride = _width;
 
     T* image = reinterpret_cast<T*>(params->currentFrame->data->getData().data());
     T* imageOut = reinterpret_cast<T*>(params->destFrame->data->getData().data());
@@ -202,7 +140,6 @@ void decimate(DecimationFilterParams* params) {
     int _filter_height = _height / scale;
     int _dest_width = params->destFrame->getWidth();
     int _dest_height = params->destFrame->getHeight();
-    // int _dest_stride = _dest_width;
 
     if(params->decimationMode == PIXEL_SKIPPING) {
         for(int j = 0; j < _dest_height; j++) {
@@ -228,13 +165,10 @@ void decimate(DecimationFilterParams* params) {
     T* wk_begin = working_kernel;
     T* wk_itr = wk_begin;
 
-    // dmaStreamer.start(localCurrentFrameBuffer[0], image, scale * _width * sizeof(T));
-    // dmaStreamer.wait();
     for(int j = 0; j < _filter_height; j++) {
         T* outLine = imageOut + j * _dest_width;
 
         T* p{};
-        // Mark the beginning of each of the N lines that the filter will run upon
         for(int i = 0; i < scale; i++) {
             pixel_raws[i] = image + (j * scale + i) * _width;
         }
@@ -242,7 +176,6 @@ void decimate(DecimationFilterParams* params) {
         if(median) {
             for(int i = 0; i < _filter_width; i++) {
                 wk_itr = wk_begin;
-                // extract data the kernel to process
                 for(int n = 0; n < scale; ++n) {
                     p = pixel_raws[n] + i * scale;
                     ;
@@ -251,8 +184,7 @@ void decimate(DecimationFilterParams* params) {
                     }
                 }
 
-                // For even-size kernels pick the member one below the middle
-                auto ks = (int)(wk_itr - wk_begin);
+                auto ks = (int)(wk_itr - wk_begin);  // Even-size kernels take the member one below the middle
                 if(ks == 0)
                     outLine[i] = 0;
                 else {
@@ -293,7 +225,6 @@ void decimate(DecimationFilterParams* params) {
                 int sum = 0;
                 int counter = 0;
 
-                // extract data the kernel to process
                 for(int n = 0; n < scale; ++n) {
                     p = pixel_raws[n] + i * scale;
                     for(int m = 0; m < scale; ++m) {
@@ -308,11 +239,9 @@ void decimate(DecimationFilterParams* params) {
             }
         }
 
-        // Fill-in the padded colums with zeros
         for(int i = _filter_width; i < _dest_width; i++) outLine[i] = 0;
     }
 
-    // Fill-in the padded rows with zeros
     for(auto v = _filter_height; v < _dest_height; ++v) {
         T* outLine = imageOut + v * _dest_width;
         for(auto u = 0; u < _dest_width; ++u) outLine[u] = 0;

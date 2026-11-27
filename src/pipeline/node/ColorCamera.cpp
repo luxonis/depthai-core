@@ -16,12 +16,10 @@ ColorCamera::Properties& ColorCamera::getProperties() {
     return properties;
 }
 
-// Set board socket to use
 void ColorCamera::setBoardSocket(dai::CameraBoardSocket boardSocket) {
     properties.boardSocket = boardSocket;
 }
 
-// Get current board socket
 CameraBoardSocket ColorCamera::getBoardSocket() const {
     return properties.boardSocket;
 }
@@ -34,9 +32,7 @@ std::string ColorCamera::getCamera() const {
     return properties.cameraName;
 }
 
-// Set which color camera to use
 void ColorCamera::setCamId(int64_t camId) {
-    // cast to board socket
     switch(camId) {
         case 0:
             properties.boardSocket = CameraBoardSocket::CAM_A;
@@ -56,23 +52,19 @@ void ColorCamera::setCamId(int64_t camId) {
     }
 }
 
-// Get which color camera to use
 int64_t ColorCamera::getCamId() const {
     return (int64_t)properties.boardSocket;
 }
 
-// Set camera image orientation
 void ColorCamera::setImageOrientation(CameraImageOrientation imageOrientation) {
     properties.imageOrientation = imageOrientation;
 }
 
-// Get camera image orientation
 CameraImageOrientation ColorCamera::getImageOrientation() const {
     // TODO: in case of AUTO, see if possible to return actual value determined by device?
     return properties.imageOrientation;
 }
 
-// setColorOrder - RGB or BGR
 void ColorCamera::setColorOrder(ColorCameraProperties::ColorOrder colorOrder) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -113,7 +105,6 @@ void ColorCamera::setColorOrder(ColorCameraProperties::ColorOrder colorOrder) {
     }
 }
 
-// getColorOrder - returns color order
 ColorCameraProperties::ColorOrder ColorCamera::getColorOrder() const {
     if(properties.previewType == ImgFrame::Type::RGB888i || properties.previewType == ImgFrame::Type::RGB888p
        || properties.previewType == ImgFrame::Type::RGBF16F16F16i || properties.previewType == ImgFrame::Type::RGBF16F16F16p) {
@@ -126,7 +117,6 @@ ColorCameraProperties::ColorOrder ColorCamera::getColorOrder() const {
     }
 }
 
-// setInterleaved
 void ColorCamera::setInterleaved(bool interleaved) {
     if(ImgFrame::isInterleaved(properties.previewType)) {
         if(!interleaved) {
@@ -139,22 +129,18 @@ void ColorCamera::setInterleaved(bool interleaved) {
     }
 }
 
-// getInterleaved
 bool ColorCamera::getInterleaved() const {
     return ImgFrame::isInterleaved(properties.previewType);
 }
 
-/// Set type of preview output image
 void ColorCamera::setPreviewType(ImgFrame::Type type) {
     properties.previewType = type;
 }
 
-/// Get the preview type
 ImgFrame::Type ColorCamera::getPreviewType() const {
     return properties.previewType;
 }
 
-// setFp16
 void ColorCamera::setFp16(bool fp16) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -192,7 +178,6 @@ void ColorCamera::setFp16(bool fp16) {
     }
 }
 
-// getFp16
 bool ColorCamera::getFp16() const {
     if(properties.previewType == ImgFrame::Type::BGRF16F16F16i || properties.previewType == ImgFrame::Type::BGRF16F16F16p
        || properties.previewType == ImgFrame::Type::RGBF16F16F16i || properties.previewType == ImgFrame::Type::RGBF16F16F16p) {
@@ -202,7 +187,6 @@ bool ColorCamera::getFp16() const {
     }
 }
 
-// set preview output size
 void ColorCamera::setPreviewSize(int width, int height) {
     properties.previewWidth = width;
     properties.previewHeight = height;
@@ -212,7 +196,6 @@ void ColorCamera::setPreviewSize(const std::tuple<int, int>& size) {
     setPreviewSize(std::get<0>(size), std::get<1>(size));
 }
 
-// set video output size
 void ColorCamera::setVideoSize(int width, int height) {
     properties.videoWidth = width;
     properties.videoHeight = height;
@@ -222,7 +205,6 @@ void ColorCamera::setVideoSize(const std::tuple<int, int>& size) {
     setVideoSize(std::get<0>(size), std::get<1>(size));
 }
 
-// set still output size
 void ColorCamera::setStillSize(int width, int height) {
     properties.stillWidth = width;
     properties.stillHeight = height;
@@ -280,16 +262,13 @@ std::vector<dai::FrameEvent> ColorCamera::getFrameEventFilter() const {
 }
 
 float ColorCamera::getFps() const {
-    // if AUTO
     if(properties.fps == ColorCameraProperties::AUTO || properties.fps == 0) {
         return 30.0f;
     }
 
-    // else return fps
     return properties.fps;
 }
 
-// Returns preview size
 std::tuple<int, int> ColorCamera::getPreviewSize() const {
     return {properties.previewWidth, properties.previewHeight};
 }
@@ -302,10 +281,8 @@ int ColorCamera::getPreviewHeight() const {
     return properties.previewHeight;
 }
 
-// Returns video size
 std::tuple<int, int> ColorCamera::getVideoSize() const {
     if(properties.videoWidth == ColorCameraProperties::AUTO || properties.videoHeight == ColorCameraProperties::AUTO) {
-        // calculate based on auto
         int maxVideoWidth = 1920;
         int maxVideoHeight = 1080;
 
@@ -348,7 +325,6 @@ std::tuple<int, int> ColorCamera::getVideoSize() const {
             maxVideoWidth = 1352;
         }
 
-        // Take into the account the ISP scaling
         int numW = properties.ispScale.horizNumerator;
         int denW = properties.ispScale.horizDenominator;
         if(numW > 0 && denW > 0) {
@@ -375,9 +351,7 @@ int ColorCamera::getVideoHeight() const {
     return std::get<1>(getVideoSize());
 }
 
-// Returns still size
 std::tuple<int, int> ColorCamera::getStillSize() const {
-    // Calculate from AUTO
     if(properties.stillWidth == ColorCameraProperties::AUTO || properties.stillHeight == ColorCameraProperties::AUTO) {
         int maxStillWidth = 1920;
         int maxStillHeight = 1080;
@@ -425,7 +399,6 @@ std::tuple<int, int> ColorCamera::getStillSize() const {
             maxStillHeight = 1012;
         }
 
-        // Take into the account the ISP scaling
         int numW = properties.ispScale.horizNumerator;
         int denW = properties.ispScale.horizDenominator;
         if(numW > 0 && denW > 0) {
@@ -441,7 +414,6 @@ std::tuple<int, int> ColorCamera::getStillSize() const {
         return {maxStillWidth, maxStillHeight};
     }
 
-    // Else return size set
     return {properties.stillWidth, properties.stillHeight};
 }
 
@@ -453,7 +425,6 @@ int ColorCamera::getStillHeight() const {
     return std::get<1>(getStillSize());
 }
 
-// Returns sensor size
 std::tuple<int, int> ColorCamera::getResolutionSize() const {
     switch(properties.resolution) {
         case ColorCameraProperties::SensorResolution::THE_1080_P:
@@ -589,7 +560,6 @@ void ColorCamera::setSensorCrop(float x, float y) {
 }
 
 std::tuple<float, float> ColorCamera::getSensorCrop() const {
-    // AUTO - center crop by default
     if(properties.sensorCropX == ColorCameraProperties::AUTO || properties.sensorCropY == ColorCameraProperties::AUTO) {
         float x = std::floor(((getResolutionWidth() - getVideoWidth()) / 2.0f)) / getResolutionWidth();
         float y = std::floor(((getResolutionHeight() - getVideoHeight()) / 2.0f)) / getResolutionHeight();

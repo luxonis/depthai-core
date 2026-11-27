@@ -1,8 +1,6 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
-
-// shared
 #include <depthai/properties/SyncProperties.hpp>
 
 namespace dai {
@@ -28,7 +26,6 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public Hos
     /**
      * Output message of type MessageGroup
      */
-    // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::MessageGroup, false}}}}};
 
    protected:

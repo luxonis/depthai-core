@@ -55,9 +55,7 @@ inline LocalCalibrationOrigin describeLocalCalibration(const std::optional<Eepro
 
     local.originRule = "extrinsics chain root";
     local.originOf = [eeprom](CameraBoardSocket socket) {
-        // Same traversal as CalibrationHandler::getExtrinsicsToOrigin: follow the chain to the
-        // socket whose target is AUTO, rejecting dangling links and cycles.
-        std::vector<CameraBoardSocket> path;
+        std::vector<CameraBoardSocket> path;  // Same traversal as CalibrationHandler::getExtrinsicsToOrigin
         CameraBoardSocket current = socket;
         while(true) {
             const auto it = eeprom->cameraData.find(current);

@@ -67,13 +67,11 @@ std::optional<std::uint32_t> DeviceModel::getRevision() {
 
     cachedRevision.emplace(std::nullopt);
 
-    // Parse model string
     Model model = get();
     if (model == Model::UNKNOWN_MODEL) {
         return *cachedRevision;
     }
 
-    // Read model string
     const std::filesystem::path deviceModelFile("/proc/device-tree/model");
     std::ifstream osVersionFileStream(deviceModelFile);
     std::string line;
@@ -107,10 +105,8 @@ std::optional<std::uint32_t> DeviceModel::getRevision() {
         return *cachedRevision;
     }
 
-    // First match is the full string, second match is the revision
     std::string revisionStr = revisionMatch[1].str();
 
-    // Convert revision string to uint32_t
     std::uint32_t revision = 0;
     try {
         revision = std::stoul(revisionStr);

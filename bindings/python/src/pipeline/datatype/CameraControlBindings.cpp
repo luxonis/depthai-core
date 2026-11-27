@@ -4,19 +4,14 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // py::class_<RawCameraControl, RawBuffer, std::shared_ptr<RawCameraControl>> rawCameraControl(m, "RawCameraControl", DOC(dai, RawCameraControl));
     py::class_<CameraControl, Py<CameraControl>, Buffer, py::smart_holder> cameraControl(m, "CameraControl", DOC(dai, CameraControl));
     py::class_<CameraControl::ManualExposureParams> manualExposure(cameraControl, "ManualExposureParams", DOC(dai, CameraControl, ManualExposureParams));
     py::class_<CameraControl::RegionParams> region(cameraControl, "RegionParams", DOC(dai, CameraControl, RegionParams));
@@ -32,18 +27,10 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
     py::enum_<CameraControl::EffectMode> cameraControlEffectMode(cameraControl, "EffectMode", DOC(dai, CameraControl, EffectMode));
     py::enum_<CameraControl::FrameSyncMode> cameraControlFrameSyncMode(cameraControl, "FrameSyncMode", DOC(dai, CameraControl, FrameSyncMode));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     manualExposure.def(py::init<>())
         .def_readwrite("exposureTimeUs", &CameraControl::ManualExposureParams::exposureTimeUs, DOC(dai, CameraControl, ManualExposureParams, exposureTimeUs))
@@ -69,7 +56,6 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .def_readwrite("lowPowerNumFramesDiscard", &CameraControl::lowPowerNumFramesDiscard, DOC(dai, CameraControl, lowPowerNumFramesDiscard))
         .def_readwrite("miscControls", &CameraControl::miscControls, DOC(dai, CameraControl, miscControls));
 
-    // Metadata / raw
     std::vector<const char*> camCtrlAttr;
     camCtrlAttr.push_back("Command");
     cameraControlCommand.value("AF_LENS_RANGE", dai::CameraControl::Command::AF_LENS_RANGE)
@@ -218,10 +204,7 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .def("clearCommand", &CameraControl::clearCommand)
         .def("getCommand", &CameraControl::getCommand);
 
-    // Message
-    cameraControl
-        .def("__repr__", &CameraControl::str)
-        // setters
+    cameraControl.def("__repr__", &CameraControl::str)
         .def("setCaptureStill", &CameraControl::setCaptureStill, py::arg("capture"), DOC(dai, CameraControl, setCaptureStill))
         .def("setStartStreaming", &CameraControl::setStartStreaming, DOC(dai, CameraControl, setStartStreaming))
         .def("setStopStreaming", &CameraControl::setStopStreaming, DOC(dai, CameraControl, setStopStreaming))
@@ -327,18 +310,13 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .def("setControlMode", &CameraControl::setControlMode, py::arg("mode"), DOC(dai, CameraControl, setControlMode))
         .def("setCaptureIntent", &CameraControl::setCaptureIntent, py::arg("mode"), DOC(dai, CameraControl, setCaptureIntent))
         .def("setHdr", &CameraControl::setHdr, py::arg("enable"), DOC(dai, CameraControl, setHdr))
-        // .def("set",         &CameraControl::set, py::arg("config"), DOC(dai, CameraControl, set))
-        // getters
         .def("getMiscControls", &CameraControl::getMiscControls, DOC(dai, CameraControl, getMiscControls))
         .def("getCaptureStill", &CameraControl::getCaptureStill, DOC(dai, CameraControl, getCaptureStill))
         .def("getExposureTime", &CameraControl::getExposureTime, DOC(dai, CameraControl, getExposureTime))
         .def("getSensitivity", &CameraControl::getSensitivity, DOC(dai, CameraControl, getSensitivity))
         .def("getLensPosition", &CameraControl::getLensPosition, DOC(dai, CameraControl, getLensPosition))
         .def("getLensPositionRaw", &CameraControl::getLensPositionRaw, DOC(dai, CameraControl, getLensPositionRaw))
-        .def("getHdr", &CameraControl::getHdr, DOC(dai, CameraControl, getHdr))
-        // .def("get",         &CameraControl::get, DOC(dai, CameraControl, get))
-        ;
-    // Add also enum attributes from CameraControl
+        .def("getHdr", &CameraControl::getHdr, DOC(dai, CameraControl, getHdr));
     for(const auto& a : camCtrlAttr) {
         m.attr("CameraControl").attr(a) = m.attr("CameraControl").attr(a);
     }

@@ -58,13 +58,6 @@ class DetectionNetwork : public DeviceNodeGroup {
      */
     std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<Camera>& input, const Model& model, const ImgFrameCapability& capability);
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    /*
-     * @brief Build DetectionNetwork node. Connect ReplayVideo output to this node's input and configure the inference model.
-     * @param input: ReplayVideo node
-     * @param model: Neural network model description, NNArchive or HubAI model id string
-     * @param fps: Desired frames per second
-     * @returns Shared pointer to DetectionNetwork node
-     */
     std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<ReplayVideo>& input, const Model& model, std::optional<float> fps = std::nullopt);
 #endif
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
@@ -125,7 +118,6 @@ class DetectionNetwork : public DeviceNodeGroup {
      */
     void setFromModelZoo(NNModelDescription description, int numShaves, bool useCached = true);
 
-    // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
      * Load network blob into assets and use once pipeline is started.
      *

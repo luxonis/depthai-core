@@ -54,11 +54,10 @@ def extract(archive, destination):
                 os.makedirs(target, exist_ok=True)
             elif member.isfile():
                 os.makedirs(os.path.dirname(target), exist_ok=True)
-                # A new name first: another build can read the vcpkg binary cache at the same time
                 with tar.extractfile(member) as source, tempfile.NamedTemporaryFile(dir=os.path.dirname(target), delete=False) as out:
                     shutil.copyfileobj(source, out)
                 os.chmod(out.name, 0o644)
-                os.replace(out.name, target)
+                os.replace(out.name, target)  # Atomic rename: another build can read the vcpkg cache at the same time
             else:
                 raise ValueError(f"member that is not a file or a folder: {member.name}")
 
@@ -127,8 +126,7 @@ def take(base, root, vcpkg_cache, commit):
         if manifest.get("format") != FORMAT or manifest.get("commit") != commit:
             raise ValueError(f"the published build cache of {commit[:12]} has a format that this script does not know")
         install_ccache(base, root, commit, manifest, text)
-    # The compiler cache is useful without the prebuilt dependencies: vcpkg then builds them from source
-    try:
+    try:  # ccache is useful without prebuilt deps: vcpkg then builds them from source
         with open(description) as source:
             install_vcpkg(base, root, vcpkg_cache, json.load(source))
     except (urllib.error.URLError, OSError, ValueError, KeyError, TypeError, tarfile.TarError) as error:
@@ -151,7 +149,6 @@ def main():
                 break
     except (urllib.error.URLError, OSError, ValueError, KeyError, TypeError, tarfile.TarError) as error:
         log(f"Published build cache: not used ({error})")
-    # The compiler caches of the commits that were used last stay
     try:
         folders = [os.path.join(root, "commits", name) for name in os.listdir(os.path.join(root, "commits"))]
         for folder in sorted(folders, key=os.path.getmtime, reverse=True)[KEEP:]:

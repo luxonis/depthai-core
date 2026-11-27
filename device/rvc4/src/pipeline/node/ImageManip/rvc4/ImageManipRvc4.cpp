@@ -314,9 +314,7 @@ class UndistortWarpMeshImpl : public Undistort {
             if(!validUndistortMatrix(newCameraMatrix)) {
                 if(type != this->type || srcWidth != this->srcWidth || srcHeight != this->srcHeight || distCoeffs != this->distCoeffs
                    || cameraMatrix != this->cameraMatrix || this->dstWidth != srcWidth || this->dstHeight != srcHeight
-                   || this->newCameraMatrix != cameraMatrix) {
-                    // Undistort alpha does not get applied here. This shouldn't be a problem for resizers.
-                    // If undistort alpha support is added to ImageManip, this needs to be handled differently.
+                   || this->newCameraMatrix != cameraMatrix) {  // Undistort alpha is not applied here: fine for resizers only
                     initMaps(cameraMatrix, cameraMatrix, std::move(distCoeffs), type, srcWidth, srcHeight, srcWidth, srcHeight);
                     return BuildStatus::TWO_SHOT;
                 }
@@ -378,11 +376,9 @@ class WarpQ : public Warp {
 
     Backend backend;
 
-    // GPU
     bool gpuEnabled = false;
     std::variant<std::monostate, WarpGPUMat, WarpGPUMesh> warpGpu = std::monostate{};
 
-    // Hardware accelerator downscaler
     bool hwScalerEnabled = true;
     bool dsImgInitialized = false;
     ImgFrame::Type dsImgType = ImgFrame::Type::NONE;
@@ -402,7 +398,6 @@ class WarpQ : public Warp {
                            size_t dstStride,
                            uint16_t numChannels);
 
-    // FastCV
     bool fastCvEnabled = true;
     bool fastCvInitialized = false;
 
@@ -512,7 +507,6 @@ void setDstMetadata(const impl::ImageManipOperations<DmaHeapMemory, ColorChangeQ
     dstFrame.fb.p3Offset = dstSpecs.p3Offset;
     dstFrame.setType(outType);
 
-    // Transformations
     if(manip.undistortEnabled()) {
         const auto sourceSize = srcFrame.transformation.getSourceSize();
         const auto undistortBaseIntrinsics =
@@ -520,8 +514,7 @@ void setDstMetadata(const impl::ImageManipOperations<DmaHeapMemory, ColorChangeQ
         const auto undistortMatrix = impl::matmul(undistortBaseIntrinsics, srcFrame.transformation.getSourceIntrinsicMatrixInv());
         const auto totalMatrix = impl::matmul(manip.getMatrix(), undistortMatrix);
 
-        // Rebuild from source metadata so the full source->output transform can be applied directly.
-        dstFrame.transformation = ImgTransformation(sourceSize.first,
+        dstFrame.transformation = ImgTransformation(sourceSize.first,  // From source metadata, so the full source-to-output transform applies directly
                                                     sourceSize.second,
                                                     srcFrame.transformation.getSourceIntrinsicMatrix(),
                                                     srcFrame.transformation.getDistortionModel(),
@@ -576,16 +569,12 @@ void ImageManip::run() {
             }
             auto frame = pool->tryGet();
             if(!frame) {
-                // NOTE: this should be revisited. numFramesPool and maxOutputFrameSize should be considered as max values,
-                // the pool should realocate based on actual frame size and maxPoolSize.
-                // 30 is a hardcoded max value as anything over that is overkill for HFR.
-                auto newPoolSize = std::min(properties.maxPoolSize / (unsigned int)outputSize, 30u);
+                auto newPoolSize = std::min(properties.maxPoolSize / (unsigned int)outputSize, 30u);  // 30: more frames is overkill even for HFR
                 if(newPoolSize > pool->getCapacity()) {
                     pool = DmaFramePool::create(newPoolSize, outputSize);
                     logger->info("ImageManip | pool ran out of frames, resizing pool to {} frames with a total size of {}B", newPoolSize, newPoolSize * outputSize);
                 }
-                // NOTE: At this point, more memory is used than maxPoolSize (maxPoolSize + live frames from previous pool). This should be revisited.
-                frame = pool->get();
+                frame = pool->get();  // Memory use can exceed maxPoolSize here: the frames of the old pool are still live
             }
             return frame;
         },
@@ -594,13 +583,11 @@ void ImageManip::run() {
             std::shared_ptr<OffsetMemory> srcMem = src;
             {
                 auto t1 = std::chrono::steady_clock::now();
-                // Converts or just returns the same pointer if already AcceleratorMemory
                 auto accelMem = AcceleratorMemory::convert(ConvertedOffsetMemory::cast<Memory>(src));
                 if(accelMem->getData().data() != src->getData().data()) {
                     srcMem = accelMem;
                 }
                 auto t2 = std::chrono::steady_clock::now();
-                /*logger->info("Input image to AcceleratorMemory convert time: {}us", duration_cast<microseconds>(t2 - t1).count());*/
             }
             auto out = manip.apply(srcMem, std::move(dst));
             logger->trace("ImageManip | benchmark | apply | {}us",
@@ -620,10 +607,7 @@ void ManipResizer::runThreadedResizer(int numFramesPool,
     this->resizerThread = std::make_unique<std::thread>([this, numFramesPool, logger, prepareSend, useCpu]() {
         ImageManipProperties properties;
         properties.initialConfig = cfg;
-        // AUTO uses the GPU for large frames when the device has one, else the CPU. The hardware accelerator was not faster for plain resizes.
-        // AUTO also undistorts small frames on the CPU, which is about 3x slower than the GPU mesh, so undistorted
-        // outputs use the GPU when the device has one (the hardware accelerator cannot undistort).
-        if(useCpu) {
+        if(useCpu) {  // Undistort on the GPU: AUTO undistorts small frames on the CPU, about 3x slower than the GPU mesh
             properties.backend = ImageManipProperties::Backend::CPU;
         } else if(cfg.base.undistort && utils::hasGPU()) {
             properties.backend = ImageManipProperties::Backend::GPU;
@@ -665,7 +649,6 @@ void ManipResizer::runThreadedResizer(int numFramesPool,
                 std::shared_ptr<OffsetMemory> srcMem = ConvertedOffsetMemory::convert(msg->data);
                 {
                     auto t1 = std::chrono::steady_clock::now();
-                    // Converts or just returns the same pointer if already AcceleratorMemory
                     auto accelMem = AcceleratorMemory::convert(ConvertedOffsetMemory::cast<Memory>(srcMem));
                     if(accelMem->getData().data() != srcMem->getData().data()) {
                         srcMem = accelMem;
@@ -836,10 +819,7 @@ void WarpQ::buildUndistort(bool enable,
             case Undistort::BuildStatus::TWO_SHOT:
                 this->enableUndistort = true;
                 this->undistortOneShot = false;
-                // Alpha scaling is not currently supported for two-shot undistortion.
-                // This shouldn't be a problem for resizers. If alpha is added to ImageManip,
-                // it needs to be handled differently
-                this->alphaScaling = std::nullopt;
+                this->alphaScaling = std::nullopt;  // Alpha scaling is not supported for two-shot undistortion
                 break;
             case Undistort::BuildStatus::NOT_BUILT:
                 break;
@@ -862,7 +842,6 @@ void WarpQ::buildUndistort(bool enable,
     }
 }
 
-// At some point this should probably be moved to DSP
 void simpleSetBackground(uint8_t* dst,
                          const size_t dstWidth,
                          const size_t dstHeight,
@@ -899,8 +878,7 @@ void simpleSetBackground(uint8_t* dst,
     }
     const bool uniformBackground = numChannels == 1 || numChannels == 2 && background[0] == background[1]
                                    || numChannels == 3 && background[0] == background[1] && background[1] == background[2];
-    // The border fills below assume at least one content row and column
-    if(contentWidth == 0 || contentHeight == 0) {
+    if(contentWidth == 0 || contentHeight == 0) {  // The border fills below need at least one content row and column
         if(uniformBackground) {
             memset(dst, background[0], dstSize);
         } else {
@@ -916,23 +894,17 @@ void simpleSetBackground(uint8_t* dst,
         return;
     }
     if(uniformBackground) {
-        // Can use memset
-        // Top
         if(offsetTop + offsetLeft > 0) memset(dst, background[0], offsetTop * dstStride + offsetLeft * elWidth);
-        // Bottom
         if(offsetRight + offsetBottom > 0)
             memset(dst + dstSize - (offsetBottom + 1) * dstStride + (dstWidth - offsetRight) * elWidth,
                    background[0],
                    (offsetBottom + 1) * dstStride - (dstWidth - offsetRight) * elWidth);
-        // Left & Right
         if(offsetLeft > 0 || offsetRight > 0) {
             for(auto i = 0U; i < contentHeight; ++i) {
                 uint8_t* rowStart = dst + (offsetTop + i) * dstStride;
                 if(i == 0U && offsetRight > 0) {
-                    // Right only
                     memset(rowStart + (dstWidth - offsetRight) * elWidth, background[0], offsetRight * elWidth);
                 } else if(i == contentHeight - 1 && offsetLeft > 0) {
-                    // Left only
                     memset(rowStart, background[0], offsetLeft * elWidth);
                 } else {
                     if(offsetLeft > 0) memset(rowStart, background[0], offsetLeft * elWidth);
@@ -941,8 +913,6 @@ void simpleSetBackground(uint8_t* dst,
             }
         }
     } else {
-        // Multi-channel - use for loop
-        // Top
         if(offsetTop > 0) {
             for(auto i = 0U; i < offsetTop; ++i) {
                 uint8_t* rowStart = dst + i * dstStride;
@@ -953,7 +923,6 @@ void simpleSetBackground(uint8_t* dst,
                 }
             }
         }
-        // Bottom
         if(offsetBottom > 0) {
             for(auto i = dstHeight - offsetBottom; i < dstHeight; ++i) {
                 uint8_t* rowStart = dst + i * dstStride;
@@ -964,7 +933,6 @@ void simpleSetBackground(uint8_t* dst,
                 }
             }
         }
-        // Left & Right
         if(offsetLeft > 0 || offsetRight > 0) {
             for(auto i = 0U; i < contentHeight; ++i) {
                 uint8_t* rowStart = dst + (offsetTop + i) * dstStride;
@@ -1053,9 +1021,6 @@ bool WarpQ::hwDownscale(const std::shared_ptr<OffsetMemory>& src, std::shared_pt
                                   : roundf(scaleHeight);
 
     if(!pxl_eq(offsetX, 0.f) || !pxl_eq(offsetY, 0.f)) return false;  // Apparently the accelerator does not do offsets very well
-    // if(!((this->sourceMinY * this->srcSpecs.p1Stride + this->sourceMinX) % 4096 == 0
-    //      && ((size_t)offsetY * this->dstSpecs.p1Stride + (size_t)offsetX) % 4096 == 0))
-    //     return false;
 
     if((double)dstContentHeight / (double)appliedSrcHeight < 1. / 8 || (double)dstContentWidth / (double)appliedSrcWidth < 1. / 8)
         return false;  // The accelerator can't handle a ratio lower than 1/8
@@ -1066,7 +1031,6 @@ bool WarpQ::hwDownscale(const std::shared_ptr<OffsetMemory>& src, std::shared_pt
             auto inputFrame = std::make_shared<ImgFrame>();
             auto outputFrame = std::make_shared<ImgFrame>();
             {
-                // ROI crop
                 size_t srcOffsetP1 = this->sourceMinY * this->srcSpecs.p1Stride + this->sourceMinX;
                 size_t srcOffsetP2 = (this->sourceMinY / 2) * this->srcSpecs.p2Stride + this->sourceMinX;
                 inputFrame->data = src->offset(srcOffsetP1);
@@ -1076,7 +1040,6 @@ bool WarpQ::hwDownscale(const std::shared_ptr<OffsetMemory>& src, std::shared_pt
                 inputFrame->setStride(this->srcSpecs.p1Stride);
             }
             {
-                // ROI for letterboxing
                 size_t dstOffsetP1 = (size_t)offsetY * this->dstSpecs.p1Stride + (size_t)offsetX;
                 size_t dstOffsetP2 = (size_t)(offsetY / 2.f) * this->dstSpecs.p2Stride + (size_t)offsetX;
                 outputFrame->data = dst->offset(dstOffsetP1);
@@ -1117,7 +1080,6 @@ bool WarpQ::hwDownscale(const std::shared_ptr<OffsetMemory>& src, std::shared_pt
             auto inputFrame = std::make_shared<ImgFrame>();
             auto outputFrame = std::make_shared<ImgFrame>();
             {
-                // ROI crop
                 size_t srcOffsetP1 = this->sourceMinY * this->srcSpecs.p1Stride + this->sourceMinX;
                 size_t srcOffsetP2 = (this->sourceMinY / 2) * this->srcSpecs.p2Stride + this->sourceMinX / 2;
                 size_t srcOffsetP3 = (this->sourceMinY / 2) * this->srcSpecs.p3Stride + this->sourceMinX / 2;
@@ -1129,7 +1091,6 @@ bool WarpQ::hwDownscale(const std::shared_ptr<OffsetMemory>& src, std::shared_pt
                 inputFrame->setStride(this->srcSpecs.p1Stride);
             }
             {
-                // ROI for letterboxing
                 size_t dstOffsetP1 = (size_t)offsetY * this->dstSpecs.p1Stride + (size_t)offsetX;
                 size_t dstOffsetP2 = (size_t)(offsetY / 2.f) * this->dstSpecs.p2Stride + (size_t)offsetX / 2;
                 size_t dstOffsetP3 = (size_t)(offsetY / 2.f) * this->dstSpecs.p3Stride + (size_t)offsetX / 2;
@@ -1183,7 +1144,6 @@ bool WarpQ::hwDownscale(const std::shared_ptr<OffsetMemory>& src, std::shared_pt
             auto inputFrame = std::make_shared<ImgFrame>();
             auto outputFrame = std::make_shared<ImgFrame>();
             {
-                // ROI crop
                 size_t srcOffsetP1 = this->sourceMinY * this->srcSpecs.p1Stride + this->sourceMinX;
                 inputFrame->data = src->offset(srcOffsetP1);
                 inputFrame->setSize(appliedSrcWidth, appliedSrcHeight);
@@ -1191,7 +1151,6 @@ bool WarpQ::hwDownscale(const std::shared_ptr<OffsetMemory>& src, std::shared_pt
                 inputFrame->setStride(this->srcSpecs.p1Stride);
             }
             {
-                // ROI for letterboxing
                 size_t dstOffsetP1 = (size_t)offsetY * this->dstSpecs.p1Stride + (size_t)offsetX;
                 outputFrame->data = dst->offset(dstOffsetP1);
                 outputFrame->setSize(dstContentWidth, dstContentHeight);
@@ -1223,8 +1182,7 @@ bool WarpQ::hwDownscale(const std::shared_ptr<OffsetMemory>& src, std::shared_pt
 
 bool WarpQ::canUseAccelerator() {
     bool supportedType = this->type == ImgFrame::Type::YUV420p || this->type == ImgFrame::Type::NV12 || this->type == ImgFrame::Type::RAW8
-                         || this->type == ImgFrame::Type::GRAY8;
-    // Can use if not yet initialized or if initialized with the same type (cannot change the accelerator type after initialization)
+                         || this->type == ImgFrame::Type::GRAY8;  // The accelerator type cannot change after initialization
     return hwScalerEnabled && supportedType && (!dsImgInitialized && !firstFrameOver || dsImgInitialized && dsImgType == this->type);
 }
 
@@ -1264,8 +1222,7 @@ void WarpQ::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                                   planeBackground)) {
             gpuWarpPending = true;
         } else {
-            // Internals of ConvertedOffsetMemory do not store offset information so it might need to be re-set on the accelerator buffer
-            auto srcOffset = srcPlane->getOffset();
+            auto srcOffset = srcPlane->getOffset();  // ConvertedOffsetMemory drops the offset: set it again on the accelerator buffer
             auto accelSrcPlane = AcceleratorMemory::convert(ConvertedOffsetMemory::cast<Memory>(srcPlane));
             if(accelSrcPlane == nullptr) {
                 throw std::runtime_error("Warp: Invalid source buffer");
@@ -1293,7 +1250,6 @@ void WarpQ::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
         ++gpuPlane;
     };
     try {
-        // Apply transformation multiple times depending on the image format
         switch(this->type) {
             case ImgFrame::Type::RGB888i:
             case ImgFrame::Type::BGR888i:
@@ -1626,9 +1582,7 @@ void WarpQ::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
             gpuWarpPending = false;
         }
     } catch(...) {
-        // A later plane (or its preparation) can fail after mesh work was queued.
-        // Drain while src, dst and undistortDst still own the imported allocations.
-        if(this->enableUndistort) {
+        if(this->enableUndistort) {  // Drain queued mesh work while src, dst and undistortDst still own the imported allocations
             try {
                 this->undistortImpl->finish();
             } catch(const std::exception& ex) {
@@ -1654,8 +1608,7 @@ void WarpQ::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
         try {
             dsImg.firstFrameOver();
         } catch(std::runtime_error& err) {
-            // It's fine if this timeouts (not initializing the accelerator) - some other node will start the session
-            this->logger->error(err.what());
+            this->logger->error(err.what());  // A timeout is fine: another node starts the session
         }
     }
     firstFrameOver = true;
@@ -1739,10 +1692,8 @@ bool WarpQ::enqueueGpuTransform(int plane,
 
     try {
         std::get<WarpGPUMat>(warpGpu).enqueueWarpPlane(plane, srcData->offset(srcOffset), dstData);
-    } catch (const std::runtime_error& e) {
-        // Enqueue can fail after submitting work, before gpuWarpPending is set.
-        // Drain while srcData and dstData still own the buffers, before CPU fallback.
-        try {
+    } catch(const std::runtime_error& e) {
+        try {  // Enqueue can fail after it submitted work: drain while srcData and dstData still own the buffers
             std::get<WarpGPUMat>(warpGpu).warp();
         } catch(const std::exception& ex) {
             this->logger->error("ImageManip GPU cleanup after enqueue error failed: {}", ex.what());
@@ -1784,10 +1735,7 @@ void WarpQ::transform(const std::shared_ptr<OffsetMemory> srcData,
         appliedMatrix[5] += appliedMatrix[3] * static_cast<float>(planeSourceMinX) + appliedMatrix[4] * static_cast<float>(planeSourceMinY);
         appliedMatrix[8] += appliedMatrix[6] * static_cast<float>(planeSourceMinX) + appliedMatrix[7] * static_cast<float>(planeSourceMinY);
     }
-    // Fast paths only support placing content inside the destination. Clamp
-    // before converting to size_t so an out-of-frame translation cannot
-    // underflow the content size or produce an invalid destination offset.
-    float offsetX = std::clamp(appliedMatrix[2] / appliedMatrix[8], 0.f, static_cast<float>(dstWidth));
+    float offsetX = std::clamp(appliedMatrix[2] / appliedMatrix[8], 0.f, static_cast<float>(dstWidth));  // Clamp: an out-of-frame shift would underflow size_t
     float offsetY = std::clamp(appliedMatrix[5] / appliedMatrix[8], 0.f, static_cast<float>(dstHeight));
     float scaleX = appliedMatrix[0];
     float scaleY = appliedMatrix[4];
@@ -1843,18 +1791,6 @@ void WarpQ::transform(const std::shared_ptr<OffsetMemory> srcData,
     switch(planeOp) {
         case OptOp::CROP: {
             if(appliedSrcWidth == dstWidth && appliedSrcHeight == dstHeight) {
-                // Crop
-                // if(bpp == 1 && numChannels <= 2) {
-                //     fastCvDownscaleu8(srcData->offset(srcOffset),
-                //                       dstData->offset(dstOffset),
-                //                       appliedSrcWidth,
-                //                       appliedSrcHeight,
-                //                       srcStride,
-                //                       dstContentWidth,
-                //                       dstContentHeight,
-                //                       dstStride,
-                //                       numChannels);
-                // } else
                 copyData(src + srcOffset, dst + dstOffset, appliedSrcWidth, appliedSrcHeight, srcStride, dstStride, bpp, numChannels);
             } else {
                 simpleSetBackground(dst,
@@ -1870,18 +1806,6 @@ void WarpQ::transform(const std::shared_ptr<OffsetMemory> srcData,
                                     background,
                                     *this->logger);
 
-                // Letterbox
-                // if(bpp == 1 && numChannels <= 2) {
-                //     fastCvDownscaleu8(srcData->offset(srcOffset),
-                //                       dstData->offset(dstOffset),
-                //                       appliedSrcWidth,
-                //                       appliedSrcHeight,
-                //                       srcStride,
-                //                       dstContentWidth,
-                //                       dstContentHeight,
-                //                       dstStride,
-                //                       numChannels);
-                // } else
                 copyData(src + srcOffset, dst + dstOffset, appliedSrcWidth, appliedSrcHeight, srcStride, dstStride, bpp, numChannels);
             }
         } break;
@@ -1927,8 +1851,6 @@ void WarpQ::transform(const std::shared_ptr<OffsetMemory> srcData,
                                       FASTCV_INTERPOLATION_TYPE_AREA);
                 });
                 if(res != 0) useOpenCV = true;
-                // throw std::runtime_error(
-                //     fmt::format("fcvScaleu8 failed ({}x{} to {}x{})", appliedSrcWidth, appliedSrcHeight, dstContentWidth, dstContentHeight));
             } else {
                 useOpenCV = true;
             }
@@ -1946,9 +1868,6 @@ void WarpQ::transform(const std::shared_ptr<OffsetMemory> srcData,
                     cv::resize(cvSrc, cvDst2, cv::Size(dstContentWidth, dstContentHeight));
                 } catch(const cv::Exception& e) {
                     fallbackToWarp = true;
-                    // throw std::runtime_error(
-                    //     fmt::format("cv::resize failed ({}x{} to {}x{}): {}", appliedSrcWidth, appliedSrcHeight, dstContentWidth, dstContentHeight,
-                    //     e.what()));
                 }
                 if(fallbackToWarp) {
                     cv::Mat cvAffine(2, 3, CV_32F, appliedMatrix);

@@ -33,7 +33,6 @@ void processImpl(::TemporalFilterParams* params) {
 
     decltype(alpha) oneMinusAlpha = 1 - alpha;
 
-    // pass one -- go through image and update all
     for(size_t i = 0; i < frameSize; i++) {
         T cur_val = frame[i];
         T prev_val = _last_frame[i];
@@ -75,7 +74,6 @@ TemporalFilter<T>::TemporalFilter() {}
 template<typename T>
 int TemporalFilter<T>::Init(size_t frameSize, float alpha, int delta, int _persistenceMode) {
     bool resetBuffers = false;
-    // could be lazy loading too, avoided by choice
     int err = allocateBuffers(frameSize);
     if(err) {
         return err;
@@ -233,13 +231,10 @@ void TemporalFilter<T>::buildPersistanceMap() {
         }
     }
 
-    // Convert to credible enough
     std::array<uint8_t, PERSISTENCY_LUT_SIZE> credible_threshold;
     credible_threshold.fill(0);
 
     for(auto phase = 0; phase < 8; phase++) {
-        // evaluating last phase
-        // int ephase = (phase + 7) % 8;
         unsigned char mask = 1 << phase;
         int i;
 
@@ -248,12 +243,10 @@ void TemporalFilter<T>::buildPersistanceMap() {
             if(persistenceMapLUT[pos]) credible_threshold[i] |= mask;
         }
     }
-    // Store results
     assert(rawPersistenceMapLUT.size == PERSISTENCY_LUT_SIZE);
     memcpy(persistenceMapLUT, credible_threshold.data(), PERSISTENCY_LUT_SIZE);
 }
 
-// Explicit template instantiations for common types
 template class TemporalFilter<uint8_t>;
 template class TemporalFilter<uint16_t>;
 template class TemporalFilter<float>;

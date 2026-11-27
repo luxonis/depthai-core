@@ -1,10 +1,7 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/ThermalConfig.hpp"
-
-// #include "spdlog/spdlog.h"
 
 void bind_thermalconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -17,18 +14,10 @@ void bind_thermalconfig(pybind11::module& m, void* pCallstack) {
     py::enum_<ThermalConfig::ThermalGainMode> thermalGainMode(m, "ThermalGainMode", DOC(dai, ThermalConfig, ThermalGainMode));
     py::enum_<ThermalConfig::ThermalImageOrientation> thermalOrientation(m, "ThermalImageOrientation", DOC(dai, ThermalConfig, ThermalImageOrientation));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     thermalAmbientParams.def(py::init<>())
         .def_readwrite("distance", &ThermalConfig::ThermalAmbientParams::distance, DOC(dai, ThermalConfig, ThermalAmbientParams, distance))
@@ -84,7 +73,6 @@ void bind_thermalconfig(pybind11::module& m, void* pCallstack) {
         .value("Flip", ThermalConfig::Flip)
         .value("MirrorFlip", ThermalConfig::MirrorFlip);
 
-    // ThermalConfig bindings
     thermalConfig.def(py::init<>())
         .def("__repr__", &ThermalConfig::str)
         .def_readwrite("ambientParams", &ThermalConfig::ambientParams, DOC(dai, ThermalConfig, ambientParams))

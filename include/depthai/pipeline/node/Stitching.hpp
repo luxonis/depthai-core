@@ -86,8 +86,7 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
     Subnode<dai::node::Sync> sync{*this, "sync"};
 
    private:
-    // Configure-mode nodes do not instantiate subnodes, so retain their deserialized dynamic input interface locally.
-    std::unique_ptr<InputMap> configuredInputs =
+    std::unique_ptr<InputMap> configuredInputs =  // Configure-mode nodes have no subnodes, so keep the input map here
         configureMode ? std::make_unique<InputMap>(
                             *this, "inputs", InputDescription{"", DEFAULT_GROUP, false, 10, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE})
                       : nullptr;

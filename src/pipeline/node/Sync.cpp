@@ -44,9 +44,7 @@ int Sync::getSyncAttempts() const {
 }
 
 void Sync::buildStage1() {
-    // Inputs spanning more than one device can only be synchronized with clocks that
-    // are comparable across devices; per-device monotonic DEVICE timestamps are not
-    std::unordered_set<const Device*> sources;
+    std::unordered_set<const Device*> sources;  // Per-device monotonic DEVICE timestamps are not comparable across devices
     for(const auto& input : inputs) {
         auto device = input.second.getSourceDevice();
         if(device != nullptr) {
@@ -69,9 +67,6 @@ void Sync::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
-/**
- * Check if the node is set to run on host
- */
 bool Sync::runOnHost() const {
     return runOnHostVar;
 }
@@ -79,10 +74,6 @@ bool Sync::runOnHost() const {
 Sync::TimestampSource Sync::getDefaultTimestampSource() const {
     return TimestampSource::HOST;
 }
-
-//////////////////////////////////////////////////////////////
-//---------------------- HELPERS ---------------------------//
-//////////////////////////////////////////////////////////////
 
 class InvalidTimestampException : public std::runtime_error {
    public:
@@ -254,10 +245,6 @@ class TimestampCompare {
     }
 };
 
-//////////////////////////////////////////////////////////////
-//-------------------- HELPERS END -------------------------//
-//////////////////////////////////////////////////////////////
-
 void Sync::run() {
     using namespace std::chrono;
     auto& logger = pimpl->logger;
@@ -274,9 +261,7 @@ void Sync::run() {
         throw std::runtime_error("Sync node must have at least 1 input!");
     }
 
-    // Inputs that exist but were never linked (no node output or input queue feeds them) would stall the
-    // synchronization forever, so they are left out. When nothing is linked every input is kept.
-    bool anyConnected = false;
+    bool anyConnected = false;  // Unlinked inputs would stall sync forever; if nothing is linked, all inputs stay
     for(const auto& in : inputs) anyConnected = anyConnected || in.second.isConnected();
     std::vector<std::string> inputNames;
     for(const auto& in : inputs) {
@@ -291,12 +276,7 @@ void Sync::run() {
     auto syncThresholdNs = properties.syncThresholdNs;
     logger->trace("Sync threshold: {}", syncThresholdNs);
 
-    // Resolve which device produces each input (host producers are left out); while any of
-    // those devices is not RUNNING the node drops instead of blocking on a dead stream.
-    // The devices are held weakly and asked for their state directly: resolving the pipeline
-    // from this thread could make it the pipeline's last owner and destruct it here, on a
-    // thread the destructor joins.
-    std::vector<std::weak_ptr<Device>> sourceDevices;
+    std::vector<std::weak_ptr<Device>> sourceDevices;  // Weak: owning the pipeline here could destruct it on a thread its destructor joins
     for(const auto& name : inputNames) {
         if(auto device = inputs[name].getSourceDevice()) {
             sourceDevices.push_back(device);
@@ -311,9 +291,7 @@ void Sync::run() {
         }
         return false;
     };
-    // Receive one message without blocking indefinitely; nullptr means a source
-    // device is degraded (or the node is stopping) and the current group is dropped
-    auto receive = [this, &anySourceNotRunning](const std::string& name) -> std::shared_ptr<dai::Buffer> {
+    auto receive = [this, &anySourceNotRunning](const std::string& name) -> std::shared_ptr<dai::Buffer> {  // nullptr: source device degraded or node stopping
         auto& input = inputs[name];
         while(mainLoop()) {
             auto msg = input.tryGet<dai::Buffer>();
@@ -334,7 +312,6 @@ void Sync::run() {
         {
             auto blockEvent = this->inputBlockEvent();
 
-            // Drop (emit nothing) while any input's device is not running
             if(anySourceNotRunning()) {
                 for(const auto& name : inputNames) {
                     inputs[name].tryGetAll();
@@ -354,7 +331,6 @@ void Sync::run() {
             if(dropped) {
                 continue;
             }
-            // Print out the timestamps
             for(const auto& frame : inputFrames) {
                 logger->debug("Starting input {} timestamp is {} ms", frame.first, getTimestampMs(timestampSource, *frame.second));
             }
@@ -392,7 +368,6 @@ void Sync::run() {
                     break;
                 }
 
-                // Get the message with the minimum timestamp (oldest message)
                 std::string minTsName = tsCompare.getMinName();
                 logger->trace("Receiving input: {}", minTsName);
                 inputFrames[minTsName] = receive(minTsName);

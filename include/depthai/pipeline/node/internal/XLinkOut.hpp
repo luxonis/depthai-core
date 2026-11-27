@@ -1,8 +1,6 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
-
-// shared
 #include <depthai/properties/internal/XLinkOutProperties.hpp>
 
 namespace dai {
@@ -25,7 +23,6 @@ class XLinkOut : public DeviceNodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties>
      *
      * Default queue is blocking with size 8
      */
-    // Input input{*this, "in", Input::Type::SReceiver, true, 8, {{DatatypeEnum::Buffer, true}}};
     Input input{*this, {"in", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**

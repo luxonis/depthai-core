@@ -11,13 +11,10 @@ void bind_beta_yunetparser(pybind11::module& m, void* pCallstack) {
     py::class_<beta::YuNetParserProperties> yunetParserProperties(betaModule, "YuNetParserProperties");
     auto yunetParser = ADD_BETA_NODE_DERIVED(YuNetParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     yunetParserProperties.def_readwrite("initialConfig", &beta::YuNetParserProperties::initialConfig)
         .def_readwrite("locOutputLayerName", &beta::YuNetParserProperties::locOutputLayerName)

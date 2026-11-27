@@ -81,7 +81,6 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
    private:
     struct TelemetryAggregateState;
 
-    // report for logging purposes
     struct Report {
         double dataConfidence = 0.;
         double calibrationConfidence = 0.;
@@ -97,14 +96,8 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
         std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, std::vector<float>> pairwiseRotationDifference;
     };
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    /**
-     * Input left image
-     */
     Input& left = inputs[leftInputName];
 
-    /**
-     * Input right image
-     */
     Input& right = inputs[rightInputName];
 
     InputMap& syncedInput = sync->inputs;
@@ -144,7 +137,6 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     AutoCalibrationProperties properties;
 
-    // internal queues
     Output gateControlQueue{*this, {"gateControlQueue", DEFAULT_GROUP, {{{DatatypeEnum::GateControl, false}}}}};
 
     Output dynamicCalibrationCommandQueue{*this, {"dynamicCalibrationCommandQueue", DEFAULT_GROUP, {{{DatatypeEnum::DynamicCalibrationControl, false}}}}};
@@ -161,7 +153,6 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     std::shared_ptr<TelemetryAggregateState> telemetryAggregateState;
     std::uint64_t telemetryAggregateMetricsHandle = 0;
 
-    // logger
     std::shared_ptr<::spdlog::async_logger> logger;
 };
 

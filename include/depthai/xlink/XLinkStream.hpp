@@ -1,6 +1,8 @@
 #pragma once
 
-// Std
+#include <XLink/XLinkPublicDefines.h>
+#include <XLink/XLinkTime.h>
+
 #include <chrono>
 #include <cstdint>
 #include <memory>
@@ -9,11 +11,6 @@
 #include <utility>
 #include <vector>
 
-// libraries
-#include <XLink/XLinkPublicDefines.h>
-#include <XLink/XLinkTime.h>
-
-// project
 #include "depthai/utility/Memory.hpp"
 #include "depthai/utility/span.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
@@ -51,7 +48,6 @@ class StreamPacketMemory : public StreamPacketDesc, public Memory {
 };
 
 class XLinkStream {
-    // static
     constexpr static int STREAM_OPEN_RETRIES = 5;
     constexpr static std::chrono::milliseconds WAIT_FOR_STREAM_RETRY{50};
 
@@ -67,7 +63,6 @@ class XLinkStream {
     XLinkStream& operator=(XLinkStream&& stream);
     ~XLinkStream();
 
-    // Blocking
     void write(span<const uint8_t> data, span<const uint8_t> data2) const;
     void write(span<const uint8_t> data) const;
     void write(long fd) const;
@@ -80,11 +75,9 @@ class XLinkStream {
     void read(std::vector<std::uint8_t>& data, long& fd) const;
     void read(std::vector<std::uint8_t>& data, XLinkTimespec& timestampReceived) const;
     void read(std::vector<std::uint8_t>& data, long& fd, XLinkTimespec& timestampReceived) const;
-    // split write helper
     void writeSplit(const void* data, std::size_t size, std::size_t split) const;
     StreamPacketDesc readMove() const;
 
-    // Timeout
     bool write(const void* data, std::size_t size, std::chrono::milliseconds timeout) const;
     bool write(const std::uint8_t* data, std::size_t size, std::chrono::milliseconds timeout) const;
     bool write(const std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout) const;

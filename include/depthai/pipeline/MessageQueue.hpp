@@ -1,18 +1,15 @@
 #pragma once
 
-// std
 #include <condition_variable>
 #include <memory>
 #include <utility>
 #include <vector>
 
-// project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/utility/LockingQueue.hpp"
 #include "depthai/utility/PipelineEventDispatcherInterface.hpp"
 #include "depthai/utility/WaitAnyNotifier.hpp"
 
-// shared
 namespace dai {
 
 /**
@@ -49,7 +46,6 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     utility::PipelineEventDispatcherInterface* pipelineEventDispatcher = nullptr;
 
    public:
-    // DataOutputQueue constructor
     explicit MessageQueue(unsigned int maxSize = 16, bool blocking = true);
     explicit MessageQueue(std::string name,
                           unsigned int maxSize = 16,
@@ -381,7 +377,6 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
             std::shared_ptr<ADatatype> val = nullptr;
             if(!this->queue.tryWaitAndPop(val, timeout)) {
                 hasTimedout = true;
-                // Check again after the timeout
                 if(this->queue.isDestroyed()) {
                     throw QueueException(CLOSED_QUEUE_MESSAGE);
                 }
@@ -427,11 +422,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         }
         auto getInput = [this]() -> std::vector<std::shared_ptr<T>> {
             std::vector<std::shared_ptr<T>> messages;
-            this->queue.consumeAll([&messages](std::shared_ptr<ADatatype>& msg) {
-                // dynamic pointer cast may return nullptr
-                // in which case that message in vector will be nullptr
-                messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg)));
-            });
+            this->queue.consumeAll([&messages](std::shared_ptr<ADatatype>& msg) { messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg))); });
             return messages;
         };
         if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
@@ -466,11 +457,8 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     std::vector<std::shared_ptr<T>> getAll() {
         std::vector<std::shared_ptr<T>> messages;
         auto getInput = [this, &messages]() {
-            bool notDestructed = this->queue.waitAndConsumeAll([&messages](std::shared_ptr<ADatatype>& msg) {
-                // dynamic pointer cast may return nullptr
-                // in which case that message in vector will be nullptr
-                messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg)));
-            });
+            bool notDestructed = this->queue.waitAndConsumeAll(
+                [&messages](std::shared_ptr<ADatatype>& msg) { messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg))); });
             if(!notDestructed) {
                 throw QueueException(CLOSED_QUEUE_MESSAGE);
             }
@@ -510,12 +498,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         auto getInput = [&, this]() -> std::vector<std::shared_ptr<T>> {
             std::vector<std::shared_ptr<T>> messages;
             hasTimedout = !this->queue.waitAndConsumeAll(
-                [&messages](std::shared_ptr<ADatatype>& msg) {
-                    // dynamic pointer cast may return nullptr
-                    // in which case that message in vector will be nullptr
-                    messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg)));
-                },
-                timeout);
+                [&messages](std::shared_ptr<ADatatype>& msg) { messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg))); }, timeout);
 
             return messages;
         };

@@ -11,13 +11,10 @@ void bind_beta_pptextdetectionparser(pybind11::module& m, void* pCallstack) {
     py::class_<beta::PPTextDetectionParserProperties> ppTextDetectionParserProperties(betaModule, "PPTextDetectionParserProperties");
     auto ppTextDetectionParser = ADD_BETA_NODE_DERIVED(PPTextDetectionParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     ppTextDetectionParserProperties.def_readwrite("initialConfig", &beta::PPTextDetectionParserProperties::initialConfig)
         .def_readwrite("outputLayerName", &beta::PPTextDetectionParserProperties::outputLayerName);

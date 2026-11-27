@@ -61,9 +61,6 @@ void Align::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
-/**
- * Check if the node is set to run on host
- */
 bool Align::runOnHost() const {
     return runOnHostVar;
 }
@@ -450,7 +447,6 @@ std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg,
         }
     };
 
-    // warp1: undistort + rectify in the input camera frame
     auto rectified = makeRemapTarget(inputImg, rectifiedWidth, rectifiedHeight, frameSize);
     remapFrame(inputImg, *rectified, state.mapX1, state.mapY1);
 
@@ -461,7 +457,6 @@ std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg,
         warp2Input = shifted;
     }
 
-    // warp2: rectify into the align camera frame
     auto alignedImg = makeRemapTarget(inputImg, state.alignWidth, state.alignHeight, outFrameSize);
     remapFrame(*warp2Input, *alignedImg, state.mapX2, state.mapY2);
 
@@ -551,8 +546,7 @@ ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTran
         const auto bounds = detail::rectifiedBounds(
             state.inputSize, inputIntrinsicsMat, inputDistortion, rectificationR1, {alignWidth, alignHeight}, alignIntrinsicsMat, backRotation.t(), &logger);
         auto meshSize = bounds.size();
-        // The same maps can be reused when the input format changes to a chroma-subsampled format.
-        meshSize.width += meshSize.width % 2;
+        meshSize.width += meshSize.width % 2;  // Even size: the maps stay valid when the input changes to a chroma-subsampled format
         meshSize.height += meshSize.height % 2;
         auto targetCamMatrix = inputIntrinsicsMat.clone();
         targetCamMatrix.at<float>(0, 2) -= bounds.x;
@@ -613,8 +607,7 @@ std::shared_ptr<Buffer> buildAlignedOutputMessage(const std::shared_ptr<Buffer>&
         auto imgDetectionsInput = castInput<ImgDetections>(inputMsg);
         std::optional<ImgFrame> segMask = imgDetectionsInput->getSegmentationMask();
 
-        // With a mask the detections have to share the undistorted frame of the mask pixels, otherwise the two would not overlap.
-        auto alignedImg = transformMessage<ImgDetections>(inputMsg, segMask ? undistortedTransform : targetTransform);
+        auto alignedImg = transformMessage<ImgDetections>(inputMsg, segMask ? undistortedTransform : targetTransform);  // Must overlap the undistorted mask
 
         if(segMask) {
             warnAboutDistortion();
@@ -672,9 +665,8 @@ std::shared_ptr<Buffer> buildAlignedOutputMessage(const std::shared_ptr<Buffer>&
         return transformMessage<PointCloudData>(inputMsg, targetTransform);
     }
 
-    if(inputType == DatatypeEnum::Transformable) {  // custom python messages
-        // The Transformable tag covers the whole subtree of custom types, so this cast stays runtime-checked.
-        auto transformableInput = std::dynamic_pointer_cast<TransformableBuffer>(inputMsg);
+    if(inputType == DatatypeEnum::Transformable) {                                           // custom python messages
+        auto transformableInput = std::dynamic_pointer_cast<TransformableBuffer>(inputMsg);  // Runtime-checked: the tag covers every custom subtype
         if(transformableInput) {
             return transformableInput->transformTo(targetTransform);
         }

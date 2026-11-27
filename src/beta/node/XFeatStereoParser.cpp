@@ -28,7 +28,6 @@ XFeatStereoParser::Properties& XFeatStereoParser::getProperties() {
 }
 
 NNArchive XFeatStereoParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -101,11 +100,6 @@ void XFeatStereoParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
 
     setConfig(xfeatHead);
 
-    // When the head metadata carries no input size, it is derived from the model input's
-    // declared shape and layout. All known XFeat archives carry the input_size metadata key,
-    // which then takes precedence like in the source parser; a head alone carries no model
-    // input metadata, so this fallback is only possible on the full-archive path. The stereo
-    // model declares one input; both sources run the same model and share the input size.
     if(!utilities::XFeatUtils::readSizeParam(xfeatHead.metadata.extraParams, "input_size").has_value()) {
         const auto modelInputSize = utilities::XFeatUtils::getModelInputSize(configV1.model.inputs, NAME);
         setInputSize(modelInputSize.first, modelInputSize.second);
@@ -117,10 +111,6 @@ void XFeatStereoParser::setConfig(const dai::nn_archive::v1::Head& head) {
 
     const std::size_t numOutputs = head.outputs.has_value() ? head.outputs->size() : 0;
     DAI_CHECK_V(numOutputs == 3, "Only three output layers supported for XFeat, got {} layers.", numOutputs);
-    // The layers are assigned by substring: a layer whose name contains "feats" is the feature
-    // map layer, otherwise one containing "keypoints" is the keypoint logit layer and otherwise
-    // one containing "heatmaps" is the reliability heat map layer, mirroring the source parser.
-    // A layer matching none keeps the corresponding configured name.
     for(const auto& layer : *head.outputs) {
         if(layer.find("feats") != std::string::npos) {
             setOutputLayerFeats(layer);
@@ -131,9 +121,6 @@ void XFeatStereoParser::setConfig(const dai::nn_archive::v1::Head& head) {
         }
     }
 
-    // The XFeat-specific keys without typed metadata fields live in the head metadata extra
-    // parameters. Missing keys keep the already configured values, mirroring the source parser
-    // behavior.
     const auto& extraParams = head.metadata.extraParams;
 
     if(const auto headOriginalSize = utilities::XFeatUtils::readSizeParam(extraParams, "original_size")) {
@@ -217,16 +204,12 @@ void XFeatStereoParser::run() {
     DAI_CHECK(!properties.outputLayerKeypoints.empty(), "Output layer containing keypoints must be specified!");
     DAI_CHECK(!properties.outputLayerHeatmaps.empty(), "Output layer containing heatmaps must be specified!");
 
-    // The resize rates are computed once before the loop and shared by both sources, like the
-    // source run().
     const double resizeRateW = static_cast<double>(properties.originalSize->first) / static_cast<double>(properties.inputSize.first);
     const double resizeRateH = static_cast<double>(properties.originalSize->second) / static_cast<double>(properties.inputSize.second);
 
     while(mainLoop()) {
         auto tAbsoluteBeginning = std::chrono::steady_clock::now();
-        // One reference message followed by one target message per iteration; two sequential
-        // blocking reads without further synchronization, like the source run().
-        std::shared_ptr<dai::NNData> referenceOutput;
+        std::shared_ptr<dai::NNData> referenceOutput;  // Two sequential blocking reads without synchronization, like the source run()
         std::shared_ptr<dai::NNData> targetOutput;
         {
             auto blockEvent = this->inputBlockEvent();
@@ -256,13 +239,11 @@ void XFeatStereoParser::run() {
         auto tGotInput = std::chrono::steady_clock::now();
         const XFeatStereoParserConfig configSnapshot = config;
 
-        // Extract
         auto referenceTensors = utilities::XFeatUtils::extractXFeatTensors(
             *referenceOutput, properties.outputLayerFeats, properties.outputLayerKeypoints, properties.outputLayerHeatmaps);
         auto targetTensors = utilities::XFeatUtils::extractXFeatTensors(
             *targetOutput, properties.outputLayerFeats, properties.outputLayerKeypoints, properties.outputLayerHeatmaps);
 
-        // Compute
         const auto referenceResult = utilities::XFeatUtils::detectAndCompute(referenceTensors.feats,
                                                                              referenceTensors.keypoints,
                                                                              referenceTensors.heatmaps,
@@ -280,9 +261,6 @@ void XFeatStereoParser::run() {
                                                                           properties.inputSize.second,
                                                                           configSnapshot.maxKeypoints);
 
-        // Emit. The reference frame is checked first, like the source compute(); an empty
-        // message carries the missing frame's timestamps and the reference frame's sequence
-        // number.
         if(!referenceResult.has_value()) {
             auto message = std::make_shared<dai::TrackedFeatures>();
             message->setBufferMetadataFrom(referenceOutput);
@@ -313,8 +291,6 @@ void XFeatStereoParser::run() {
 
         const auto matchedPoints = utilities::XFeatUtils::matchResults(*referenceResult, *targetResult);
         auto message = utilities::XFeatUtils::createTrackedFeaturesMessage(matchedPoints);
-        // The matched message carries the target frame's timestamps and the reference frame's
-        // sequence number, like the source emit().
         message->setBufferMetadataFrom(targetOutput);
         message->setSequenceNum(referenceOutput->getSequenceNum());
         logger->debug("XFeatStereoParser created message with {} tracked features", message->trackedFeatures.size());

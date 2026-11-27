@@ -11,11 +11,7 @@ namespace {
 
 constexpr float kTiny = 1e-8f;
 
-/**
- * The panorama surfaces have no normalized image plane, so a point on them can neither be distorted nor undistorted, whatever the coefficients. Silently
- * treating them as a pinhole would misplace every projection.
- */
-std::invalid_argument unsupportedPanoramaModel(dai::CameraModel model) {
+std::invalid_argument unsupportedPanoramaModel(dai::CameraModel model) {  // Panorama surfaces have no normalized image plane: they cannot be (un)distorted
     return std::invalid_argument(std::string("Unsupported camera model for pinhole projection: ") + std::string(dai::toString(model)));
 }
 
@@ -185,16 +181,7 @@ std::array<float, 3> distortPoint(std::array<float, 3> point, dai::CameraModel m
     throw std::invalid_argument("Unsupported distortion model.");
 }
 
-/////////////////////////////////////////// Undistortions ///////////////////////////////////////////
-
-/**
- * Based on the distortion inversion approach used in OpenCV's
- * undistortPointsInternal implementation:
- * https://github.com/opencv/opencv/blob/4.x/modules/calib3d/src/undistort.dispatch.cpp
- *
- * Reimplemented and adapted for this project.
- */
-std::array<float, 3> undistortPerspective(std::array<float, 3> point, const std::vector<float>& coeffs) {
+std::array<float, 3> undistortPerspective(std::array<float, 3> point, const std::vector<float>& coeffs) {  // Adapted from OpenCV undistortPointsInternal
     const float k1 = coeffAt(coeffs, 0);
     const float k2 = coeffAt(coeffs, 1);
     const float p1 = coeffAt(coeffs, 2);
@@ -264,11 +251,6 @@ std::array<float, 3> undistortPerspective(std::array<float, 3> point, const std:
         float xd = invProj * tilted[0];
         float yd = invProj * tilted[1];
 
-        // opencv project back to pixel coordinates and calculate error in pixel space
-        //  double x_proj = xd * fx + cx;
-        //  double y_proj = yd * fy + cy;
-        //  error = sqrt(pow(x_proj - u, 2) + pow(y_proj - v, 2));
-
         error = std::hypot(xd - u, yd - v);
 
         if(error > prevError) {
@@ -295,8 +277,6 @@ std::array<float, 3> undistortFisheye(std::array<float, 3> point, const std::vec
     const float k3 = coeffAt(coeffs, 2);
     const float k4 = coeffAt(coeffs, 3);
 
-    // Solve theta_d = theta * (1 + k1*theta^2 + k2*theta^4 + k3*theta^6 + k4*theta^8)
-    // with Newton iterations, then map back via r = tan(theta).
     float theta = rd;
     for(int i = 0; i < 40; ++i) {
         const float th2 = theta * theta;
@@ -333,8 +313,6 @@ std::array<float, 3> undistortPoint(std::array<float, 3> point, dai::CameraModel
     }
     throw std::invalid_argument("Unsupported distortion model");
 }
-
-/////////////////////////////////////////// general ////////////////////////////////////////////
 
 inline float coeffAt(const std::vector<float>& coeffs, size_t idx) {
     return idx < coeffs.size() ? coeffs[idx] : 0.0f;

@@ -14,13 +14,10 @@ void bind_beta_map2d(pybind11::module& m, void* pCallstack) {
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
     py::class_<beta::Map2D, Py<beta::Map2D>, Buffer, Transformable, py::smart_holder> map2D(betaModule, "Map2D", DOC(dai, beta, Map2D));
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     map2D.def(py::init<>())
         .def("__repr__", &beta::Map2D::str)

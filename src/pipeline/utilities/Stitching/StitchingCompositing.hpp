@@ -20,9 +20,6 @@ namespace utilities {
 
 using node::Stitching;
 
-/**
- * OpenCV stitching defaults shared by the panorama and planar projection implementations.
- */
 namespace stitching {
 
 constexpr double REGISTRATION_RESOLUTION = 0.6;
@@ -48,12 +45,7 @@ inline cv::Ptr<cv::detail::BundleAdjusterBase> createBundleAdjuster() {
     return cv::makePtr<cv::detail::BundleAdjusterRay>();
 }
 
-/**
- * OpenCV rotation warper rendering onto the projection surface of `model`. A dai::CameraModel combines a projection surface with a distortion model
- * (see CameraModel.hpp); the warper only realizes the surface, the panorama it produces is undistorted. Fisheye and RadialDivision differ from
- * Perspective only in the distortion of the pinhole plane, so there is no surface to warp onto and they are rejected.
- */
-inline cv::Ptr<cv::WarperCreator> createWarper(CameraModel model) {
+inline cv::Ptr<cv::WarperCreator> createWarper(CameraModel model) {  // Fisheye/RadialDivision have no projection surface (only pinhole distortion)
     switch(model) {
         case CameraModel::Equirectangular:
             return cv::makePtr<cv::SphericalWarper>();
@@ -86,10 +78,7 @@ inline cv::Ptr<cv::detail::SeamFinder> createSeamFinder(Stitching::SeamFinder fi
     return cv::makePtr<cv::detail::GraphCutSeamFinder>(cv::detail::GraphCutSeamFinderBase::COST_COLOR);
 }
 
-/**
- * @param panoSizeHint Size the blending width is derived from, the way OpenCV's stitching_detailed sample does it
- */
-inline cv::Ptr<cv::detail::Blender> createBlender(const cv::Size& panoSizeHint) {
+inline cv::Ptr<cv::detail::Blender> createBlender(const cv::Size& panoSizeHint) {  // Blend width as in OpenCV stitching_detailed sample
     const float blendWidth = std::sqrt(static_cast<float>(panoSizeHint.area())) * BLEND_STRENGTH / 100.0f;
     if(blendWidth < 1.0f) {
         return cv::detail::Blender::createDefault(cv::detail::Blender::NO, false);

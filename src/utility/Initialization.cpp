@@ -2,10 +2,8 @@
 
 #include <spdlog/async.h>
 
-// std
 #include <memory>
 
-// project
 #include "build/version.hpp"
 #include "depthai/config/config.hpp"
 #include "utility/Environment.hpp"
@@ -14,15 +12,13 @@
 #ifndef DEPTHAI_DEVICE_MANAGER_ONLY
     #include "utility/Telemetry.hpp"
 #endif  // DEPTHAI_DEVICE_MANAGER_ONLY
-#include "utility/XLinkGlobalProfilingLogger.hpp"
-
-// libraries
 #include "XLink/XLink.h"
 #include "spdlog/cfg/env.h"
 #include "spdlog/cfg/helpers.h"
 #include "spdlog/details/os.h"
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
+#include "utility/XLinkGlobalProfilingLogger.hpp"
 extern "C" {
 #include "XLink/XLinkLog.h"
 }
@@ -31,26 +27,10 @@ extern "C" {
     #include "backward.hpp"
 #endif
 
-// For easier access to dai namespaced symbols
 namespace dai {
 
-// Anonymous namespace to hide 'Preloader' symbol and variable as its not needed to be visible to other compilation units
-namespace {
+namespace {}  // namespace
 
-// Doing early static initialization hits this stage faster than some libraries initialize their global static members
-
-// Preloader uses static global object constructor (works only for shared libraries)
-// to execute some code upon final executable launch  or library import
-// Preloader
-// struct Preloader {
-//     Preloader(){
-//         initialize();
-//     }
-// } preloader;
-
-}  // namespace
-
-// Backward library stacktrace handling
 #ifdef DEPTHAI_ENABLE_BACKWARD
 static std::unique_ptr<backward::SignalHandling> signalHandler;
 #endif
@@ -68,13 +48,10 @@ bool initialize(const std::string& additionalInfo, bool installSignalHandler, vo
 }
 
 bool initialize(const char* additionalInfo, bool installSignalHandler, void* javavm) {
-    // singleton for checking whether depthai was already initialized
     static const bool initialized = [&]() {
-        // Initialize logging
         Logging::getInstance();
 
 #ifdef DEPTHAI_ENABLE_BACKWARD
-        // install backward if specified
         auto envSignalHandler = utility::getEnvAs<std::string>("DEPTHAI_INSTALL_SIGNAL_HANDLER", "");
         if(installSignalHandler && envSignalHandler != "0") {
             signalHandler = std::make_unique<backward::SignalHandling>();
@@ -83,16 +60,13 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
         (void)installSignalHandler;
 #endif
 
-        // Read JavaVM pointer from env if present
         {
             auto javavmEnvStr = utility::getEnvAs<std::string>("DEPTHAI_LIBUSB_ANDROID_JAVAVM", "");
             if(javavm == nullptr && !javavmEnvStr.empty()) {
-                // Read the uintptr_t value from the decimal string
                 sscanf(javavmEnvStr.c_str(), "%" SCNuPTR, reinterpret_cast<uintptr_t*>(&javavm));
             }
         }
 
-        // Print core commit and build datetime
         if(additionalInfo != nullptr && additionalInfo[0] != '\0') {
             logger::debug("{}", additionalInfo);
         }
@@ -103,12 +77,8 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
                       build::BUILD_DATETIME,
                       build::HAVE_LIBUSB_SUPPORT);
 
-        // Executed at library load time
+        Resources::getInstance();  // getInstance() starts the lazy loading of the resources
 
-        // Preload Resources (getting instance causes some internal lazy loading to start)
-        Resources::getInstance();
-
-        // Static global handler
         static XLinkGlobalHandler_t xlinkGlobalHandler = {};
         xlinkGlobalHandler.protocol = X_LINK_USB_VSC;
         xlinkGlobalHandler.options = javavm;
@@ -124,14 +94,12 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
             throw std::runtime_error(errorMsg);
         }
 
-        // Check that USB protocol is available, IFF libusb is enabled
 #ifdef DEPTHAI_ENABLE_LIBUSB
         if(!XLinkIsProtocolInitialized(X_LINK_USB_VSC)) {
             logger::warn("USB protocol not available - {}", ERROR_MSG_USB_TIP);
         }
 #endif
 
-        // Enable Global XLink profiling
         XLinkProfStart();
         auto profilingEnvLevel = utility::getEnvAs<std::string>("DEPTHAI_PROFILING", "");
         if(profilingEnvLevel == "1") {
@@ -153,7 +121,6 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
         } else if(xlinkEnvLevel == "off") {
             mvLogDefaultLevelSet(MVLOG_LAST);
         } else {
-            // Suppress XLink related errors by default
             mvLogDefaultLevelSet(MVLOG_FATAL);
         }
 

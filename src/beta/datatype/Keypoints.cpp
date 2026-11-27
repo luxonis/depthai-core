@@ -11,8 +11,7 @@ namespace beta {
 
 namespace {
 
-// Visualization constants matching the source implementation in depthai-nodes.
-const Color KEYPOINT_COLOR{0.0f, 1.0f, 1.0f, 1.0f};
+const Color KEYPOINT_COLOR{0.0f, 1.0f, 1.0f, 1.0f};  // Match the depthai-nodes implementation
 const Color PRIMARY_COLOR{21.0f / 255.0f, 127.0f / 255.0f, 88.0f / 255.0f, 1.0f};
 constexpr float KEYPOINT_THICKNESS = 1.0f;
 constexpr float EDGE_THICKNESS = 1.0f;
@@ -69,7 +68,6 @@ Keypoints Keypoints::transformTo(const ImgTransformation& target) const {
 dai::VisualizeType Keypoints::getVisualizationMessage() const {
     ImgAnnotation annotation;
 
-    // Keypoints are drawn as a single POINTS annotation.
     PointsAnnotation pointsAnnotation;
     pointsAnnotation.type = PointsAnnotationType::POINTS;
     pointsAnnotation.points = keypointsList.getPoints2f();
@@ -77,7 +75,6 @@ dai::VisualizeType Keypoints::getVisualizationMessage() const {
     pointsAnnotation.thickness = KEYPOINT_THICKNESS;
     annotation.points.push_back(std::move(pointsAnnotation));
 
-    // Each skeleton edge is drawn as a two-point line strip.
     const auto keypoints = keypointsList.getKeypoints();
     for(const auto& edge : keypointsList.getEdges()) {
         const auto& pt1 = keypoints[edge[0]].imageCoordinates;

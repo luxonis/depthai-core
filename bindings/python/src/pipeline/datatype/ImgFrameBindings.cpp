@@ -5,19 +5,16 @@
 #include "DatatypeBindings.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "pipeline/CommonBindings.hpp"
-// depthai
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/utility/ColorizeDepthFrame.hpp"
 #include "ndarray_converter.h"
-// pybind
 #include <pybind11/cast.h>
 #include <pybind11/chrono.h>
 
 void bind_imgframe(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // py::class_<RawImgFrame, RawBuffer, std::shared_ptr<RawImgFrame>> rawImgFrame(m, "RawImgFrame", DOC(dai, RawImgFrame));
     py::class_<ImgFrame, Py<ImgFrame>, Buffer, ProtoSerializable, py::smart_holder> imgFrame(m, "ImgFrame", DOC(dai, ImgFrame));
     py::enum_<ImgFrame::Type> imgFrameType(imgFrame, "Type");
     py::enum_<ImgFrame::Fsync> imgFrameFsync(imgFrame, "Fsync");
@@ -25,48 +22,10 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
     py::class_<ImgFrame::Specs> imgFrameSpecs(imgFrame, "Specs", DOC(dai, ImgFrame, Specs));
     py::class_<ImgTransformation> imgTransformation(m, "ImgTransformation", DOC(dai, ImgTransformation));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-
-    // Metadata / raw
-
-    // rawImgFrame
-    //     .def(py::init<>())
-    //     .def_readwrite("fb", &RawImgFrame::fb)
-    //     .def_readwrite("category", &RawImgFrame::category)
-    //     .def_readwrite("instanceNum", &RawImgFrame::instanceNum)
-    //     .def_readwrite("sequenceNum", &RawImgFrame::sequenceNum)
-    //     .def_property("ts",
-    //         [](const RawImgFrame& o){
-    //             double ts = o.ts.sec + o.ts.nsec / 1000000000.0;
-    //             return ts;
-    //         },
-    //         [](RawImgFrame& o, double ts){
-    //             o.ts.sec = ts;
-    //             o.ts.nsec = (ts - o.ts.sec) * 1000000000.0;
-    //         }
-    //     )
-    //     .def_property("tsDevice",
-    //         [](const RawImgFrame& o){
-    //             double ts = o.tsDevice.sec + o.tsDevice.nsec / 1000000000.0;
-    //             return ts;
-    //         },
-    //         [](RawImgFrame& o, double ts){
-    //             o.tsDevice.sec = ts;
-    //             o.tsDevice.nsec = (ts - o.tsDevice.sec) * 1000000000.0;
-    //         }
-    //     )
-    //     ;
 
     imgFrameType.value("YUV422i", ImgFrame::Type::YUV422i)
         .value("YUV444p", ImgFrame::Type::YUV444p)
@@ -250,7 +209,6 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
 
     // TODO add RawImgFrame::CameraSettings
 
-    // Message
     imgFrame.def(py::init<>())
         .def(py::init<size_t>())
         .def_readwrite("cam", &dai::ImgFrame::cam, DOC(dai, ImgFrame, cam))
@@ -303,9 +261,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def_static("toPlanar", &dai::ImgFrame::toPlanar, py::arg("type"), DOC(dai, ImgFrame, toPlanar))
         .def_static("toInterleaved", &dai::ImgFrame::toInterleaved, py::arg("type"), DOC(dai, ImgFrame, toInterleaved));
 
-    imgFrame
-        .def("__repr__", &ImgFrame::str)
-        // getters
+    imgFrame.def("__repr__", &ImgFrame::str)
         .def("getTimestamp", py::overload_cast<>(&ImgFrame::Buffer::getTimestamp, py::const_), DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", py::overload_cast<>(&ImgFrame::Buffer::getTimestampDevice, py::const_), DOC(dai, Buffer, getTimestampDevice))
         .def("getTimestampSystem", py::overload_cast<>(&ImgFrame::Buffer::getTimestampSystem, py::const_), DOC(dai, Buffer, getTimestampSystem))
@@ -345,9 +301,10 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("validateTransformations", &ImgFrame::validateTransformations, DOC(dai, ImgFrame, validateTransformations))
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-        // The cast function itself does a copy, so we can avoid two copies by always not copying
-        .def(
-            "getFrame", [](ImgFrame& self) { return self.getFrame(false); }, DOC(dai, ImgFrame, getFrame))
+        .def(  // getFrame(false): the cast already copies, so this avoids a second copy
+            "getFrame",
+            [](ImgFrame& self) { return self.getFrame(false); },
+            DOC(dai, ImgFrame, getFrame))
         .def("setFrame", &ImgFrame::setFrame, py::arg("array"), DOC(dai, ImgFrame, setFrame))
         .def(
             "getCvFrame", [](ImgFrame& self) { return self.getCvFrame(&g_numpyAllocator); }, DOC(dai, ImgFrame, getCvFrame))
@@ -381,7 +338,6 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
             py::arg("type"),
             DOC(dai, ImgFrame, setCvFrame))
 #endif
-        // setters
         .def("setInstanceNum", &ImgFrame::setInstanceNum, py::arg("instance"), DOC(dai, ImgFrame, setInstanceNum))
         .def("setCategory", &ImgFrame::setCategory, py::arg("category"), DOC(dai, ImgFrame, setCategory))
         .def("setWidth", &ImgFrame::setWidth, py::arg("width"), DOC(dai, ImgFrame, setWidth))
@@ -397,12 +353,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
              py::arg("sizer"),
              DOC(dai, ImgFrame, setSize, 2))
         .def("setType", &ImgFrame::setType, py::arg("type"), DOC(dai, ImgFrame, setType))
-        .def("setTransformation", &ImgFrame::setTransformation, py::arg("transformation"), DOC(dai, ImgFrame, setTransformation))
-        // .def("set", &ImgFrame::set, py::arg("type"), DOC(dai, ImgFrame, set))
-        ;
-    // add aliases dai.ImgFrame.Type and dai.ImgFrame.Specs
-    // m.attr("ImgFrame").attr("Type") = m.attr("RawImgFrame").attr("Type");
-    // m.attr("ImgFrame").attr("Specs") = m.attr("RawImgFrame").attr("Specs");
+        .def("setTransformation", &ImgFrame::setTransformation, py::arg("transformation"), DOC(dai, ImgFrame, setTransformation));
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     auto utility = m.def_submodule("utility", "Utility functions");

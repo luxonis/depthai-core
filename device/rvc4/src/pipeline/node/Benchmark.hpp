@@ -1,6 +1,5 @@
 #pragma once
 
-// libraries
 #include "depthai/pipeline/node/BenchmarkIn.hpp"
 #include "depthai/pipeline/node/BenchmarkOut.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
@@ -14,9 +13,7 @@ class BenchmarkOut : public dai::node::BenchmarkOut {
 
     constexpr static const char* NAME = node::BenchmarkOut::NAME;
     BenchmarkOut() : BenchmarkOut(std::make_unique<dai::node::BenchmarkOut::Properties>()) {}
-    BenchmarkOut(std::unique_ptr<Properties> props) : dai::node::BenchmarkOut(std::move(props)) {
-        // override that this is a host node
-    }
+    BenchmarkOut(std::unique_ptr<Properties> props) : dai::node::BenchmarkOut(std::move(props)) {}
     bool runOnHost() const override {
         return true;
     }
@@ -28,9 +25,7 @@ class BenchmarkIn : public dai::node::BenchmarkIn {
 
     constexpr static const char* NAME = node::BenchmarkIn::NAME;
     BenchmarkIn() : BenchmarkIn(std::make_unique<dai::node::BenchmarkIn::Properties>()) {}
-    BenchmarkIn(std::unique_ptr<Properties> props) : dai::node::BenchmarkIn(std::move(props)) {
-        // override that this is a host node
-    }
+    BenchmarkIn(std::unique_ptr<Properties> props) : dai::node::BenchmarkIn(std::move(props)) {}
     bool runOnHost() const override {
         return true;
     }

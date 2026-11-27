@@ -40,8 +40,6 @@
 namespace dai {
 namespace node {
 
-// ── Impl: apply / get methods ──
-
 void PointCloud::Impl::setLogger(const std::shared_ptr<::spdlog::logger>& log) {
     logger = log;
 }
@@ -191,14 +189,12 @@ void PointCloud::Impl::compactValidPoints(std::vector<PointT>& points) {
 template void PointCloud::Impl::compactValidPoints(std::vector<Point3f>& points);
 template void PointCloud::Impl::compactValidPoints(std::vector<Point3fRGBA>& points);
 
-// Explicit template instantiations
 template void PointCloud::Impl::applyTransformation(std::vector<Point3f>& points);
 template void PointCloud::Impl::applyTransformation(std::vector<Point3fRGBA>& points);
 
 template <typename PointT>
 std::vector<PointT> PointCloud::Impl::filterValidPoints(const std::vector<PointT>& densePoints) {
     std::vector<PointT> sparsePoints;
-    // Reserve half capacity as a heuristic - typically ~50% of depth pixels have valid (z > 0) data
     sparsePoints.reserve(densePoints.size() / 2);
 
     for(const auto& p : densePoints) {
@@ -210,11 +206,8 @@ std::vector<PointT> PointCloud::Impl::filterValidPoints(const std::vector<PointT
     return sparsePoints;
 }
 
-// Explicit template instantiations
 template std::vector<Point3f> PointCloud::Impl::filterValidPoints(const std::vector<Point3f>& densePoints);
 template std::vector<Point3fRGBA> PointCloud::Impl::filterValidPoints(const std::vector<Point3fRGBA>& densePoints);
-
-// ── Impl: CPU / GPU implementations ──
 
 void PointCloud::Impl::calcPointsChunkDense(const uint8_t* depthData, std::vector<Point3f>& points, unsigned int startRow, unsigned int endRow) {
     const float scale = scaleFactor;
@@ -326,10 +319,7 @@ void PointCloud::Impl::computePointCloudDenseColoredCPUMT(const uint8_t* depthDa
 }
 
 template <typename PointT>
-void PointCloud::Impl::transformPointsCPU(std::vector<PointT>& points) {
-    // Both points and extrinsics translations are in the same unit (target unit)
-    // No conversion needed - just apply the transformation directly
-
+void PointCloud::Impl::transformPointsCPU(std::vector<PointT>& points) {  // Points and extrinsics are both in the target unit: no conversion
     if(logger) {
         logger->debug("Applying transformation to {} points", points.size());
     }
@@ -337,7 +327,6 @@ void PointCloud::Impl::transformPointsCPU(std::vector<PointT>& points) {
     size_t transformedCount = 0;
     for(auto& p : points) {
         if(p.z > 0.0f) {
-            // Standard 4x4 transformation: R*p + t
             float x = extrinsics[0][0] * p.x + extrinsics[0][1] * p.y + extrinsics[0][2] * p.z + extrinsics[0][3];
             float y = extrinsics[1][0] * p.x + extrinsics[1][1] * p.y + extrinsics[1][2] * p.z + extrinsics[1][3];
             float z = extrinsics[2][0] * p.x + extrinsics[2][1] * p.y + extrinsics[2][2] * p.z + extrinsics[2][3];
@@ -354,7 +343,6 @@ void PointCloud::Impl::transformPointsCPU(std::vector<PointT>& points) {
     }
 }
 
-// Explicit template instantiations
 template void PointCloud::Impl::transformPointsCPU(std::vector<Point3f>& points);
 template void PointCloud::Impl::transformPointsCPU(std::vector<Point3fRGBA>& points);
 
@@ -382,7 +370,6 @@ internal::PointCloudGpuBackend::Geometry PointCloud::Impl::gpuGeometry() const {
 
 void PointCloud::Impl::initializeGPU(uint32_t device) {
 #ifdef DEPTHAI_ENABLE_KOMPUTE
-    // Reset any stale Kompute state before creating a new manager
     algo.reset();
     depthTensor.reset();
     intrinsicsTensor.reset();
@@ -450,17 +437,12 @@ void PointCloud::Impl::computePointCloudDenseGPU(const uint8_t* depthData, std::
 #endif
 }
 
-// ── Impl: intrinsics / extrinsics setters ──
-
 void PointCloud::Impl::setLengthUnit(dai::LengthUnit lengthUnit) {
-    // Check if unit actually changed
     bool unitChanged = (targetLengthUnit != lengthUnit);
 
     targetLengthUnit = lengthUnit;
     lengthUnitMultiplier = getLengthUnitMultiplier(lengthUnit);
 
-    // Depth values from sensor are in millimeters (uint16_t raw values)
-    // scaleFactor converts from mm to target unit
     scaleFactor = lengthUnitMultiplier / getLengthUnitMultiplier(LengthUnit::MILLIMETER);
 
     if(logger) {
@@ -481,7 +463,6 @@ void PointCloud::Impl::useGPU(uint32_t device, std::shared_ptr<internal::PointCl
     gpuDistortionFallbackWarned = false;
     gpuBackend = std::move(backend);
     if(gpuBackend) {
-        // Platform backend (e.g. OpenCL on an RVC4 device) takes precedence over the built-in path
         computeMethod = ComputeMethod::GPU;
         return;
     }
@@ -566,15 +547,11 @@ void PointCloud::Impl::setExtrinsics(const std::vector<std::vector<float>>& tran
     }
 }
 
-// PointCloud main class implementations
-
-// Regular construction (also without a device, e.g. in a host-only pipeline): the Sync subnode is created here.
 PointCloud::PointCloud()
     : DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudProperties>(),
       initialConfig(std::make_shared<PointCloudConfig>(properties.initialConfig)),
       pimplPointCloud() {}
 
-// Construction from serialized properties (configure mode): subnodes come from the pipeline schema.
 PointCloud::PointCloud(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudProperties>(std::move(props)),
       initialConfig(std::make_shared<PointCloudConfig>(properties.initialConfig)),
@@ -591,7 +568,6 @@ std::string makeStreamKey(const char* base, const std::string& name) {
     return std::string(base) + STREAM_KEY_SEPARATOR + name;
 }
 
-// Returns the stream name when `key` is a depth stream key ("depth" -> "", "depth/<name>" -> "<name>")
 std::optional<std::string> streamNameFromDepthKey(const std::string& key) {
     const std::string base = PointCloud::depthInputName;
     if(key == base) return std::string();
@@ -635,8 +611,7 @@ Node::Input& PointCloud::getColorInput(const std::string& name) {
 }
 
 std::vector<std::string> PointCloud::getDepthInputNames() const {
-    // Sorted so that the default stream ("depth") comes before the named ones ("depth/<name>")
-    std::vector<std::string> names;
+    std::vector<std::string> names;  // Sorted: the default stream ("depth") comes before the named ones
     for(const auto& entry : syncInputs) {
         if(auto name = streamNameFromDepthKey(entry.first.second)) {
             names.push_back(*name);
@@ -649,10 +624,7 @@ std::vector<std::string> PointCloud::getDepthInputNames() const {
 void PointCloud::buildStage1() {
     DeviceNodeCRTP::buildStage1();
 
-    // Depth streams from several devices can only be paired with clocks that are comparable
-    // across devices. With the default timestamp source that means the Sync subnode has to run
-    // on the host (Sync::buildStage1 rejects the device placement otherwise).
-    std::set<const Device*> sourceDevices;
+    std::set<const Device*> sourceDevices;  // Several devices need comparable clocks: with DEFAULT timestamps Sync runs on host
     for(const auto& entry : syncInputs.getSourceDevices()) {
         if(entry.second != nullptr) sourceDevices.insert(entry.second.get());
     }
@@ -663,13 +635,9 @@ void PointCloud::buildStage1() {
 }
 
 void PointCloud::buildInternal() {
-    // Wire Sync subnode output to our private inSync input.
-    // Color mode detection happens in run() because buildInternal() is called
-    // at node creation time, before the user has linked inputs.
-    sync->out.link(inSync);
+    sync->out.link(inSync);  // Color mode is detected in run(): inputs are not linked yet at creation time
     sync->setRunOnHost(false);
 
-    // Configure depth sync input queue
     inputDepth.setBlocking(false);
     inputDepth.setMaxSize(4);
     inSync.setBlocking(false);
@@ -700,7 +668,6 @@ bool PointCloud::runOnHost() const {
     return runOnHostVar;
 }
 
-// Backend selection adapts to the existing properties, preserving the SDK/firmware wire contract.
 PointCloud& PointCloud::setBackend(Backend backend) {
     switch(backend) {
         case Backend::CPU:
@@ -742,9 +709,7 @@ uint32_t PointCloud::getNumThreads() const {
     return properties.computeMethod == Properties::ComputeMethod::CPU ? 1 : std::max(1u, properties.numThreads);
 }
 
-// The compute method is stored in the properties so that it reaches a node running on the device; it is applied to
-// the Impls when the node starts (applyComputeSettings), where a missing GPU can be handled with a CPU fallback.
-void PointCloud::useCPU() {
+void PointCloud::useCPU() {  // Stored in properties to reach the device; applied at start by applyComputeSettings
     properties.computeMethod = Properties::ComputeMethod::CPU;
 }
 
@@ -814,15 +779,12 @@ void PointCloud::setDeviceCalibration(const std::string& deviceId, const Calibra
     for(auto& entry : depthStreams) entry.second.initialized = false;
 }
 
-// ── Depth stream bookkeeping ──
-
 PointCloud::DepthStream& PointCloud::getDepthStream(const std::string& name) {
     auto it = depthStreams.find(name);
     if(it != depthStreams.end()) return it->second;
 
     DepthStream stream;
     if(!name.empty()) {
-        // Additional streams get their own deprojection state, computed the same way as the default one
         stream.impl = std::make_unique<Impl>();
         applyComputeSettings(*stream.impl);
     }
@@ -834,8 +796,7 @@ PointCloud::Impl& PointCloud::getImpl(DepthStream& stream) {
 }
 
 std::vector<PointCloud::StreamFrames> PointCloud::collectStreamFrames(MessageGroup& group) {
-    // MessageGroup keys are sorted: the default stream "depth" precedes "depth/<name>" entries
-    std::vector<StreamFrames> frames;
+    std::vector<StreamFrames> frames;  // MessageGroup keys are sorted: "depth" precedes "depth/<name>"
     for(const auto& entry : group.group) {
         const auto name = streamNameFromDepthKey(entry.first);
         if(!name) continue;
@@ -846,7 +807,6 @@ std::vector<PointCloud::StreamFrames> PointCloud::collectStreamFrames(MessageGro
         }
         frames.push_back({*name, std::move(depthFrame), nullptr});
     }
-    // Color frames are optional: look them up without creating entries in the group
     for(auto& stream : frames) {
         const auto colorEntry = group.group.find(getColorInputKey(stream.name));
         if(colorEntry != group.group.end()) {
@@ -866,7 +826,6 @@ bool PointCloud::hasTransformationChanged(DepthStream& stream, const ImgFrame& f
 bool PointCloud::isValidDepthFrame(const ImgFrame& depthFrame) {
     const auto width = depthFrame.getWidth();
     const auto height = depthFrame.getHeight();
-    // Validate that the buffer contains packed uint16_t depth data
     const auto expectedBytes = static_cast<std::size_t>(width) * height * sizeof(uint16_t);
     if(depthFrame.getType() != ImgFrame::Type::RAW16 || depthFrame.getData().size() != expectedBytes) {
         pimpl->logger->warn("PointCloud: unexpected depth frame (type={}, size={}, expected {} bytes for {}x{} RAW16) -- skipping frame",
@@ -881,8 +840,6 @@ bool PointCloud::isValidDepthFrame(const ImgFrame& depthFrame) {
 }
 
 bool PointCloud::haveCommonTargetCoordinateSystem(const std::vector<StreamFrames>& frames) {
-    // Calibration resolution is handled by MultiDeviceCalibrationHandler. Here only the resolved
-    // target identity matters. All streams use the same config, including the housing target.
     const auto describe = [](const Extrinsics& target) { return "device '" + target.toDeviceId + "' socket " + std::string(toString(target.toCameraSocket)); };
     const auto& reference = getDepthStream(frames.front().name).outputCoordinateSystem;
     for(size_t i = 1; i < frames.size(); ++i) {
@@ -919,19 +876,13 @@ static void logMatrix4x4(const std::shared_ptr<spdlog::logger>& logger,
     }
 }
 
-// ── PointCloud helper methods ──
-
 CalibrationHandler PointCloud::getCalibrationFor(const std::string& deviceId) {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    // Explicit overrides (offline streams, tests) win over live device calibrations
     const auto overrideIt = deviceCalibrations.find(deviceId);
     if(overrideIt != deviceCalibrations.end()) {
         return overrideIt->second;
     }
-    // The frame extrinsics name the device owning the reference coordinate system. With a
-    // multi-device calibration that is the origin device, which is not necessarily the device
-    // this node was created with. An explicit target device may be any device of the pipeline.
-    if(!deviceId.empty()) {
+    if(!deviceId.empty()) {  // With multi-device calibration the id can name any pipeline device, not only this one
         if(device && device->getDeviceId() == deviceId) {
             return device->getCalibration();
         }
@@ -969,8 +920,7 @@ void PointCloud::setIntrinsicsFromFrame(Impl& impl, const ImgFrame& frame) {
 
 std::string PointCloud::getReferenceDeviceId(const Extrinsics& frameExtrinsics) {
     if(!frameExtrinsics.toDeviceId.empty()) return frameExtrinsics.toDeviceId;
-    // Frames without a device ID (older firmware, synthetic frames) are expressed relative to the node's own device
-    if(device) return device->getDeviceId();
+    if(device) return device->getDeviceId();  // No device ID (older firmware, synthetic frames): relative to the node's own device
     return {};
 }
 
@@ -987,7 +937,6 @@ std::vector<std::vector<float>> PointCloud::getReferenceToDeviceOrigin(const std
                              + "' while the depth frame is expressed relative to device '" + referenceDeviceId
                              + "'. Targets on another device are only supported when the node runs on the host (setRunOnHost(true)).");
 #else
-    // ref camera -> local origin of the reference device -> common origin of the multi-device calibration -> local origin of the target device
     const auto graph = getParentPipeline().getMultiDeviceCalibration();
     if(!graph.has_value()) {
         throw std::runtime_error("PointCloud: the target coordinate system lives on device '" + targetDeviceId
@@ -1012,7 +961,6 @@ std::vector<std::vector<float>> PointCloud::getReferenceToDeviceOrigin(const std
             + "' are not connected by the multi-device calibration of the pipeline, so the point cloud cannot be transformed between them.");
     }
 
-    // The reference camera is usually the local origin already (the device rebased the frame onto it); otherwise go through the local calibration
     std::vector<std::vector<float>> T_ref_to_referenceOrigin = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
     if(referenceSocket != *referenceOrigin) {
         T_ref_to_referenceOrigin = getCalibrationFor(referenceDeviceId).getCameraExtrinsics(referenceSocket, *referenceOrigin, false, unit);
@@ -1034,9 +982,7 @@ void PointCloud::setCoordinateTransformation(DepthStream& stream, const ImgFrame
     auto targetHousingCS = config.getTargetHousingCS();
     auto useSpecTranslation = config.getUseSpecTranslation();
 
-    // Read T_frame→ref from the depth frame's extrinsics
-    // After rectification, the rotation already accounts for the rectification change.
-    auto frameExtrinsics = depthFrame.transformation.getExtrinsics();
+    auto frameExtrinsics = depthFrame.transformation.getExtrinsics();  // After rectification the rotation already includes the rectification change
     auto refCamera = frameExtrinsics.toCameraSocket;
     if(refCamera == CameraBoardSocket::AUTO) {
         throw std::runtime_error(
@@ -1046,8 +992,6 @@ void PointCloud::setCoordinateTransformation(DepthStream& stream, const ImgFrame
     auto T_frame_to_ref = matrix::toVecMatrix4x4(frameExtrinsics.getTransformationMatrix(useSpecTranslation, unit));
     logMatrix4x4(pimpl->logger, spdlog::level::debug, "T_frame_to_ref", T_frame_to_ref);
 
-    // The target socket / housing is looked up on the configured device, by default the one owning the reference camera.
-    // When the two differ, the reference is first carried over to the local calibration origin of the target device.
     const std::string referenceDeviceId = getReferenceDeviceId(frameExtrinsics);
     const bool explicitTargetDevice = !config.getTargetDeviceId().empty();
     const std::string targetDeviceId = explicitTargetDevice ? config.getTargetDeviceId() : referenceDeviceId;
@@ -1059,11 +1003,8 @@ void PointCloud::setCoordinateTransformation(DepthStream& stream, const ImgFrame
         logMatrix4x4(pimpl->logger, spdlog::level::debug, "T_ref_to_target_device_origin", T_ref_to_targetRef);
     }
 
-    // Compute the target transform based on coordSystemType
-    // The final transform is: T_ref→target * T_frame→ref
     std::optional<std::vector<std::vector<float>>> T_final = std::nullopt;
     std::optional<Extrinsics> targetExtrinsics = std::nullopt;
-    // Without a target the points stay in the coordinate system the frame extrinsics point to
     Extrinsics outputCoordinateSystem = frameExtrinsics;
     outputCoordinateSystem.toCameraSocket = refCamera;
 
@@ -1117,14 +1058,12 @@ void PointCloud::setCoordinateTransformation(DepthStream& stream, const ImgFrame
         }
     }
 
-    // The target coordinate system lives on the explicitly selected device, otherwise on the device that owns the reference camera
     if(targetExtrinsics) {
         targetExtrinsics->toDeviceId = explicitTargetDevice ? targetDeviceId : frameExtrinsics.toDeviceId;
     }
     stream.targetExtrinsics = std::move(targetExtrinsics);
     stream.outputCoordinateSystem = std::move(outputCoordinateSystem);
 
-    // Apply the final transform
     if(T_final) {
         impl.setExtrinsics(*T_final);
     } else {
@@ -1132,40 +1071,27 @@ void PointCloud::setCoordinateTransformation(DepthStream& stream, const ImgFrame
     }
 }
 
-// ── Main initialize method ──
-
 void PointCloud::initialize(DepthStream& stream, const ImgFrame& depthFrame, const PointCloudConfig& config) {
     pimpl->logger->debug("PointCloud::initialize() called");
     auto& impl = getImpl(stream);
     impl.setLogger(pimpl->logger);
 
-    // Set length unit before intrinsics/extrinsics (they depend on it)
-    impl.setLengthUnit(config.getLengthUnit());
+    impl.setLengthUnit(config.getLengthUnit());  // Before intrinsics/extrinsics: they depend on the length unit
 
-    // Set camera intrinsics from the depth frame
     setIntrinsicsFromFrame(impl, depthFrame);
     impl.setDistortion(depthFrame.transformation.getDistortionModel(), depthFrame.transformation.getDistortionCoefficients());
 
-    // Compute and apply coordinate transformation (frame extrinsics + target transform)
     setCoordinateTransformation(stream, depthFrame, config);
 
     stream.initialized = true;
     pimpl->logger->info("PointCloud::initialize() completed");
 }
 
-//------------------------------------------------------------------
-// Processing helpers (depth-only and colorized paths)
-//------------------------------------------------------------------
-
 void PointCloud::computeDepthOnly(Impl& impl, const ImgFrame& depthFrame, bool organized, std::vector<Point3f>& points) {
-    // GPU backend: the dense points stay in GPU-mapped memory and are gathered (compacted for sparse output) into the
-    // scratch buffer in one pass; the backend has applied the extrinsics already.
-    if(const auto* dense = impl.computeDenseOnGpu(depthFrame.getData().data(), depthFrame.data)) {
+    if(const auto* dense = impl.computeDenseOnGpu(depthFrame.getData().data(), depthFrame.data)) {  // GPU backend already applied the extrinsics
         Impl::gatherPoints(dense, static_cast<size_t>(depthFrame.getWidth()) * depthFrame.getHeight(), organized, points);
         return;
     }
-    // CPU: the dense cloud is written into the reused scratch buffer (resize keeps its capacity), invalid points are
-    // compacted away in place for sparse output and the transformation is applied in place as well
     impl.computePointCloudDense(depthFrame.getData().data(), points);
     if(!organized) Impl::compactValidPoints(points);
     impl.applyTransformation(points);
@@ -1175,7 +1101,6 @@ bool PointCloud::canColorize(const ImgFrame& depthFrame, const ImgFrame& colorFr
     const auto width = depthFrame.getWidth();
     const auto height = depthFrame.getHeight();
 
-    // Validate color frame - fall back to depth-only on failure
     if(colorFrame.getWidth() != width || colorFrame.getHeight() != height) {
         pimpl->logger->warn("PointCloud: color frame size ({}x{}) does not match depth ({}x{}) -- skipping colorization",
                             colorFrame.getWidth(),
@@ -1192,12 +1117,10 @@ bool PointCloud::canColorize(const ImgFrame& depthFrame, const ImgFrame& colorFr
 }
 
 void PointCloud::computeColorized(Impl& impl, const ImgFrame& depthFrame, const ImgFrame& colorFrame, bool organized, std::vector<Point3fRGBA>& points) {
-    // Check extrinsics mismatches (non-fatal)
     if(!depthFrame.transformation.getExtrinsics().isEqualExtrinsics(colorFrame.transformation.getExtrinsics())) {
         pimpl->logger->warn("PointCloud: depth and color extrinsics differ -- colorization may be misaligned");
     }
 
-    // Check intrinsics and distortion mismatches (non-fatal)
     if(!depthFrame.transformation.isAlignedTo(colorFrame.transformation)) {
         pimpl->logger->warn("PointCloud: depth and color transformations are not aligned (intrinsics/distortion differ) -- colorization may be misaligned");
     }
@@ -1226,7 +1149,6 @@ size_t PointCloud::computeStreams(const std::vector<StreamFrames>& frames, bool 
         }
     };
 
-    // Each stream computes into its own scratch buffer so that the streams can be processed independently
     auto computeOne = [&](size_t i) {
         auto& stream = *streams[i];
         if constexpr(std::is_same_v<PointT, Point3fRGBA>) {
@@ -1236,10 +1158,7 @@ size_t PointCloud::computeStreams(const std::vector<StreamFrames>& frames, bool 
         }
     };
 
-    // One thread per additional stream on the host. Every stream owns its Impl (intrinsics, undistortion cache,
-    // extrinsics, worker threads of CPU_MT), so the streams do not share mutable state. GPU Impls stay sequential:
-    // their Vulkan resources are not meant to be driven from several threads at once.
-    bool parallel = count > 1;
+    bool parallel = count > 1;  // GPU Impls stay sequential: Vulkan resources must not be driven from several threads
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     parallel = false;
 #else
@@ -1251,7 +1170,6 @@ size_t PointCloud::computeStreams(const std::vector<StreamFrames>& frames, bool 
         for(size_t i = 1; i < count; ++i) {
             workers.push_back(std::async(std::launch::async, computeOne, i));
         }
-        // The first stream is computed on this thread; errors of the workers are collected after all of them finished
         std::exception_ptr error;
         try {
             computeOne(0);
@@ -1270,7 +1188,6 @@ size_t PointCloud::computeStreams(const std::vector<StreamFrames>& frames, bool 
         for(size_t i = 0; i < count; ++i) computeOne(i);
     }
 
-    // Gather the streams, in stream order, into the output buffer with a single allocation
     size_t total = 0;
     for(auto* stream : streams) total += bufferOf(*stream).size();
     std::vector<uint8_t> data(total * sizeof(PointT));
@@ -1286,15 +1203,9 @@ size_t PointCloud::computeStreams(const std::vector<StreamFrames>& frames, bool 
     return total;
 }
 
-//------------------------------------------------------------------
-// Main run loop
-//------------------------------------------------------------------
-
 void PointCloud::run() {
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    // On device, apply the deserialized config from properties. On the host initialConfig is the
-    // source of truth (properties are only refreshed from it when the pipeline is serialized).
-    *initialConfig = properties.initialConfig;
+    *initialConfig = properties.initialConfig;  // On the host initialConfig is the source of truth; on device the properties are
 #endif
 
     applyComputeSettings(*pimplPointCloud);
@@ -1304,8 +1215,6 @@ void PointCloud::run() {
     auto& logger = pimpl->logger;
     logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
-    // EEPROM id of the device this node runs on (falls back to the pipeline default device when the node has none),
-    // so calibration changes are tracked on the node's own device rather than the master's.
     auto readEepromId = [&]() -> uint32_t { return device ? device->getProperties().eepromId : getParentPipeline().getEepromId(); };
     uint32_t currentEepromId = readEepromId();
     auto latestConfig = initialConfig;
@@ -1317,7 +1226,6 @@ void PointCloud::run() {
         }
 
         auto tAbsoluteBeginning = std::chrono::steady_clock::now();
-        // Get synced frames from MessageGroup
         std::shared_ptr<MessageGroup> group;
         {
             auto blockEvent = this->inputBlockEvent();
@@ -1325,7 +1233,6 @@ void PointCloud::run() {
         }
         if(!group) continue;
 
-        // One entry per depth stream (default stream first), with its optional color frame
         auto frames = collectStreamFrames(*group);
         if(frames.empty()) {
             pimpl->logger->warn("PointCloud: no depth frame in MessageGroup -- skipping");
@@ -1333,7 +1240,6 @@ void PointCloud::run() {
         }
         const bool multiStream = frames.size() > 1;
 
-        // Check for runtime config update
         auto newConfig = inputConfig.tryGet<PointCloudConfig>();
         if(newConfig) {
             latestConfig = newConfig;
@@ -1341,7 +1247,6 @@ void PointCloud::run() {
         }
         auto tGotInput = std::chrono::steady_clock::now();
 
-        // Read organized mode from config
         const bool organized = latestConfig->getOrganized();
 
         const uint32_t latestEepromId = readEepromId();
@@ -1358,9 +1263,7 @@ void PointCloud::run() {
             if(!state.initialized) {
                 try {
                     initialize(state, *stream.depth, *latestConfig);
-                } catch(const std::exception& ex) {
-                    // Typically a coordinate system that cannot be resolved yet (missing multi-device calibration or device calibration).
-                    // Keep the node alive and retry with the next group, the situation may be fixed at runtime.
+                } catch(const std::exception& ex) {  // Not fatal: retry with the next group, the calibration may be fixed at runtime
                     if(!initializationFailedWarned) {
                         pimpl->logger->error(
                             "PointCloud: cannot initialize depth stream '{}': {} -- dropping synced groups until it succeeds", stream.name, ex.what());
@@ -1383,7 +1286,6 @@ void PointCloud::run() {
 
         if(multiStream && !haveCommonTargetCoordinateSystem(frames)) continue;
 
-        // The output is colorized only when every stream carries a usable color frame
         bool colorize = true;
         bool anyColor = false;
         for(const auto& stream : frames) {
@@ -1396,13 +1298,11 @@ void PointCloud::run() {
             mixedColorWarned = true;
         }
 
-        // Create PointCloudData
         auto pc = std::make_shared<PointCloudData>();
         const auto& primary = frames.front();
         pc->setInstanceNum(primary.depth->getInstanceNum());
         const auto& primaryState = getDepthStream(primary.name);
 
-        // Compute and merge the points of all streams (concurrently on the host)
         const auto computeStart = std::chrono::steady_clock::now();
         const size_t totalPoints = colorize ? computeStreams<Point3fRGBA>(frames, organized, *pc) : computeStreams<Point3f>(frames, organized, *pc);
         computeTimeSum += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - computeStart).count();
@@ -1417,7 +1317,6 @@ void PointCloud::run() {
             computeTimeCount = 0;
         }
 
-        // Output layout
         if(!organized) {
             pc->setWidth(static_cast<unsigned int>(totalPoints));
             pc->setHeight(1);
@@ -1425,7 +1324,6 @@ void PointCloud::run() {
             pc->setWidth(primary.depth->getWidth());
             pc->setHeight(primary.depth->getHeight());
         } else {
-            // Organized clouds of equal width are stacked row-wise; otherwise the layout degrades to a single row
             bool sameWidth = true;
             unsigned int totalHeight = 0;
             for(const auto& stream : frames) {
@@ -1446,22 +1344,15 @@ void PointCloud::run() {
             }
         }
 
-        // Metadata and transformation of the output cloud
         if(!multiStream) {
             pc->setBufferMetadataFrom(primary.depth);
-            // Preserve the source ImgTransformation as metadata. The distortion model and
-            // coefficients describe the image used to generate the cloud; the 3D points have already
-            // been distortion-compensated.
-            auto outputTransformation = primary.depth->getTransformation();
+            auto outputTransformation = primary.depth->getTransformation();  // Distortion describes the source image; the 3D points are already undistorted
             if(primaryState.targetExtrinsics) {
                 outputTransformation.setExtrinsics(*primaryState.targetExtrinsics);
             }
             pc->setTransformation(outputTransformation);
         } else {
-            // Timestamps follow the newest frame of the group (Sync stamps the group that way)
             pc->setBufferMetadataFrom(group);
-            // A merged cloud has no single source image: the transformation only carries the output size and the
-            // coordinate system the points are expressed in (identity to the common reference unless a target was configured)
             ImgTransformation outputTransformation(pc->getWidth(), pc->getHeight());
             if(primaryState.targetExtrinsics) {
                 outputTransformation.setExtrinsics(*primaryState.targetExtrinsics);
@@ -1496,5 +1387,4 @@ void PointCloud::run() {
 }  // namespace node
 }  // namespace dai
 
-// Explicit template instantiation for Pimpl
 template class dai::Pimpl<dai::node::PointCloud::Impl>;
