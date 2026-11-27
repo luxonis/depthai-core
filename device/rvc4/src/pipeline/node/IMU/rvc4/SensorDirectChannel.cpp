@@ -130,7 +130,18 @@ SensorEventReader::Status SensorEventReader::next(SensorSample& sample) {
     std::copy(std::begin(sample.data), std::end(sample.data), std::begin(deviceSample.data));
     deviceSample.num_data = static_cast<uint32_t>(sample.numData);
 
+    const size_t startOffset = offset;
     const int32_t result = dai_device_sensor_event_next(buffer, size, &offset, &deviceSample);
+
+    // A sample that is not newer than the last one is a slot from the previous lap of the ring: stay on it until
+    // the producer overwrites it
+    if(result == DAI_SENSOR_EVENT_SAMPLE) {
+        if(deviceSample.timestamp <= lastTimestamp) {
+            offset = startOffset;
+            return Status::NO_EVENT;
+        }
+        lastTimestamp = deviceSample.timestamp;
+    }
 
     sample.messageKind = deviceSample.message_kind;
     sample.timestamp = deviceSample.timestamp;

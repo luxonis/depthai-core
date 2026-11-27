@@ -1,11 +1,15 @@
+#include <algorithm>
 #include <array>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <cmath>
 #include <initializer_list>
+#include <limits>
 #include <optional>
 #include <stdexcept>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "depthai/depthai.hpp"
@@ -678,4 +682,111 @@ TEST_CASE("Test IMU streams with empty runtime calibration") {
     const auto result = runImuWithCalibration(dai::CalibrationHandler());
 
     REQUIRE(result.packetCount > 0);
+}
+
+namespace {
+
+// RVC4 sensors only run at a few native rates (e.g. 29.05 * 2^n Hz on OAK4), so Qualcomm rounds a requested rate up and the
+// firmware decimates the output back to the slowest requested rate. Checked on device timestamps:
+//  - the mean output rate matches the request (+-2%),
+//  - every enabled report advances in every packet (no repeated/stale samples),
+//  - no gap is longer than two requested periods for a single sensor (decimation drops at most one native sample in a row), or
+//    three with several sensors: they arrive asynchronously and only the latest sample of each is kept, so one more sample of
+//    the faster stream can be superseded before a packet is emitted. 1 ms is allowed on top for timestamp jitter.
+struct RateCase {
+    std::string name;
+    std::vector<std::pair<dai::IMUSensor, int>> sensors;
+    int batch;
+};
+
+const dai::IMUReport& reportOf(const dai::IMUPacket& packet, dai::IMUSensor sensor) {
+    switch(sensor) {
+        case dai::IMUSensor::ACCELEROMETER_RAW:
+        case dai::IMUSensor::ACCELEROMETER_CALIBRATED:
+            return packet.acceleroMeter;
+        case dai::IMUSensor::GYROSCOPE_RAW:
+        case dai::IMUSensor::GYROSCOPE_CALIBRATED:
+            return packet.gyroscope;
+        case dai::IMUSensor::ROTATION_VECTOR:
+            return packet.rotationVector;
+        default:
+            throw std::invalid_argument("sensor not covered by this test");
+    }
+}
+
+void checkOutputRate(const RateCase& rateCase) {
+    using std::chrono::steady_clock;
+    CAPTURE(rateCase.name);
+    dai::Pipeline pipeline;
+    const auto device = pipeline.getDefaultDevice();
+    REQUIRE(device != nullptr);
+    if(device->getPlatform() != dai::Platform::RVC4) SKIP("RVC4-only IMU rate regression");
+    const auto imuName = device->getConnectedIMU();
+    if(imuName.empty()) SKIP("Device has no IMU");
+    const bool needsRotationVector =
+        std::any_of(rateCase.sensors.begin(), rateCase.sensors.end(), [](const auto& s) { return s.first == dai::IMUSensor::ROTATION_VECTOR; });
+    if(needsRotationVector && imuName == "BMI270") SKIP("BMI270 has no rotation vector");
+
+    auto imu = pipeline.create<dai::node::IMU>();
+    int requestedHz = std::numeric_limits<int>::max();
+    for(const auto& [sensor, rate] : rateCase.sensors) {
+        imu->enableIMUSensor(sensor, rate);
+        requestedHz = std::min(requestedHz, rate);
+    }
+    imu->setBatchReportThreshold(rateCase.batch);
+    imu->setMaxBatchReports(std::max(rateCase.batch, 10));
+    auto queue = imu->out.createOutputQueue(1000, false);
+
+    std::vector<std::vector<steady_clock::time_point>> timestamps(rateCase.sensors.size());
+    pipeline.start();
+    const auto start = steady_clock::now();
+    const auto warmup = std::chrono::milliseconds(1500);
+    const auto measured = std::chrono::seconds(5);
+    while(steady_clock::now() - start < warmup + measured) {
+        bool timedOut = false;
+        auto data = queue->get<dai::IMUData>(std::chrono::seconds(5), timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(data != nullptr);
+        if(steady_clock::now() - start < warmup) continue;
+        for(const auto& packet : data->packets) {
+            for(size_t i = 0; i < rateCase.sensors.size(); ++i) {
+                timestamps[i].push_back(reportOf(packet, rateCase.sensors[i].first).getTimestampDevice());
+            }
+        }
+    }
+    pipeline.stop();
+
+    const double requestedPeriod = 1.0 / requestedHz;
+    const double maxGapPeriods = rateCase.sensors.size() == 1 ? 2.0 : 3.0;
+    for(size_t i = 0; i < rateCase.sensors.size(); ++i) {
+        const auto& ts = timestamps[i];
+        CAPTURE(i, requestedHz, ts.size());
+        REQUIRE(ts.size() > 10);
+        double maxGap = 0.0;
+        for(size_t j = 1; j < ts.size(); ++j) {
+            REQUIRE(ts[j] > ts[j - 1]);
+            maxGap = std::max(maxGap, std::chrono::duration<double>(ts[j] - ts[j - 1]).count());
+        }
+        const double span = std::chrono::duration<double>(ts.back() - ts.front()).count();
+        const double rate = static_cast<double>(ts.size() - 1) / span;
+        CAPTURE(rate, maxGap);
+        CHECK(rate == Catch::Approx(requestedHz).epsilon(0.02));
+        CHECK(maxGap <= maxGapPeriods * requestedPeriod + 0.001);
+    }
+}
+
+}  // namespace
+
+TEST_CASE("Test IMU output matches the requested rate on RVC4") {
+    using S = dai::IMUSensor;
+    const auto rateCase = GENERATE(RateCase{"accel 20", {{S::ACCELEROMETER_RAW, 20}}, 1},
+                                   RateCase{"accel 100", {{S::ACCELEROMETER_RAW, 100}}, 1},
+                                   RateCase{"accel 400", {{S::ACCELEROMETER_RAW, 400}}, 1},
+                                   RateCase{"gyro 400", {{S::GYROSCOPE_RAW, 400}}, 1},
+                                   RateCase{"accel 100 + gyro 100", {{S::ACCELEROMETER_RAW, 100}, {S::GYROSCOPE_RAW, 100}}, 1},
+                                   RateCase{"accel 400 + gyro 200", {{S::ACCELEROMETER_RAW, 400}, {S::GYROSCOPE_RAW, 200}}, 1},
+                                   RateCase{"accel + gyro 400, batch 10", {{S::ACCELEROMETER_RAW, 400}, {S::GYROSCOPE_RAW, 400}}, 10},
+                                   RateCase{"calibrated accel + gyro 200", {{S::ACCELEROMETER_CALIBRATED, 200}, {S::GYROSCOPE_CALIBRATED, 200}}, 1},
+                                   RateCase{"rotation vector 100", {{S::ROTATION_VECTOR, 100}}, 1});
+    checkOutputRate(rateCase);
 }

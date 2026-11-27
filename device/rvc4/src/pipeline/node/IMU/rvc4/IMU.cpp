@@ -3,6 +3,7 @@
 // std
 #include <unistd.h>
 
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cstddef>
@@ -197,27 +198,35 @@ static void setTimestampFromPackets(std::shared_ptr<dai::IMUData>& imuData) {
     imuData->tsDevice = deviceTs;
     imuData->tsSystem = systemTs;
 }
+
+// Poll the shared-memory ring at least every 1 ms: sleeping a full sample period lets a newer sample overwrite the
+// latest report before the consumer takes it, so the output rate drops below the request.
+static useconds_t pollIntervalUs(uint32_t sampleRateHz) {
+    return std::min<useconds_t>(1000, 1000000 / sampleRateHz);
+}
+
 /*
  * Read sample transmited in generic protobuf format. Used for rotv and game_rv samples.
  *
  * Producer populates IMUPacket instance with the samples received in the circular buffer from shared memory ptr between DSP and APP.
- * If the samples are not present, sleep for expected timeout based on sampleRateHz
+ * If no new samples are present, sleep for a short poll interval (at most 1 ms)
  */
-void IMU::readGenericDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, uint32_t sampleRateHz, bool shouldSignal) {
+void IMU::readGenericDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, uint32_t sampleRateHz) {
     if(nullptr == shared_buff_ptr) {
         return;
     }
 
     SensorEventReader reader(shared_buff_ptr, sharedBuffSize);
     SensorSample sample;
+    const auto pollUs = pollIntervalUs(sampleRateHz);
 
     /* isRunning is atomic */
     while(isRunning()) {
         const SensorEventReader::Status status = reader.next(sample);
 
-        /* No events. Sleep until new events (data) come. */
+        /* No new events (empty slot or stale one from the previous lap). Sleep until new data comes. */
         if(status == SensorEventReader::Status::NO_EVENT) {
-            usleep(1000000 / sampleRateHz);
+            usleep(pollUs);
             continue;
         }
 
@@ -238,11 +247,9 @@ void IMU::readGenericDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, 
                 packet.rotationVector.timestamp = getHostTimestamp(packet.rotationVector.tsDevice);
                 packet.rotationVector.tsSystem = getTimestampSystem(sample.timestamp);
 
-                if(shouldSignal) ++producedGeneration;
+                ++producedGeneration;
             }
-            if(shouldSignal) {
-                cv.notify_one();
-            }
+            cv.notify_one();
         }
     }
 
@@ -258,12 +265,13 @@ void IMU::readGenericDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, 
  * Read sample transmited in muxed protobuf format. Used for accel, gyro and mag samples.
  *
  * Producer populates IMUPacket instance with the samples received in the circular buffer from shared memory ptr between DSP and APP.
- * If the samples are not present, sleep for expected timeout based on sampleRateHz
+ * If no new samples are present, sleep for a short poll interval (at most 1 ms)
  */
-void IMU::readMuxedDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, uint32_t sampleRateHz, bool shouldSignal) {
+void IMU::readMuxedDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, uint32_t sampleRateHz) {
     if(nullptr == shared_buff_ptr) return;
 
     int previous_counter = 0;
+    const auto pollUs = pollIntervalUs(sampleRateHz);
     char* temp = shared_buff_ptr;
     char* end_ptr = shared_buff_ptr + sharedBuffSize;
 
@@ -273,7 +281,7 @@ void IMU::readMuxedDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, ui
 
         /* No events. Sleep until new events (data) come. */
         if(previous_counter >= data.reserved0) {
-            usleep(1000000 / sampleRateHz);
+            usleep(pollUs);
             continue;
         }
 
@@ -395,10 +403,10 @@ void IMU::readMuxedDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, ui
                     break;
             }
 
-            if(shouldSignal && newPacket) ++producedGeneration;
+            if(newPacket) ++producedGeneration;
         }
 
-        if(shouldSignal && newPacket) {
+        if(newPacket) {
             cv.notify_one();
         }
 
@@ -600,6 +608,13 @@ void IMU::run() {
     bool gyroscopeEnabled = false;
     bool magnetometerEnabled = false;
     bool rotationVectorEnabled = false;
+    /*
+     * Qualcomm rounds a non-native rate up (e.g. 100 Hz -> ~116 Hz on OAK4), so cap the output to the
+     * slowest requested rate. Each emit advances the deadline by one period, which keeps the mean rate
+     * at the request; a packet is accepted slightly early (10% of a period) to tolerate timestamp jitter
+     * when the native rate already matches. Gaps longer than a period reset the deadline (no catch-up).
+     */
+    nanoseconds outputPeriod{0};
 
     if(!mockInEnabled) {
         err = Probe();
@@ -669,10 +684,11 @@ void IMU::run() {
             throw std::runtime_error("You didn't enable any sensor reports for IMU.");
         }
 
-        unsigned int sensorIDWithMinSampleRateHz = 0;
-
         /* Configure requested sensors */
         for(auto i = 0; i < initialReports.size(); i++) {
+            if(initialReports.at(i).streamConfig.sampleRateHz == 0) {
+                throw std::runtime_error(fmt::format("IMU report rate for sensor {} must be above 0 Hz.", initialReports.at(i).streamConfig.sensorDataType));
+            }
             int ret = initialReports.at(i).sensorDirectChannel.queryAttributes(initialReports.at(i).streamConfig);
             if(ret) {
                 logger->warn("Failed to get sensor {} attributes", initialReports.at(i).streamConfig.sensorDataType);
@@ -681,17 +697,28 @@ void IMU::run() {
             initialReports.at(i).sensorDirectChannel.adjustSampleRate(initialReports.at(i).streamConfig.sampleRateHz,
                                                                       initialReports.at(i).streamConfig.resampled);
 
-            sensorIDWithMinSampleRateHz =
-                initialReports.at(sensorIDWithMinSampleRateHz).streamConfig.sampleRateHz < initialReports.at(i).streamConfig.sampleRateHz
-                    ? sensorIDWithMinSampleRateHz
-                    : i;
-
             if(initialReports.at(i).streamConfig.sampleRateHz > initialReports.at(i).sensorDirectChannel.supportedSampleRates().back()) {
                 logger->warn("Max sample rate for {} sensor is: {} Hz. Configured to max sample rate available.",
                              initialReports.at(i).streamConfig.sensorDataType,
                              initialReports.at(i).sensorDirectChannel.supportedSampleRates().back());
+            } else if(initialReports.at(i).streamConfig.resampled) {
+                // Qualcomm rounds a non-native rate up to the next supported one.
+                const auto& rates = initialReports.at(i).sensorDirectChannel.supportedSampleRates();
+                const auto requested = static_cast<int>(initialReports.at(i).streamConfig.sampleRateHz);
+                const auto native = std::find_if(rates.begin(), rates.end(), [requested](int rate) { return rate >= requested; });
+                if(native != rates.end() && *native != requested) {
+                    logger->info("Requested {} Hz for {} sensor is not natively supported, sampling at {} Hz.",
+                                 requested,
+                                 initialReports.at(i).streamConfig.sensorDataType,
+                                 *native);
+                }
             }
         }
+
+        const auto slowestReport = std::min_element(initialReports.begin(), initialReports.end(), [](const auto& a, const auto& b) {
+            return a.streamConfig.sampleRateHz < b.streamConfig.sampleRateHz;
+        });
+        outputPeriod = nanoseconds(1000000000ULL / slowestReport->streamConfig.sampleRateHz);
 
         /* Start streaming */
         for(auto i = 0; i < initialReports.size(); i++) {
@@ -702,8 +729,6 @@ void IMU::run() {
                 logger->warn("Failed to start sensor {} streaming", initialReports.at(i).streamConfig.sensorDataType);
                 continue;
             }
-
-            bool shouldSignal = (i == sensorIDWithMinSampleRateHz) ? true : false;
 
             /* Clear communication buffer mem channel before reading */
             const size_t sharedBufferSize = SensorDirectChannel::sharedBufferSize();
@@ -716,17 +741,16 @@ void IMU::run() {
              */
             std::thread producerThread =
                 (initialReports.at(i).streamConfig.channelType == SensorChannelType::GENERIC)
-                    ? std::thread(
-                          &IMU::readGenericDataProducer, this, shared_buff_ptr, sharedBufferSize, initialReports.at(i).streamConfig.sampleRateHz, shouldSignal)
-                    : std::thread(
-                          &IMU::readMuxedDataProducer, this, shared_buff_ptr, sharedBufferSize, initialReports.at(i).streamConfig.sampleRateHz, shouldSignal);
+                    ? std::thread(&IMU::readGenericDataProducer, this, shared_buff_ptr, sharedBufferSize, initialReports.at(i).streamConfig.sampleRateHz)
+                    : std::thread(&IMU::readMuxedDataProducer, this, shared_buff_ptr, sharedBufferSize, initialReports.at(i).streamConfig.sampleRateHz);
 
             activeProducerThreads.push_back(std::move(producerThread));
         }
     }
 
+    steady_clock::time_point nextOutputTs{};
+
     dai::IMUPacket lastEmittedPacket;
-    bool packetEmitted = false;
     unsigned int sampleCnt = 0;
     while(mainLoop()) {
         auto tAbsoluteBeginning = steady_clock::now();
@@ -753,8 +777,9 @@ void IMU::run() {
              * The only one IMU instance is present, all samples have to be populated in the same packet.
              * The consumer takes populated packet from configured sensor producers.
              *
-             * Since sensors can stream at different speeds, sync condition between producer(s) is only required with the slowest sensor.
-             * Packet will be emitted with each newly arrived sample from the slowest active sensor, keeping the latest known sample from faster sensors.
+             * Every producer signals on each new sample. A packet is emitted once every enabled report has advanced since the
+             * last emitted packet, so the output follows the slowest sensor and never repeats a stale report.
+             * The output is then decimated to the slowest requested rate (see outputPeriod).
              */
 
             {
@@ -762,16 +787,23 @@ void IMU::run() {
                 cv.wait(dataLock, []() { return readerStopped || consumedGeneration != producedGeneration; });
                 consumedGeneration = producedGeneration;
 
-                const bool duplicateEnabledReport =
-                    (accelerometerEnabled && packet.acceleroMeter.tsDevice.get() <= lastEmittedPacket.acceleroMeter.tsDevice.get())
-                    || (gyroscopeEnabled && packet.gyroscope.tsDevice.get() <= lastEmittedPacket.gyroscope.tsDevice.get())
-                    || (magnetometerEnabled && packet.magneticField.tsDevice.get() <= lastEmittedPacket.magneticField.tsDevice.get())
-                    || (rotationVectorEnabled && packet.rotationVector.tsDevice.get() <= lastEmittedPacket.rotationVector.tsDevice.get());
-                if(packetEmitted && duplicateEnabledReport) {
+                const bool allEnabledReportsAdvanced =
+                    (!accelerometerEnabled || packet.acceleroMeter.tsDevice.get() > lastEmittedPacket.acceleroMeter.tsDevice.get())
+                    && (!gyroscopeEnabled || packet.gyroscope.tsDevice.get() > lastEmittedPacket.gyroscope.tsDevice.get())
+                    && (!magnetometerEnabled || packet.magneticField.tsDevice.get() > lastEmittedPacket.magneticField.tsDevice.get())
+                    && (!rotationVectorEnabled || packet.rotationVector.tsDevice.get() > lastEmittedPacket.rotationVector.tsDevice.get());
+                if(!allEnabledReportsAdvanced) {
                     continue;
                 }
+                const auto packetTs = std::max({accelerometerEnabled ? packet.acceleroMeter.tsDevice.get() : steady_clock::time_point{},
+                                                gyroscopeEnabled ? packet.gyroscope.tsDevice.get() : steady_clock::time_point{},
+                                                magnetometerEnabled ? packet.magneticField.tsDevice.get() : steady_clock::time_point{},
+                                                rotationVectorEnabled ? packet.rotationVector.tsDevice.get() : steady_clock::time_point{}});
+                if(packetTs + outputPeriod / 10 < nextOutputTs) {
+                    continue;
+                }
+                nextOutputTs = packetTs >= nextOutputTs + outputPeriod ? packetTs + outputPeriod : nextOutputTs + outputPeriod;
                 lastEmittedPacket = packet;
-                packetEmitted = true;
 
                 imuDataOut->packets.push_back(packet);
                 ++sampleCnt;
