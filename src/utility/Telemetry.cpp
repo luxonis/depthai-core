@@ -57,6 +57,8 @@ constexpr std::chrono::seconds DEFAULT_FLUSH_INTERVAL{30};
 constexpr std::chrono::seconds DEFAULT_PING_INTERVAL{std::chrono::minutes(5)};
 constexpr std::chrono::seconds RETRY_DELAY{5};
 constexpr std::chrono::seconds MAX_RETRY_DELAY{30};
+constexpr std::chrono::milliseconds UPLOAD_TIMEOUT{10000};
+constexpr std::chrono::milliseconds SHUTDOWN_UPLOAD_BUDGET{2000};
 constexpr char DEFAULT_POSTHOG_HOST[] = "https://b.luxonis.com";
 constexpr char DEFAULT_POSTHOG_API_KEY[] = "phc_ojEByaCiZZ5eigzaM43PaEVbfLfFDF5NgkXEMPabrT9a";
 constexpr char DEFAULT_TELEMETRY_ROOT_DIR[] = "telemetry";
@@ -453,6 +455,7 @@ struct TelemetrySharedState {
     bool initialized{false};
     std::size_t retryCount{0};
     std::optional<Clock::time_point> pausedUntil;
+    std::optional<std::chrono::steady_clock::time_point> uploadDeadline;
 
     TelemetrySharedState();
     ~TelemetrySharedState();
@@ -465,6 +468,7 @@ struct TelemetrySharedState {
     void workerLoop();
     void pingWorkerLoop();
     void flushOneBatch();
+    std::chrono::milliseconds uploadTimeLeft();
     void cleanupRunDirectory();
     void removeFileFromQueueLocked(const std::string& filename);
     void deleteFilesLocked(const std::vector<std::string>& filenames);
@@ -580,6 +584,7 @@ TelemetrySharedState::~TelemetrySharedState() {
         pingStopRequested = true;
         stopRequested = true;
         flushRequested = true;
+        uploadDeadline = std::chrono::steady_clock::now() + SHUTDOWN_UPLOAD_BUDGET;
     }
     condition.notify_all();
 
@@ -930,6 +935,13 @@ void TelemetrySharedState::flushOneBatch() {
 #ifdef DEPTHAI_ENABLE_CURL
     try {
         for(std::size_t index = 0; index < events.size(); ++index) {
+            const auto timeLeft = uploadTimeLeft();
+            if(timeLeft <= std::chrono::milliseconds::zero()) {
+                logger::debug("Telemetry shutdown budget spent, {} events not sent", events.size() - index);
+                shouldRetry = true;
+                break;
+            }
+
             const auto& queuedEvent = events[index];
             auto properties = queuedEvent.value("properties", nlohmann::json::object());
             if(!properties.is_object()) {
@@ -956,7 +968,10 @@ void TelemetrySharedState::flushOneBatch() {
             auto response = cpr::Post(cpr::Url{captureUrl},
                                       cpr::Body{requestBody.dump()},
                                       cpr::Header{{"Content-Type", "application/json"}, {"User-Agent", std::string("depthai-core/") + build::VERSION}},
-                                      cpr::Timeout{10000},
+                                      cpr::Timeout{timeLeft},
+                                      cpr::ProgressCallback{[this](cpr::cpr_pf_arg_t, cpr::cpr_pf_arg_t, cpr::cpr_pf_arg_t, cpr::cpr_pf_arg_t, std::intptr_t) {
+                                          return uploadTimeLeft() > std::chrono::milliseconds::zero();
+                                      }},
                                       cpr::VerifySsl(true));
 
             const auto statusCode = response.status_code;
@@ -997,6 +1012,15 @@ void TelemetrySharedState::flushOneBatch() {
     retryCount = 0;
     pausedUntil.reset();
     deleteFilesLocked(batchFiles);
+}
+
+std::chrono::milliseconds TelemetrySharedState::uploadTimeLeft() {
+    std::lock_guard<std::mutex> lock(mutex);
+    if(!uploadDeadline) {
+        return UPLOAD_TIMEOUT;
+    }
+    const auto timeLeft = std::chrono::duration_cast<std::chrono::milliseconds>(*uploadDeadline - std::chrono::steady_clock::now());
+    return std::clamp(timeLeft, std::chrono::milliseconds::zero(), UPLOAD_TIMEOUT);
 }
 
 void TelemetrySharedState::removeFileFromQueueLocked(const std::string& filename) {

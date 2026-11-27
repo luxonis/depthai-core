@@ -633,6 +633,16 @@ endif()
 dai_add_test(telemetry_fork_test src/onhost_tests/utility/telemetry_fork_test.cpp)
 dai_set_test_labels(telemetry_fork_test onhost ci nowindows)
 
+if(DEPTHAI_ENABLE_CURL AND NOT WIN32)
+    add_executable(telemetry_exit_test_child src/onhost_tests/utility/telemetry_exit_test_child.cpp)
+    add_default_flags(telemetry_exit_test_child LEAN)
+    target_link_libraries(telemetry_exit_test_child PRIVATE depthai::core)
+    dai_add_test(telemetry_exit_test src/onhost_tests/utility/telemetry_exit_test.cpp)
+    target_compile_definitions(telemetry_exit_test PRIVATE DEPTHAI_TELEMETRY_EXIT_TEST_CHILD_PATH="$<TARGET_FILE:telemetry_exit_test_child>")
+    add_dependencies(telemetry_exit_test telemetry_exit_test_child)
+    dai_set_test_labels(telemetry_exit_test onhost ci nowindows)
+endif()
+
 # Circular buffer test
 dai_add_test(circular_buffer_test src/onhost_tests/utility/circular_buffer_test.cpp)
 dai_set_test_labels(circular_buffer_test onhost ci)
