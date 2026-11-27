@@ -89,6 +89,11 @@ void installMultiDeviceCalibration(const Pipeline& pipeline) {
 }
 
 void validateFsync1() {
+    auto roleState = FsyncController::getInstance().getRoleState();
+    if(auto error = roleState && externalRoleForced(*roleState) ? setRoleError(*roleState) : std::nullopt) {
+        throw std::runtime_error(*error);
+    }
+
     auto isExternalStrobeEnabled = FsyncController::getInstance().getExternalStrobeEnable();
     auto fsyncRole = FsyncController::getInstance().getExternalFrameSyncRole();
     auto fsyncOk = FsyncController::getInstance().isOk();
@@ -96,13 +101,17 @@ void validateFsync1() {
     if ((fsyncRole != ExternalFrameSyncRole::MASTER || !fsyncOk) &&
         isExternalStrobeEnabled)
     {
+        if(auto error = roleState ? strobeNeedsPinError(*roleState) : std::nullopt) {
+            throw std::runtime_error(*error);
+        }
         throw std::runtime_error("External strobe requires the device to be set in MASTER mode.");
     }
 }
 
 void validateFsync2() {
     auto numFsyncConsumers = FsyncController::getInstance().getNumFsyncConsumers();
-    auto isExternalFsyncExplicit = FsyncController::getInstance().isExternalFrameSyncRoleSetExplicitly();
+    auto roleState = FsyncController::getInstance().getRoleState();
+    bool isExternalFsyncExplicit = roleState && externalRoleForced(*roleState);
     auto isExternalStrobeEnabled = FsyncController::getInstance().getExternalStrobeEnable();
     auto fsyncOk = FsyncController::getInstance().isOk();
 

@@ -1376,6 +1376,8 @@ void Camera::buildStage2() {
                 logger->info("This device is a FSync master!");
             } else if(fsyncRole == dai::ExternalFrameSyncRole::SLAVE) {
                 logger->info("This device is a FSync slave!");
+            } else if(fsyncRole == dai::ExternalFrameSyncRole::STANDALONE) {
+                logger->info("This device runs FSync standalone, the FSYNC pin is not used.");
             } else {
                 throw std::runtime_error("Illegal fsync role detected!");
             }

@@ -559,6 +559,7 @@ void parseAssetsToAssetManager(dai::Pipeline& pipeline, dai::Assets& assets) {
 
 std::function<std::tuple<bool, std::string>()> waitForDeviceReady = []() -> std::tuple<bool, std::string>  {
     try {
+        dai::gate::FsyncController::getInstance().applyPendingRole();
         if (dai::gate::FsyncController::getInstance().supportsExternalFrameSyncMode() &&
             dai::gate::FsyncController::getInstance().isOk())
         {
@@ -587,7 +588,7 @@ std::function<std::tuple<bool, std::string>()> waitForDeviceReady = []() -> std:
 std::function<std::tuple<bool, std::string>(dai::ExternalFrameSyncRole)> setExternalFrameSyncRole =
 [](dai::ExternalFrameSyncRole role) -> std::tuple<bool, std::string> {
     try {
-        dai::gate::FsyncController::getInstance().setExternalFrameSyncRole(role, true);
+        dai::gate::FsyncController::getInstance().setExternalFrameSyncRole(role);
     } catch (const std::exception& ex) {
         return {false, ex.what()};
     }

@@ -13,6 +13,7 @@
 
 // project
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
+#include "utilities/FsyncRole.hpp"
 
 // #define FSYNC_DONT_WRITE
 
@@ -66,10 +67,10 @@ class FsyncController {
     // config count, to be updated only under `mtx` lock
     int configCount = 0;
     float fps = -1;  // All pins have the same FPS (except ADIM on leds has 10x higher)
-    dai::ExternalFrameSyncRole m_role;
-    bool m_roleSetExplicitly;
+    std::optional<RoleState> m_roleState;
     std::set<dai::CameraBoardSocket> m_fsyncConsumers;
     int stmFd;
+    std::optional<int> m_openErrno;
     bool m_ioctl_failure;
     bool m_disabled;
     bool m_supportsExternalFrameSyncMode;
@@ -143,15 +144,24 @@ class FsyncController {
      *  - If we detect the M8 connector is connected, we set the role to SLAVE.
      *  - If we detect the M8 connector is disconnected, we set the role to MASTER.
      * If set to any other role, that role will be used directly.
+     * When the aux connector cannot give fsync-stm the FSYNC pin, the device keeps on-board sync and reports STANDALONE.
+     * AUTO_DETECT then logs a warning and never throws. MASTER, SLAVE and STANDALONE throw the reason when they cannot be applied.
      * NOTE: We can detect if the M8 connector is connected only on slave devices.
      *       This detection relies on the state of one GPIO pin which is pulled low only on slave devices when the M8 connector is connected.
      * WARNING: This function must be called before any calls to setFps() or start().
      */
-    void setExternalFrameSyncRole(dai::ExternalFrameSyncRole role, bool setExplicit);
+    void setExternalFrameSyncRole(dai::ExternalFrameSyncRole role);
 
-    bool isExternalFrameSyncRoleSetExplicitly() const {
-        return m_roleSetExplicitly;
-    }
+    /**
+     * Apply AUTO_DETECT unless a role is already applied. Called when a pipeline starts,
+     * so the STM stays in CONFIG 0 with the FSYNC pin free until the host needs a role.
+     */
+    void applyPendingRole();
+
+    /**
+     * The applied role and the outcome of its SET_INFO, std::nullopt before a role is applied.
+     */
+    std::optional<RoleState> getRoleState() const;
 
     void addFsyncConsumer(dai::CameraBoardSocket socket);
 
@@ -178,9 +188,10 @@ class FsyncController {
     FsyncControllerLed dotProjector;
     FsyncControllerLed floodLight;
 
-    dai::ExternalFrameSyncRole getExternalFrameSyncRole() const {
-        return m_role;
-    }
+    /**
+     * The applied role. Before a role is applied, the role AUTO_DETECT would choose, read without writing to the STM.
+     */
+    dai::ExternalFrameSyncRole getExternalFrameSyncRole() const;
 
     /**
      * Query the STM if there is a valid signal present on the external frame sync input pin.
@@ -195,6 +206,8 @@ class FsyncController {
     float getClosestFpsIoctl(float wantedFrequency);
 
     float stopSetAndQueryActualFrequency(int pinId, float wantedFrequency);
+
+    SetInfoResult writeConfig(uint32_t configReg);
 
     void updateStmLedExposure(uint32_t exposureNs);
     void updateExternalStrobeExposure(uint32_t exposureNs);

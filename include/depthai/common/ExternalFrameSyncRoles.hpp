@@ -7,8 +7,7 @@ namespace dai {
 /**
  * Which external frame sync role the device should have.
  *
- * AUTO_DETECT denotes that the decision will be made by device.
- * It will choose between MASTER and SLAVE.
+ * AUTO_DETECT lets the device choose MASTER or SLAVE, or STANDALONE when it cannot use the FSYNC pin.
  */
 enum class ExternalFrameSyncRole : int32_t {
     // This role is used in setExternalFrameSyncRole() function.
@@ -22,6 +21,10 @@ enum class ExternalFrameSyncRole : int32_t {
     // External frame sync slave.
     // Device must lock onto an external frame sync signal.
     SLAVE,
+
+    // On-board frame sync only.
+    // The device neither drives nor follows the external FSYNC pin and leaves it free.
+    STANDALONE,
 };
 
 inline std::string toString(ExternalFrameSyncRole role) {
@@ -32,6 +35,8 @@ inline std::string toString(ExternalFrameSyncRole role) {
             return "MASTER";
         case ExternalFrameSyncRole::SLAVE:
             return "SLAVE";
+        case ExternalFrameSyncRole::STANDALONE:
+            return "STANDALONE";
         default:
             return "UNKNOWN";
     }
