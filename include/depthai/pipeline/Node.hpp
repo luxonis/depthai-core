@@ -15,7 +15,6 @@
 #include "depthai/pipeline/AssetManager.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/utility/RecordReplay.hpp"
-#include "depthai/utility/copyable_unique_ptr.hpp"
 
 // depthai
 #include "depthai/capabilities/Capability.hpp"
