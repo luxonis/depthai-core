@@ -5,9 +5,9 @@
 #include <optional>
 #include <thread>
 
-#include "luxonis_sidechannel_data.h"
-#include "utilities/ErrorMacros.hpp"
+#include "CameraStatsAbi.hpp"
 #include "camera/CameraSingleton.hpp"
+#include "utilities/ErrorMacros.hpp"
 
 class LuxonisSidechannel {
    public:
@@ -23,6 +23,7 @@ class LuxonisSidechannel {
         lux_sc_sensor_get_error_gpio_cb_t sensor_get_error_gpio;
         lux_sc_sensor_err_cb_add_t sensor_err_cb_add;
         lux_sc_sensor_err_cb_rm_t sensor_err_cb_rm;
+        lux_sc_camera_stats_get_v1_cb_t camera_stats_get_v1;
     };
 
     operations ops{};

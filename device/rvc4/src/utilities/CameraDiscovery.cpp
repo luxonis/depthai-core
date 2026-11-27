@@ -250,6 +250,8 @@ std::vector<CameraDescription> CameraDiscovery::forceEnumerateCameras() {
         } else {
             desc.camera.socket = static_cast<dai::CameraBoardSocket>(camera.socket);
         }
+        desc.physicalSocketKnown =
+            camera.socket >= static_cast<int>(dai::CameraBoardSocket::CAM_A) && camera.socket <= static_cast<int>(dai::CameraBoardSocket::CAM_J);
         desc.id = camera.index;
         desc.v4lpath.camera = "";
         desc.v4lpath.sensor = "";
@@ -514,7 +516,8 @@ void CameraDiscovery::overrideConnectedCameraFeatures(std::vector<dai::CameraFea
     int cameraIdx = 0;
     for(const auto& feature : this->cameraFeatures) {
         this->cameraSockets.push_back(feature.socket);
-        this->cameras.push_back(CameraDescription{feature, cameraIdx++, -1, {"", "", ""}});
+        this->cameras.push_back(CameraDescription{
+            feature, cameraIdx++, -1, {"", "", ""}, feature.socket >= dai::CameraBoardSocket::CAM_A && feature.socket <= dai::CameraBoardSocket::CAM_J});
         this->cameraNames[feature.socket] = feature.sensorName;
     }
 }

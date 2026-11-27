@@ -87,6 +87,8 @@ LuxonisSidechannel::LuxonisSidechannel(void* halDlopenHandle) {
         ops.sensor_get_error_gpio = (lux_sc_sensor_get_error_gpio_cb_t)dlsym(halDlopenHandle, "lux_sc_sensor_get_error_gpio");
         ops.sensor_err_cb_add = (lux_sc_sensor_err_cb_add_t)dlsym(halDlopenHandle, "lux_sc_sensor_err_cb_add");
         ops.sensor_err_cb_rm = (lux_sc_sensor_err_cb_rm_t)dlsym(halDlopenHandle, "lux_sc_sensor_err_cb_rm");
+        // POSIX dlsym returns void*: use the immutable v1 C signature; missing symbols remain optional.
+        ops.camera_stats_get_v1 = reinterpret_cast<lux_sc_camera_stats_get_v1_cb_t>(dlsym(halDlopenHandle, "lux_sc_camera_stats_get_v1"));
     } else {
         // Note: do not put this in a initializer list, since the thread will start before the object is fully constructed
         sidechannelThread = std::thread(&LuxonisSidechannel::listenToLuxonisSidechannel, this);

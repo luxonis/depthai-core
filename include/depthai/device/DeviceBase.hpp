@@ -706,7 +706,7 @@ class DeviceBase {
      * CameraStats::cslSessionId. Host queue discards are excluded. Sensors are
      * sampled sequentially, with individual timestamps.
      * RVC2 returns UNSUPPORTED entries. RVC4 requires firmware implementing this
-     * RPC; CSL counters additionally require the optional CamX statistics extension.
+     * RPC; CSL counters additionally require the optional camera HAL statistics extension.
      * Unsupported or temporarily unavailable counters are empty, not zero.
      * @returns Per-sensor snapshots, including inactive sensors.
      * @throws std::runtime_error For missing firmware support or an RPC failure.
