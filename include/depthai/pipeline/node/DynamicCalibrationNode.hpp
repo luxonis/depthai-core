@@ -160,6 +160,19 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      */
     bool runOnHost() const override;
 
+    /**
+     * Threads the dynamic calibration library computes on: counts, nice value and CPU affinity. The library's
+     * threads are process-wide, so the policy reaches every DynamicCalibration and AutoCalibration node in the
+     * same process (the device firmware or the host application). It is applied when the node starts; fields
+     * left empty keep the library defaults.
+     */
+    void setThreadPolicy(const DynamicCalibrationThreadPolicy& policy);
+
+    /**
+     * Thread policy set with setThreadPolicy(); all fields are empty unless set.
+     */
+    DynamicCalibrationThreadPolicy getThreadPolicy() const;
+
     void postBuildStage() override;
 
     /**

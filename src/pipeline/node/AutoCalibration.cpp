@@ -276,6 +276,14 @@ void AutoCalibration::setRunOnHost(bool runOnHost) {
     dynamicCalibration->setRunOnHost(runOnHost);
 }
 
+void AutoCalibration::setThreadPolicy(const DynamicCalibrationThreadPolicy& policy) {
+    dynamicCalibration->setThreadPolicy(policy);
+}
+
+DynamicCalibrationThreadPolicy AutoCalibration::getThreadPolicy() const {
+    return dynamicCalibration->getThreadPolicy();
+}
+
 CalibrationHandler AutoCalibration::readCurrentCalibration() {
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     // Read on every call: the DynamicCalibration node or a host setCalibration() may replace it at any time.

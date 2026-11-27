@@ -17,3 +17,10 @@ export ASAN_OPTIONS=alloc_dealloc_mismatch=0:abort_on_error=1:suppressions=/tmp/
 # camera.qcom.so pulls in libclang_rt.ubsan_standalone whose deadly-signal handler
 # would swallow SIGSEGV and _exit(1) without a core dump - keep it disarmed
 export UBSAN_OPTIONS=handle_segv=0:handle_sigbus=0:handle_sigill=0:handle_sigfpe=0:handle_abort=0:handle_sigtrap=0
+
+# Dynamic calibration library (DynamicCalibration / AutoCalibration nodes) thread policy.
+# Every image load is a short burst on all cores; keeping the prime core (cpu5) free costs ~14 % calibration
+# throughput and leaves one fast core to the rest of the pipeline. A DynamicCalibration::setThreadPolicy()
+# call from the host overrides these defaults.
+export DCL_OPENCV_THREADS=5
+export DCL_THREAD_AFFINITY=0-4

@@ -7,6 +7,9 @@
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/opencv.hpp>
 #endif
+#include <fmt/ranges.h>
+
+#include <ThreadControl.hpp>
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -18,6 +21,7 @@
 #include <pipeline/ThreadedNodeImpl.hpp>
 #include <set>
 #include <string>
+#include <thread>
 #include <tuple>
 #include <utility/ErrorMacros.hpp>
 #include <vector>
@@ -184,6 +188,43 @@ std::string joinIds(const std::vector<int32_t>& ids) {
     return joined;
 }
 
+// The library's threads are process-wide: the last node to start sets them for every calibration node.
+void applyThreadPolicy(const DynamicCalibrationThreadPolicy& policy, spdlog::logger& logger) {
+    if(!policy.schedulerThreads && !policy.openCvThreads && !policy.niceness && !policy.cpuAffinity) {
+        return;
+    }
+    const auto maxThreads = static_cast<int32_t>(std::max(1U, std::thread::hardware_concurrency()));
+    auto takeCount = [&](const std::optional<int32_t>& value, const char* name) -> std::optional<size_t> {
+        if(!value) return std::nullopt;
+        if(*value < 1 || *value > maxThreads) {
+            logger.error("DynamicCalibration thread policy: {} must be 1 to {}, got {}; ignoring it", name, maxThreads, *value);
+            return std::nullopt;
+        }
+        return static_cast<size_t>(*value);
+    };
+    dcl::ThreadPolicy dclPolicy;
+    dclPolicy.schedulerThreads = takeCount(policy.schedulerThreads, "schedulerThreads");
+    dclPolicy.openCvThreads = takeCount(policy.openCvThreads, "openCvThreads");
+    dclPolicy.niceness = policy.niceness;
+    if(policy.cpuAffinity) {
+        dclPolicy.cpuAffinity = std::vector<unsigned int>(policy.cpuAffinity->begin(), policy.cpuAffinity->end());
+    }
+    const dcl::Result<void> result = dcl::setThreadPolicy(dclPolicy);
+    if(result.errorCode != 0) {
+        // Not fatal: an OS refusal of nice or affinity still applies the thread counts, so log what is in effect.
+        logger.log(result.passed() ? spdlog::level::warn : spdlog::level::err, "DynamicCalibration thread policy: {}", result.errorMessage());
+    }
+    const dcl::ThreadPolicy applied = dcl::getThreadPolicy();
+    const std::string cpus = !applied.cpuAffinity           ? "inherited"
+                             : applied.cpuAffinity->empty() ? "all"
+                                                            : fmt::format("{}", fmt::join(*applied.cpuAffinity, ","));
+    logger.info("DynamicCalibration thread policy in effect: {} scheduler threads, {} OpenCV threads, nice {}, cpus {}",
+                applied.schedulerThreads.value_or(0),
+                applied.openCvThreads.value_or(0),
+                applied.niceness ? std::to_string(*applied.niceness) : std::string("inherited"),
+                cpus);
+}
+
 }  // namespace
 
 std::vector<std::vector<float>> DclUtils::calibrationHandleToTransform(const std::shared_ptr<const dcl::CameraCalibrationHandle>& calibration) {
@@ -328,6 +369,14 @@ void DynamicCalibration::warnConstraintMismatch(const std::string& reason) {
     } else {
         logger->debug("Calibration rejected: {}", reason);
     }
+}
+
+void DynamicCalibration::setThreadPolicy(const DynamicCalibrationThreadPolicy& policy) {
+    properties.threadPolicy = policy;
+}
+
+DynamicCalibrationThreadPolicy DynamicCalibration::getThreadPolicy() const {
+    return properties.threadPolicy;
 }
 
 void DynamicCalibration::trackMissingMarkers(bool accepted) {
@@ -1712,6 +1761,7 @@ void DynamicCalibration::run() {
         return;
     }
 #endif
+    applyThreadPolicy(properties.threadPolicy, *logger);
 
     auto& telemetryState = *pimplDCL->telemetryAggregateState;
     {

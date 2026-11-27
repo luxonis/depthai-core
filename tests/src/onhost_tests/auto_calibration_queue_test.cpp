@@ -51,6 +51,10 @@ struct AutoCalibrationTestAccess {
     static bool dynamicCalibrationRunsOnHost(AutoCalibration& node) {
         return node.dynamicCalibration->runOnHost();
     }
+
+    static DynamicCalibrationProperties& dynamicCalibrationProperties(AutoCalibration& node) {
+        return node.dynamicCalibration->properties;
+    }
 };
 
 }  // namespace dai::node
@@ -199,4 +203,38 @@ TEST_CASE("AutoCalibration runs on the host by default and its DynamicCalibratio
     node->setRunOnHost(true);
     REQUIRE(node->runOnHost());
     REQUIRE(Access::dynamicCalibrationRunsOnHost(*node));
+}
+
+TEST_CASE("AutoCalibration hands its thread policy to the DynamicCalibration properties", "[AutoCalibration][ThreadPolicy]") {
+    const auto type = GENERATE(dai::SerializationType::LIBNOP, dai::SerializationType::JSON, dai::SerializationType::JSON_MSGPACK);
+    CAPTURE(static_cast<int>(type));
+
+    dai::Pipeline pipeline{false};
+    auto node = pipeline.create<dai::node::AutoCalibration>();
+    // Empty by default, so the firmware defaults (DCL_* environment) stay in effect.
+    const auto unset = node->getThreadPolicy();
+    REQUIRE_FALSE(unset.schedulerThreads.has_value());
+    REQUIRE_FALSE(unset.openCvThreads.has_value());
+    REQUIRE_FALSE(unset.niceness.has_value());
+    REQUIRE_FALSE(unset.cpuAffinity.has_value());
+
+    dai::DynamicCalibrationThreadPolicy policy;
+    policy.schedulerThreads = 2;
+    policy.openCvThreads = 3;
+    policy.niceness = 5;
+    policy.cpuAffinity = std::vector<std::uint32_t>{0, 1, 2};
+    node->setThreadPolicy(policy);
+
+    // The DynamicCalibration subnode runs the library, so the policy has to reach its properties on the wire.
+    std::vector<std::uint8_t> data;
+    Access::dynamicCalibrationProperties(*node).serialize(data, type);
+    dai::DynamicCalibrationProperties decoded;
+    REQUIRE(dai::utility::deserialize(data, decoded, type));
+
+    const auto& restored = decoded.threadPolicy;
+    REQUIRE(restored.schedulerThreads == 2);
+    REQUIRE(restored.openCvThreads == 3);
+    REQUIRE(restored.niceness == 5);
+    REQUIRE(restored.cpuAffinity == std::vector<std::uint32_t>{0, 1, 2});
+    REQUIRE(node->getThreadPolicy().cpuAffinity == restored.cpuAffinity);
 }
