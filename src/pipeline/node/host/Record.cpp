@@ -822,8 +822,7 @@ struct RecordHostState {
         }
         if(needsMeasuredFps()) {
             measuredHold.push_back(std::move(held));
-            const bool enough = measuredHold.size() >= 10
-                                || (maxFramesLimit > 0 && static_cast<std::int32_t>(measuredHold.size()) >= maxFramesLimit);
+            const bool enough = measuredHold.size() >= 10 || (maxFramesLimit > 0 && static_cast<std::int32_t>(measuredHold.size()) >= maxFramesLimit);
             if(!enough) return;
             measuredFps = fpsFromHold();
             measuredReady = true;
@@ -1193,8 +1192,8 @@ void RecordVideo::buildStage1() {
     for(const auto& candidate : getParentPipeline().getAllNodes()) {
         const auto other = std::dynamic_pointer_cast<RecordVideo>(candidate);
         if(!other || other.get() == this) continue;
-        if(!other->resolved.ready && !other->properties.recordingNameSet && properties.recordingNameSet && !resolved.legacy && !other->properties.recordVideoFileSet
-           && !other->properties.recordMetadataFileSet) {
+        if(!other->resolved.ready && !other->properties.recordingNameSet && properties.recordingNameSet && !resolved.legacy
+           && !other->properties.recordVideoFileSet && !other->properties.recordMetadataFileSet) {
             continue;
         }
         for(const auto& key : keysOf(*other)) {

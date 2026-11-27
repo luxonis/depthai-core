@@ -6,12 +6,12 @@
 #include <depthai/properties/internal/XLinkOutProperties.hpp>
 
 // project
+#include <atomic>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/datatype/RecordControl.hpp>
 #include <depthai/pipeline/datatype/RecordStatus.hpp>
 #include <depthai/properties/RecordVideoProperties.hpp>
 #include <depthai/utility/RecordReplay.hpp>
-#include <atomic>
 #include <mutex>
 #include <optional>
 
