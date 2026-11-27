@@ -1297,3 +1297,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     dai_add_test(poe_link_reset_test src/ondevice_tests/poe_link_reset_test.cpp)
     dai_set_test_labels(poe_link_reset_test ondevice rvc2 poe rvc4 rvc4ffc ci noreplayci nousb)
 endif()
+
+dai_add_test(device_os_version_test src/ondevice_tests/device_os_version_test.cpp)
+dai_set_test_labels(device_os_version_test ondevice rvc2_all rvc4)

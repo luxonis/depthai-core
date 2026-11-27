@@ -43,6 +43,7 @@
 #include "device/StereoPairUtils.hpp"
 #include "pipeline/Pipeline.hpp"
 #include "properties/GlobalProperties.hpp"
+#include "utility/DeviceOSVersion.hpp"
 #include "utility/EepromDataParser.hpp"
 #include "utility/Environment.hpp"
 #include "utility/HolisticRecordReplay.hpp"
@@ -427,6 +428,8 @@ class DeviceBase::Impl {
     mutable std::mutex activeTelemetryPipelineIdMtx;
     std::string activeTelemetryPipelineId;
 
+    utility::DeviceOSVersionCache osVersion;
+
     // RPC
     std::mutex rpcMutex;
     std::shared_ptr<XLinkStream> rpcStream;
@@ -718,7 +721,7 @@ void DeviceBase::startTelemetryLifecycle(bool reconnect) {
             {"protocol_speed", telemetryProtocolSpeed(deviceInfo.protocol, getUsbSpeed())},
             {"standalone", isLoopbackDeviceName(deviceInfo.name) || deviceInfo.protocol == X_LINK_LOCAL_SHDMEM},
         };
-        properties["device_os_version"] = getOSVersion();
+        properties["device_os_version"] = pimpl->osVersion.get()->raw;
         dai::utility::Telemetry::getInstance().event(*this, "depthai_device_constructor", std::move(properties));
     } catch(const std::exception& ex) {
         pimpl->logger.debug("Failed to emit device constructor telemetry: {}", ex.what());
@@ -1525,6 +1528,13 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
                     pimpl->logger.warn("Could not determine Ethernet link speed: {}", ex.what());
                 }
             }
+            // OS metadata is optional (RVC2/custom firmware may not provide it).
+            try {
+                pimpl->osVersion.refresh(
+                    [&]() { return getPlatform() == Platform::RVC4 ? pimpl->rpcCallChecked<std::string>("getOSVersion") : std::string{}; });
+            } catch(const std::exception& ex) {
+                pimpl->logger.debug("Could not read device OS version: {}", ex.what());
+            }
             startTelemetryLifecycle(reconnect);
         } catch(const std::exception&) {
             // Close device (cleanup). On a reconnection attempt the caller (monitor thread)
@@ -1544,8 +1554,8 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
                     pimpl->startupNotificationsThread = std::thread([this, platform = getPlatform(), protocol = getProtocol()]() {
                         try {
                             if(isClosing) return;
-                            // getOSVersion() locks closedMtx, which close() holds while joining this thread.
-                            const auto osVersion = pimpl->rpcCallChecked<std::string>("getOSVersion");
+                            // Use the snapshot without taking closedMtx (close joins this thread).
+                            const auto osVersion = pimpl->osVersion.get()->raw;
                             if(isClosing) return;
                             const auto deviceSKU = getProductName();
                             if(isClosing) return;
@@ -1972,6 +1982,10 @@ std::vector<DeviceModelZoo> DeviceBase::getSupportedDeviceModels() {
 
 std::optional<Version> DeviceBase::getBootloaderVersion() {
     return bootloaderVersion;
+}
+
+std::optional<Version> DeviceBase::getDeviceOSVersion() const {
+    return pimpl->osVersion.get()->parsed;
 }
 
 std::string DeviceBase::getOSVersion() {
