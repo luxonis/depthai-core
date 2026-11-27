@@ -176,7 +176,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void clearMultiDeviceCalibration();
     void applyMultiDeviceCalibration(const std::optional<std::vector<MultiDeviceExtrinsics>>& graph);
     bool isHostOnly() const;
-    bool isDeviceOnly() const;
     std::vector<std::shared_ptr<Device>> getAllAssignedDevices() const;
 
     // Pipeline state getters
@@ -604,9 +603,6 @@ class Pipeline {
     }
 
     using NodeConnectionMap = PipelineImpl::NodeConnectionMap;
-    NodeConnectionMap getConnectionMap() const {
-        return impl()->getConnectionMap();
-    }
 
     /// Get pipelines AssetManager as reference
     const AssetManager& getAssetManager() const {

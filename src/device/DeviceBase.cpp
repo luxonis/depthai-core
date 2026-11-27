@@ -1046,19 +1046,6 @@ DeviceBase::~DeviceBase() {
     DeviceBase::close();
 }
 
-void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
-    try {
-        if(!startPipeline(pipeline)) {
-            throw std::runtime_error("Couldn't start the pipeline");
-        }
-    } catch(const std::exception&) {
-        // close device (cleanup)
-        close();
-        // Rethrow original exception
-        throw;
-    }
-}
-
 void DeviceBase::init(UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
