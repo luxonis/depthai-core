@@ -1158,16 +1158,8 @@ std::array<int32_t, 5> CameraSensor::toCamxRegion(const dai::CameraControl::Regi
     int32_t xmin = std::min<int32_t>(region.x, width), ymin = std::min<int32_t>(region.y, height);
     int32_t xmax = std::min(right, width), ymax = std::min(bottom, height);
     if(const auto flipMirror = appliedFlipMirror(imageOrientation)) {
-        if(flipMirror->second) {  // mirror
-            const int32_t mirroredMin = width - xmax;
-            xmax = width - xmin;
-            xmin = mirroredMin;
-        }
-        if(flipMirror->first) {  // flip
-            const int32_t flippedMin = height - ymax;
-            ymax = height - ymin;
-            ymin = flippedMin;
-        }
+        if(flipMirror->second) std::tie(xmin, xmax) = std::make_pair(width - xmax, width - xmin);   // mirror
+        if(flipMirror->first) std::tie(ymin, ymax) = std::make_pair(height - ymax, height - ymin);  // flip
     }
     return {xmin, ymin, xmax, ymax, weight};
 }
