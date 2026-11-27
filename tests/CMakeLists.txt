@@ -633,6 +633,10 @@ endif()
 dai_add_test(telemetry_fork_test src/onhost_tests/utility/telemetry_fork_test.cpp)
 dai_set_test_labels(telemetry_fork_test onhost ci nowindows)
 
+# IMU failure telemetry test
+dai_add_test(imu_failure_telemetry_test src/onhost_tests/utility/imu_failure_telemetry_test.cpp)
+dai_set_test_labels(imu_failure_telemetry_test onhost ci)
+
 # Circular buffer test
 dai_add_test(circular_buffer_test src/onhost_tests/utility/circular_buffer_test.cpp)
 dai_set_test_labels(circular_buffer_test onhost ci)
