@@ -69,11 +69,11 @@ The default limit is 32 GiB. `ReplayVideo::setReplayCacheLimit` changes it and d
 
 ## Holistic replay
 
-`Pipeline::enableHolisticReplay(path)` still builds the replay nodes. On RVC2 it extracts the recording on the host, as before. On RVC4 it does not extract the recording for the run. Each camera gets one `ReplayVideo`, and each other source, including the IMU, gets one `ReplayMetadataOnly`. Every node uses the recording path and `setArchiveEntry` with the record name. The nodes loop, leave fps unset, and use `NV12` unless the legacy flag asks for `YUV420p`.
+`Pipeline::enableHolisticReplay(path)` still builds the replay nodes. On RVC2 it extracts the recording on the host, as before. On RVC4 it does not extract the recording for the run. Each camera gets one `ReplayVideo`, and each other source, including the IMU, gets one `ReplayMetadataOnly`. Every node uses the recording path and `setArchiveEntry`. The entry is the record name, or `<folder>/<name>` when the files sit in one enclosing folder. The nodes loop, leave fps unset, and use `NV12` unless the legacy flag asks for `YUV420p`.
 
-The whole recording is one cache entry. A directory is packed into one tar so it can be uploaded as that entry. The pack is not the size probe. The probe reads the video, the first and last `.dai` frame, or the `.mcap` so the camera mock ISP size is known before start.
+The whole recording is one cache entry. A directory is packed into one tar so it can be uploaded as that entry. The pack is not the size probe. The probe reads the video, the first and last `.dai` frame, the first image of a frame folder, or the `.mcap` so the camera mock ISP size is known before start. Each call uses its own temporary directory and deletes only that call's probe folder.
 
-A camera stream is a video plus metadata, or a directory of `.dai` frames, or a `.mcap` of full frames. The metadata count must match the frame count. A recording that breaks that rule fails at start.
+A camera stream is a video (`.mp4`, or `.avi` when there is no `.mp4`), with or without metadata, or a directory of `.dai`, `.jpg`, or `.png` frames, or a `.mcap` of full frames. When both `.mp4` and `.avi` exist, `.mp4` is used. The metadata count must match the frame count when metadata is present. A recording that breaks that rule fails at start.
 
 ## What this repository does not do
 

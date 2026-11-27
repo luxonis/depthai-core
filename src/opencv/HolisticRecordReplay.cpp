@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <opencv2/imgcodecs.hpp>
 #include <optional>
 #include <stdexcept>
 #include <unordered_map>
@@ -32,11 +33,75 @@
 #include "depthai/utility/RecordingStore.hpp"
 #include "pipeline/Node.hpp"
 #include "utility/CompilerWarnings.hpp"
+#include "utility/ReplayArchive.hpp"
 
 #define UNUSED(x) (void)(x)
 
 namespace dai {
 namespace utility {
+
+namespace {
+
+std::string normalizeArchiveName(std::string path) {
+    std::replace(path.begin(), path.end(), '\\', '/');
+    while(path.rfind("./", 0) == 0) path.erase(0, 2);
+    return path;
+}
+
+bool hiddenRelative(const std::string& name) {
+    std::size_t start = 0;
+    while(start <= name.size()) {
+        const auto slash = name.find('/', start);
+        const auto part = name.substr(start, slash == std::string::npos ? std::string::npos : slash - start);
+        if(!part.empty() && part.front() == '.') return true;
+        if(slash == std::string::npos) break;
+        start = slash + 1;
+    }
+    return false;
+}
+
+struct RecordingIndex {
+    bool archive = false;
+    std::vector<std::string> names;
+    std::unordered_map<std::string, std::string> members;
+};
+
+RecordingIndex indexRecording(const std::filesystem::path& replayPath, bool archive) {
+    RecordingIndex index;
+    index.archive = archive;
+    std::vector<std::string> raw;
+    if(archive) {
+        raw = filenamesInArchive(replayPath);
+    } else {
+        for(const auto& entry : std::filesystem::recursive_directory_iterator(replayPath)) {
+            if(!entry.is_regular_file()) continue;
+            raw.push_back(std::filesystem::relative(entry.path(), replayPath).generic_string());
+        }
+    }
+    for(const auto& original : raw) {
+        auto name = normalizeArchiveName(original);
+        if(name.empty() || name.back() == '/') continue;
+        if(hiddenRelative(name)) continue;
+        if(!index.members.emplace(name, archive ? original : name).second) continue;
+        index.names.push_back(std::move(name));
+    }
+    return index;
+}
+
+std::string archiveMember(const RecordingIndex& index, const std::string& name) {
+    const auto found = index.members.find(name);
+    if(found == index.members.end()) return name;
+    return found->second;
+}
+
+std::string findByFilename(const RecordingIndex& index, const std::string& filename) {
+    for(const auto& name : index.names) {
+        if(std::filesystem::path(name).filename() == filename) return name;
+    }
+    return {};
+}
+
+}  // namespace
 
 static std::map<std::string, std::vector<std::pair<uint32_t, uint32_t>>> bestResolutionsRVC4 = {
     {"IMX582", {{320, 240}, {640, 480}, {960, 720}, {1280, 960}, {1440, 1080}, {1920, 1440}, {4000, 3000}, {8000, 6000}}},
@@ -310,34 +375,22 @@ bool mockCameraFeatures(DeviceBase& device, std::filesystem::path replayPath) {
         return false;
     }
     bool useTar = !platform::checkPathExists(replayPath, true);
-    std::vector<std::string> tarNodenames;
-    std::string tarRoot = ".";
-    if(useTar)
-        tarNodenames = filenamesInArchive(replayPath);
-    else
-        tarNodenames = platform::getFilenamesInDirectory(replayPath);
-    bool hasCameraInfo = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
-        auto pathObj = std::filesystem::path(path);
-        auto filename = pathObj.filename().string();
-        return filename == "camera_info.json";
-    });
-    bool hasCalibration = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
-        auto pathObj = std::filesystem::path(path);
-        auto filename = pathObj.filename().string();
-        return filename == "calibration.json";
-    });
-    if(useTar) tarRoot = tarNodenames.empty() ? "." : tarNodenames[0].substr(0, tarNodenames[0].find_last_of("/\\") + 1);
-    if(hasCameraInfo || hasCalibration) {
+    const auto index = indexRecording(replayPath, useTar);
+    const auto infoName = findByFilename(index, "camera_info.json");
+    const auto calibrationName = findByFilename(index, "calibration.json");
+    const bool hasCameraInfo = !infoName.empty();
+    const auto chosen = hasCameraInfo ? infoName : calibrationName;
+    if(!chosen.empty()) {
         std::vector<uint8_t> cameraInfoData;
         if(useTar) {
             try {
-                cameraInfoData = readFileInArchive(replayPath, tarRoot + (hasCameraInfo ? "camera_info.json" : "calibration.json"));
+                cameraInfoData = readFileInArchive(replayPath, archiveMember(index, chosen));
             } catch(const std::exception& e) {
                 spdlog::warn("Error while reading from tar file: {}", e.what());
                 return false;
             }
         } else {
-            std::filesystem::path cameraInfoPath = platform::joinPaths(replayPath, (hasCameraInfo ? "camera_info.json" : "calibration.json"));
+            std::filesystem::path cameraInfoPath = replayPath / chosen;
             if(!std::filesystem::exists(cameraInfoPath)) {
                 spdlog::warn("camera_info.json not found in replay path.");
                 return false;
@@ -373,99 +426,13 @@ bool mockCameraFeatures(DeviceBase& device, std::filesystem::path replayPath) {
 
 namespace {
 
-std::string normalizeArchiveName(std::string path) {
-    std::replace(path.begin(), path.end(), '\\', '/');
-    while(path.rfind("./", 0) == 0) path.erase(0, 2);
-    return path;
-}
-
-std::string lowerExtOf(const std::string& name) {
-    auto ext = std::filesystem::path(name).extension().string();
-    std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
-    return ext;
-}
-
-struct RecordingIndex {
-    bool archive = false;
-    /// Prefix removed from every entry, including the trailing slash. Empty when the archive is flat.
-    std::string prefix;
-    std::vector<std::string> names;
-};
-
-RecordingIndex indexRecording(const std::filesystem::path& replayPath, bool archive) {
-    RecordingIndex index;
-    index.archive = archive;
-    std::vector<std::string> raw;
-    if(archive) {
-        raw = filenamesInArchive(replayPath);
-    } else {
-        for(const auto& entry : std::filesystem::recursive_directory_iterator(replayPath)) {
-            if(!entry.is_regular_file()) continue;
-            raw.push_back(std::filesystem::relative(entry.path(), replayPath).generic_string());
-        }
-    }
-    for(auto& name : raw) name = normalizeArchiveName(std::move(name));
-    std::string common;
-    bool first = true;
-    bool mixed = false;
-    for(const auto& name : raw) {
-        if(name.empty() || name.back() == '/') continue;
-        const auto slash = name.find('/');
-        const std::string top = slash == std::string::npos ? std::string() : name.substr(0, slash + 1);
-        if(first) {
-            common = top;
-            first = false;
-        } else if(common != top) {
-            mixed = true;
-            break;
-        }
-    }
-    if(!mixed && !common.empty()) {
-        index.prefix = common;
-        for(auto& name : raw) {
-            if(name.rfind(common, 0) == 0) name = name.substr(common.size());
-        }
-    }
-    raw.erase(std::remove_if(raw.begin(), raw.end(), [](const std::string& name) { return name.empty() || name.back() == '/'; }), raw.end());
-    index.names = std::move(raw);
-    return index;
-}
-
-bool hasExact(const RecordingIndex& index, const std::string& name) {
-    return std::find(index.names.begin(), index.names.end(), name) != index.names.end();
-}
-
-bool hasFrameDirectory(const RecordingIndex& index, const std::string& name) {
-    const std::string prefix = name + "/";
-    const std::string marker = name + "_";
-    for(const auto& entry : index.names) {
-        if(entry.rfind(prefix, 0) != 0) continue;
-        const auto file = entry.substr(prefix.size());
-        if(file.find('/') != std::string::npos) continue;
-        if(file.rfind(marker, 0) != 0) continue;
-        if(lowerExtOf(file) == ".dai") return true;
-    }
-    return false;
-}
-
 enum class HolisticLayout { Video, Frames, Mcap, Missing };
 
-HolisticLayout cameraLayout(const RecordingIndex& index, const std::string& name, std::string& videoExt) {
-    if(hasFrameDirectory(index, name)) return HolisticLayout::Frames;
-    const bool mp4 = hasExact(index, name + ".mp4");
-    const bool avi = hasExact(index, name + ".avi");
-    const bool mcap = hasExact(index, name + ".mcap");
-    if(mp4 && avi) throw std::runtime_error("Recording contains both .mp4 and .avi files.");
-    if((mp4 || avi) && mcap) {
-        videoExt = mp4 ? ".mp4" : ".avi";
-        return HolisticLayout::Video;
-    }
-    if(mcap) return HolisticLayout::Mcap;
+HolisticLayout layoutOf(const replay::NamedArchiveEntry& selected) {
+    if(selected.kind == replay::NamedArchiveEntry::Kind::Video) return HolisticLayout::Video;
+    if(selected.kind == replay::NamedArchiveEntry::Kind::Frames) return HolisticLayout::Frames;
+    if(selected.kind == replay::NamedArchiveEntry::Kind::Mcap) return HolisticLayout::Mcap;
     return HolisticLayout::Missing;
-}
-
-std::string archiveEntryName(const RecordingIndex& index, const std::string& name) {
-    return index.prefix + name;
 }
 
 std::optional<nlohmann::json> readRecordConfig(const std::filesystem::path& replayPath, const RecordingIndex& index) {
@@ -479,7 +446,7 @@ std::optional<nlohmann::json> readRecordConfig(const std::filesystem::path& repl
     if(configName.empty()) return std::nullopt;
     std::vector<std::uint8_t> bytes;
     if(index.archive) {
-        bytes = readFileInArchive(replayPath, archiveEntryName(index, configName));
+        bytes = readFileInArchive(replayPath, archiveMember(index, configName));
     } else {
         std::ifstream input(replayPath / configName, std::ios::binary);
         if(!input) return std::nullopt;
@@ -501,7 +468,8 @@ std::filesystem::path materialize(const std::filesystem::path& replayPath,
                                   const std::filesystem::path& directory) {
     auto destination = directory / std::filesystem::path(entry).filename();
     if(index.archive) {
-        extractFiles(replayPath, {archiveEntryName(index, entry)}, {destination});
+        std::filesystem::create_directories(destination.parent_path());
+        extractFiles(replayPath, {archiveMember(index, entry)}, {destination});
         return destination;
     }
     return replayPath / entry;
@@ -523,7 +491,43 @@ double nominalFromDai(const std::vector<std::filesystem::path>& frames) {
 #endif
 }
 
-std::filesystem::path packDirectory(const std::filesystem::path& directory) {
+struct MediaProbe {
+    int width = 0;
+    int height = 0;
+    double fps = 30.0;
+};
+
+MediaProbe probeFrameMedia(const std::vector<std::filesystem::path>& local,
+                           const std::string& extension,
+                           const std::optional<nlohmann::json>& config,
+                           const std::string& name) {
+    MediaProbe probe;
+    if(local.empty()) throw std::runtime_error("Recording does not match the pipeline configuration.");
+    if(extension == ".dai") {
+#ifndef DEPTHAI_ENABLE_PROTOBUF
+        (void)config;
+        (void)name;
+        throw std::runtime_error("ReplayVideo node requires protobuf support");
+#else
+        ImgFrame first;
+        first.load(local.front());
+        probe.width = static_cast<int>(first.getWidth());
+        probe.height = static_cast<int>(first.getHeight());
+        const auto configured = configuredStreamFps(config, name);
+        probe.fps = configured.has_value() ? static_cast<double>(configured.value()) : std::round(1.0 / nominalFromDai(local));
+#endif
+    } else {
+        const auto image = cv::imread(local.front().string(), cv::IMREAD_UNCHANGED | cv::IMREAD_IGNORE_ORIENTATION);
+        if(image.empty()) throw std::runtime_error("ReplayVideo image cannot be read: " + local.front().string());
+        probe.width = image.cols;
+        probe.height = image.rows;
+        const auto configured = configuredStreamFps(config, name);
+        probe.fps = configured.has_value() ? static_cast<double>(configured.value()) : 30.0;
+    }
+    return probe;
+}
+
+std::filesystem::path packDirectory(const std::filesystem::path& directory, const std::filesystem::path& scratch) {
     std::vector<std::filesystem::path> onDisk;
     std::vector<std::string> inArchive;
     for(const auto& entry : std::filesystem::recursive_directory_iterator(directory)) {
@@ -538,7 +542,7 @@ std::filesystem::path packDirectory(const std::filesystem::path& directory) {
         onDisk.push_back(entry.path());
         inArchive.push_back(relative.generic_string());
     }
-    auto destination = platform::getTempPath() / "depthai_holistic_pack" / (directory.filename().string() + ".tar");
+    auto destination = scratch / (directory.filename().string() + ".tar");
     std::filesystem::create_directories(destination.parent_path());
     archiveFiles(destination, onDisk, inArchive);
     return destination;
@@ -561,17 +565,20 @@ bool setupHolisticReplayDevice(Pipeline& pipeline, const std::filesystem::path& 
     const bool archive = !platform::checkPathExists(replayPath, true);
     const auto index = indexRecording(replayPath, archive);
     const auto recordConfig = readRecordConfig(replayPath, index);
-    auto probeDir = platform::getTempPath() / "depthai_holistic_probe";
-    std::filesystem::remove_all(probeDir);
+    const auto scratch = replay::uniqueReplayTempDirectory();
+    const auto probeDir = scratch / "probe";
     std::filesystem::create_directories(probeDir);
+    struct ProbeCleanup {
+        std::filesystem::path path;
+        ~ProbeCleanup() {
+            std::error_code error;
+            std::filesystem::remove_all(path, error);
+        }
+    } probeCleanup{probeDir};
 
-    struct Probe {
-        int width = 0;
-        int height = 0;
-        double fps = 30.0;
-    };
-    std::unordered_map<std::string, Probe> probes;
+    std::unordered_map<std::string, MediaProbe> probes;
     std::unordered_map<std::string, HolisticLayout> layouts;
+    std::unordered_map<std::string, replay::NamedArchiveEntry> selectedByName;
 
     auto sources = pipeline.getSourceNodes();
     for(const auto& node : sources) {
@@ -580,55 +587,44 @@ bool setupHolisticReplayDevice(Pipeline& pipeline, const std::filesystem::path& 
         const auto name = source->getNodeRecordParams().name;
         const bool camera = std::dynamic_pointer_cast<node::Camera>(node) || std::dynamic_pointer_cast<node::ColorCamera>(node)
                             || std::dynamic_pointer_cast<node::MonoCamera>(node);
+        const auto selected = replay::selectNamedArchiveEntry(index.names, name, !camera);
+        const auto layout = layoutOf(selected);
         if(!camera) {
-            if(!hasExact(index, name + ".mcap")) throw std::runtime_error("Recording does not match the pipeline configuration.");
+            if(layout != HolisticLayout::Mcap) throw std::runtime_error("Recording does not match the pipeline configuration.");
             layouts[name] = HolisticLayout::Mcap;
+            selectedByName[name] = selected;
             continue;
         }
-        std::string videoExt = ".mp4";
-        const auto layout = cameraLayout(index, name, videoExt);
         if(layout == HolisticLayout::Missing) throw std::runtime_error("Recording does not match the pipeline configuration.");
         layouts[name] = layout;
-        Probe probe;
+        selectedByName[name] = selected;
+        MediaProbe probe;
         if(layout == HolisticLayout::Video) {
-            const auto video = materialize(replayPath, index, name + videoExt, probeDir);
-            const auto metadata = materialize(replayPath, index, name + ".mcap", probeDir);
+            const auto video = materialize(replayPath, index, selected.path, probeDir);
             const auto [width, height, fps] = utility::getVideoSize(video.string());
             probe.width = static_cast<int>(width);
             probe.height = static_cast<int>(height);
             probe.fps = fps;
-            const auto metadataSize = BytePlayer::getVideoSize(metadata.string());
-            if(metadataSize.has_value()) {
-                const auto [metaWidth, metaHeight] = metadataSize.value();
-                if(static_cast<int>(metaWidth) != probe.width || static_cast<int>(metaHeight) != probe.height) {
-                    throw std::runtime_error("Video size does not match metadata size for node " + name);
+            if(selected.hasMetadata) {
+                const auto metadata = materialize(replayPath, index, selected.metadataPath, probeDir);
+                const auto metadataSize = BytePlayer::getVideoSize(metadata.string());
+                if(metadataSize.has_value()) {
+                    const auto [metaWidth, metaHeight] = metadataSize.value();
+                    if(static_cast<int>(metaWidth) != probe.width || static_cast<int>(metaHeight) != probe.height) {
+                        throw std::runtime_error("Video size does not match metadata size for node " + name);
+                    }
                 }
             }
         } else if(layout == HolisticLayout::Frames) {
-            std::vector<std::pair<std::int64_t, std::string>> frames;
-            const std::string prefix = name + "/" + name + "_";
-            for(const auto& entry : index.names) {
-                if(entry.rfind(prefix, 0) != 0 || lowerExtOf(entry) != ".dai") continue;
-                const auto seqText = std::filesystem::path(entry).stem().string().substr(name.size() + 1);
-                frames.emplace_back(std::stoll(seqText), entry);
-            }
-            std::sort(frames.begin(), frames.end());
-            if(frames.empty()) throw std::runtime_error("Recording does not match the pipeline configuration.");
+            if(selected.frames.empty()) throw std::runtime_error("Recording does not match the pipeline configuration.");
             std::vector<std::filesystem::path> local;
-            local.push_back(materialize(replayPath, index, frames.front().second, probeDir));
-            if(frames.size() > 1) local.push_back(materialize(replayPath, index, frames.back().second, probeDir));
-#ifndef DEPTHAI_ENABLE_PROTOBUF
-            throw std::runtime_error("ReplayVideo node requires protobuf support");
-#else
-            ImgFrame first;
-            first.load(local.front());
-            probe.width = static_cast<int>(first.getWidth());
-            probe.height = static_cast<int>(first.getHeight());
-#endif
-            const auto configured = configuredStreamFps(recordConfig, name);
-            probe.fps = configured.has_value() ? configured.value() : std::round(1.0 / nominalFromDai(local));
+            local.push_back(materialize(replayPath, index, selected.frames.front(), probeDir));
+            if(selected.extension == ".dai" && selected.frames.size() > 1) {
+                local.push_back(materialize(replayPath, index, selected.frames.back(), probeDir));
+            }
+            probe = probeFrameMedia(local, selected.extension, recordConfig, name);
         } else {
-            const auto metadata = materialize(replayPath, index, name + ".mcap", probeDir);
+            const auto metadata = materialize(replayPath, index, selected.path, probeDir);
             const auto metadataSize = BytePlayer::getVideoSize(metadata.string());
             if(!metadataSize.has_value()) throw std::runtime_error("ReplayVideo source size is not set");
             probe.width = static_cast<int>(std::get<0>(metadataSize.value()));
@@ -641,18 +637,18 @@ bool setupHolisticReplayDevice(Pipeline& pipeline, const std::filesystem::path& 
 
     // The device cache stores one blob. A directory recording is packed into a tar for that upload.
     // The size probe above is a separate read and is not the cache upload.
-    const auto sourcePath = archive ? replayPath : packDirectory(replayPath);
-    std::filesystem::remove_all(probeDir);
+    const auto sourcePath = archive ? replayPath : packDirectory(replayPath, scratch);
 
     for(const auto& node : sources) {
         auto source = std::dynamic_pointer_cast<SourceNode>(node);
         const auto name = source->getNodeRecordParams().name;
         const auto layout = layouts[name];
+        const auto archiveEntry = selectedByName[name].archiveEntry;
         const bool camera = layout == HolisticLayout::Video || layout == HolisticLayout::Frames;
         if(camera) {
             auto replay = pipeline.create<dai::node::ReplayVideo>();
             replay->setSource(sourcePath);
-            replay->setArchiveEntry(name);
+            replay->setArchiveEntry(archiveEntry);
             replay->setLoop(true);
             replay->setOutFrameType(legacy ? ImgFrame::Type::YUV420p : ImgFrame::Type::NV12);
             const auto& probe = probes[name];
@@ -661,7 +657,7 @@ bool setupHolisticReplayDevice(Pipeline& pipeline, const std::filesystem::path& 
         } else {
             auto replay = pipeline.create<dai::node::ReplayMetadataOnly>();
             replay->setSource(sourcePath);
-            replay->setArchiveEntry(name);
+            replay->setArchiveEntry(archiveEntry);
             replay->setLoop(true);
             if(probes.count(name) != 0) {
                 const auto& probe = probes[name];
@@ -694,155 +690,95 @@ bool setupHolisticReplay(Pipeline pipeline,
 
     auto sources = pipeline.getSourceNodes();
     try {
-        bool useTar = !platform::checkPathExists(replayPath, true);
-        std::vector<std::string> tarNodenames;
-        std::string tarRoot = ".";
-        std::string videoExt = ".mp4";
-        std::filesystem::path rootPath = useTar ? platform::getTempPath() : replayPath;
-        if(useTar)
-            tarNodenames = filenamesInArchive(replayPath);
-        else
-            tarNodenames = platform::getFilenamesInDirectory(replayPath);
-        bool hasMp4Files = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
-            auto pathObj = std::filesystem::path(path);
-            return pathObj.extension() == ".mp4";
-        });
-        bool hasAviFiles = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
-            auto pathObj = std::filesystem::path(path);
-            return pathObj.extension() == ".avi";
-        });
-        if(hasMp4Files && hasAviFiles) {
-            throw std::runtime_error("Recording contains both .mp4 and .avi files.");
-        } else if(hasMp4Files) {
-            videoExt = ".mp4";
-        } else if(hasAviFiles) {
-            videoExt = ".avi";
-        }
-        tarNodenames.erase(std::remove_if(tarNodenames.begin(),
-                                          tarNodenames.end(),
-                                          [](const std::string& path) {
-                                              auto pathObj = std::filesystem::path(path);
-                                              return pathObj.extension() != ".mcap";
-                                          }),
-                           tarNodenames.end());
-        if(useTar) tarRoot = tarNodenames.empty() ? "." : tarNodenames[0].substr(0, tarNodenames[0].find_last_of("/\\") + 1);
-        for(auto& path : tarNodenames) {
-            auto pathObj = std::filesystem::path(path);
-            path = pathObj.stem().string();  // Remove extension
-        }
-
-        std::vector<std::string> nodeNames;
-        std::vector<std::string> pipelineFilenames;
-        pipelineFilenames.reserve(sources.size());
-        nodeNames.reserve(sources.size());
-        for(auto& node : sources) {
-            auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
-            if(nodeS == nullptr) {
-                throw std::runtime_error("Node is listed as a source node but does not implement the SourceNode interface.");
+        const bool useTar = !platform::checkPathExists(replayPath, true);
+        const auto index = indexRecording(replayPath, useTar);
+        const auto savedConfig = readRecordConfig(replayPath, index);
+        const auto scratch = useTar ? replay::uniqueReplayTempDirectory() : replayPath;
+        auto place = [&](const std::vector<std::string>& relatives) {
+            std::vector<std::filesystem::path> placed;
+            placed.reserve(relatives.size());
+            if(!useTar) {
+                for(const auto& relative : relatives) placed.push_back(replayPath / relative);
+                return placed;
             }
-            NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
-            // Needed for multi-device recordings, not yet supported
-            // std::string nodeName = (deviceId + "_").append(nodeParams.name);
-            nodeNames.push_back(nodeParams.name);
-            pipelineFilenames.push_back(nodeParams.name);
-        }
-        std::vector<std::string> inFiles;
-        std::vector<std::filesystem::path> outFiles;
-        inFiles.reserve(sources.size() * 2);
-        outFiles.reserve(sources.size() * 2);
-        if(allMatch(pipelineFilenames, tarNodenames)) {
-            for(auto& nodeName : nodeNames) {
-                // auto filename = (deviceId + "_").append(nodeName);
-                auto filename = nodeName;
-                if(useTar) {
-                    inFiles.push_back(tarRoot + filename + videoExt);
-                    inFiles.push_back(tarRoot + filename + ".mcap");
-                }
-                std::filesystem::path filePath = platform::joinPaths(rootPath, filename);
-                outFiles.push_back(std::filesystem::path(filePath).concat(videoExt));
-                outFiles.push_back(std::filesystem::path(filePath).concat(".mcap"));
-                outFilenames[nodeName] = filePath;
+            std::vector<std::string> members;
+            members.reserve(relatives.size());
+            for(const auto& relative : relatives) {
+                auto destination = scratch / relative;
+                std::filesystem::create_directories(destination.parent_path());
+                members.push_back(archiveMember(index, relative));
+                placed.push_back(destination);
             }
-            if(useTar) {
-                extractFiles(replayPath, inFiles, outFiles);
+            extractFiles(replayPath, members, placed);
+            for(const auto& path : placed) {
+                if(!std::filesystem::exists(path)) throw std::runtime_error("Recording does not match the pipeline configuration.");
             }
-        } else {
-            throw std::runtime_error("Recording does not match the pipeline configuration.");
-            // For multi-device recordings, where devices are not the same
-            // std::vector<std::string> mxIds;
-            // mxIds.reserve(tarFilenames.size());
-            // for(auto& filename : tarFilenames) {
-            //     mxIds.push_back(filename.substr(0, filename.find_first_of('_')));
-            // }
-            // // Get unique mxIds
-            // std::sort(mxIds.begin(), mxIds.end());
-            // mxIds.erase(std::unique(mxIds.begin(), mxIds.end()), mxIds.end());
-            // std::string mxIdRec = matchTo(mxIds, tarFilenames, nodeNames);
-            // if(mxIdRec.empty()) {
-            //     throw std::runtime_error("No recordings match the pipeline configuration.");
-            // }
-            // for(auto& nodeName : nodeNames) {
-            //     auto inFilename = (mxIdRec + "_").append(nodeName).append(".rec");
-            //     auto outFilename = (mxId + "_").append(nodeName).append(".rec");
-            //     inFiles.push_back(inFilename + ".mp4");
-            //     inFiles.push_back(inFilename + ".mcap");
-            //     std::string filePath = platform::joinPaths(rootPath, outFilename);
-            //     outFiles.push_back(filePath + ".mp4");
-            //     outFiles.push_back(filePath + ".mcap");
-            //     outFilenames[nodeName] = filePath;
-            // }
-            // inFiles.emplace_back("record_config.json");
-            // configPath = platform::joinPaths(rootPath, mxId + "_record_config.json");
-            // outFiles.push_back(configPath);
-            // outFilenames["record_config"] = configPath;
-            // extractFiles(replayPath, inFiles, outFiles);
-        }
+            return placed;
+        };
 
         recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
-
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
-            if(nodeS == nullptr) {
-                throw std::runtime_error("Node is listed as a source node but does not implement the SourceNode interface.");
-            }
-            NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
-            std::string nodeName = nodeParams.name;
+            if(nodeS == nullptr) throw std::runtime_error("Node is listed as a source node but does not implement the SourceNode interface.");
+            const auto nodeName = nodeS->getNodeRecordParams().name;
             DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
-            auto cameraNode = std::dynamic_pointer_cast<node::Camera>(node);
-            auto colorCameraNode = std::dynamic_pointer_cast<node::ColorCamera>(node);
-            auto monoCameraNode = std::dynamic_pointer_cast<node::MonoCamera>(node);
-            if(cameraNode || colorCameraNode || monoCameraNode) {
-                auto replay = pipeline.create<dai::node::ReplayVideo>();
-                // replay->setReplayFile(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mcap")));
-                replay->setReplayMetadataFile(platform::joinPaths(rootPath, nodeName + ".mcap"));
-                // replay->setReplayVideo(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mp4")));
-                replay->setReplayVideoFile(platform::joinPaths(rootPath, nodeName + videoExt));
-                replay->setOutFrameType(legacy ? ImgFrame::Type::YUV420p : ImgFrame::Type::NV12);
-
-                auto videoSize = BytePlayer::getVideoSize(replay->getReplayMetadataFile().string());
-                auto [vidWidth, vidHeight, vidFps] = utility::getVideoSize(replay->getReplayVideoFile().string());
-                if(cameraNode) {
-                    cameraNode->properties.mockIspWidth = vidWidth;
-                    cameraNode->properties.mockIspHeight = vidHeight;
-                    cameraNode->properties.mockIspFps = vidFps;
-                } else if(colorCameraNode) {
-                    colorCameraNode->setMockIspSize(vidWidth, vidHeight);
-                } else if(monoCameraNode) {
-                    monoCameraNode->setMockIspSize(vidWidth, vidHeight);
+            const bool camera = std::dynamic_pointer_cast<node::Camera>(node) || std::dynamic_pointer_cast<node::ColorCamera>(node)
+                                || std::dynamic_pointer_cast<node::MonoCamera>(node);
+            DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+            const auto selected = replay::selectNamedArchiveEntry(index.names, nodeName, !camera);
+            const auto layout = layoutOf(selected);
+            if(layout == HolisticLayout::Missing) throw std::runtime_error("Recording does not match the pipeline configuration.");
+            if(!camera || layout == HolisticLayout::Mcap) {
+                if(layout != HolisticLayout::Mcap) throw std::runtime_error("Recording does not match the pipeline configuration.");
+                const auto metadata = place({selected.path}).front();
+                auto replay = pipeline.create<dai::node::ReplayMetadataOnly>();
+                replay->setReplayFile(metadata);
+                if(camera) {
+                    const auto metadataSize = BytePlayer::getVideoSize(metadata.string());
+                    if(!metadataSize.has_value()) throw std::runtime_error("ReplayVideo source size is not set");
+                    const auto configured = configuredStreamFps(savedConfig, nodeName);
+                    const double fps = configured.has_value() ? static_cast<double>(configured.value()) : 30.0;
+                    applyMockIspSize(node, static_cast<int>(std::get<0>(metadataSize.value())), static_cast<int>(std::get<1>(metadataSize.value())), fps);
                 }
-                if(videoSize.has_value()) {
-                    auto [width, height] = videoSize.value();
-                    if(width != vidWidth || height != vidHeight) {
-                        throw std::runtime_error("Video size does not match metadata size for node " + nodeName);
+                outFilenames[nodeName] = metadata.parent_path() / metadata.stem();
+                replay->out.link(nodeS->getReplayInput());
+                continue;
+            }
+            if(layout == HolisticLayout::Video) {
+                std::vector<std::string> relatives{selected.path};
+                if(selected.hasMetadata) relatives.push_back(selected.metadataPath);
+                const auto placed = place(relatives);
+                const auto& video = placed.front();
+                auto replay = pipeline.create<dai::node::ReplayVideo>();
+                replay->setReplayVideoFile(video);
+                if(selected.hasMetadata) replay->setReplayMetadataFile(placed[1]);
+                replay->setOutFrameType(legacy ? ImgFrame::Type::YUV420p : ImgFrame::Type::NV12);
+                const auto [vidWidth, vidHeight, vidFps] = utility::getVideoSize(video.string());
+                if(selected.hasMetadata) {
+                    const auto videoSize = BytePlayer::getVideoSize(placed[1].string());
+                    if(videoSize.has_value()) {
+                        const auto [width, height] = videoSize.value();
+                        if(width != vidWidth || height != vidHeight) {
+                            throw std::runtime_error("Video size does not match metadata size for node " + nodeName);
+                        }
                     }
                 }
-                DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+                applyMockIspSize(node, static_cast<int>(vidWidth), static_cast<int>(vidHeight), vidFps);
+                outFilenames[nodeName] = video.parent_path() / video.stem();
                 replay->out.link(nodeS->getReplayInput());
-            } else {
-                auto replay = pipeline.create<dai::node::ReplayMetadataOnly>();
-                replay->setReplayFile(platform::joinPaths(rootPath, nodeName + ".mcap"));
-                replay->out.link(nodeS->getReplayInput());
+                continue;
             }
+            const auto placed = place(selected.frames);
+            if(placed.empty()) throw std::runtime_error("Recording does not match the pipeline configuration.");
+            std::vector<std::filesystem::path> samples{placed.front()};
+            if(selected.extension == ".dai" && placed.size() > 1) samples.push_back(placed.back());
+            const auto probed = probeFrameMedia(samples, selected.extension, savedConfig, nodeName);
+            auto replay = pipeline.create<dai::node::ReplayVideo>();
+            replay->setReplayVideoFile(placed.front().parent_path());
+            replay->setOutFrameType(legacy ? ImgFrame::Type::YUV420p : ImgFrame::Type::NV12);
+            applyMockIspSize(node, probed.width, probed.height, probed.fps);
+            outFilenames[nodeName] = placed.front().parent_path();
+            replay->out.link(nodeS->getReplayInput());
         }
         return true;
     } catch(const std::exception& e) {
