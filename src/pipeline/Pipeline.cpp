@@ -887,44 +887,6 @@ void PipelineImpl::remove(const std::shared_ptr<Node>& toRemove) {
     }
 }
 
-bool PipelineImpl::isSamePipeline(const Node::Output& out, const Node::Input& in) {
-    // Check whether Output 'out' and Input 'in' are on the same pipeline.
-    // By checking whether their parent nodes are on same pipeline
-    auto outputPipeline = out.getParent().parent.lock();
-    if(outputPipeline != nullptr) {
-        return (outputPipeline == in.getParent().parent.lock());
-    }
-    return false;
-}
-
-bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
-    // First check if on same pipeline
-    if(!isSamePipeline(out, in)) {
-        return false;
-    }
-
-    // Check that IoType match up
-    if(out.getType() == Node::Output::Type::MSender && in.getType() == Node::Input::Type::MReceiver) return false;
-    if(out.getType() == Node::Output::Type::SSender && in.getType() == Node::Input::Type::SReceiver) return false;
-
-    // Check that datatypes match up
-    for(const auto& outHierarchy : out.getPossibleDatatypes()) {
-        for(const auto& inHierarchy : in.possibleDatatypes) {
-            // Check if datatypes match for current datatype
-            if(outHierarchy.datatype == inHierarchy.datatype) return true;
-
-            // If output can produce descendants
-            if(outHierarchy.descendants && isDatatypeSubclassOf(outHierarchy.datatype, inHierarchy.datatype)) return true;
-
-            // If input allows descendants
-            if(inHierarchy.descendants && isDatatypeSubclassOf(inHierarchy.datatype, outHierarchy.datatype)) return true;
-        }
-    }
-
-    // If datatypes don't match up, return false
-    return false;
-}
-
 void PipelineImpl::setCalibrationData(const CalibrationHandler& calibrationDataHandler) {
     setEepromData(calibrationDataHandler.getEepromData());
 }

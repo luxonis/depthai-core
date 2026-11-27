@@ -98,10 +98,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
    private:
     static std::string createTelemetryPipelineId();
 
-    // static functions
-    static bool isSamePipeline(const Node::Output& out, const Node::Input& in);
-    static bool canConnect(const Node::Output& out, const Node::Input& in);
-
     // Functions
     Node::Id getNextUniqueId();
     PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
