@@ -2,6 +2,8 @@ import depthai as dai
 import cv2
 
 THERMAL_IMAGE_BRIGHTNESS_STEP = 10
+PALETTES = list(dai.ThermalColorPalette.__members__.values())
+AGC_MODES = list(dai.ThermalAgcMode.__members__.values())
 
 with dai.Pipeline(True) as pipeline:
     thermal = pipeline.create(dai.node.Thermal)
@@ -10,6 +12,7 @@ with dai.Pipeline(True) as pipeline:
     thermalConf = dai.ThermalConfig()
 
     pipeline.start()
+    print("Keys: p palette, g AGC mode, l fixed 20-40 deg C span, f shutter now, a auto shutter, s manual shutter, n/m brightness, q quit")
     WINDOW_NAME = "thermal"
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
     initialRescaleDone = False
@@ -71,6 +74,36 @@ with dai.Pipeline(True) as pipeline:
                 "manual shutter.",
             )
             changed = True
+        elif key == ord("p"):
+            palette = thermalConf.imageParams.colorPalette
+            if palette is None:
+                palette = dai.ThermalColorPalette.WHITE_HOT  # at start
+            thermalConf.imageParams.colorPalette = PALETTES[(PALETTES.index(palette) + 1) % len(PALETTES)]
+            print("Set color palette to", thermalConf.imageParams.colorPalette.name)
+            changed = True
+        elif key == ord("g"):
+            mode = thermalConf.agcParams.mode
+            thermalConf.agcParams.mode = AGC_MODES[0 if mode is None else (AGC_MODES.index(mode) + 1) % len(AGC_MODES)]
+            print("Set AGC mode to", thermalConf.agcParams.mode.name)
+            changed = True
+        elif key == ord("l"):
+            # The same temperature gets the same color in every frame: 20 deg C and colder darkest, 40 deg C and hotter brightest
+            fixed = thermalConf.agcParams.linearLockMode != dai.ThermalLinearAgcLockMode.MANUAL
+            thermalConf.agcParams.mode = dai.ThermalAgcMode.LINEAR
+            if fixed:
+                thermalConf.agcParams.linearLockMode = dai.ThermalLinearAgcLockMode.MANUAL
+                thermalConf.agcParams.linearMin = 20.0
+                thermalConf.agcParams.linearMax = 40.0
+            else:
+                thermalConf.agcParams.linearLockMode = dai.ThermalLinearAgcLockMode.AUTO
+            print("Set linear AGC to", "20-40 deg C." if fixed else "the scene's range.")
+            changed = True
+        elif key == ord("f"):
+            # One shutter cycle; sent on its own, so later configs don't repeat it
+            trigger = dai.ThermalConfig()
+            trigger.ffcParams.triggerFFC = True
+            thermalConfIn.send(trigger)
+            print("Shutter (flat field correction) triggered.")
 
         if changed:
             thermalConfIn.send(thermalConf)

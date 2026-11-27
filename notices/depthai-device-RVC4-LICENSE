@@ -2264,6 +2264,8 @@ This package is the vendor module of the Luxonis DepthAI RVC4 firmware. It is co
 | Depth-map wrapper | `tof/lib/libdepthai-device-rvc4-vendor-tof.a` | `depthai-device-rvc4` | depthmapwrapper-vd55h1, received from STMicroelectronics with the VD55H1 IPP library (depthmapwrapper-vd55h1/depthmapwrapper-lib/) | `licenses/Qualcomm-Technologies-Inc.-Proprietary` | measured |
 | VD55H1 IPP library 3.0.10 | `tof/lib/libdepthai-device-rvc4-vendor-tof.a` | `depthai-device-rvc4` | STMicroelectronics vd55h1-ipp-adreno 3.0.10, modified by Luxonis (depthmapwrapper-vd55h1/vd55h1-ipp-adreno/) | `licenses/vd55h1-ipp-adreno-LICENSE.txt` | measured |
 | glog 0.8.0 | `tof/lib/libdepthai-device-rvc4-vendor-tof.a` | `depthai-device-rvc4` | github.com/google/glog 0.8.0 (depthmapwrapper-vd55h1/glog/), used by the VD55H1 IPP library | `licenses/glog-53d58e45-LICENSE.md` | measured |
+| Seek Thermal SDK library 5.2.0.11 | `seek/libseekcamera.so.5.2` | `seek-eagle/libseekcamera.so.5.2` | Seek Thermal SDK 5.2.0.11 for the Raspberry Pi 5 (aarch64-linux-gnu), unmodified (seek-sdk/) | `licenses/seek-thermal-sdk-LICENSE.txt` | measured |
+| libyaml | `seek/libseekcamera.so.5.2` | `seek-eagle/libseekcamera.so.5.2` | compiled into the Seek Thermal SDK library (its `yaml_*` functions) | `licenses/seek-thermal-sdk-LICENSE.txt` | inferred |
 
 ## Copyright notices of the VD55H1 IPP library
 
@@ -2279,6 +2281,7 @@ The library is licensed by ST under 'STMicroelectronics Proprietary license SLA0
 | `legal/licenses/depthai-core-LICENSE` | LICENSE of the depthai-core repository (MIT) |
 | `legal/licenses/eva-NOTICE` | BSP file LE.PRODUCT.2.1.r1/apps_proc/poky/meta-qti-eva-prop/recipes/eva-noship/NOTICE at BSP commit b1e327350e |
 | `legal/licenses/glog-53d58e45-LICENSE.md` | github.com/google/glog LICENSE.md, copy in depthmapwrapper-vd55h1/glog; the same bytes as glog-53d58e45-LICENSE.md of the Luxonis OS camera package |
+| `legal/licenses/seek-thermal-sdk-LICENSE.txt` | LICENSE.txt of the Seek Thermal SDK for the Raspberry Pi 5, copy in seek-sdk; its third-party section has the MIT text of libyaml |
 | `legal/licenses/ssc-direct-channel-NOTICE.txt` | BSP file adsp_proc/ssc/framework/direct_channel_client_manager/inc/NOTICE.txt at BSP commit b1e327350e |
 | `legal/licenses/vd55h1-ipp-adreno-LICENSE.txt` | LICENSE.txt (SLA0106) of the STMicroelectronics VD55H1 IPP library, copy in depthmapwrapper-vd55h1/vd55h1-ipp-adreno |
 
@@ -2398,6 +2401,104 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+legal/licenses/seek-thermal-sdk-LICENSE.txt
+-------------------------------------------
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Seek Thermal SDK headers and library:
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+SEEK THERMAL CONFIDENTIAL
+_________________________
+
+Copyright (c) 2021 Seek Thermal Incorporated
+All Rights Reserved.
+
+NOTICE:  All information contained herein is, and remains
+the property of Seek Thermal Incorporated and its suppliers,
+if any.  The intellectual and technical concepts contained
+herein are proprietary to Seek Thermal Incorporated
+and its suppliers and may be covered by U.S. and Foreign Patents,
+patents in process, and are protected by trade secret or copyright law.
+Dissemination of this information or reproduction of this material
+is strictly forbidden unless prior written permission is obtained
+from Seek Thermal Incorporated.
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Seek Thermal SDK sample applications:
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Copyright (c) [2021] [Seek Thermal, Inc.]
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The Software may only be used in combination with Seek cores/products.
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Third-party components
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+NOTE: The following licenses apply to third-party components included in this package:
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+SDL 2.0.10:
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Copyright (C) 1997-2019 Sam Lantinga <slouken@libsdl.org>
+  
+This software is provided 'as-is', without any express or implied
+warranty.  In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+  
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required. 
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+libyaml
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Copyright (c) 2017-2020 Ingy döt Net
+Copyright (c) 2006-2016 Kirill Simonov
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 legal/licenses/ssc-direct-channel-NOTICE.txt
 --------------------------------------------

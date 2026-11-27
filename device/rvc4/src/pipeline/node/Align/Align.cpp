@@ -130,6 +130,15 @@ void remapPlanarRgb(const std::shared_ptr<ImgFrame>& input,
     }
 }
 
+// OpenCV has no remap for CV_16F: the values are remapped as 16-bit words, with nearest neighbour so they stay exact.
+// Pixels from outside the input are NaN, as in ImageAlign on RVC2.
+void remapGrayF16(const cv::Mat& input, cv::Mat& output, const cv::Mat& mapX, const cv::Mat& mapY) {
+    constexpr uint16_t kNan = 0xFFFF;
+    cv::Mat input16(input.rows, input.cols, CV_16UC1, input.data, input.step[0]);
+    cv::Mat output16(output.rows, output.cols, CV_16UC1, output.data, output.step[0]);
+    cv::remap(input16, output16, mapX, mapY, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(kNan));
+}
+
 DatatypeEnum classifyInputDatatype(const std::shared_ptr<Buffer>& buffer) {
     const auto datatype = buffer->getDatatype();
     if(datatype == DatatypeEnum::PointCloudData) {
@@ -502,6 +511,8 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(std::shared_ptr<ImgFrame> inputIm
         remapFrame(*inputImg, *depthImgRectified, map_x_1, map_y_1, interpolation);
     } else if(inputIsPlanarRgb) {
         remapPlanarRgb(inputImg, depthImgRectified, map_x_1, map_y_1, interpolation, borderColor);
+    } else if(frameType == ImgFrame::Type::GRAYF16) {
+        remapGrayF16(frameForRemap(*inputImg), depthImgRectifiedFrame, map_x_1, map_y_1);
     } else {
         cv::remap(frameForRemap(*inputImg), depthImgRectifiedFrame, map_x_1, map_y_1, interpolation, cv::BORDER_CONSTANT, borderColor);
     }
@@ -621,6 +632,8 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(std::shared_ptr<ImgFrame> inputIm
         remapFrame(*warp2Input, *alignedImg, map_x_2, map_y_2, interpolation);
     } else if(inputIsPlanarRgb) {
         remapPlanarRgb(warp2Input, alignedImg, map_x_2, map_y_2, interpolation, borderColor);
+    } else if(frameType == ImgFrame::Type::GRAYF16) {
+        remapGrayF16(frameForRemap(*warp2Input), alignedImgFrame, map_x_2, map_y_2);
     } else {
         cv::remap(frameForRemap(*warp2Input), alignedImgFrame, map_x_2, map_y_2, interpolation, cv::BORDER_CONSTANT, borderColor);
     }

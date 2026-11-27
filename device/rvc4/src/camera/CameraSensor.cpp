@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstring>
 #include <cstdint>
@@ -31,6 +32,7 @@
 #include "camera/HalUtil.hpp"
 #include "camera/IspRouteAllocator.hpp"
 #include "camera/LuxonisSidechannel.hpp"
+#include "camera/SeekEagle.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraSensorType.hpp"
 #include "depthai/common/Timestamp.hpp"
@@ -216,6 +218,7 @@ std::string telemetryFsyncModeName(lux_sc_camera_fsync_t fsyncMode) {
             return "none";
     }
 }
+
 }  // namespace
 
 constexpr float NEUTRAL_KELVINS = 6500.0f;  // D65
@@ -298,6 +301,9 @@ CameraSensor::CameraSensor(const CameraDescription cam,
                            std::shared_ptr<spdlog::async_logger> pLogger) {
     logger = pLogger;
     cameraDescription = cam;
+    std::string lowerSensorName = cam.camera.sensorName;
+    std::transform(lowerSensorName.begin(), lowerSensorName.end(), lowerSensorName.begin(), ::tolower);
+    isEagleSensor = lowerSensorName.find("eagle") != std::string::npos;
     ensureSensorTelemetryMetricsRegistered();
     numFramesPoolOutputs = properties.numFramesPoolOutputs;
     maxSizePoolOutputs = properties.maxSizePoolOutputs;
@@ -310,6 +316,7 @@ CameraSensor::CameraSensor(const CameraDescription cam,
         allocReq.socket = static_cast<int>(cam.camera.socket);
         allocReq.socketName = toString(cam.camera.socket);
         allocReq.fps = wantedFps;
+        allocReq.rawOnly = isEagleSensor;  // camx only captures its raw frames, the Seek SDK processes them
         const auto allocFeatures = CameraDiscovery::getInstance().getCameraFeatures("", cam.camera.socket);
         if(sensorModeIndex < allocFeatures.configs.size()) {
             allocReq.width = allocFeatures.configs[sensorModeIndex].width;
@@ -358,6 +365,7 @@ CameraSensor::~CameraSensor() {
     logger->trace("CameraSensor DESTRUCTOR called");
     unregisterSensorErrorCallback();
     stopSensorErrorMonitor();
+    if(isEagleSensor) seek_eagle::attach(cameraDescription.camera.socket, nullptr);
 }
 
 void* CameraSensor::sensorErrorCbAdd(SensorErrorStateCallback cb) {
@@ -728,7 +736,31 @@ void CameraSensor::addStream(std::vector<camera3_stream_t*>& curStreamsPtrs, con
                     return;
                 }
                 auto stride = gbm_bo_get_stride(bo);
-                if(buffer->stream->format == HAL_PIXEL_FORMAT_RAW16) {
+                if(buffer->stream->format == HAL_PIXEL_FORMAT_RAW_OPAQUE && isEagleSensor) {
+                    // Seek Eagle wire frame (8-bit bytes in rows at the MIPI RAW10 pitch, which the pool allocates) ->
+                    // the Seek SDK in this process, which publishes the processed frame; the camx buffer is released when
+                    // `data` goes out of scope.
+                    const int camxStride = CameraPool::camxRawOpaqueStride(static_cast<int>(buffer->stream->width));
+                    if(!eagleRawLayoutLogged) {
+                        eagleRawLayoutLogged = true;
+                        logger->info("Seek Eagle: raw buffer {}x{}, gbm stride {}, camx stride {}, size {}",
+                                     buffer->stream->width,
+                                     buffer->stream->height,
+                                     stride,
+                                     camxStride,
+                                     halData->getSize());
+                        if(static_cast<int>(stride) != camxStride) logger->error("Seek Eagle: gbm and camx strides differ, frames will be skewed");
+                    }
+                    seek_eagle::submitWireFrame(cameraDescription.camera.socket,
+                                                data->getData().data(),
+                                                buffer->stream->width,
+                                                buffer->stream->height,
+                                                static_cast<int>(stride),
+                                                ts,
+                                                seqNum,
+                                                cam,
+                                                outputName);
+                } else if(buffer->stream->format == HAL_PIXEL_FORMAT_RAW16) {
                     // ToF RAW16 (GRAY16_LE) frame
                     if(cameraDescription.camera.sensorName == "VD55H1") {
                         uint64_t exposureNs = 0;
@@ -895,6 +927,13 @@ void CameraSensor::run() {
                      modeHeight,
                      curFps);
     }
+    if(isEagleSensor && hasRaw) {
+        // Seek Eagle: the Seek SDK resets the module, loads its calibration and starts imaging (MIPI output) before camx
+        // opens the camera
+        if(!seek_eagle::start(logger, 60000, static_cast<int>(cameraId), cameraDescription.camera.socket))
+            logger->error("Seek Eagle: Seek SDK not running, no frames will be published");
+        seek_eagle::attach(cameraDescription.camera.socket, handleBuffer);
+    }
     auto camM = CameraSingleton::getInstance().cameraModule;
     DAI_CHECK_IN(camM);
     loadCorrectTuning();
@@ -933,7 +972,10 @@ void CameraSensor::run() {
         auto features = CameraDiscovery::getInstance().getCameraFeatures("", cameraDescription.camera.socket);
         DAI_CHECK_IN(sensorMode < features.configs.size());
         auto config = features.configs[sensorMode];
-        int rawFormat = isToFSensor ? HAL_PIXEL_FORMAT_RAW16 : HAL_PIXEL_FORMAT_RAW10;
+        // Seek Eagle: 8-bit wire bytes can be captured neither as packed RAW10 (camx only offers RAW10 for 10-bit modes)
+        // nor as RAW16 (the CSID refuses MIPI_RAW_8 -> PLAIN16_8). RAW_OPAQUE works: camx sets up the RDI as MIPI_RAW_10
+        // but the write master stores the 656 wire bytes of each line, at the MIPI RAW10 pitch (camxRawOpaqueStride).
+        int rawFormat = isToFSensor ? HAL_PIXEL_FORMAT_RAW16 : (isEagleSensor ? HAL_PIXEL_FORMAT_RAW_OPAQUE : HAL_PIXEL_FORMAT_RAW10);
         addStream(curStreamsPtrs, "raw", rawFormat, config.width, config.height);
     }
     for(const auto& spec : outputSpecs) {
@@ -1056,6 +1098,7 @@ void CameraSensor::stop() {
     CameraSingleton::getInstance().setCameraActive(cameraDescription.camera.socket, false);
     unregisterSensorErrorCallback();
     stopSensorErrorMonitor();
+    if(isEagleSensor) seek_eagle::attach(cameraDescription.camera.socket, nullptr);
 }
 
 enum sensor_register_control_command {

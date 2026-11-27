@@ -899,6 +899,12 @@ void Camera::buildStage1() {
         throw std::runtime_error("Mock ISP enabled, but mockIspWidth and mockIspHeight not set");
     }
     logger->debug("Camera: mock isp enabled {}", mockIspEnabled);
+    if(!mockIspEnabled) {
+        const auto features = CameraDiscovery::getInstance().getCameraFeatures(properties.cameraName, properties.boardSocket);
+        if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), dai::CameraSensorType::THERMAL) != features.supportedTypes.end()) {
+            throw std::invalid_argument(fmt::format("The camera on socket {} is a thermal camera, use the Thermal node", dai::toString(properties.boardSocket)));
+        }
+    }
 
     // Register the camera to the static vector
     if(std::find(camerasInThePipeline.begin(), camerasInThePipeline.end(), properties.boardSocket) != camerasInThePipeline.end()) {

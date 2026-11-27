@@ -28,6 +28,7 @@
 #include <string_view>
 
 #include "LuxonisSidechannel.hpp"
+#include "SeekEagle.hpp"
 #include "eeprom.h"
 #include "utilities/CbaSensorDriver.hpp"
 #include "utilities/ErrorMacros.hpp"
@@ -423,6 +424,8 @@ camera_module_t* CameraSingleton::initializeCameraModule() {
             "The OAK4 has not been setup yet. Please complete the setup by following the instructions at https://setup.luxonis.com/ before using DepthAI.");
     }
 
+    // A firmware that died during a Seek Eagle flash capture session leaves its CSIPHY lenient
+    if(const auto phys = dai::gate::seek_eagle::clearLenientRx()) DAI_LOG("Cleared lenient CSIPHY mask {:#x} left by an earlier firmware", phys);
     LuxonisSidechannel::earlyInit();
     setSensorSelectionEnv();
     auto rc = hw_get_module(CAMERA_HARDWARE_MODULE_ID, (const hw_module_t**)&camM);

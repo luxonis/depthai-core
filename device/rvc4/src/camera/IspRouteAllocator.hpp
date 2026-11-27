@@ -30,6 +30,9 @@ struct IspSensorRequest {
     // Manual "beta-full-ife" / "beta-shared-isp" misc controls (empty = automatic)
     std::string manualFullIfe;
     std::string manualSharedIsp;
+    // Only a raw output, no ISP processing (Seek Eagle): on the realtime path the camera stack serves it with an IFE-lite
+    // RDI, so it needs no full IFE, pool or BPS
+    bool rawOnly{false};
 };
 
 // The allocator's verdict for one camera. Exactly one of fullIfe / sharedIsp is

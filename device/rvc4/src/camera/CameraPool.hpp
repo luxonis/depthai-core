@@ -53,6 +53,12 @@ class CameraPool {
 
     CameraPool(std::optional<int> numFramesPoolOutputs, std::optional<int> maxSizePoolOutputs);
 
+    // Row pitch camx uses for a HAL_PIXEL_FORMAT_RAW_OPAQUE stream: it treats RAW_OPAQUE as MIPI RAW10 (width * 5 / 4
+    // bytes) and pads each row to a multiple of 80 bytes on this SoC (656 -> 880).
+    static int camxRawOpaqueStride(int width) {
+        return (width * 5 / 4 + 79) / 80 * 80;
+    }
+
     camera3_stream_buffer_t getFreeBuffer(camera3_stream_t* stream);
     void returnBuffer(const camera3_stream_buffer_t* buffer);
     struct gbm_bo* getBo(const camera3_stream_buffer_t* buffer);

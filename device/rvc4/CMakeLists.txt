@@ -351,6 +351,28 @@ if(NOT DEPTHAI_DEVICE_TOF_VD55H1)
 endif()
 unset(_tof_available)
 
+# Seek Thermal SDK library (libseekcamera.so.5.2) of the Seek Eagle thermal cores: src/camera/SeekEagle.cpp loads it at
+# run time from seek-eagle/ of the firmware package, nothing links it. It is not in this repository: the vendor module
+# sources have it in seek-sdk/, the prebuilt vendor archive in seek/. Without it the firmware package has only the
+# loader stubs in seek-eagle/, and a Seek Eagle does not start.
+set(DEPTHAI_DEVICE_SEEK_SDK_DIR "")
+if(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR AND EXISTS "${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}/seek-sdk/libseekcamera.so.5.2")
+    set(DEPTHAI_DEVICE_SEEK_SDK_DIR "${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}/seek-sdk")
+elseif(DEPTHAI_DEVICE_RVC4_VENDOR_DIR AND EXISTS "${DEPTHAI_DEVICE_RVC4_VENDOR_DIR}/seek/libseekcamera.so.5.2")
+    set(DEPTHAI_DEVICE_SEEK_SDK_DIR "${DEPTHAI_DEVICE_RVC4_VENDOR_DIR}/seek")
+endif()
+set(_seek_available OFF)
+if(DEPTHAI_DEVICE_SEEK_SDK_DIR)
+    set(_seek_available ON)
+endif()
+option(DEPTHAI_DEVICE_SEEK_SDK "Package the Seek Thermal SDK library of the vendor module (Seek Eagle thermal cores)" ${_seek_available})
+if(DEPTHAI_DEVICE_SEEK_SDK AND NOT _seek_available)
+    message(FATAL_ERROR "DEPTHAI_DEVICE_SEEK_SDK is ON, but neither the vendor module sources (seek-sdk/) nor the prebuilt "
+                        "vendor archive (seek/) have the Seek Thermal SDK library. Set DEPTHAI_DEVICE_SEEK_SDK=OFF.")
+endif()
+message(STATUS "Seek Thermal SDK library: ${DEPTHAI_DEVICE_SEEK_SDK}")
+unset(_seek_available)
+
 # Add dependencies
 find_package(Eigen3 CONFIG REQUIRED)
 add_subdirectory("external")
@@ -547,6 +569,8 @@ set(DEPTHAI_PLATFORM_SOURCES
 
     # Camera
     src/camera/CameraSensor.cpp
+    src/camera/SeekEagle.cpp
+    src/pipeline/node/Thermal/Thermal.cpp
     src/camera/IspRouteAllocator.cpp
     src/camera/LuxonisSidechannel.cpp
     src/camera/CameraSingleton.cpp
@@ -1034,6 +1058,24 @@ foreach(_skel IN LISTS DEPTHAI_DEVICE_DSP_SKELS)
     list(APPEND DEPTHAI_DEVICE_DSP_SKEL_COPY_COMMANDS COMMAND ${CMAKE_COMMAND} -E copy "${_skel}" "${DEPTHAI_DEVICE_BINARY_DIR}/${_skel_name}")
     list(APPEND DEPTHAI_DEVICE_DSP_SKELS_IN_FWP "${DEPTHAI_DEVICE_BINARY_DIR}/${_skel_name}")
 endforeach()
+# Seek Eagle thermal cores (src/camera/SeekEagle.cpp): seek-eagle/ next to the executable has the loader stubs of the
+# three v4l-utils libraries that the Seek Thermal SDK library needs (src/camera/seek_stubs), and the library itself
+# (DEPTHAI_DEVICE_SEEK_SDK).
+set(DEPTHAI_DEVICE_SEEK_EAGLE_DIR "${DEPTHAI_DEVICE_BINARY_DIR}/seek-eagle")
+set(DEPTHAI_DEVICE_SEEK_EAGLE_COMMANDS
+    COMMAND ${CMAKE_COMMAND} -E remove_directory "${DEPTHAI_DEVICE_SEEK_EAGLE_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${DEPTHAI_DEVICE_SEEK_EAGLE_DIR}")
+foreach(_stub v4l2 v4l2subdev mediactl)
+    add_library(seek-eagle-stub-${_stub} SHARED src/camera/seek_stubs/seek_sdk_stubs.c)
+    set_target_properties(seek-eagle-stub-${_stub} PROPERTIES OUTPUT_NAME ${_stub} SOVERSION 0)
+    add_dependencies(${TARGET_DEVICE_EXECUTABLE} seek-eagle-stub-${_stub})
+    list(APPEND DEPTHAI_DEVICE_SEEK_EAGLE_COMMANDS
+         COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:seek-eagle-stub-${_stub}>" "${DEPTHAI_DEVICE_SEEK_EAGLE_DIR}/lib${_stub}.so.0")
+endforeach()
+if(DEPTHAI_DEVICE_SEEK_SDK)
+    list(APPEND DEPTHAI_DEVICE_SEEK_EAGLE_COMMANDS
+         COMMAND ${CMAKE_COMMAND} -E copy "${DEPTHAI_DEVICE_SEEK_SDK_DIR}/libseekcamera.so.5.2" "${DEPTHAI_DEVICE_SEEK_EAGLE_DIR}/libseekcamera.so.5.2")
+endif()
 # The license bundle starts with LICENSE.fwp and ends with the legal files of the vendor module (NOTICE.txt, and legal/
 # with the Luxonis DepthAI Vendor Module EULA that covers the module, NOTICE.md and the licence texts):
 # DEPTHAI_DEVICE_RVC4_VENDOR_LEGAL_DIR, which the module sources (target depthai-device-rvc4-vendor-license) or the
@@ -1062,6 +1104,7 @@ add_custom_command(TARGET ${TARGET_DEVICE_EXECUTABLE} POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} --add-gnu-debuglink="$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/$<TARGET_FILE_BASE_NAME:${TARGET_DEVICE_EXECUTABLE}>.debug" "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>"
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${TARGET_DEVICE_EXECUTABLE}>" "${DEPTHAI_DEVICE_BINARY_DIR}/$<TARGET_FILE_NAME:${TARGET_DEVICE_EXECUTABLE}>"
     ${DEPTHAI_DEVICE_DSP_SKEL_COPY_COMMANDS}
+    ${DEPTHAI_DEVICE_SEEK_EAGLE_COMMANDS}
     COMMAND ${CMAKE_STRIP} --strip-unneeded -o "${DEPTHAI_DEVICE_BINARY_DIR}/libdynamic_calibration.so" "${DYNAMIC_CALIBRATION_RELEASE}"
     COMMAND ${CMAKE_COMMAND} -E copy "${DEPTHAI_DEVICE_SOURCE_DIR}/LICENSE.fwp" "${DEPTHAI_DEVICE_BINARY_DIR}/LICENSE.fwp"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${DEPTHAI_DEVICE_BINARY_DIR}/legal"
@@ -1070,6 +1113,7 @@ add_custom_command(TARGET ${TARGET_DEVICE_EXECUTABLE} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E tar cfJ "$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/depthai-device-rvc4-fwp.tar.xz"
         "${DEPTHAI_DEVICE_BINARY_DIR}/$<TARGET_FILE_NAME:${TARGET_DEVICE_EXECUTABLE}>"
         ${DEPTHAI_DEVICE_DSP_SKELS_IN_FWP}
+        "${DEPTHAI_DEVICE_SEEK_EAGLE_DIR}"
         "${DEPTHAI_DEVICE_BINARY_DIR}/libdynamic_calibration.so"
         ${DEPTHAI_MODELS_KB_RESOURCE_LIST}
         ${DEPTHAI_CUSTOM_SCRIPTS_OUTPUT_DIR}
