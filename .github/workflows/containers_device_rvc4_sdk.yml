@@ -1,7 +1,3 @@
-# Check of the public build images of the RVC4 firmware that depthai-core pins (DEPTHAI_DEVICE_RVC4_SDK_IMAGE in
-# cmake/Depthai/DepthaiDeviceRVC4Config.cmake): ghcr.io/luxonis/depthai-device-sdk:os-<Luxonis OS version>-<vendor commit>
-# and the same tag with -dev. This workflow does not build them. The private CI of the vendor module makes the public
-# sysroot of Luxonis OS and builds and pushes the images with device/rvc4/docker/sdk-images.sh when the sysroot changes.
 name: RVC4 device SDK image
 
 on:
@@ -21,13 +17,69 @@ on:
       - '.github/workflows/containers_device_rvc4_sdk.yml'
 
 jobs:
-  sdk-image:
+  check:
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/develop')
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Get the pinned images (pull, or build from their inputs)
+        run: |
+          device/rvc4/docker/sdk-images.sh ensure release
+          device/rvc4/docker/sdk-images.sh ensure dev
+
+      - name: Check the pinned images
+        run: device/rvc4/docker/sdk-images.sh check
+
+  publish-develop:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      group: rvc4-sdk-image-push
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Log in to ghcr.io
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Push the pinned images when the registry does not have them
+        run: device/rvc4/docker/sdk-images.sh publish
+
+      - name: Move os-<OS version>[-dev] to the pinned images
+        run: device/rvc4/docker/sdk-images.sh promote
+
+      - name: Check the pinned images
+        run: device/rvc4/docker/sdk-images.sh check
+
+  publish-manual:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    environment: ghcr
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      group: rvc4-sdk-image-push
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Log in to ghcr.io
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Push the pinned images when the registry does not have them
+        run: device/rvc4/docker/sdk-images.sh publish
 
       - name: Check the pinned images
         run: device/rvc4/docker/sdk-images.sh check

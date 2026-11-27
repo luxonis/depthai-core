@@ -98,10 +98,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
    private:
     static std::string createTelemetryPipelineId();
 
-    // static functions
-    static bool isSamePipeline(const Node::Output& out, const Node::Input& in);
-    static bool canConnect(const Node::Output& out, const Node::Input& in);
-
     // Functions
     Node::Id getNextUniqueId();
     PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
@@ -176,7 +172,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void clearMultiDeviceCalibration();
     void applyMultiDeviceCalibration(const std::optional<std::vector<MultiDeviceExtrinsics>>& graph);
     bool isHostOnly() const;
-    bool isDeviceOnly() const;
     std::vector<std::shared_ptr<Device>> getAllAssignedDevices() const;
 
     // Pipeline state getters
@@ -604,9 +599,6 @@ class Pipeline {
     }
 
     using NodeConnectionMap = PipelineImpl::NodeConnectionMap;
-    NodeConnectionMap getConnectionMap() const {
-        return impl()->getConnectionMap();
-    }
 
     /// Get pipelines AssetManager as reference
     const AssetManager& getAssetManager() const {

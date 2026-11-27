@@ -4,8 +4,10 @@
 #include <cstring>
 #include <stdexcept>
 
-#include "utilities/DmaBufMemory.hpp"
+#include "camera/HalBufferMemory.hpp"
+#include "utilities/DmaHeapMemory.hpp"
 #include "utilities/ErrorMacros.hpp"
+#include "utilities/GstBufferMemory.hpp"
 #include "vendor/DeviceError.hpp"
 
 namespace dai {
@@ -107,16 +109,19 @@ std::shared_ptr<AcceleratorMemory> AcceleratorMemory::convertZeroCopy(std::share
     }
     // DMA-BUF memory of the firmware (camera HAL, DMA heap, GStreamer fd memory): register its fd. The buffer keeps
     // `data` alive while the accelerator uses it.
-    if(auto dmaBuf = std::dynamic_pointer_cast<dai::gate::DmaBufMemory>(data); dmaBuf != nullptr) {
-        const int fd = dmaBuf->dmaBufFd();
-        if(fd != -1) {
-            auto bytes = data->getData();
-            dai_device_mem* mem = nullptr;
-            DAI_CHECK_DEVICE(UNIT, dai_device_mem_import(fd, bytes.data(), bytes.size(), &mem));
-            return std::make_shared<AcceleratorMemory>(Private{}, mem, bytes.size(), std::move(data));
-        }
+    int fd = -1;
+    if(auto hal = std::dynamic_pointer_cast<dai::gate::HalBufferMemory>(data); hal != nullptr) {
+        fd = hal->privHnd->fd;
+    } else if(auto dmaHeap = std::dynamic_pointer_cast<dai::gate::DmaHeapMemory>(data); dmaHeap != nullptr) {
+        fd = dmaHeap->fd();
+    } else if(auto gst = std::dynamic_pointer_cast<dai::gate::GstBufferMemory>(data); gst != nullptr) {
+        fd = gst_fd_memory_get_fd(gst->map.memory);
     }
-    return nullptr;
+    if(fd == -1) return nullptr;
+    auto bytes = data->getData();
+    dai_device_mem* mem = nullptr;
+    DAI_CHECK_DEVICE(UNIT, dai_device_mem_import(fd, bytes.data(), bytes.size(), &mem));
+    return std::make_shared<AcceleratorMemory>(Private{}, mem, bytes.size(), std::move(data));
 }
 
 std::shared_ptr<AcceleratorMemory> AcceleratorMemory::convert(std::shared_ptr<Memory> data, std::size_t size) {

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <utility>
 
+#include "beta/utilities/Detection/DetectionUtils.hpp"
 #include "beta/utilities/MLSD/MLSDUtils.hpp"
 #include "utility/ErrorMacros.hpp"
 
@@ -35,10 +36,7 @@ inline float npMinimum(float a, float b) {
     return a < b ? a : b;
 }
 
-/// numpy np.clip(value, 0, 1) in double precision; NaN propagates.
-inline double clip01(double value) {
-    return std::min(std::max(value, 0.0), 1.0);
-}
+using DetectionUtils::clip01;
 
 }  // namespace
 

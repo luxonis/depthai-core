@@ -28,13 +28,13 @@ class LuxonisSidechannel {
     operations ops{};
 
     // Must be called exactly once before initialize().
-    // Must be called before HAL dlopen()'s the camera HAL *.so file
+    // Must be called before HAL dlopen()'s the camx *.so file
     // not thread safe
     static void earlyInit();
 
     // Should be called exactly once before calling getInstance().
     // not thread safe
-    static void initialize(void* halDlopenHandle);
+    static void initialize(void* camxDlopenHandle);
 
     static LuxonisSidechannel& getInstance() {
         // this line is necessary to create the below instance
@@ -49,7 +49,7 @@ class LuxonisSidechannel {
 
     bool isV1();
 
-    LuxonisSidechannel(void* halDlopenHandle);
+    LuxonisSidechannel(void* camxDlopenHandle);
 
     ~LuxonisSidechannel();
 
@@ -77,7 +77,7 @@ class LuxonisSidechannel {
 
     std::optional<lux_sc_version_result_t> protocolVersion;
     lux_sc_exposure_update_listen_t scExposureUpdateListen;
-    void* halDlopenHandle{nullptr};
+    void* camxDlopenHandle{nullptr};
 
     void listenToLuxonisSidechannel();
     void initializeFifo();

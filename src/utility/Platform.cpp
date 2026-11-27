@@ -1,5 +1,7 @@
 #include "Platform.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -532,6 +534,20 @@ std::vector<std::string> getFilenamesInDirectory(const std::filesystem::path& pa
         }
     }
     return filenames;
+}
+
+std::string pathToUtf8String(const std::filesystem::path& path) {
+#ifdef _WIN32
+    const auto utf8 = path.u8string();
+    return {reinterpret_cast<const char*>(utf8.data()), utf8.size()};
+#else
+    return path.string();
+#endif
+}
+
+std::string lowercase(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    return value;
 }
 
 }  // namespace platform

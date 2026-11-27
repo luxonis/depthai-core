@@ -563,34 +563,14 @@ Node::OutputMap* Node::getOutputMapRef(const std::string& group) {
     return nullptr;
 }
 
-void Node::setOutputRefs(std::initializer_list<Node::Output*> l) {
-    for(auto& outRef : l) {
-        outputRefs.push_back(outRef);
-    }
-}
 void Node::setOutputRefs(Node::Output* outRef) {
     outputRefs.push_back(outRef);
-}
-void Node::setInputRefs(std::initializer_list<Node::Input*> l) {
-    for(auto& inRef : l) {
-        inputRefs.push_back(inRef);
-    }
 }
 void Node::setInputRefs(Node::Input* inRef) {
     inputRefs.push_back(inRef);
 }
-void Node::setOutputMapRefs(std::initializer_list<Node::OutputMap*> l) {
-    for(auto& outMapRef : l) {
-        outputMapRefs.push_back(outMapRef);
-    }
-}
 void Node::setOutputMapRefs(Node::OutputMap* outMapRef) {
     outputMapRefs.push_back(outMapRef);
-}
-void Node::setInputMapRefs(std::initializer_list<Node::InputMap*> l) {
-    for(auto& inMapRef : l) {
-        inputMapRefs.push_back(inMapRef);
-    }
 }
 void Node::setInputMapRefs(Node::InputMap* inMapRef) {
     inputMapRefs.push_back(inMapRef);

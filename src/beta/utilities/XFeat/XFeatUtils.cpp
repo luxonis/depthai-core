@@ -435,6 +435,51 @@ std::shared_ptr<dai::TrackedFeatures> createTrackedFeaturesMessage(const Matched
     return message;
 }
 
+std::optional<std::pair<std::uint32_t, std::uint32_t>> readSizeParam(const nlohmann::json& extraParams, const char* key) {
+    if(!extraParams.is_object() || !extraParams.contains(key) || extraParams.at(key).is_null()) {
+        return std::nullopt;
+    }
+    const auto& sizeJson = extraParams.at(key);
+    DAI_CHECK_V(sizeJson.is_array() && sizeJson.size() == 2, "{} must be a list of two positive integers.", key);
+    std::uint32_t size[2];
+    for(std::size_t i = 0; i < 2; i++) {
+        const auto& valueJson = sizeJson.at(i);
+        DAI_CHECK_V(valueJson.is_number(), "{} must be a list of two positive integers.", key);
+        const double value = valueJson.get<double>();
+        DAI_CHECK_V(value > 0 && value <= std::numeric_limits<std::uint32_t>::max() && value == std::floor(value),
+                    "{} must be a list of two positive integers, got {}.",
+                    key,
+                    value);
+        size[i] = static_cast<std::uint32_t>(value);
+    }
+    return std::make_pair(size[0], size[1]);
+}
+
+std::optional<int> readMaxKeypointsParam(const nlohmann::json& extraParams) {
+    if(!extraParams.is_object() || !extraParams.contains("max_keypoints") || extraParams.at("max_keypoints").is_null()) {
+        return std::nullopt;
+    }
+    const auto& maxKeypointsJson = extraParams.at("max_keypoints");
+    DAI_CHECK(maxKeypointsJson.is_number_integer(), "Maximum number of keypoints must be an int!");
+    return maxKeypointsJson.get<int>();
+}
+
+std::pair<std::uint32_t, std::uint32_t> getModelInputSize(const std::vector<dai::nn_archive::v1::Input>& inputs, const char* parserName) {
+    DAI_CHECK_V(inputs.size() == 1, "Only one input supported for {}, got {} inputs.", parserName, inputs.size());
+    const auto& modelInput = inputs.front();
+    const std::string layout = modelInput.layout.value_or("");
+    DAI_CHECK_V(layout == "NHWC" || layout == "NCHW", "Input layout {} not supported for input_size extraction.", layout.empty() ? "None" : layout);
+    DAI_CHECK_V(modelInput.shape.size() == 4, "Expected a 4D input shape for layout {}, got {} dimensions.", layout, modelInput.shape.size());
+
+    const std::int64_t width = layout == "NHWC" ? modelInput.shape[2] : modelInput.shape[3];
+    const std::int64_t height = layout == "NHWC" ? modelInput.shape[1] : modelInput.shape[2];
+    DAI_CHECK_V(width > 0 && width <= std::numeric_limits<std::uint32_t>::max() && height > 0 && height <= std::numeric_limits<std::uint32_t>::max(),
+                "Invalid input size ({}, {}) declared by the model input.",
+                width,
+                height);
+    return std::make_pair(static_cast<std::uint32_t>(width), static_cast<std::uint32_t>(height));
+}
+
 }  // namespace XFeatUtils
 }  // namespace utilities
 }  // namespace beta

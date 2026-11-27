@@ -109,6 +109,7 @@ TEST_CASE("Camera pool sizes") {
         const int defaultQueueSizeBase = isRvc4 ? 7 : 3;
         const int defaultQueueSize = defaultQueueSizeBase + (autoCalibrationOnStartup ? 3 : 0);
         int queueSize = overrideQueueSize == -1 ? defaultQueueSize : overrideQueueSize;
+        constexpr unsigned int messageQueueSize = 1000;
         for(const auto& [socket, resolutions] : streams) {
             auto camera = pipeline.create<dai::node::Camera>()->build(socket);
             camera->properties.maxSizePoolOutputs = 1 * 1024 * 1024 * 1024;  // 1G size limit to only test num frames limitation
@@ -122,8 +123,8 @@ TEST_CASE("Camera pool sizes") {
                 camera->requestOutput({std::get<0>(resolution), std::get<1>(resolution)}, std::nullopt, dai::ImgResizeMode::CROP, std::get<2>(resolution))
                     ->link(script->inputs[inputName]);
                 script->inputs[inputName].setBlocking(false);
-                script->inputs[inputName].setMaxSize(1000);
-                outQueues.push_back(script->outputs[outputName].createOutputQueue());
+                script->inputs[inputName].setMaxSize(messageQueueSize);
+                outQueues.push_back(script->outputs[outputName].createOutputQueue(messageQueueSize, false));
                 outQueuesCounter.push_back(0);
             }
             cameras.push_back(camera);

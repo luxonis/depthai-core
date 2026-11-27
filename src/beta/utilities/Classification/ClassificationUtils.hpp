@@ -148,6 +148,18 @@ std::vector<float> getFlattenedTensorData(const dai::NNData& nnData, const std::
  */
 ShapedTensorData getShapedTensorData(const dai::NNData& nnData, const std::string& tensorName, std::optional<TensorInfo::StorageOrder> order = std::nullopt);
 
+/**
+ * @brief Retrieve a tensor from NNData as dequantized FP32 values in NCHW orientation.
+ *
+ * Matches the source parser's output.getTensor(name, StorageOrder.NCHW, dequantize=True). The
+ * tensor's stored order is honored; the data is permuted to NCHW, not just re-labeled.
+ *
+ * @param nnData NNData message containing the tensor.
+ * @param tensorName Name of the tensor to retrieve.
+ * @return Dequantized tensor values with the tensor shape, in NCHW orientation.
+ */
+ShapedTensorData getNchwTensorData(const dai::NNData& nnData, const std::string& tensorName);
+
 }  // namespace ClassificationUtils
 }  // namespace utilities
 }  // namespace beta

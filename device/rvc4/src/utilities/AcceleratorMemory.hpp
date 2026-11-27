@@ -45,8 +45,8 @@ class AcceleratorMemory final : public OffsetMemory, public std::enable_shared_f
     static std::shared_ptr<AcceleratorMemory> create(std::size_t size);
 
     /**
-     * Wraps DMA-BUF backed memory (memory that implements dai::gate::DmaBufMemory with a valid
-     * file descriptor, or an existing AcceleratorMemory) without copying. Returns nullptr for other memory.
+     * Wraps DMA-BUF backed memory (camera HAL, DMA heap or GStreamer fd memory, or an existing AcceleratorMemory)
+     * without copying. Returns nullptr for other memory.
      */
     static std::shared_ptr<AcceleratorMemory> convertZeroCopy(std::shared_ptr<Memory> data);
 
