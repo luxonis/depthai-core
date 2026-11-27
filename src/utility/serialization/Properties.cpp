@@ -22,6 +22,7 @@
 #include "depthai/properties/NeuralDepthProperties.hpp"
 #include "depthai/properties/NeuralNetworkProperties.hpp"
 #include "depthai/properties/ObjectTrackerProperties.hpp"
+#include "depthai/properties/OpticalFlowProperties.hpp"
 #include "depthai/properties/PointCloudProperties.hpp"
 #include "depthai/properties/PoolProperties.hpp"
 #include "depthai/properties/RectificationProperties.hpp"
@@ -110,6 +111,7 @@ DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, DeviceNodeGroupProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, DeviceProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, EdgeDetectorProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, FeatureTrackerProperties)
+DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, OpticalFlowProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, GPUStereoProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, GateProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, GlobalProperties)

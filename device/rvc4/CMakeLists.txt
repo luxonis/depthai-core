@@ -539,6 +539,7 @@ set(DEPTHAI_PLATFORM_SOURCES
 
     # FeatureTracker / ObjectTracker / ImageAlign / GST
     src/pipeline/node/FeatureTracker/FeatureTrackerRvc4.cpp
+    src/pipeline/node/OpticalFlow/OpticalFlowRvc4.cpp
     src/pipeline/node/Align/Align.cpp
     src/pipeline/node/ImageAlign/ImageAlign.cpp
     src/pipeline/node/ToF/ToF.cpp

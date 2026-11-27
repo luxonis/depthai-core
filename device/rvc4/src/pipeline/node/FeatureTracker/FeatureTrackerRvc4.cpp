@@ -23,7 +23,7 @@ void FeatureTracker::run() {
 
     CornerDetector cornerDetector;
     DescriptorCalculator descriptorCalculator;
-    OpticalFlow opticalFlow;
+    OpticalFlowAccel opticalFlow;
 
     using namespace std::chrono;
 
@@ -88,12 +88,13 @@ void FeatureTracker::run() {
 
         // The dispatchers and their buffers are configured for the first frame's size.
         if(inImagePreviousFrame && (width != inImagePreviousFrame->getWidth() || height != inImagePreviousFrame->getHeight())) {
-            logger->error("Input image dimensions changed from {}x{} to {}x{} for FeatureTracker on RVC4. "
-                          "Input dimensions must remain constant. Stopping the node.",
-                          inImagePreviousFrame->getWidth(),
-                          inImagePreviousFrame->getHeight(),
-                          width,
-                          height);
+            logger->error(
+                "Input image dimensions changed from {}x{} to {}x{} for FeatureTracker on RVC4. "
+                "Input dimensions must remain constant. Stopping the node.",
+                inImagePreviousFrame->getWidth(),
+                inImagePreviousFrame->getHeight(),
+                width,
+                height);
             stop();
             break;
         }

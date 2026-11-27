@@ -181,6 +181,7 @@ endif()
 
 add_subdirectory(Events)
 add_subdirectory(FeatureTracker)
+add_subdirectory(OpticalFlow)
 add_subdirectory(ObjectTracker)
 add_subdirectory(HostNodes)
 add_subdirectory(HFR)

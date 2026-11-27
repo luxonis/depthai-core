@@ -110,43 +110,44 @@ size_t CornerDetector::numPoints() const {
 }
 
 // ---------------------------------------------------------------------------
-// OpticalFlow
+// OpticalFlowAccel
 
-OpticalFlow::OpticalFlow() : handle(nullptr, &dai_device_oflow_destroy) {
+OpticalFlowAccel::OpticalFlowAccel() : handle(nullptr, &dai_device_oflow_destroy) {
     device::installDeviceLog();
     dai_device_oflow* flow = nullptr;
     DAI_CHECK_DEVICE(FLOW_UNIT, dai_device_oflow_create(&flow));
     handle.reset(flow);
 }
 
-OpticalFlow::~OpticalFlow() = default;
+OpticalFlowAccel::~OpticalFlowAccel() = default;
 
-int OpticalFlow::Open() {
+int OpticalFlowAccel::Open() {
     return device::returnDriverStatus(dai_device_oflow_open(handle.get()), FLOW_UNIT, "dai_device_oflow_open");
 }
 
-int OpticalFlow::Init(std::shared_ptr<dai::ImgFrame> inFrame, bool runAsync) {
+int OpticalFlowAccel::Init(std::shared_ptr<dai::ImgFrame> inFrame, bool runAsync) {
     dai_device_image image{};
     if(inFrame) image = templateImage(*inFrame);
     // runAsync: the vendor module returns DAI_STATUS_UNSUPPORTED, so this throws
     return device::returnDriverStatus(dai_device_oflow_init(handle.get(), inFrame ? &image : nullptr, runAsync ? 1 : 0), FLOW_UNIT, "dai_device_oflow_init");
 }
 
-int OpticalFlow::Config() {
+int OpticalFlowAccel::Config() {
     return device::returnDriverStatus(dai_device_oflow_config(handle.get()), FLOW_UNIT, "dai_device_oflow_config");
 }
 
-void OpticalFlow::Run(std::shared_ptr<dai::ImgFrame> refImageData, std::shared_ptr<dai::ImgFrame> curImageData) {
+void OpticalFlowAccel::Run(std::shared_ptr<dai::ImgFrame> refImageData, std::shared_ptr<dai::ImgFrame> curImageData) {
     std::shared_ptr<AcceleratorMemory> refMemory;
     std::shared_ptr<AcceleratorMemory> curMemory;
     dai_device_image refImage{};
     dai_device_image curImage{};
     if(refImageData && curImageData) {
-        // The current frame first, as before the C interface. Both frames have the input size of the unit.
+        // Keep converted buffers local to this synchronous call. Do not replace data on
+        // shared input frames: another downstream node may be reading the same frame.
         const uint32_t size = dai_device_oflow_in_min_bytes(handle.get());
-        curMemory = toAcceleratorMemory(*curImageData, size);
+        curMemory = AcceleratorMemory::convert(curImageData->data, size);
         curImage = device::toDeviceImage(*curImageData, *curMemory);
-        refMemory = toAcceleratorMemory(*refImageData, size);
+        refMemory = AcceleratorMemory::convert(refImageData->data, size);
         refImage = device::toDeviceImage(*refImageData, *refMemory);
     } else {
         // Only one frame: the vendor module does not read it (no conversion, as before); no frame: it throws
@@ -156,25 +157,25 @@ void OpticalFlow::Run(std::shared_ptr<dai::ImgFrame> refImageData, std::shared_p
     DAI_CHECK_DEVICE(FLOW_UNIT, dai_device_oflow_run(handle.get(), refImageData ? &refImage : nullptr, curImageData ? &curImage : nullptr));
 }
 
-int OpticalFlow::Close() {
+int OpticalFlowAccel::Close() {
     return device::returnDriverStatus(dai_device_oflow_close(handle.get()), FLOW_UNIT, "dai_device_oflow_close");
 }
 
-dai_device_oflow_result OpticalFlow::result() const {
+dai_device_oflow_result OpticalFlowAccel::result() const {
     dai_device_oflow_result result{};
     DAI_CHECK_DEVICE(FLOW_UNIT, dai_device_oflow_result_get(handle.get(), &result));
     return result;
 }
 
-const int16_t* OpticalFlow::forwardMotionVectors() const {
+const int16_t* OpticalFlowAccel::forwardMotionVectors() const {
     return result().forward_mv;
 }
 
-const int16_t* OpticalFlow::backwardMotionVectors() const {
+const int16_t* OpticalFlowAccel::backwardMotionVectors() const {
     return result().backward_mv;
 }
 
-const uint8_t* OpticalFlow::confidenceMap() const {
+const uint8_t* OpticalFlowAccel::confidenceMap() const {
     return result().confidence;
 }
 

@@ -114,7 +114,7 @@ void detectFeaturesInCurrentFrame(const CornerDetector& cornerDetector,
  *  From the point of feature pixel movement, we both scenarios: Feature that moved and features that didn't move
  **/
 std::map<TrackedPoint, uint32_t> reidentifyUsingDenseOpticalFlow(const std::map<TrackedPoint, uint32_t>& detectedFeaturesInPreviousFrame,
-                                                                 const OpticalFlow& opticalFlow,
+                                                                 const OpticalFlowAccel& opticalFlow,
                                                                  const CornerDetector& cornerDetector,
                                                                  uint32_t width,
                                                                  uint32_t height,

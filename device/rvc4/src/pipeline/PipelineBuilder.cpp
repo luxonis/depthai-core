@@ -40,6 +40,7 @@
 #endif
 #include "node/DetectionParserNode.hpp"
 #include "node/FeatureTracker/FeatureTracker.hpp"
+#include "node/OpticalFlow/OpticalFlow.hpp"
 #include "node/Gate/Gate.hpp"
 #include "node/ImageManip/ImageManip.hpp"
 #include "node/ImgDetectionsFilter.hpp"
@@ -154,6 +155,7 @@ decltype(BenchmarkOut::NAME) constexpr BenchmarkOut::NAME;
 decltype(BenchmarkIn::NAME) constexpr BenchmarkIn::NAME;
 decltype(Script::NAME) constexpr Script::NAME;
 decltype(FeatureTracker::NAME) constexpr FeatureTracker::NAME;
+decltype(OpticalFlow::NAME) constexpr OpticalFlow::NAME;
 decltype(ObjectTracker::NAME) constexpr ObjectTracker::NAME;
 decltype(PipelineEventAggregation::NAME) constexpr PipelineEventAggregation::NAME;
 decltype(Rectification::NAME) constexpr Rectification::NAME;
@@ -283,6 +285,7 @@ PipelineBuilder::NodeHandler PipelineBuilder::getDefaultNodeHandler() {
     handler[BenchmarkIn::NAME] = nodeHelper<BenchmarkIn>;
     handler[Script::NAME] = nodeHelper<Script>;
     handler[FeatureTracker::NAME] = nodeHelper<FeatureTracker>;
+    handler[OpticalFlow::NAME] = nodeHelper<OpticalFlow>;
     handler[ObjectTracker::NAME] = nodeHelper<ObjectTracker>;
     handler[Rectification::NAME] = nodeHelper<Rectification>;
     handler[NeuralDepth::NAME] = nodeHelper<NeuralDepth>;

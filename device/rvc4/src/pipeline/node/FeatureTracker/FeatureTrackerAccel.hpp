@@ -108,12 +108,12 @@ class CornerDetector {
  * Hardware dense optical flow between a reference frame and the current frame (bidirectional).
  * Same sequence as CornerDetector; the asynchronous mode is not supported (Init throws).
  */
-class OpticalFlow {
+class OpticalFlowAccel {
    public:
-    OpticalFlow();
-    ~OpticalFlow();
-    OpticalFlow(const OpticalFlow&) = delete;
-    OpticalFlow& operator=(const OpticalFlow&) = delete;
+    OpticalFlowAccel();
+    ~OpticalFlowAccel();
+    OpticalFlowAccel(const OpticalFlowAccel&) = delete;
+    OpticalFlowAccel& operator=(const OpticalFlowAccel&) = delete;
 
     /// Creates the hardware session
     int Open();
