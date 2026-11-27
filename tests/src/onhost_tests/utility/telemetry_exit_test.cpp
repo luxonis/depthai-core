@@ -23,7 +23,6 @@
 
 namespace {
 
-// Kills and reaps the child, and closes the file descriptors, also when a REQUIRE fails
 struct ChildCleanup {
     pid_t pid = -1;
     std::vector<int> fds;
@@ -48,13 +47,10 @@ struct ChildCleanup {
 }  // namespace
 #endif
 
-// A telemetry server that does not answer must not hold the process exit for the full upload timeout (10 s for each
-// upload): the HIL test wrapper kills an example that does not exit 7 s after SIGINT.
 TEST_CASE("telemetry does not hold the process exit when the server does not answer") {
 #if defined(__unix__) || defined(__APPLE__)
     ChildCleanup cleanup;
 
-    // The kernel completes the TCP handshake for the listen backlog, but nothing reads the request or answers it
     const int server = ::socket(AF_INET, SOCK_STREAM, 0);
     REQUIRE(server >= 0);
     cleanup.fds.push_back(server);
@@ -69,8 +65,8 @@ TEST_CASE("telemetry does not hold the process exit when the server does not ans
     REQUIRE(::getsockname(server, reinterpret_cast<sockaddr*>(&address), &addressLength) == 0);
     const auto url = "http://127.0.0.1:" + std::to_string(ntohs(address.sin_port));
 
-    int readyPipe[2] = {-1, -1};  // Child to parent: the events are queued
-    int goPipe[2] = {-1, -1};     // Parent to child: return from main
+    int readyPipe[2] = {-1, -1};
+    int goPipe[2] = {-1, -1};
     REQUIRE(::pipe(readyPipe) == 0);
     cleanup.fds.insert(cleanup.fds.end(), {readyPipe[0], readyPipe[1]});
     REQUIRE(::pipe(goPipe) == 0);
@@ -87,7 +83,6 @@ TEST_CASE("telemetry does not hold the process exit when the server does not ans
     const auto childPid = ::fork();
     REQUIRE(childPid >= 0);
     if(childPid == 0) {
-        // A new program: the static destructors of a forked copy of this process are not safe to run
         ::execl(DEPTHAI_TELEMETRY_EXIT_TEST_CHILD_PATH,
                 DEPTHAI_TELEMETRY_EXIT_TEST_CHILD_PATH,
                 readyWriteFd.c_str(),
@@ -96,7 +91,6 @@ TEST_CASE("telemetry does not hold the process exit when the server does not ans
         ::_exit(127);
     }
     cleanup.pid = childPid;
-    // Close the ends that only the child uses: a child that ends early gives end of file
     ::close(readyPipe[1]);
     ::close(goPipe[0]);
     cleanup.fds[2] = -1;
@@ -115,7 +109,6 @@ TEST_CASE("telemetry does not hold the process exit when the server does not ans
     char readyByte = 0;
     REQUIRE(::read(readyPipe[0], &readyByte, 1) == 1);
 
-    // The upload connects to the server: it is in progress when the exit starts
     REQUIRE(pollIn(server, 10000) == 1);
 
     const char goByte = 'g';
@@ -139,7 +132,6 @@ TEST_CASE("telemetry does not hold the process exit when the server does not ans
     INFO("exit took " << std::chrono::duration_cast<std::chrono::milliseconds>(*exitTime).count() << " ms, wait status " << status);
     REQUIRE(WIFEXITED(status));
     REQUIRE(WEXITSTATUS(status) == EXIT_SUCCESS);
-    // Before the fix: about 20 s (the upload in progress plus the final flush, 10 s each)
     REQUIRE(*exitTime < std::chrono::seconds(5));
 #else
     SKIP("fork is only available on POSIX platforms");

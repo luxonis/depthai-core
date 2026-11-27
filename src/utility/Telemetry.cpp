@@ -58,8 +58,6 @@ constexpr std::chrono::seconds DEFAULT_PING_INTERVAL{std::chrono::minutes(5)};
 constexpr std::chrono::seconds RETRY_DELAY{5};
 constexpr std::chrono::seconds MAX_RETRY_DELAY{30};
 constexpr std::chrono::milliseconds UPLOAD_TIMEOUT{10000};
-// The process exit waits for the telemetry worker. From the start of the shutdown, the upload in progress and the
-// final flush together get this much time, so a server that does not answer cannot hold the exit for UPLOAD_TIMEOUT.
 constexpr std::chrono::milliseconds SHUTDOWN_UPLOAD_BUDGET{2000};
 constexpr char DEFAULT_POSTHOG_HOST[] = "https://b.luxonis.com";
 constexpr char DEFAULT_POSTHOG_API_KEY[] = "phc_ojEByaCiZZ5eigzaM43PaEVbfLfFDF5NgkXEMPabrT9a";
@@ -462,7 +460,7 @@ struct TelemetrySharedState {
     bool initialized{false};
     std::size_t retryCount{0};
     std::optional<Clock::time_point> pausedUntil;
-    std::optional<std::chrono::steady_clock::time_point> uploadDeadline;  // Set at shutdown: no upload runs after it
+    std::optional<std::chrono::steady_clock::time_point> uploadDeadline;
 
     TelemetrySharedState();
     ~TelemetrySharedState();
@@ -475,7 +473,7 @@ struct TelemetrySharedState {
     void workerLoop();
     void pingWorkerLoop();
     void flushOneBatch();
-    std::chrono::milliseconds uploadTimeLeft();  // Locks mutex: never call it with mutex held (the upload callback calls it)
+    std::chrono::milliseconds uploadTimeLeft();
     void cleanupRunDirectory();
     void removeFileFromQueueLocked(const std::string& filename);
     void deleteFilesLocked(const std::vector<std::string>& filenames);
@@ -943,7 +941,7 @@ void TelemetrySharedState::flushOneBatch() {
     try {
         for(std::size_t index = 0; index < events.size(); ++index) {
             const auto timeLeft = uploadTimeLeft();
-            if(timeLeft <= std::chrono::milliseconds::zero()) {  // Also because cpr::Timeout{0} means no timeout
+            if(timeLeft <= std::chrono::milliseconds::zero()) {
                 logger::debug("Telemetry shutdown budget spent, {} events not sent", events.size() - index);
                 shouldRetry = true;
                 break;
@@ -976,7 +974,6 @@ void TelemetrySharedState::flushOneBatch() {
                                       cpr::Body{requestBody.dump()},
                                       cpr::Header{{"Content-Type", "application/json"}, {"User-Agent", std::string("depthai-core/") + build::VERSION}},
                                       cpr::Timeout{timeLeft},
-                                      // Stops an upload that started before the shutdown; libcurl calls it about once a second
                                       cpr::ProgressCallback{[this](cpr::cpr_pf_arg_t, cpr::cpr_pf_arg_t, cpr::cpr_pf_arg_t, cpr::cpr_pf_arg_t, std::intptr_t) {
                                           return uploadTimeLeft() > std::chrono::milliseconds::zero();
                                       }},
