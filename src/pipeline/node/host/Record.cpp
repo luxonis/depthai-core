@@ -683,10 +683,14 @@ struct RecordHostState {
 
     void drainControls() {
         while(auto control = node.inputControl.tryGet<RecordControl>()) {
+            // A stop+start already popped must not beginSegment after pipeline stop.
+            // The in-flight status send and one final STOPPED from onPipelineStop fit in two overflow credits.
+            if(!node.mainLoop()) break;
             if(stopRequested && phase == Phase::Recording) {
                 flushPending();
                 closeSegment();
             }
+            if(!node.mainLoop()) break;
             apply(control);
         }
     }

@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <iomanip>
+#include <opencv2/videoio.hpp>
 #include <sstream>
 #include <thread>
 
@@ -13,8 +14,6 @@
 #include "depthai/pipeline/datatype/RecordStatus.hpp"
 #include "depthai/pipeline/node/host/Record.hpp"
 #include "depthai/pipeline/node/host/Replay.hpp"
-
-#include <opencv2/videoio.hpp>
 
 namespace {
 
@@ -245,6 +244,79 @@ TEST_CASE("pipeline stop returns when a blocking RecordVideo status queue is ful
     REQUIRE(error == "MessageQueue was closed");
     REQUIRE(sawStopped);
     REQUIRE(messages > 16);
+}
+
+TEST_CASE("pipeline stop returns when a full status queue has a queued stop then start") {
+    dai::LockingQueue<int> credits(2, true);
+    REQUIRE(credits.push(1));
+    REQUIRE(credits.push(2));
+    credits.allowOneOverflow();
+    credits.clearOverflow();
+    REQUIRE_FALSE(credits.tryWaitAndPush(3, std::chrono::milliseconds(50)));
+    REQUIRE(credits.getMaxSize() == 2u);
+    REQUIRE(credits.getSize() == 2u);
+
+    TempDir dir;
+    dai::Pipeline pipeline(false);
+    auto record = pipeline.create<dai::node::RecordVideo>();
+    record->setRunOnHost(true);
+    record->setFormat(dai::RecordFormat::RAW_FRAMES);
+    record->setOutputDirectory(dir.path);
+    record->setRecordingName("rec");
+    record->setStreamName("cam");
+    record->setWaitForTrigger(true);
+    record->setPreTriggerFrames(0);
+    auto input = record->input.createInputQueue(64, true);
+    auto control = record->inputControl.createInputQueue(64, true);
+    auto status = record->status.createOutputQueue(16, true);
+    pipeline.start();
+    REQUIRE(status->getMaxSize() == 16u);
+
+    for(int segment = 0; segment < 8; ++segment) {
+        control->send(dai::RecordControl::start(1, -1));
+        input->send(makeFrame(segment));
+        REQUIRE(waitForFile(framePath(dir.path, segment)));
+    }
+    const auto fullDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    while(std::chrono::steady_clock::now() < fullDeadline && status->getSize() < 16u) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    REQUIRE(status->getSize() == 16u);
+    // Free one slot so the next segment can open and fill the queue again while it stays Recording.
+    REQUIRE(status->tryGet<dai::RecordStatus>() != nullptr);
+    REQUIRE(status->getSize() == 15u);
+
+    control->send(dai::RecordControl::start());
+    input->send(makeFrame(8));
+    const auto openDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while(std::chrono::steady_clock::now() < openDeadline) {
+        const auto opened = record->getStatus();
+        if(opened && opened->state == dai::RecordStatus::State::STARTED && opened->segment == 8 && status->getSize() == 16u) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    const auto opened = record->getStatus();
+    REQUIRE(opened.has_value());
+    REQUIRE(opened->state == dai::RecordStatus::State::STARTED);
+    REQUIRE(opened->segment == 8);
+    REQUIRE(status->getSize() == 16u);
+
+    control->send(dai::RecordControl::stop());
+    control->send(dai::RecordControl::start());
+    const auto blockDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while(std::chrono::steady_clock::now() < blockDeadline) {
+        const auto blocked = record->getStatus();
+        if(blocked && blocked->state == dai::RecordStatus::State::STOPPED && blocked->segment == 8 && status->getSize() == 16u) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    const auto blocked = record->getStatus();
+    REQUIRE(blocked.has_value());
+    REQUIRE(blocked->state == dai::RecordStatus::State::STOPPED);
+    REQUIRE(blocked->segment == 8);
+    REQUIRE(status->getSize() == 16u);
+    REQUIRE(status->getMaxSize() == 16u);
+
+    stopWithin(pipeline);
+    REQUIRE(status->getMaxSize() == 16u);
 }
 
 TEST_CASE("pipeline stop returns when a blocking ReplayVideo output queue is full") {
