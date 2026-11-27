@@ -35,11 +35,8 @@ class DeviceGate {
      */
     DeviceGate(const DeviceInfo& deviceInfo);
     ~DeviceGate();
-    bool isOkay();
     bool createSession(bool exclusive = true);
     bool startSession();
-    bool stopSession();
-    bool deleteSession();
     bool destroySession();
     SessionState getState();
 
@@ -62,11 +59,8 @@ class DeviceGate {
        public:
         virtual ~GateImpl();
         std::string lastError;
-        virtual bool isOkay() = 0;
         virtual bool createSession(std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) = 0;
         virtual bool startSession(std::string sessionId) = 0;
-        virtual bool stopSession(std::string sessionId) = 0;
-        virtual bool deleteSession(std::string sessionId) = 0;
         virtual bool destroySession(std::string sessionId) = 0;
         virtual SessionState getState(std::string sessionId) = 0;
         virtual Version getVersion() = 0;
@@ -78,11 +72,8 @@ class DeviceGate {
        public:
         USBImpl(const DeviceInfo& deviceInfo, int timeout);
         ~USBImpl() = default;
-        bool isOkay() override;
         bool createSession(std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) override;
         bool startSession(std::string sessionId) override;
-        bool stopSession(std::string sessionId) override;
-        bool deleteSession(std::string sessionId) override;
         bool destroySession(std::string sessionId) override;
         SessionState getState(std::string sessionId) override;
         Version getVersion() override;
@@ -100,11 +91,8 @@ class DeviceGate {
        public:
         HTTPImpl(DeviceInfo deviceInfo);
         ~HTTPImpl() = default;
-        bool isOkay() override;
         bool createSession(std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) override;
         bool startSession(std::string sessionId) override;
-        bool stopSession(std::string sessionId) override;
-        bool deleteSession(std::string sessionId) override;
         bool destroySession(std::string sessionId) override;
         SessionState getState(std::string sessionId) override;
         Version getVersion() override;
@@ -121,16 +109,12 @@ class DeviceGate {
 
     DeviceInfo deviceInfo;
 
-    std::thread stateMonitoringThread;
-
     std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename);
 
     // state of the session
     std::atomic_bool sessionCreated{false};
 
     XLinkPlatform_t platform;
-    std::shared_ptr<XLinkConnection> gateConnection;
-    std::shared_ptr<XLinkStream> gateStream;
     std::string version;
 
     std::string sessionId;

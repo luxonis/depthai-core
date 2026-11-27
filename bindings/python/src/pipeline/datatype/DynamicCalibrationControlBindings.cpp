@@ -35,7 +35,7 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
     using ApplyCalibration = DCC::Commands::ApplyCalibration;
     using ResetData = DCC::Commands::ResetData;
     using SetPerformanceMode = DCC::Commands::SetPerformanceMode;
-    using ComputeCalibrationMetrics = DCC::Commands::ComputeCalibrationMetrics;
+    using ComputeCalibrationMetrics = dai::DynamicCalibrationControl::Commands::ComputeCalibrationMetrics;
 
     // ---- Commands nested inside DynamicCalibrationControl ----
     py::class_<Calibrate, std::shared_ptr<Calibrate>>(cmds, "Calibrate")
@@ -44,6 +44,7 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
         .def_readwrite("keepCameraCenters", &Calibrate::keepCameraCenters);
 
     py::class_<ComputeCalibrationMetrics, std::shared_ptr<ComputeCalibrationMetrics>>(cmds, "ComputeCalibrationMetrics")
+        .def(py::init<>())
         .def(py::init<dai::CalibrationHandler&>(), py::arg("calibration"))
         .def_readwrite("calibration", &ComputeCalibrationMetrics::calibration);
 

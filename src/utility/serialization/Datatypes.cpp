@@ -78,6 +78,7 @@ DEPTHAI_SERIALIZE_DEFINE(DynamicCalibrationControl::Commands::CalibrationQuality
 DEPTHAI_SERIALIZE_DEFINE(DynamicCalibrationControl::Commands::StartCalibration)
 DEPTHAI_SERIALIZE_DEFINE(DynamicCalibrationControl::Commands::ApplyCalibration)
 DEPTHAI_SERIALIZE_DEFINE(DynamicCalibrationControl::Commands::SetPerformanceMode)
+DEPTHAI_SERIALIZE_DEFINE(DynamicCalibrationControl)
 DEPTHAI_SERIALIZE_DEFINE(CoverageData::MarkerCoverage)
 DEPTHAI_SERIALIZE_DEFINE(CoverageData)
 DEPTHAI_SERIALIZE_DEFINE(CalibrationQuality::Data)

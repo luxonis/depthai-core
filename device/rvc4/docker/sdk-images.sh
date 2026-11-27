@@ -1,15 +1,29 @@
 #!/bin/bash
 # Builds, checks and pushes the public build images of the RVC4 firmware (Dockerfile.sdk in this folder).
-# The private CI of the vendor module runs 'build' and 'push' when it changes the public sysroot. The build scripts of
-# device/rvc4 and the workflow containers_device_rvc4_sdk.yml use 'pinned' and 'check'.
+#
+# The inputs of the images of one tag are the public sysroot of Luxonis OS and the build files (this folder, the
+# LICENSE and the commit of depthai-core) of one commit of the vendor repository. The private CI of the vendor module
+# makes the sysroot, builds and checks the images, and uploads the inputs to the artifact server (job public-sysroot):
+# <inputs URL>/<tag>/rvc4-public-sysroot.tar.xz and <inputs URL>/<tag>/sdk-image-context.tar.xz. From these inputs,
+# 'local' builds the images on each host, and the workflow containers_device_rvc4_sdk.yml pushes them ('publish',
+# 'promote'). The build scripts of device/rvc4 use 'ensure': a pinned image that the registry does not have yet is
+# built on the host.
 #
 # Usage:
 #   sdk-images.sh build <sysroot tarball>  Build the release and the dev image with the public sysroot <tarball>
-#                                          (rvc4-public-sysroot-<version>.tar.xz), give them the four tags, check them.
-#   sdk-images.sh push <sysroot tarball>   Push the four tags of the images that 'build' made from <tarball>. Stops
-#                                          before it pushes anything when the fixed tag is already in the registry,
-#                                          or when <tarball> was not made from a clean commit of the vendor repository.
+#                                          (rvc4-public-sysroot-<version>.tar.xz) and the build files of this
+#                                          checkout, give them the fixed tags, check them.
 #   sdk-images.sh tags <sysroot tarball>   Print the four tags (fixed release, fixed dev, OS release, OS dev).
+#   sdk-images.sh fetch [<tag>]            Download the inputs of <tag> from the artifact server into the cache, check
+#                                          their sha256 and print the folder. Default: the pinned tag.
+#   sdk-images.sh local [<tag>]            Build the release and the dev image of <tag> on this host from its inputs
+#                                          (as 'fetch'), check them. Default: the pinned tag.
+#   sdk-images.sh ensure [release|dev]     Print the pinned image (as 'pinned'). When it is not on this host, docker
+#                                          pulls it. When the registry does not have it, 'local' builds it.
+#   sdk-images.sh publish [<tag>]          When the registry has neither image of <tag>: build them as 'local' and push
+#                                          the two fixed tags. Default: the pinned tag.
+#   sdk-images.sh promote [<tag>]          Move os-<os> and os-<os>-dev in the registry to the images of <tag>, when
+#                                          they point to other images. Default: the pinned tag.
 #   sdk-images.sh check [<image>]          Check <image> and <image>-dev. Default: the pinned image (docker pulls it
 #                                          when it is not on this host).
 #   sdk-images.sh pinned [release|dev]     Print the image that depthai-core pins: DEPTHAI_DEVICE_RVC4_SDK_IMAGE in
@@ -17,12 +31,18 @@
 #
 # Tags. <os> is the Luxonis OS version of the sysroot (the os-release line of its VERSION file), <vendor> the commit of
 # the vendor repository that made the sysroot (12 characters, the "tool: make-public-sysroot.py, revision" line of its
-# VERSION file). The sha256 of the tarball is the label com.luxonis.rvc4.sysroot-sha256 of the images.
-#   os-<os>-<vendor>, os-<os>-<vendor>-dev   Fixed: one vendor commit. A push never moves them. depthai-core pins these.
-#   os-<os>, os-<os>-dev                     The newest images for that OS version. Each push moves them.
+# VERSION file). The sha256 of the tarball is the label com.luxonis.rvc4.sysroot-sha256 of the images. <tag> above is
+# os-<os>-<vendor>, with or without the repository.
+#   os-<os>-<vendor>, os-<os>-<vendor>-dev   Fixed: the inputs of one vendor commit. A push never moves them.
+#                                            depthai-core pins these.
+#   os-<os>, os-<os>-dev                     The images that the branch develop of depthai-core pins ('promote').
 #
 # Environment:
-#   DEPTHAI_DEVICE_SDK_REPOSITORY  Image repository for build, push and tags. Default: ghcr.io/luxonis/depthai-device-sdk
+#   DEPTHAI_DEVICE_SDK_REPOSITORY  Image repository. Default: ghcr.io/luxonis/depthai-device-sdk
+#   DEPTHAI_DEVICE_SDK_INPUTS_URL  Folder of the inputs on the artifact server. Default:
+#                                  https://artifacts.luxonis.com/artifactory/luxonis-rvc4-snapshot-local/depthai-device-rvc4/sdk-image
+#   DEPTHAI_DEVICE_SDK_CACHE       Cache folder of the build scripts: 'fetch' keeps the inputs in <cache>/sdk-image/<tag>.
+#                                  Default: ~/.cache/depthai-device-sdk
 #   DEPTHAI_DEVICE_SDK_BUILD_ARGS  More arguments for docker build, split at spaces (for example --no-cache --pull).
 set -euo pipefail
 
@@ -30,6 +50,8 @@ DOCKER_DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
 CORE_DIR=$(readlink -f "$DOCKER_DIR/../../..")
 PIN_FILE="$CORE_DIR/cmake/Depthai/DepthaiDeviceRVC4Config.cmake"
 REPOSITORY="${DEPTHAI_DEVICE_SDK_REPOSITORY:-ghcr.io/luxonis/depthai-device-sdk}"
+INPUTS_URL="${DEPTHAI_DEVICE_SDK_INPUTS_URL:-https://artifacts.luxonis.com/artifactory/luxonis-rvc4-snapshot-local/depthai-device-rvc4/sdk-image}"
+CACHE_DIR="${DEPTHAI_DEVICE_SDK_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/depthai-device-sdk}"
 
 usage() {
     sed -n '/^# Usage:/,/^# Tags/p' "${BASH_SOURCE[0]}" | sed '$d; s/^# \{0,1\}//' >&2
@@ -50,15 +72,36 @@ pinned() {
     esac
 }
 
+# sha256 of the file $1 (macOS has no sha256sum)
+sha256() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | cut -d' ' -f1
+    else
+        shasum -a 256 "$1" | cut -d' ' -f1
+    fi
+}
+
+# Prints the tag os-<os>-<vendor> of $1, a fixed tag with or without the repository. Default: the pinned tag.
+tag_name() {
+    local tag
+    tag="${1:-$(pinned release)}"
+    tag="${tag##*:}"
+    if ! [[ "$tag" =~ ^os-[0-9][0-9.]*-[0-9a-f]{12}$ ]]; then
+        echo "error: '$tag' is not a fixed tag os-<OS version>-<vendor commit, 12 characters>" >&2
+        exit 1
+    fi
+    echo "$tag"
+}
+
 # Sets TARBALL, SYSROOT_SHA256, OS_VERSION, VENDOR_REVISION and the four tags for the tarball $1. A tarball of a vendor
-# checkout with changes (revision <commit>-dirty) gives tags for a local test; 'push' refuses it.
+# checkout with changes (revision <commit>-dirty) gives tags for a local test; 'publish' never pushes one.
 sysroot_info() {
     if [ ! -f "$1" ]; then
         echo "error: no sysroot tarball '$1'" >&2
         exit 1
     fi
     TARBALL=$(readlink -f "$1")
-    SYSROOT_SHA256=$(sha256sum "$TARBALL" | cut -d' ' -f1)
+    SYSROOT_SHA256=$(sha256 "$TARBALL")
     local version
     version=$(tar -xJOf "$TARBALL" rvc4-sysroot/VERSION)
     OS_VERSION=$(sed -n 's/^os-release: Luxonis OS RVC4 \([0-9][0-9.]*\) .*/\1/p' <<< "$version")
@@ -123,9 +166,11 @@ check() {
     echo "Checked: $1 and $2 (sysroot sha256 $release_sha)"
 }
 
-build() {
+# Builds the release and the dev image of the sysroot tarball $1 with the build files in the folder $2 (Dockerfile.sdk
+# and sdk/), the depthai-core license file $3 and the depthai-core commit $4, gives them the fixed tags, checks them
+build_images() {
     sysroot_info "$1"
-    local context revision target tag
+    local docker_dir=$2 license=$3 revision=$4 context target tag
     context=$(mktemp -d)
     # shellcheck disable=SC2064 # expand now: the variable is local
     trap "rm -rf '$context'" EXIT
@@ -134,59 +179,196 @@ build() {
     mkdir "$context/sysroot" "$context/legal"
     ln "$TARBALL" "$context/sysroot/rvc4-public-sysroot.tar.xz" 2>/dev/null \
         || cp "$TARBALL" "$context/sysroot/rvc4-public-sysroot.tar.xz"
-    cp "$CORE_DIR/LICENSE" "$context/legal/LICENSE"
-    revision=$(git -C "$CORE_DIR" rev-parse HEAD 2>/dev/null || echo unknown)
+    cp "$license" "$context/legal/LICENSE"
     echo "Public sysroot: $TARBALL (Luxonis OS $OS_VERSION, vendor commit $VENDOR_REVISION, sha256 $SYSROOT_SHA256)"
+    echo "Build files: $docker_dir (depthai-core commit $revision)"
     for target in release dev; do
         if [ "$target" = release ]; then tag="$TAG_FIXED"; else tag="$TAG_FIXED_DEV"; fi
         # shellcheck disable=SC2086 # extra arguments are split at spaces on purpose
-        docker build ${DEPTHAI_DEVICE_SDK_BUILD_ARGS:-} -f "$DOCKER_DIR/Dockerfile.sdk" --target "$target" \
+        docker build ${DEPTHAI_DEVICE_SDK_BUILD_ARGS:-} -f "$docker_dir/Dockerfile.sdk" --target "$target" \
             --build-context sysroot="$context/sysroot" \
             --build-context legal="$context/legal" \
             --build-arg RVC4_SYSROOT_SHA256="$SYSROOT_SHA256" \
             --build-arg RVC4_OS_VERSION="$OS_VERSION" \
             --build-arg RVC4_CORE_REVISION="$revision" \
             --build-arg RVC4_VENDOR_REVISION="$VENDOR_REVISION" \
-            -t "$tag" "$DOCKER_DIR"
+            -t "$tag" "$docker_dir"
     done
-    docker tag "$TAG_FIXED" "$TAG_OS"
-    docker tag "$TAG_FIXED_DEV" "$TAG_OS_DEV"
     check "$TAG_FIXED" "$TAG_FIXED_DEV"
-    printf 'Built:\n  %s\n  %s\n  %s\n  %s\n' "$TAG_FIXED" "$TAG_FIXED_DEV" "$TAG_OS" "$TAG_OS_DEV"
+    printf 'Built:\n  %s\n  %s\n' "$TAG_FIXED" "$TAG_FIXED_DEV"
 }
 
-push() {
-    sysroot_info "$1"
-    if [[ "$VENDOR_REVISION" == *-dirty ]]; then
-        echo "error: $1 was made from a vendor checkout with changes ($VENDOR_REVISION): push only images of a commit" >&2
+# Downloads the inputs of the tag $1 into the cache and prints the folder: rvc4-public-sysroot.tar.xz and
+# sdk-image-context/ (docker/, LICENSE, REVISION), and 'complete'. The inputs are downloaded, checked and unpacked in a
+# staging folder, and one rename makes it the cache folder: a cache folder never changes after that, also when two
+# fetches of one tag run at the same time, and a failed fetch leaves no folder. The callers run fetch in a command
+# substitution, where bash turns off set -e: each step checks its result.
+fetch() {
+    local tag dir url file want have stage
+    tag=$(tag_name "${1:-}") || exit 1
+    dir="$CACHE_DIR/sdk-image/$tag"
+    if [ -f "$dir/complete" ]; then
+        echo "$dir"
+        return
+    fi
+    mkdir -p "$CACHE_DIR/sdk-image" || exit 1
+    stage=$(mktemp -d "$CACHE_DIR/sdk-image/.$tag.XXXXXX") || exit 1
+    # shellcheck disable=SC2064 # expand now: the variable is local
+    trap "rm -rf '$stage'" EXIT
+    url="$INPUTS_URL/$tag"
+    echo "Inputs of $tag: $url" >&2
+    for file in rvc4-public-sysroot.tar.xz sdk-image-context.tar.xz; do
+        if ! curl -fsSL --retry 3 -o "$stage/$file.sha256" "$url/$file.sha256"; then
+            echo "error: no $url/$file on the artifact server. The private CI of the vendor module uploads the inputs of a tag (job public-sysroot)." >&2
+            exit 1
+        fi
+        if ! curl -fsSL --retry 3 -o "$stage/$file" "$url/$file"; then
+            echo "error: cannot download $url/$file" >&2
+            exit 1
+        fi
+        want=$(cut -d' ' -f1 < "$stage/$file.sha256" | tr -d '[:space:]')
+        have=$(sha256 "$stage/$file")
+        if [ -z "$want" ] || [ "$want" != "$have" ]; then
+            echo "error: the sha256 of $url/$file is $have, the artifact server gives ${want:-nothing}" >&2
+            exit 1
+        fi
+    done
+    if ! tar -xJf "$stage/sdk-image-context.tar.xz" -C "$stage"; then
+        echo "error: cannot unpack $url/sdk-image-context.tar.xz" >&2
         exit 1
     fi
-    local tag sha
-    for tag in "$TAG_FIXED" "$TAG_FIXED_DEV"; do
-        sha=$(docker inspect --format '{{index .Config.Labels "com.luxonis.rvc4.sysroot-sha256"}}' "$tag" 2>/dev/null || true)
-        if [ "$sha" != "$SYSROOT_SHA256" ]; then
-            echo "error: no local image $tag of this sysroot; run '$0 build $1' first" >&2
-            exit 1
-        fi
-        if docker manifest inspect "$tag" >/dev/null 2>&1; then
-            echo "error: $tag is already in the registry. A fixed tag is never moved: push a new vendor commit." >&2
+    for file in docker/Dockerfile.sdk LICENSE REVISION; do
+        if [ ! -f "$stage/sdk-image-context/$file" ]; then
+            echo "error: $url/sdk-image-context.tar.xz has no sdk-image-context/$file" >&2
             exit 1
         fi
     done
-    for tag in "$TAG_FIXED" "$TAG_FIXED_DEV" "$TAG_OS" "$TAG_OS_DEV"; do
-        docker push "$tag"
+    touch "$stage/complete" || exit 1
+    # A cache folder without 'complete' is a leftover (no fetch makes one): replace it. When another fetch makes the
+    # folder first, its folder stays and this staging folder goes (also when it was moved into that folder).
+    if [ -e "$dir" ] && [ ! -f "$dir/complete" ]; then
+        rm -rf "$dir"
+    fi
+    [ -e "$dir" ] || mv "$stage" "$dir" 2>/dev/null || true
+    rm -rf "${dir:?}/$(basename "$stage")"
+    if [ ! -f "$dir/complete" ]; then
+        echo "error: cannot make the cache folder $dir" >&2
+        exit 1
+    fi
+    echo "$dir"
+}
+
+# Builds the images of the tag $1 on this host from its inputs
+local_build() {
+    local tag dir
+    tag=$(tag_name "${1:-}")
+    dir=$(fetch "$tag")
+    sysroot_info "$dir/rvc4-public-sysroot.tar.xz"
+    if [ "$TAG_FIXED" != "$REPOSITORY:$tag" ]; then
+        echo "error: the inputs of $tag on the artifact server have the sysroot of ${TAG_FIXED##*:}" >&2
+        exit 1
+    fi
+    build_images "$dir/rvc4-public-sysroot.tar.xz" "$dir/sdk-image-context/docker" "$dir/sdk-image-context/LICENSE" \
+        "$(cat "$dir/sdk-image-context/REVISION")"
+}
+
+# Prints the digest of the image $1 in the registry, or nothing when the registry does not have it. Stops on other
+# errors: 'publish' must not take an error of the registry for a missing tag and push a fixed tag again.
+registry_digest() {
+    local out
+    if out=$(docker buildx imagetools inspect --format '{{.Manifest.Digest}}' "$1" 2>&1); then
+        echo "$out"
+    elif [[ "$out" == *"not found"* ]]; then
+        return 0
+    else
+        echo "error: cannot read $1 from the registry: $out" >&2
+        exit 1
+    fi
+}
+
+# Prints the pinned image $1 (release or dev) and makes sure that it is on this host: docker pulls it, or, when the
+# registry does not have it, it is built here from its inputs. All other output goes to stderr.
+ensure() {
+    local image log
+    image=$(pinned "$1")
+    if docker image inspect "$image" >/dev/null 2>&1; then
+        echo "$image"
+        return
+    fi
+    log=$(mktemp)
+    if docker pull "$image" 2>&1 | tee "$log" >&2; then
+        rm -f "$log"
+        echo "$image"
+        return
+    fi
+    if ! grep -q "manifest unknown" "$log"; then
+        rm -f "$log"
+        echo "error: cannot pull $image" >&2
+        exit 1
+    fi
+    rm -f "$log"
+    echo "The registry does not have $image yet: building it on this host from its inputs on the artifact server" >&2
+    # Under the name of the pin, also when DEPTHAI_DEVICE_SDK_REPOSITORY names another repository
+    REPOSITORY="${image%:*}"
+    local_build "$(pinned release)" >&2
+    echo "$image"
+}
+
+publish() {
+    local tag ref release_digest dev_digest
+    tag=$(tag_name "${1:-}")
+    ref="$REPOSITORY:$tag"
+    release_digest=$(registry_digest "$ref")
+    dev_digest=$(registry_digest "$ref-dev")
+    if [ -n "$release_digest" ] && [ -n "$dev_digest" ]; then
+        echo "The registry has $ref and $ref-dev: nothing to push"
+        return
+    fi
+    if [ -n "$release_digest" ] || [ -n "$dev_digest" ]; then
+        echo "error: the registry has only one of $ref and $ref-dev. A fixed tag is never moved: check the registry." >&2
+        exit 1
+    fi
+    local_build "$tag"
+    docker push "$ref"
+    docker push "$ref-dev"
+    echo "Pushed $ref and $ref-dev"
+}
+
+promote() {
+    local tag suffix fixed moving want have
+    tag=$(tag_name "${1:-}")
+    for suffix in "" -dev; do
+        fixed="$REPOSITORY:$tag$suffix"
+        moving="$REPOSITORY:${tag%-*}$suffix"
+        want=$(registry_digest "$fixed")
+        if [ -z "$want" ]; then
+            echo "error: the registry does not have $fixed; run '$0 publish $tag' first" >&2
+            exit 1
+        fi
+        have=$(registry_digest "$moving")
+        if [ "$have" = "$want" ]; then
+            echo "$moving is already $fixed ($want)"
+            continue
+        fi
+        # --prefer-index=false: a copy of the manifest, with the same digest, not a new index around it
+        docker buildx imagetools create --prefer-index=false --tag "$moving" "$fixed"
+        echo "Moved $moving to $fixed ($want)"
     done
-    echo "Pushed. Pin it in $PIN_FILE:"
-    echo "  set(DEPTHAI_DEVICE_RVC4_SDK_IMAGE \"$TAG_FIXED\")"
 }
 
 [ $# -ge 1 ] || usage
 command=$1
 shift
 case "$command" in
-    build) [ $# -eq 1 ] || usage; build "$1" ;;
-    push) [ $# -eq 1 ] || usage; push "$1" ;;
+    build)
+        [ $# -eq 1 ] || usage
+        build_images "$1" "$DOCKER_DIR" "$CORE_DIR/LICENSE" "$(git -C "$CORE_DIR" rev-parse HEAD 2>/dev/null || echo unknown)" ;;
     tags) [ $# -eq 1 ] || usage; sysroot_info "$1"; printf '%s\n' "$TAG_FIXED" "$TAG_FIXED_DEV" "$TAG_OS" "$TAG_OS_DEV" ;;
+    fetch) [ $# -le 1 ] || usage; fetch "${1:-}" ;;
+    local) [ $# -le 1 ] || usage; local_build "${1:-}" ;;
+    ensure) [ $# -le 1 ] || usage; ensure "${1:-release}" ;;
+    publish) [ $# -le 1 ] || usage; publish "${1:-}" ;;
+    promote) [ $# -le 1 ] || usage; promote "${1:-}" ;;
     check)
         if [ $# -eq 1 ]; then check "$1" "$1-dev"; elif [ $# -eq 0 ]; then check "$(pinned release)" "$(pinned dev)"; else usage; fi ;;
     pinned) [ $# -le 1 ] || usage; pinned "${1:-release}" ;;

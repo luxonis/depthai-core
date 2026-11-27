@@ -2,22 +2,10 @@
 
 #include "depthai/pipeline/Pipeline.hpp"
 #include "openvino/BlobReader.hpp"
+#include "utility/Platform.hpp"
 
 namespace dai {
 namespace node {
-
-namespace {
-
-std::string pathToUtf8String(const std::filesystem::path& path) {
-#ifdef _WIN32
-    const auto utf8 = path.u8string();
-    return {reinterpret_cast<const char*>(utf8.data()), utf8.size()};
-#else
-    return path.string();
-#endif
-}
-
-}  // namespace
 
 void Script::buildInternal() {}
 
@@ -31,7 +19,7 @@ void Script::setScriptPath(const std::filesystem::path& path, const std::string&
     properties.scriptUri = assetManager.set("__script", path)->getRelativeUri();
     scriptPath = path;
     if(name.empty()) {
-        properties.scriptName = pathToUtf8String(path);
+        properties.scriptName = platform::pathToUtf8String(path);
     } else {
         properties.scriptName = name;
     }

@@ -162,6 +162,16 @@ class SourceParsingTests(unittest.TestCase):
             self.assertIn("dai::" + name, evidence)
         self.assertNotIn("dai::Example::other", evidence)
 
+    def test_alias_of_an_alias(self):
+        source = """
+        void bind() {
+            using Outer = dai::Outer;
+            using Inner = Outer::Inner;
+            py::class_<Inner>(m, "Inner").def(py::init<>());
+        }
+        """
+        self.assertIn("dai::Outer::Inner::Inner", checker.binding_evidence(source))
+
     def test_node_macros_and_function_scopes(self):
         source = """
         void bindA() {

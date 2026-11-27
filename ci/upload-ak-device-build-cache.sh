@@ -14,9 +14,7 @@ AK_REPO="luxonis-depthai-helper-binaries"
 PATH_PREFIX="device-rvc4-build-cache"
 PUBLIC_URL="${DEPTHAI_DEVICE_BUILD_CACHE_BASE_URL:-https://artifacts.luxonis.com/artifactory/$AK_REPO/$PATH_PREFIX}"
 
-if ! command -v ak >/dev/null 2>&1; then
-    curl -fsSL https://raw.githubusercontent.com/artifact-keeper/artifact-keeper-cli/main/install.sh | sh
-fi
+bash "$(dirname "${BASH_SOURCE[0]}")/setup-ak-cli.sh"
 
 export AK_NO_INPUT="${AK_NO_INPUT:-true}"
 

@@ -12,7 +12,6 @@
 
 #include "beta/utilities/YuNet/YuNetUtils.hpp"
 
-#include <algorithm>
 #include <cmath>
 #include <limits>
 
@@ -26,10 +25,7 @@ namespace YuNetUtils {
 
 namespace {
 
-/// numpy np.clip(value, 0, 1) in single precision; NaN propagates.
-inline float clip01(float value) {
-    return std::min(std::max(value, 0.0f), 1.0f);
-}
+using DetectionUtils::clip01;
 
 /// numpy float32 -> int32 astype cast: truncation toward zero. Values outside the int32 range
 /// and NaN saturate to the int32 minimum, mirroring numpy's behavior on x86 (cvttss2si); the
