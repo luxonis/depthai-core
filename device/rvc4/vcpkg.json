@@ -1,0 +1,42 @@
+{
+    "name": "depthai-device",
+    "dependencies": [
+        "cpp-httplib",
+        "eigen3",
+        "libpng",
+        "tiff",
+        "yaml-cpp",
+        "nlohmann-json",
+        "spdlog",
+        "zlib",
+        "bzip2",
+        "lz4",
+        "liblzma",
+        "fp16",
+        "mp4v2",
+        "libnop",
+        "neargye-semver",
+        "pybind11",
+        "backward-cpp",
+        "apriltag",
+        "magic-enum",
+        "xtensor",
+        "xtl",
+        "xlink",
+        {
+            "name": "libarchive",
+            "default-features": false
+        }
+    ],
+    "builtin-baseline": "a9eee3b18df395dbb8be71a31bd78ea441056e42",
+    "overrides":[
+        {
+            "name": "nlohmann-json",
+            "version": "3.9.1"
+        },
+        {
+            "name": "spdlog",
+            "version": "1.12.0"
+        }
+    ]
+}

@@ -56,6 +56,25 @@ jobs:
             ref: ${{ github.event.inputs.depthai }}
             path: depthai-core
 
+    - name: Download the RVC4 firmware package of that commit
+      run: |
+        pin=$(sed -n 's/^set(DEPTHAI_DEVICE_RVC4_VERSION "\([^"]*\)".*/\1/p' depthai-core/cmake/Depthai/DepthaiDeviceRVC4Config.cmake)
+        if [ -z "$pin" ]; then
+          version=$(ci/device-rvc4-fwp-ak.sh version depthai-core)
+          # The ref is a branch: its newest commit can still be in the publish workflow
+          for attempt in $(seq 24); do
+            status=0
+            ci/device-rvc4-fwp-ak.sh download "$version" rvc4 depthai-core/rvc4-fwp || status=$?
+            [ "$status" = 2 ] || break
+            echo "No RVC4 firmware package $version on Artifact Keeper yet (attempt $attempt of 24)"
+            [ "$attempt" = 24 ] || sleep 300
+          done
+          if [ "$status" = 2 ]; then
+            echo "::error::No RVC4 firmware package $version on Artifact Keeper. The workflow 'RVC4 firmware package publish' makes it for each push to develop, main and release branches. For another commit, start that workflow on it."
+          fi
+          exit "$status"
+        fi
+
     - name: Build and push
       id: build_and_push
       run: |

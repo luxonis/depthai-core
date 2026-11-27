@@ -3,6 +3,8 @@
 .vscode/
 .vs/
 .env
+# Local CMake presets (they can inherit CMakePresets.json)
+CMakeUserPresets.json
 build*/*
 # Auto-generated
 shared/version.hpp

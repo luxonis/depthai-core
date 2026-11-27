@@ -2,6 +2,7 @@
 #include <chrono>
 #include <memory>
 #include <optional>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -87,6 +88,40 @@ TEST_CASE("BasaltVIO: odometry is stamped with the time of its frame", "[vio][ba
         REQUIRE(msg->getTimestamp() >= previous);
         previous = msg->getTimestamp();
     }
+}
+
+TEST_CASE("BasaltVIO: IMU samples that go back in time do not abort", "[vio][basalt][device]") {
+    // RVC2 firmware could stamp a BNO08x sample earlier than the previous one; Basalt asserts on that and aborts the process.
+    dai::Pipeline pipeline;
+    auto left = buildMono(pipeline, dai::CameraBoardSocket::CAM_B);
+    auto right = buildMono(pipeline, dai::CameraBoardSocket::CAM_C);
+    auto vio = pipeline.create<dai::node::BasaltVIO>();
+    left->requestOutput(std::make_pair(kMonoWidth, kMonoHeight))->link(vio->left);
+    right->requestOutput(std::make_pair(kMonoWidth, kMonoHeight))->link(vio->right);
+    auto imuQueue = vio->imu.createInputQueue();
+    auto odometryQueue = vio->transform.createOutputQueue();
+
+    pipeline.start();
+    std::vector<std::shared_ptr<dai::Odometry>> odometry;
+    auto stamp = Clock::now();
+    const auto deadline = stamp + kOdometryTimeout;
+    // Feed long enough for Basalt to integrate many out-of-order samples, not only until the first odometry.
+    const auto feedUntil = stamp + std::chrono::seconds(5);
+    for(int i = 0; Clock::now() < deadline && (Clock::now() < feedUntil || odometry.size() < kMinOdometryMessages); ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        // Every 20th sample is stamped 1 ms before the previous one.
+        stamp = i % 20 == 19 ? stamp - std::chrono::milliseconds(1) : Clock::now();
+        dai::IMUPacket packet;
+        packet.acceleroMeter.z = 9.81f;
+        const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(stamp.time_since_epoch()).count();
+        packet.acceleroMeter.timestamp = {ns / 1000000000, ns % 1000000000};
+        packet.gyroscope.timestamp = packet.acceleroMeter.timestamp;
+        auto imuData = std::make_shared<dai::IMUData>();
+        imuData->packets.push_back(packet);
+        imuQueue->send(imuData);
+        while(auto msg = odometryQueue->tryGet<dai::Odometry>()) odometry.push_back(msg);
+    }
+    REQUIRE(odometry.size() >= kMinOdometryMessages);
 }
 
 TEST_CASE("RTABMapVIO: runs without a features input and stamps odometry", "[vio][rtabmap][device]") {

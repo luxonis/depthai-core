@@ -29,9 +29,7 @@ echo "zoo_helper binary size: $(du -sh "$ZOO_HELPER_BINARY_LOCAL_PATH")"
 echo "zoo_helper upload path: $AK_REPO:$UPLOAD_PATH"
 echo "----------------------------------------"
 
-if ! command -v ak >/dev/null 2>&1; then
-    curl -fsSL https://raw.githubusercontent.com/artifact-keeper/artifact-keeper-cli/main/install.sh | sh
-fi
+bash "$SCRIPT_DIR/setup-ak-cli.sh"
 
 export AK_NO_INPUT="${AK_NO_INPUT:-true}"
 

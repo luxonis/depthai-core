@@ -6,6 +6,10 @@
 
 DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C++ and offers Python bindings out of the box.
 
+<p align="center">
+  <img src="./images/oak_scan.gif" alt="OAK camera scanning an object" width="600">
+</p>
+
 >  **Important — You’re viewing the `v3.x.y` branch.**
 >
 > * For production projects that still rely on **v2**, check out the
@@ -15,10 +19,8 @@ DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C
 ## Documentation
 Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/software-v3/depthai/)
 
-For platform differences when reading tensors in Script, see [NNData inside Script](docs/ScriptNNData.md).
-
 ## Examples
-For the complete model-description YAML format, see the [model zoo reference](docs/ModelZoo.md).
+For the complete model-description YAML format, see [nn_model_description.yaml](./examples/models/nn_model_description.yaml).
 
 Examples for both C++ and Python are available in the `examples` folder. To see how to build and run them see [README.md](./examples/README.md) for more information.
 To build the examples in C++ configure with the following option added:
@@ -26,10 +28,6 @@ To build the examples in C++ configure with the following option added:
 cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
 cmake --build build
 ```
-
-## Detection filtering and calibrated panoramas
-
-Use `dai::node::ImgDetectionsFilter` / `dai.node.ImgDetectionsFilter` to filter detections or combine synchronized camera detections on a calibrated panorama. See the [node guide and multi-device examples](docs/ImgDetectionsFilter.md).
 
 ## Beta features
 The `beta` namespace is a staging area for experimental DepthAI features. It
@@ -142,8 +140,6 @@ Linux: `sudo apt install libpcl-dev`
 
 ## Using Python bindings
 
-To use Python bindings already installed in a container, see the [Docker guide](docs/Docker.md).
-
 Installing the latest pre-released version of the library can be done with:
 ```
 python3 -m pip install --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-release-local/ --pre -U depthai
@@ -158,8 +154,6 @@ For more specific information about Python bindings, see [Python README](./bindi
 
 
 ## Building
-
-To use the installed SDK and build tools in a container, see the [Docker guide](docs/Docker.md).
 
 Make sure submodules are updated
 ```
@@ -187,6 +181,29 @@ To build a dynamic version of the library configure with the following option ad
 cmake -S . -B build -D'BUILD_SHARED_LIBS=ON'
 cmake --build build --parallel [num CPU cores]
 ```
+
+## Building the FW
+
+The RVC4 firmware is in [device/rvc4](device/rvc4/README.md). Each build of the library builds it automatically from
+that folder and embeds it, so the firmware always matches the host library of the same commit.
+
+* The firmware compiles in the public build container
+  [`ghcr.io/luxonis/depthai-device-sdk`](https://github.com/luxonis/depthai-core/pkgs/container/depthai-device-sdk).
+  The build pulls it: you need an x86-64 host with bash and a running Docker engine.
+* The firmware links a prebuilt vendor module. Read its End User License Agreement first
+  ([device/rvc4](device/rvc4/README.md#building)), then accept it and the license terms of the Qualcomm AI Runtime SDK:
+
+  ```
+  cmake -S . -B build -D DEPTHAI_ACCEPT_VENDOR_EULA=yes -D DEPTHAI_ACCEPT_QUALCOMM_LICENSE=yes
+  cmake --build build --parallel [num CPU cores]
+  ```
+
+* To skip the firmware build, download a published package with `-D DEPTHAI_DEVICE_RVC4_VERSION=<version>`, use your
+  own with `-D DEPTHAI_DEVICE_RVC4_FWP_PATH=<path>/depthai-device-rvc4-fwp.tar.xz`, or build without the RVC4 firmware
+  with `-D DEPTHAI_ENABLE_DEVICE_RVC4_FW=OFF`.
+* To run another firmware package without a new build, set `DEPTHAI_DEVICE_RVC4_FWP=<path>`
+  (see [Environment variables](#environment-variables)).
+
 
 ## Installation and Integration
 Installation of the DepthAI library is currently only available as a dynamic library. To install the library, use the following command:
@@ -319,7 +336,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_DEVICE_ID_LIST               | Alias to MXID list. Lists filter results in an "AND" manner and not "OR"                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | DEPTHAI_DEVICE_NAME_LIST             | Restricts default search to the specified NAMEs. Accepts comma separated list of NAMEs. Lists filter results in an "AND" manner and not "OR". It also looks for NAMEs outside of the host's subnet in case of tcpip.                                                                                                                                                                                                                                                                              |
 | DEPTHAI_DEVICE_BINARY                | Overrides device Firmware binary. Mostly for internal debugging purposes.                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| DEPTHAI_DEVICE_RVC4_FWP              | Overrides device RVC4 Firmware binary. Mostly for internal debugging purposes.                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| DEPTHAI_DEVICE_RVC4_FWP              | Overrides device RVC4 Firmware binary at run time with the firmware package at this path. See also the CMake option `DEPTHAI_DEVICE_RVC4_FWP_PATH`.                                                                                                                                                                                                                                                                                                                                               |
 | DEPTHAI_BOOTLOADER_BINARY_USB        | Overrides device USB Bootloader binary. Mostly for internal debugging purposes.                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | DEPTHAI_BOOTLOADER_BINARY_ETH        | Overrides device Network Bootloader binary. Mostly for internal debugging purposes.                                                                                                                                                                                                                                                                                                                                                                                                               |
 | DEPTHAI_ALLOW_FACTORY_FLASHING       | Internal use only                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -344,6 +361,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_PROFILING                    | Enables runtime profiling of data transfer between the host and connected devices. Set to 1 to enable. Requires DEPTHAI_LEVEL=debug or lower to print.                                                                                                                                                                                                                                                                                                                                            |
 | DEPTHAI_PIPELINE_DEBUGGING           | Enables pipeline debugging with state dumps. DEPTHAI_LEVEL=trace is required to print the state dumps.                                                                                                                                                                                                                                                                                                                                                                                            |
 | DEPTHAI_AUTOCALIBRATION              | Runs recalibration of the stereo pair and, by default, flashes successful calibration to non-volatile memory (EEPROM). `CONTINUOUS`: runs check repetitively; `ON_START`: runs calibration only at the start of the pipeline; `OFF`: no recalibration. The same mode can be configured from code with `pipeline.setAutoCalibrationMode(...)`. If this environment variable is set, it overrides the pipeline-set value. AutoCalibration currently initializes only for stereo inputs at 1280x800. |
+
 
 ## Running tests
 
