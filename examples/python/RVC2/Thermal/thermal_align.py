@@ -63,6 +63,7 @@ with dai.Pipeline() as pipeline:
     thermalCam = pipeline.create(dai.node.Thermal).build(thermalSocket, fps=FPS)
 
     sync = pipeline.create(dai.node.Sync)
+    # Thermal.temperature is FP16, which Align cannot process on the host yet.
     align = pipeline.create(dai.node.ImageAlign)
 
     camRgbOut = camRgb.requestOutput(COLOR_RESOLUTION, fps=FPS, enableUndistortion=True)

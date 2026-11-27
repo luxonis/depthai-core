@@ -10,6 +10,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include "utility/ImgFrameView.hpp"
+
 namespace {
 std::string generateLocalID(int64_t timestamp) {
     static std::atomic<uint64_t> counter{0};
@@ -199,7 +201,7 @@ FileData::FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileTa
     // Convert ImgFrame to bytes
     std::vector<uchar> buffer;
     try {
-        cv::Mat cvFrame = imgFrame->getCvFrame();
+        const cv::Mat cvFrame = utility::getCvFrameView(*imgFrame);
         if(!cv::imencode(".jpg", cvFrame, buffer)) {
             throw std::runtime_error("ImgFrame encoding failed");
         }
@@ -207,9 +209,7 @@ FileData::FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileTa
         throw std::runtime_error(std::string("ImgFrame encoding failed due to OpenCV error: ") + e.what());
     }
 
-    std::stringstream ss;
-    ss.write((const char*)buffer.data(), buffer.size());
-    data = ss.str();
+    data.assign(reinterpret_cast<const char*>(buffer.data()), buffer.size());
     size = data.size();
     checksum = calculateSHA256Checksum(data);
 }
@@ -220,9 +220,8 @@ FileData::FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::strin
     if(encodedFrame->getProfile() != EncodedFrame::Profile::JPEG) {
         throw std::runtime_error("Only JPEG encoded frames are supported");
     }
-    std::stringstream ss;
-    ss.write((const char*)encodedFrame->getData().data(), encodedFrame->getData().size());
-    data = ss.str();
+    const auto bytes = encodedFrame->getData();
+    data.assign(reinterpret_cast<const char*>(bytes.data()), bytes.size());
     size = data.size();
     checksum = calculateSHA256Checksum(data);
 }

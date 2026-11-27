@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
 #include <vector>
@@ -133,6 +134,34 @@ std::shared_ptr<Keypoints> createKeypointsMessage(const KeypointCoordinates& coo
                                                   std::optional<float> confidenceThreshold = std::nullopt,
                                                   const std::vector<std::string>& labelNames = {},
                                                   const std::vector<Edge>& edges = {});
+
+/**
+ * @brief Read a number from a head metadata extra parameter as float.
+ *
+ * @param extraParams Head metadata extra parameters.
+ * @param key Name of the extra parameter, for example "scale_factor" or "score_threshold".
+ * @return The value, or std::nullopt when the key is absent or null.
+ * @throws std::runtime_error when the value is not a number.
+ */
+std::optional<float> readFloatParam(const nlohmann::json& extraParams, const char* key);
+
+/**
+ * @brief Read the keypoint label names from the "keypoint_labels" head metadata extra parameter.
+ *
+ * @param extraParams Head metadata extra parameters.
+ * @return The label names, or std::nullopt when the key is absent or null.
+ * @throws std::runtime_error when the value is not a list of strings.
+ */
+std::optional<std::vector<std::string>> readKeypointLabelsParam(const nlohmann::json& extraParams);
+
+/**
+ * @brief Read the skeleton edges from the "skeleton_edges" head metadata extra parameter.
+ *
+ * @param extraParams Head metadata extra parameters.
+ * @return The skeleton edges. Empty when the key is absent or null, or when the list is empty.
+ * @throws std::runtime_error when the value is not a list of pairs of non-negative integers.
+ */
+std::vector<Edge> readSkeletonEdgesParam(const nlohmann::json& extraParams);
 
 }  // namespace KeypointsUtils
 }  // namespace utilities

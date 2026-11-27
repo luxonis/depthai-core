@@ -1,9 +1,11 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "depthai/common/Keypoint.hpp"
@@ -13,6 +15,18 @@ namespace dai {
 namespace beta {
 namespace utilities {
 namespace DetectionUtils {
+
+/**
+ * @brief Clip a value to [0, 1] like np.clip(value, 0, 1), in the precision of T. NaN propagates.
+ *
+ * @param value Value to clip.
+ * @return The value clipped to [0, 1], or NaN when the value is NaN.
+ */
+template <typename T>
+T clip01(T value) {
+    static_assert(std::is_floating_point<T>::value, "clip01 is only for floating-point values.");
+    return std::min(std::max(value, static_cast<T>(0)), static_cast<T>(1));
+}
 
 /**
  * @brief Greedy non-maximum suppression on axis-aligned boxes, compatible with cv2.dnn.NMSBoxes.

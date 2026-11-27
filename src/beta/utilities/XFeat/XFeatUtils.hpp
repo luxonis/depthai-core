@@ -4,10 +4,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include "depthai/nn_archive/v1/Input.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 
@@ -151,6 +154,39 @@ MatchedPoints matchResults(const XFeatResult& reference, const XFeatResult& targ
  * @return TrackedFeatures message with the interleaved reference/target features.
  */
 std::shared_ptr<dai::TrackedFeatures> createTrackedFeaturesMessage(const MatchedPoints& matchedPoints);
+
+/**
+ * @brief Read a (width, height) size from a head metadata extra parameter holding a list of two
+ * positive integral numbers.
+ *
+ * @param extraParams Head metadata extra parameters.
+ * @param key Name of the extra parameter, for example "original_size" or "input_size".
+ * @return The (width, height) size, or std::nullopt when the key is absent or null.
+ * @throws std::runtime_error when the value is not a list of two positive integers.
+ */
+std::optional<std::pair<std::uint32_t, std::uint32_t>> readSizeParam(const nlohmann::json& extraParams, const char* key);
+
+/**
+ * @brief Read the maximum number of keypoints from the "max_keypoints" head metadata extra
+ * parameter.
+ *
+ * @param extraParams Head metadata extra parameters.
+ * @return The maximum number of keypoints, or std::nullopt when the key is absent or null.
+ * @throws std::runtime_error when the value is not an integer.
+ */
+std::optional<int> readMaxKeypointsParam(const nlohmann::json& extraParams);
+
+/**
+ * @brief Derive the model input (width, height) from the declared shape and layout of the model
+ * input.
+ *
+ * @param inputs Model inputs from the NN archive config. Only one input is supported.
+ * @param parserName Name of the parser, used in the error message.
+ * @return The (width, height) input size.
+ * @throws std::runtime_error when there is not exactly one input, the layout is not NHWC or NCHW,
+ *         the shape is not 4D, or the size does not fit a positive 32-bit unsigned integer.
+ */
+std::pair<std::uint32_t, std::uint32_t> getModelInputSize(const std::vector<dai::nn_archive::v1::Input>& inputs, const char* parserName);
 
 }  // namespace XFeatUtils
 }  // namespace utilities

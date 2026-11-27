@@ -1,3 +1,5 @@
+FROM scratch AS rvc4-fwp
+
 FROM debian:trixie-slim AS builder
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -31,6 +33,9 @@ WORKDIR /opt/depthai-core
 COPY . .
 
 RUN if [ -d .git ]; then git submodule update --init --recursive; fi
+
+COPY --from=rvc4-fwp / /rvc4-fwp/
+ARG DEPTHAI_DEVICE_RVC4_FWP_PATH=""
 
 RUN rm -rf build && \
     cmake -S . -B build \

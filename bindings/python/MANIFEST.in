@@ -12,6 +12,7 @@ graft depthai-core
 prune depthai-core/build*
 prune depthai-core/tests*
 prune depthai-core/examples*
+prune depthai-core/device
 prune build
 prune wheelhouse
 prune dist

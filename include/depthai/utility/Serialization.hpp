@@ -277,6 +277,16 @@ std::string jsonDisplay(const nlohmann::json& json, int level = 0, int indent = 
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(__VA_ARGS__)) \
     DEPTHAI_DEFERRED_EXPAND(NOP_EXTERNAL_STRUCTURE(__VA_ARGS__))
 
+// Serialization of a struct without data members (a command tag): an empty JSON object, an empty libnop structure.
+// nlohmann's intrusive macros need at least one member, libnop's NOP_STRUCTURE does not.
+#define DEPTHAI_SERIALIZE_EMPTY(Type)                                   \
+    friend void to_json(nlohmann::json& nlohmann_json_j, const Type&) { \
+        nlohmann_json_j = nlohmann::json::object();                     \
+    }                                                                   \
+    friend void from_json(const nlohmann::json&, Type&) {}              \
+    DEPTHAI_DEFERRED_EXPAND(DEPTHAI_DISPLAY(Type))                      \
+    NOP_STRUCTURE(Type)
+
 #define DEPTHAI_SERIALIZE(Type, ...)                                                   \
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_NLOHMANN_DEFINE_TYPE_INTRUSIVE(Type, __VA_ARGS__)) \
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_DISPLAY(Type))                                     \

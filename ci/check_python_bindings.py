@@ -204,8 +204,12 @@ def binding_evidence(source):
 
         def qualify(name):
             first, sep, rest = name.partition("::")
-            if first in aliases:
+            seen = set()
+            # An alias can name another alias (using Command = DCC::Command), so expand until none is left.
+            while first in aliases and first not in seen:
+                seen.add(first)
                 name = aliases[first] + (sep + rest if sep else "")
+                first, sep, rest = name.partition("::")
             if name.startswith("dai::"):
                 return {name}
             return {prefix + name for prefix in namespaces}

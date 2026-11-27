@@ -288,6 +288,9 @@ set_property(SOURCE src/py_bindings.cpp APPEND PROPERTY COMPILE_DEFINITIONS
     "DEPTHAI_PYTHON_GIL_FREE=$<BOOL:${DEPTHAI_PYTHON_GIL_FREE}>")
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
     add_library(${TARGET_NAME} ${SOURCE_LIST})
+    # pybind11_add_module sets this for the normal module. pybind11 declares its namespace with hidden visibility,
+    # and without this preset GCC warns for each class that derives from a pybind11 class (-Wattributes).
+    set_target_properties(${TARGET_NAME} PROPERTIES CXX_VISIBILITY_PRESET hidden)
 else()
     # pybind11 adds -flto to Release builds, and GCC then runs all LTO code generation of the module
     # in one process ("using serial compilation of 128 LTRANS jobs"). -flto=auto runs it in parallel.
@@ -518,6 +521,15 @@ execute_process(COMMAND ${PYTHON_EXECUTABLE} "-c" "${version_command}"
 
 
 string(TIMESTAMP BUILD_DATETIME "%Y-%m-%d %H:%M:%S +0000" UTC)
+# Keep the BUILD_DATETIME of the last configure while the version and the commit are the same. A new time at each
+# configure would compile py_bindings.cpp again and then link the module again, also when no source changed.
+set(_python_build_info "${DEPTHAI_PYTHON_VERSION} ${BUILD_COMMIT} ${BUILD_COMMIT_DATETIME}")
+if(DEPTHAI_PYTHON_BUILD_DATETIME AND "${DEPTHAI_PYTHON_BUILD_INFO}" STREQUAL "${_python_build_info}")
+    set(BUILD_DATETIME "${DEPTHAI_PYTHON_BUILD_DATETIME}")
+else()
+    set(DEPTHAI_PYTHON_BUILD_DATETIME "${BUILD_DATETIME}" CACHE INTERNAL "Build time that the Python module reports")
+    set(DEPTHAI_PYTHON_BUILD_INFO "${_python_build_info}" CACHE INTERNAL "Version and commit of DEPTHAI_PYTHON_BUILD_DATETIME")
+endif()
 # Only py_bindings.cpp uses these values. As target definitions, a new BUILD_DATETIME at each configure
 # would compile all binding sources again.
 set_property(SOURCE src/py_bindings.cpp APPEND PROPERTY COMPILE_DEFINITIONS

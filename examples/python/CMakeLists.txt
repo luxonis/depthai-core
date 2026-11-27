@@ -271,6 +271,11 @@ dai_set_example_test_labels(reconnect_callback ondevice rvc2_all rvc4 rvc4rgb ci
 
 add_python_example(health_check Misc/HealthCheck/health_check.py)
 dai_set_example_test_labels(health_check ondevice rvc2_all rvc4 rvc4rgb ci)
+# The power supply check drives the IR dot projector and flood light to full intensity. On boards with a combined IR
+# power budget (OAK-D Pro PoE), the firmware caps the sum and logs a [warning] for each step. Fail only on host warnings.
+if(DEPTHAI_PYTHON_TEST_EXAMPLES AND TEST py_health_check)
+    set_tests_properties(py_health_check PROPERTIES FAIL_REGULAR_EXPRESSION "\\[(depthai|host)\\] \\[warning\\];${RELAXED_EXAMPLE_TEST_FAIL_REGEX}")
+endif()
 
 add_python_example(get_pipeline_state Misc/PipelineDebugging/get_pipeline_state.py)
 dai_set_example_test_labels(get_pipeline_state ondevice rvc2_all rvc4 ci)

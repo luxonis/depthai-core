@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "beta/utilities/Classification/ClassificationUtils.hpp"
 #include "beta/utilities/Detection/DetectionUtils.hpp"
 #include "beta/utilities/PPText/PPTextUtils.hpp"
 #include "depthai/common/ModelType.hpp"
@@ -29,40 +30,6 @@ PPTextDetectionParser::Properties& PPTextDetectionParser::getProperties() {
     properties.initialConfig = *initialConfig;
     return properties;
 }
-
-namespace {
-
-/**
- * Predictions tensor values in NCHW orientation together with the tensor shape.
- */
-struct NchwTensorData {
-    /// Tensor values in row-major order over dims.
-    std::vector<float> values;
-    /// Tensor shape in NCHW orientation.
-    std::vector<std::size_t> dims;
-};
-
-/**
- * Retrieve a tensor from NNData as dequantized FP32 values in NCHW orientation, matching the
- * source parser's output.getTensor(name, StorageOrder.NCHW, dequantize=True). The tensor's
- * stored order is honored; the data is permuted to NCHW, not just re-labeled.
- */
-NchwTensorData getNchwTensorData(dai::NNData& nnData, const std::string& tensorName) {
-#ifdef DEPTHAI_XTENSOR_SUPPORT
-    xt::xarray<float> tensor = nnData.getTensor<float>(tensorName, TensorInfo::StorageOrder::NCHW, true);
-    NchwTensorData result;
-    result.dims.assign(tensor.shape().begin(), tensor.shape().end());
-    result.values.assign(tensor.begin(), tensor.end());
-    return result;
-#else
-    (void)nnData;
-    (void)tensorName;
-    throw std::runtime_error(
-        "PPTextDetectionParser requires xtensor support to convert the predictions tensor to NCHW orientation, but xtensor support is not available.");
-#endif
-}
-
-}  // namespace
 
 NNArchive PPTextDetectionParser::createNNArchive(NNModelDescription& modelDesc) {
     // Download model from zoo
@@ -250,7 +217,7 @@ void PPTextDetectionParser::run() {
             DAI_CHECK_V(layerNames.size() == 1, "Expected 1 output layer, got {} layers. Please provide the output_layer_name.", layerNames.size());
             resolvedOutputLayerName = layerNames.front();
         }
-        auto predictions = getNchwTensorData(*nnData, resolvedOutputLayerName);
+        auto predictions = utilities::ClassificationUtils::getNchwTensorData(*nnData, resolvedOutputLayerName);
 
         // Compute. The probability map height/width are derived from the tensor shape.
         const auto detections = utilities::PPTextUtils::parsePaddleDetectionOutputs(

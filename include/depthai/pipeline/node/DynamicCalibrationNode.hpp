@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
@@ -9,10 +10,15 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "depthai/common/ImgTransformations.hpp"
+#include "depthai/common/StereoPair.hpp"
 #include "depthai/common/WorldConstraints.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/device/Platform.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #include "depthai/utility/spimpl.h"
@@ -26,8 +32,11 @@ class CameraSensorHandle;
 namespace dai {
 namespace node {
 
-/*u
+/**
  * @brief Dynamic calibration node. Performs calibration check and dynamically calibrates the device
+ *
+ * The node runs on the host by default. On RVC4 it can run on the device with setRunOnHost(false), so no
+ * camera frames cross the link: only control and result messages are exchanged with the host.
  *
  * Calibrated cameras retain their DCL-produced poses relative to housing when available.
  * Other cameras preserve their measured factory transforms from the default stereo-depth reference camera
@@ -115,11 +124,14 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     void buildInternal() override;
 
     Subnode<node::Sync> sync{*this, "sync"};
-    InputMap& inputs = sync->inputs;
     std::string leftInputName = "left";
     std::string rightInputName = "right";
     std::string rgbInputName = "rgb";
     std::vector<std::string> names;
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    // The firmware instantiates the Sync subnode as a separate pipeline node, so the input map only
+    // exists on the host side of the node.
+    InputMap& inputs = sync->inputs;
     /**
      * Input left image
      */
@@ -134,14 +146,18 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * Input rgb image
      */
     Input& rgb = inputs[rgbInputName];
+#endif
 
     /**
-     * Specify whether to run on host or device
-     * By default, the node will run on host on RVC2 and on device on RVC4.
+     * Specify whether to run on host or device.
+     * By default, the node runs on the host. Running on the device is supported only on RVC4.
+     * The Sync subnode follows the placement of the node.
      */
-
     void setRunOnHost(bool runOnHost);
 
+    /**
+     * Check if the node is set to run on host
+     */
     bool runOnHost() const override;
 
     void postBuildStage() override;
@@ -167,6 +183,17 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
    protected:
     Properties& getProperties() override;
+
+    /**
+     * Device access that has no dai::Device equivalent inside the firmware. The host implementation goes
+     * through the dai::Device handle; the RVC4 firmware overrides these to use the EEPROM directly.
+     */
+    virtual CalibrationHandler readFactoryCalibration();
+    virtual std::vector<StereoPair> getStereoPairs();
+    /// Product and board name as stored in the EEPROM, used to detect modular (FFC) boards.
+    virtual std::pair<std::string, std::string> getProductAndBoardName();
+    /// Install a calibration at runtime and optionally persist it to the EEPROM user area.
+    virtual void applyCalibration(const CalibrationHandler& handler, bool flash);
 
    private:
     struct ConnectedSensor {
@@ -223,7 +250,11 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     /// image set rejected because of missing markers, so every loaded or skipped set produces both messages.
     void reportMarkersNotVisible();
 
-    ErrorCode initializePipeline(const std::shared_ptr<dai::Device>& daiDevice);
+    ErrorCode initializePipeline();
+
+    /// Creates the DCL state and logger. Runs from buildInternal() on the host and from run() on the device,
+    /// where the firmware constructs the node without calling buildInternal().
+    void ensureInitialized();
 
     ErrorCode doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime);
 
@@ -242,6 +273,9 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      */
     void setCalibration(CalibrationHandler& handler, bool flash);
 
+    /// Platform the node runs for: the device's on the host, RVC4 inside the RVC4 firmware (no device handle there).
+    Platform getPlatform() const;
+
     /**
      * DAI held properties
      */
@@ -259,14 +293,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     bool slept = false;
     std::optional<DynamicCalibrationControl::Commands::StartCalibration> startCalibrationCommand;
 
-    /**
-     * Calibration state machine, which holds the state of Node and provides a stable environment;
-     * - Initialization of pipeline,
-     * - Loading images in DCL,
-     * - Starting Calibration Check,
-     * - Starting of Calibration
-     * - Resetting of data
-     */
+    /// Placement set with setRunOnHost(): host by default, the device only on RVC4.
     bool runOnHostVar = true;
 
     // When old calibration is encountered, issue a warning once
@@ -280,6 +307,16 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     bool metricReferenceWarningIssued = false;
     /// Reports a calibration that runs without its configured metric reference: once as a warning, then at debug level.
     void warnMetricReferenceMissing(const std::string& reason);
+    // A calibration rejected because the marker constraints do not fit the scene has been reported
+    bool constraintMismatchWarningIssued = false;
+    /// Reports a calibration rejected for its marker constraints: once as a warning, then at debug level.
+    void warnConstraintMismatch(const std::string& reason);
+    /// Start of the current run of image sets rejected for missing markers, and when it was last reported.
+    std::optional<std::chrono::steady_clock::time_point> markersMissingSince;
+    std::optional<std::chrono::steady_clock::time_point> markersMissingReportedAt;
+    /// Keeps a run of image sets rejected for missing markers from going unnoticed: warns once the run lasts
+    /// kMarkersMissingWarnAfter and then every kMarkersMissingWarnPeriod; accepted tells that the run ended.
+    void trackMissingMarkers(bool accepted);
 };
 
 }  // namespace node

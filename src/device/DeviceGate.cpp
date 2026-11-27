@@ -117,44 +117,6 @@ DeviceGate::HTTPImpl::HTTPImpl(DeviceInfo deviceInfo) {
 
 DeviceGate::USBImpl::USBImpl(const DeviceInfo& deviceInfo, int timeout) : deviceInfo(deviceInfo), timeout(timeout) {}
 
-bool DeviceGate::isOkay() {
-    return impl->isOkay();
-}
-
-bool DeviceGate::HTTPImpl::isOkay() {
-    auto res = pimpl->cli->Get("/api/v1/status");
-    return nlohmann::json::parse(res->body)["status"].get<bool>();
-}
-
-bool DeviceGate::USBImpl::isOkay() {
-    std::lock_guard<std::mutex> lock(mtx);
-    USBRequest_t request;
-    request.RequestNum = IS_OKAY;
-    request.RequestSize = 0;
-    if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
-        return false;
-    }
-
-    if(XLinkGateRead(deviceInfo.name.c_str(), &request, sizeof(request), timeout) == X_LINK_ERROR) {
-        return false;
-    }
-
-    if(request.RequestNum == RESPONSE_ERROR) {
-        return false;
-    }
-
-    std::vector<uint8_t> respBuffer;
-    respBuffer.resize(request.RequestSize + 1);
-    if(XLinkGateRead(deviceInfo.name.c_str(), &respBuffer[0], request.RequestSize, timeout) == X_LINK_ERROR) {
-        return {};
-    }
-    respBuffer[request.RequestSize] = '\0';
-
-    bool result = nlohmann::json::parse(respBuffer)["status"].get<bool>();
-
-    return result;
-}
-
 Version DeviceGate::getVersion() {
     return impl->getVersion();
 }
@@ -464,59 +426,6 @@ bool DeviceGate::USBImpl::startSession(std::string sessionId) {
     return true;
 }
 
-bool DeviceGate::stopSession() {
-    auto sessionState = getState();
-    if(sessionState == SessionState::STOPPED || sessionState == SessionState::DESTROYED) {
-        spdlog::warn("DeviceGate trying to stop already stopped session");
-        return true;
-    }
-
-    if(sessionState == SessionState::NOT_CREATED) {
-        spdlog::debug("No need to stop a session that wasn't created.");
-        return true;
-    }
-    return impl->stopSession(sessionId);
-}
-
-bool DeviceGate::HTTPImpl::stopSession(std::string sessionId) {
-    std::string url = fmt::format("{}/{}/stop", sessionsEndpoint, sessionId);
-    if(auto res = pimpl->cli->Post(url.c_str())) {
-        if(res->status != 200) {
-            spdlog::warn("DeviceGate stopSession not successful - status: {}, error: {}", res->status, res->body);
-            return false;
-        }
-        spdlog::debug("DeviceGate stopSession successful");
-        return true;
-    } else {
-        spdlog::error("DeviceGate stopSession not successful - got no response");
-    }
-
-    return false;
-}
-
-bool DeviceGate::USBImpl::stopSession(std::string sessionId) {
-    std::lock_guard<std::mutex> lock(mtx);
-    USBRequest_t request;
-    request.RequestNum = STOP_SESSION;
-    request.RequestSize = sessionId.size();
-    if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
-        return false;
-    }
-    if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)sessionId.c_str(), sessionId.size(), timeout) == X_LINK_ERROR) {
-        return false;
-    }
-
-    if(XLinkGateRead(deviceInfo.name.c_str(), &request, sizeof(request), timeout) == X_LINK_ERROR) {
-        return false;
-    }
-    if(request.RequestNum == RESPONSE_ERROR) {
-        spdlog::error("DeviceGate stopSession not successful - got no response");
-        return false;
-    }
-    spdlog::debug("DeviceGate stopSession successful");
-    return true;
-}
-
 bool DeviceGate::destroySession() {
     if(getState() == SessionState::DESTROYED) {
         spdlog::debug("DeviceGate trying to destroy already destroyed session");
@@ -565,52 +474,6 @@ bool DeviceGate::USBImpl::destroySession(std::string sessionId) {
         return false;
     }
     spdlog::debug("DeviceGate destroySession successful");
-    return true;
-}
-
-bool DeviceGate::deleteSession() {
-    if(getState() == SessionState::NOT_CREATED) {
-        spdlog::debug("No need to delete a session that wasn't created.");
-        return true;
-    }
-    return impl->deleteSession(sessionId);
-}
-
-bool DeviceGate::HTTPImpl::deleteSession(std::string sessionId) {
-    std::string url = fmt::format("{}/{}", sessionsEndpoint, sessionId);
-    if(auto res = pimpl->cli->Delete(url.c_str())) {
-        if(res->status != 200) {
-            spdlog::warn("DeviceGate deleteSession not successful - status: {}, error: {}", res->status, res->body);
-            return false;
-        }
-        spdlog::debug("DeviceGate deleteSession successful");
-        return true;
-    } else {
-        spdlog::error("DeviceGate deleteSession not successful - got no response");
-    }
-    return false;
-}
-
-bool DeviceGate::USBImpl::deleteSession(std::string sessionId) {
-    std::lock_guard<std::mutex> lock(mtx);
-    USBRequest_t request;
-    request.RequestNum = DELETE_SESSION;
-    request.RequestSize = sessionId.size();
-    if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
-        return false;
-    }
-    if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)sessionId.c_str(), sessionId.size(), timeout) == X_LINK_ERROR) {
-        return false;
-    }
-
-    if(XLinkGateRead(deviceInfo.name.c_str(), &request, sizeof(request), timeout) == X_LINK_ERROR) {
-        return false;
-    }
-    if(request.RequestNum == RESPONSE_ERROR) {
-        spdlog::error("DeviceGate deleteSession not successful - got no response");
-        return false;
-    }
-    spdlog::debug("DeviceGate deleteSession successful");
     return true;
 }
 

@@ -14,6 +14,15 @@ namespace beta {
 namespace utilities {
 namespace KeypointsUtils {
 
+namespace {
+
+/// True when the head metadata extra parameters hold the key with a value other than null.
+bool hasParam(const nlohmann::json& extraParams, const char* key) {
+    return extraParams.is_object() && extraParams.contains(key) && !extraParams.at(key).is_null();
+}
+
+}  // namespace
+
 KeypointCoordinates computeKeypoints(std::vector<float> values, std::int64_t nKeypoints, float scaleFactor) {
     DAI_CHECK(nKeypoints > 0, "Number of keypoints must be greater than 0.");
 
@@ -206,6 +215,48 @@ std::shared_ptr<Keypoints> createKeypointsMessage(const KeypointCoordinates& coo
     }
 
     return message;
+}
+
+std::optional<float> readFloatParam(const nlohmann::json& extraParams, const char* key) {
+    if(!hasParam(extraParams, key)) {
+        return std::nullopt;
+    }
+    const auto& valueJson = extraParams.at(key);
+    DAI_CHECK_V(valueJson.is_number(), "{} must be a number.", key);
+    return valueJson.get<float>();
+}
+
+std::optional<std::vector<std::string>> readKeypointLabelsParam(const nlohmann::json& extraParams) {
+    if(!hasParam(extraParams, "keypoint_labels")) {
+        return std::nullopt;
+    }
+    const auto& keypointLabelsJson = extraParams.at("keypoint_labels");
+    DAI_CHECK(keypointLabelsJson.is_array(), "keypoint_labels must be a list.");
+    std::vector<std::string> labelNames;
+    labelNames.reserve(keypointLabelsJson.size());
+    for(const auto& labelJson : keypointLabelsJson) {
+        DAI_CHECK(labelJson.is_string(), "All keypoint labels must be strings.");
+        labelNames.push_back(labelJson.get<std::string>());
+    }
+    return labelNames;
+}
+
+std::vector<Edge> readSkeletonEdgesParam(const nlohmann::json& extraParams) {
+    std::vector<Edge> edges;
+    if(!hasParam(extraParams, "skeleton_edges")) {
+        return edges;
+    }
+    const auto& skeletonEdgesJson = extraParams.at("skeleton_edges");
+    DAI_CHECK(skeletonEdgesJson.is_array(), "skeleton_edges must be a list.");
+    edges.reserve(skeletonEdgesJson.size());
+    for(const auto& edgeJson : skeletonEdgesJson) {
+        DAI_CHECK(edgeJson.is_array() && edgeJson.size() == 2, "All skeleton edges must be pairs of keypoint indices.");
+        DAI_CHECK(edgeJson.at(0).is_number_integer() && edgeJson.at(1).is_number_integer() && edgeJson.at(0).get<std::int64_t>() >= 0
+                      && edgeJson.at(1).get<std::int64_t>() >= 0,
+                  "All skeleton edge indices must be non-negative integers.");
+        edges.push_back(Edge{edgeJson.at(0).get<std::uint32_t>(), edgeJson.at(1).get<std::uint32_t>()});
+    }
+    return edges;
 }
 
 }  // namespace KeypointsUtils

@@ -31,30 +31,6 @@ FastSAMParser::Properties& FastSAMParser::getProperties() {
     return properties;
 }
 
-namespace {
-
-/**
- * Retrieve a tensor from NNData as dequantized FP32 values in NCHW orientation, matching the
- * source parser's output.getTensor(name, StorageOrder.NCHW, dequantize=True). The tensor's
- * stored order is honored; the data is permuted to NCHW, not just re-labeled.
- */
-utilities::ClassificationUtils::ShapedTensorData getNchwTensorData(dai::NNData& nnData, const std::string& tensorName) {
-#ifdef DEPTHAI_XTENSOR_SUPPORT
-    xt::xarray<float> tensor = nnData.getTensor<float>(tensorName, TensorInfo::StorageOrder::NCHW, true);
-    utilities::ClassificationUtils::ShapedTensorData result;
-    result.dims.assign(tensor.shape().begin(), tensor.shape().end());
-    result.values.assign(tensor.begin(), tensor.end());
-    return result;
-#else
-    (void)nnData;
-    (void)tensorName;
-    throw std::runtime_error(
-        "FastSAMParser requires xtensor support to convert the model output tensors to NCHW orientation, but xtensor support is not available.");
-#endif
-}
-
-}  // namespace
-
 NNArchive FastSAMParser::createNNArchive(NNModelDescription& modelDesc) {
     // Download model from zoo
     if(modelDesc.platform.empty()) {
@@ -366,7 +342,7 @@ void FastSAMParser::run() {
         std::vector<utilities::ClassificationUtils::ShapedTensorData> yoloTensors;
         yoloTensors.reserve(yoloLayerNames.size());
         for(const auto& name : yoloLayerNames) {
-            yoloTensors.push_back(getNchwTensorData(*nnData, name));
+            yoloTensors.push_back(utilities::ClassificationUtils::getNchwTensorData(*nnData, name));
         }
 
         std::vector<std::string> maskLayerNames = properties.maskOutputs.empty() ? nnData->getAllLayerNames() : properties.maskOutputs;
@@ -377,11 +353,11 @@ void FastSAMParser::run() {
         std::vector<utilities::ClassificationUtils::ShapedTensorData> maskTensors;
         maskTensors.reserve(maskLayerNames.size());
         for(const auto& name : maskLayerNames) {
-            maskTensors.push_back(getNchwTensorData(*nnData, name));
+            maskTensors.push_back(utilities::ClassificationUtils::getNchwTensorData(*nnData, name));
         }
 
         const std::string protosLayerName = properties.protosOutput.empty() ? "protos_output" : properties.protosOutput;
-        const auto protosTensor = getNchwTensorData(*nnData, protosLayerName);
+        const auto protosTensor = utilities::ClassificationUtils::getNchwTensorData(*nnData, protosLayerName);
         DAI_CHECK_V(protosTensor.dims.size() == 4,
                     "FastSAM protos output '{}' must be a 4D NCHW tensor, got {} dimensions.",
                     protosLayerName,

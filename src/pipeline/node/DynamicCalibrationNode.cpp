@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/DynamicCalibrationNode.hpp"
 
 #include "utility/ErrorMacros.hpp"
+#include "utility/ImgFrameView.hpp"
 #include "utility/Logging.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -17,6 +18,8 @@
 #include <pipeline/ThreadedNodeImpl.hpp>
 #include <set>
 #include <string>
+#include <tuple>
+#include <utility/ErrorMacros.hpp>
 #include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -29,6 +32,7 @@
 #include "depthai/utility/spimpl.h"
 #include "pipeline/node/DynamicCalibrationTransforms.hpp"
 #include "pipeline/node/DynamicCalibrationUtils.hpp"
+#include "pipeline/node/WorldConstraintsValidation.hpp"
 #include "utility/Telemetry.hpp"
 
 namespace dai {
@@ -284,7 +288,7 @@ void DynamicCalibration::setWorldConstraints(const WorldConstraints& constraints
     DAI_CHECK_V(!getParentPipeline().isBuilt(), "DynamicCalibration::setWorldConstraints: cannot change the world constraints once the pipeline is built");
     constraints.validate();
     if(constraints.empty()) {
-        throw std::invalid_argument("DynamicCalibration::setWorldConstraints: at least one marker or socket distance is required");
+        throw std::invalid_argument("DynamicCalibration::setWorldConstraints: at least one marker distance, socket distance or marker size is required");
     }
     properties.worldConstraints = constraints;
 }
@@ -316,13 +320,62 @@ void DynamicCalibration::warnMetricReferenceMissing(const std::string& reason) {
     }
 }
 
+void DynamicCalibration::warnConstraintMismatch(const std::string& reason) {
+    // Once at warning level per node instance, then at debug: every calibration attempt publishes the reason in its result.
+    if(!constraintMismatchWarningIssued) {
+        logger->warn("Calibration rejected: {}", reason);
+        constraintMismatchWarningIssued = true;
+    } else {
+        logger->debug("Calibration rejected: {}", reason);
+    }
+}
+
+void DynamicCalibration::trackMissingMarkers(bool accepted) {
+    constexpr std::chrono::seconds kMarkersMissingWarnAfter{5};
+    constexpr std::chrono::seconds kMarkersMissingWarnPeriod{30};
+    const auto now = std::chrono::steady_clock::now();
+    if(accepted) {
+        if(markersMissingReportedAt) {
+            logger->info("Every configured marker is seen by two cameras again");
+        }
+        markersMissingSince.reset();
+        markersMissingReportedAt.reset();
+        return;
+    }
+    if(!markersMissingSince) {
+        markersMissingSince = now;
+    }
+    const bool due =
+        markersMissingReportedAt ? now - *markersMissingReportedAt >= kMarkersMissingWarnPeriod : now - *markersMissingSince >= kMarkersMissingWarnAfter;
+    if(!due || !lastMarkerCoverage) {
+        return;
+    }
+    markersMissingReportedAt = now;
+    std::string tooSmall;
+    for(const auto& [id, sizePx] : lastMarkerCoverage->tooSmallPx) {
+        tooSmall += fmt::format("{}{} ({:.1f} px)", tooSmall.empty() ? "" : ", ", id, sizePx);
+    }
+    const bool noneSeen = lastMarkerCoverage->seenBy.empty() && lastMarkerCoverage->tooSmallPx.empty();
+    logger->warn("No image set loaded for {} s, markers not seen by two cameras: {}{}. Calibration waits until every configured marker is visible{}",
+                 std::chrono::duration_cast<std::chrono::seconds>(now - *markersMissingSince).count(),
+                 joinIds(lastMarkerCoverage->missingMarkers),
+                 tooSmall.empty() ? "" : fmt::format(", too small (minimum {:.0f} px): {}", DclUtils::kMinMarkerSizePx, tooSmall),
+                 noneSeen ? fmt::format("; none of them has been detected, check markerType{} and the marker ids",
+                                        properties.worldConstraints && properties.worldConstraints->markerType == MarkerType::ARUCO ? " / arucoDictionary" : "")
+                          : "");
+}
+
 const DynamicCalibration::ConnectedSensor* DynamicCalibration::findConnectedSensor(CameraBoardSocket socket) const {
     const auto it = std::find_if(connectedSensors.begin(), connectedSensors.end(), [socket](const ConnectedSensor& sensor) { return sensor.socket == socket; });
     return it != connectedSensors.end() ? &(*it) : nullptr;
 }
 
 void DynamicCalibration::setRunOnHost(bool runOnHost) {
+    // The dynamic calibration library is shipped only in the RVC4 firmware.
+    DAI_CHECK_V(runOnHost || !device || device->getPlatform() == Platform::RVC4, "DynamicCalibration: running on device is supported only on RVC4");
     runOnHostVar = runOnHost;
+    // The Sync subnode follows the node, otherwise every frame would still cross the link.
+    sync->setRunOnHost(runOnHost);
 }
 /**
  * Check if the node is set to run on host
@@ -331,9 +384,36 @@ bool DynamicCalibration::runOnHost() const {
     return runOnHostVar;
 }
 
-void DynamicCalibration::buildInternal() {
-    pimplDCL = spimpl::make_impl<Impl>();
+CalibrationHandler DynamicCalibration::readFactoryCalibration() {
+    return device->readFactoryCalibration();
+}
+
+std::vector<StereoPair> DynamicCalibration::getStereoPairs() {
+    return device->getStereoPairs();
+}
+
+std::pair<std::string, std::string> DynamicCalibration::getProductAndBoardName() {
+    return {device->getProductName(), device->readCalibrationOrDefault().getEepromData().boardName};
+}
+
+Platform DynamicCalibration::getPlatform() const {
+    // Inside the RVC4 firmware there is no host device handle.
+    return device ? device->getPlatform() : Platform::RVC4;
+}
+
+void DynamicCalibration::applyCalibration(const CalibrationHandler& handler, bool flash) {
+    device->setCalibration(handler);
+    if(flash) {
+        device->flashCalibration(handler);
+    }
+}
+
+void DynamicCalibration::ensureInitialized() {
     logger = pimpl->logger;
+    if(pimplDCL) {
+        return;
+    }
+    pimplDCL = spimpl::make_impl<Impl>();
     auto telemetryState = pimplDCL->telemetryAggregateState;
     pimplDCL->telemetryAggregateMetricsHandle = utility::Telemetry::getInstance().addAggregateMetrics([telemetryState](nlohmann::json& properties) {
         std::lock_guard<std::mutex> stateLock(telemetryState->mutex);
@@ -353,11 +433,18 @@ void DynamicCalibration::buildInternal() {
 
         addDynamicCalibrationTelemetryProperties(deviceProperties, *telemetryState);
     });
+}
+
+void DynamicCalibration::buildInternal() {
+    ensureInitialized();
     sync->out.link(syncInput);
     sync->setRunOnHost(true);
 }
 
 void DynamicCalibration::postBuildStage() {
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    // setRunOnHost() cannot check the platform of a node that had no device yet; repeat it now that the pipeline is built.
+    DAI_CHECK_V(runOnHostVar || (device && device->getPlatform() == Platform::RVC4), "DynamicCalibration: running on device requires an RVC4 device");
     auto eraseIfUnused = [&](const std::string& name) {
         auto it = inputs.find({inputs.name, name});
         if(it != inputs.end() && !it->second.isConnected() && inputs.size() > 1) {
@@ -369,6 +456,7 @@ void DynamicCalibration::postBuildStage() {
     eraseIfUnused(leftInputName);
     eraseIfUnused(rightInputName);
     eraseIfUnused(rgbInputName);
+#endif
 }
 
 std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::convertDaiCalibrationToDcl(const CalibrationHandler& currentCalibration,
@@ -744,7 +832,11 @@ dcl::ImageData DclUtils::cvMatToImageData(const cv::Mat& mat) {
         default:
             throw std::runtime_error("Unsupported cv::Mat type: " + std::to_string(type));
     }
-    img.data.assign(mat.data, mat.data + mat.total() * mat.elemSize());
+    const size_t rowBytes = static_cast<size_t>(mat.cols) * mat.elemSize();
+    img.data.resize(static_cast<size_t>(mat.rows) * rowBytes);
+    for(int row = 0; row < mat.rows; ++row) {
+        std::memcpy(img.data.data() + static_cast<size_t>(row) * rowBytes, mat.ptr(row), rowBytes);
+    }
 
     return img;
 }
@@ -761,10 +853,7 @@ float sampsonErrorToPixels(float sampsonErrorNormalized, float sampsonErrorScale
 
 void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash) {
     logger->trace("Applying calibration to device");
-    device->setCalibration(handler);
-    if(flash) {
-        device->flashCalibration(handler);
-    }
+    applyCalibration(handler, flash);
     calibrationHandler = handler;
 
     for(const auto* sensors : {&connectedSensors, &auxiliarySensors}) {
@@ -861,8 +950,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         std::string productName;
         std::string boardName;
         try {
-            productName = device->getProductName();
-            boardName = device->readCalibrationOrDefault().getEepromData().boardName;
+            std::tie(productName, boardName) = getProductAndBoardName();
         } catch(const std::exception& ex) {
             logger->warn("DynamicCalibration could not read the device name, assuming a non-modular board: {}", ex.what());
         }
@@ -959,14 +1047,14 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     if(hasUnobservedCameras) {
         if(!pimplDCL->factoryCalibration) {
             try {
-                pimplDCL->factoryCalibration = device->readFactoryCalibration();
+                pimplDCL->factoryCalibration = readFactoryCalibration();
             } catch(const std::exception& ex) {
                 return reportCalibrationFailure(std::string("Failed to read factory calibration from EEPROM: ") + ex.what());
             }
         }
         // getStereoPairs() never throws; it returns an empty list when no calibration is available,
         // which assembleDynamicCalibration() reports explicitly.
-        stereoPairs = device->getStereoPairs();
+        stereoPairs = getStereoPairs();
     }
 
     CalibrationHandler newCalibrationHandler;
@@ -977,7 +1065,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
                                                                    calibratedPoses,
                                                                    std::holds_alternative<HousingCoordinateSystem>(daiSocketBase),
                                                                    stereoPairs,
-                                                                   device->getPlatform());
+                                                                   getPlatform());
     } catch(const std::exception& ex) {
         return reportCalibrationFailure(std::string("Failed to assemble calibration: ") + ex.what());
     }
@@ -988,6 +1076,53 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         const auto sampsonErrorScalePixels = sampsonErrorScalePx(currentHandler, referenceSensor.socket, referenceSensor.resolution);
         qualityData.sampsonErrorCurrent = sampsonErrorToPixels(static_cast<float>(dclResult.value.sampsonErrorCurrent), sampsonErrorScalePixels);
         qualityData.sampsonErrorNew = sampsonErrorToPixels(static_cast<float>(dclResult.value.sampsonErrorNew), sampsonErrorScalePixels);
+    }
+
+    if(!worldConstraints.empty()) {
+        std::string mismatch;
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+        try {
+            std::map<CameraBoardSocket, detail::ObservationCamera> cameras;
+            for(const auto& sensor : connectedSensors) {
+                cameras.emplace(sensor.socket, detail::ObservationCamera{sensor.intrinsics, sensor.distortion, sensor.distortionModel});
+            }
+            for(const auto& residual : detail::worldConstraintResiduals(
+                    *properties.worldConstraints, markerObservations, newCalibrationHandler, connectedSensors.front().socket, cameras)) {
+                logger->debug("Marker constraints: {} configured {:.4f} m, reconstructed {}",
+                              residual.what,
+                              residual.configured,
+                              residual.measured ? fmt::format("{:.4f} m", *residual.measured) : std::string("not available"));
+                if(residual.fits()) continue;
+                if(!mismatch.empty()) mismatch += "; ";
+                mismatch +=
+                    residual.measured
+                        ? fmt::format(
+                              "{} is configured as {:.3f} m but is {:.3f} m in the calibrated result", residual.what, residual.configured, *residual.measured)
+                        : fmt::format("{} could not be reconstructed from the marker observations", residual.what);
+            }
+        } catch(const std::exception& ex) {
+            mismatch = std::string("constraint validation failed: ") + ex.what();
+        }
+#else
+        // The measurements cannot be reconstructed without OpenCV; the epipolar error below is the only check left.
+        logger->debug("Marker constraints: built without OpenCV support, the measurements are not compared with the calibrated result");
+#endif
+        if(mismatch.empty() && !connectedSensors.empty()) {
+            // DCL measures the error in the observed images, so the pixel limits apply at their scale, which can differ
+            // from the calibration resolution after a crop or resize.
+            const auto& observed = connectedSensors.front().intrinsics;
+            const auto observedScalePx = 0.5f * (observed.at(0).at(0) + observed.at(1).at(1));
+            const auto currentPx = sampsonErrorToPixels(static_cast<float>(dclResult.value.sampsonErrorCurrent), observedScalePx);
+            const auto newPx = sampsonErrorToPixels(static_cast<float>(dclResult.value.sampsonErrorNew), observedScalePx);
+            if(detail::epipolarErrorContradictsConstraints(currentPx, newPx)) {
+                mismatch = fmt::format("the epipolar error of the image features changes from {:.2f} px to {:.2f} px", currentPx, newPx);
+            }
+        }
+        if(!mismatch.empty()) {
+            const auto message = "World constraints could not be validated: " + mismatch + ". Check the measured values (meters), marker ids and sockets";
+            warnConstraintMismatch(message);
+            return reportCalibrationFailure(message);
+        }
     }
 
     std::map<const dcl::CameraSensorHandle*, CameraBoardSocket> sensorHandleToSocket;
@@ -1065,7 +1200,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
             timestampInitialized = true;
         }
 
-        cv::Mat cvFrame = frame->getCvFrame();
+        const cv::Mat cvFrame = utility::getCvFrameView(*frame);
         images.emplace_back(sensor.sensorDcl, DclUtils::cvMatToImageData(cvFrame));
     }
 
@@ -1084,7 +1219,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
                 // Once per marker: a configured marker that is seen but too small is otherwise a silent loss of constraints.
                 if(markerSizeWarningIssued.insert(markerId).second) {
                     logger->warn(
-                        "Marker {} is only {:.0f} px across in {}, below the {:.0f} px minimum, and is ignored: move the camera closer or print it larger",
+                        "Marker {} is only {:.1f} px across in {}, below the {:.0f} px minimum, and is ignored: move the camera closer or print it larger",
                         markerId,
                         sizePx,
                         toString(connectedSensors[idx].socket),
@@ -1107,6 +1242,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
             }
         }
         lastMarkerCoverage = DclUtils::markerCoverage(*properties.worldConstraints, observations, tooSmallPx, markerObservations.size());
+        trackMissingMarkers(lastMarkerCoverage->accepted);
         if(!lastMarkerCoverage->accepted) {
             logger->trace("Image set skipped, markers not seen by two cameras: {}", joinIds(lastMarkerCoverage->missingMarkers));
             return DynamicCalibration::ErrorCode::MARKERS_NOT_VISIBLE;
@@ -1208,8 +1344,8 @@ void DynamicCalibration::reportMarkersNotVisible() {
     calibrationOutput.send(std::make_shared<DynamicCalibrationResult>(info));
 }
 
-DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::shared_ptr<dai::Device>& daiDevice) {
-    logger->trace("Initializing DynamicCalibration pipeline for device: {}", daiDevice->getDeviceId());
+DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline() {
+    logger->trace("Initializing DynamicCalibration pipeline");
 
     auto inSyncGroup = syncInput.get<dai::MessageGroup>();
     if(!inSyncGroup) {
@@ -1236,7 +1372,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
         return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
     }
 
-    calibrationHandler = daiDevice->getCalibration();
+    calibrationHandler = device ? device->getCalibration() : getParentPipeline().getCalibrationData();
     auto eepromData = calibrationHandler.getEepromData();
 
     try {
@@ -1297,7 +1433,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
 
     logger->trace("Converting dai calibration to dcl");
 
-    auto platform = daiDevice->getPlatform();
+    auto platform = getPlatform();
     if(platform == dai::Platform::RVC2 && !eepromData.stereoEnableDistortionCorrection && !oldCalibrationWarningIssued) {
         logger->trace("The calibration on the device is old (distortion correction is disabled), for optimal performance full re-calibration is recommended!");
         oldCalibrationWarningIssued = true;
@@ -1327,11 +1463,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
 
 DynamicCalibration::ErrorCode DynamicCalibration::initializeAuxiliarySensors(const EepromData& eepromData) {
     const auto& constraints = *properties.worldConstraints;
+    // A configuration that cannot work on this device stops the pipeline (the node thread rethrows as a runtime
+    // error): a node that only logs and idles leaves every loadImage / result read waiting forever.
     try {
         constraints.validate();
     } catch(const std::exception& ex) {
-        logger->error("Invalid marker constraints: {}", ex.what());
-        return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
+        throw std::runtime_error(std::string("DynamicCalibration: invalid world constraints: ") + ex.what());
     }
     for(const auto socket : utility::referencedSockets(constraints)) {
         if(findConnectedSensor(socket) != nullptr) {
@@ -1339,8 +1476,14 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializeAuxiliarySensors(con
         }
         const auto cameraIt = eepromData.cameraData.find(socket);
         if(cameraIt == eepromData.cameraData.end() || std::find(socketsInHandler.begin(), socketsInHandler.end(), socket) == socketsInHandler.end()) {
-            logger->error("Marker constraints refer to socket {} which has no calibration on this device", toString(socket));
-            return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
+            std::string calibrated;
+            for(const auto calibratedSocket : socketsInHandler) {
+                calibrated += (calibrated.empty() ? "" : ", ") + toString(calibratedSocket);
+            }
+            throw std::runtime_error(
+                fmt::format("DynamicCalibration: world constraints refer to socket {}, which has no calibration on this device (calibrated sockets: {})",
+                            toString(socket),
+                            calibrated.empty() ? "none" : calibrated));
         }
         const auto& info = cameraIt->second;
         ConnectedSensor sensor{socket,
@@ -1454,6 +1597,9 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
             pimplDCL->telemetryAggregateState->stopCalibrationCommands += 1;
         }
         startCalibrationCommand.reset();
+        // The time until the next start is not time spent waiting for markers.
+        markersMissingSince.reset();
+        markersMissingReportedAt.reset();
         return ErrorCode::OK;
     }
     // Reset/remove accumulated data
@@ -1553,15 +1699,19 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
 }
 
 void DynamicCalibration::run() {
+    // The firmware constructs the node without buildInternal(), so the DCL state is created here on the device.
+    ensureInitialized();
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     if(!device) {
         logger->error("Dynamic calibration node does not have access to any device.");
         return;
     }
+#endif
 
     auto& telemetryState = *pimplDCL->telemetryAggregateState;
     {
         std::lock_guard<std::mutex> lock(telemetryState.mutex);
-        telemetryState.telemetryDeviceId = device->getTemporaryTelemetryDeviceId();
+        telemetryState.telemetryDeviceId = device ? device->getTemporaryTelemetryDeviceId() : std::string{};
     }
 
     logger->trace("DynamicCalibration node started ");
@@ -1569,16 +1719,19 @@ void DynamicCalibration::run() {
     auto previousLoadingTimeFloat =
         std::chrono::steady_clock::now() + std::chrono::duration<float>(DynamicCalibrationControl::Commands::StartCalibration{}.calibrationPeriod);
     auto previousLoadingTime = std::chrono::time_point_cast<std::chrono::steady_clock::duration>(previousLoadingTimeFloat);
-    auto initResult = initializePipeline(device);
+    auto initResult = initializePipeline();
     if(initResult != DynamicCalibration::ErrorCode::OK) {
         logger->error("DynamicCalibration initialization failed with error code {}", static_cast<int>(initResult));
         return;
     }
-    // Sent through the device: this node thread must not own the pipeline, it could become the last owner
-    utility::Telemetry::getInstance().event(
-        *device,
-        "depthai_dynamic_calibration_node_started",
-        nlohmann::json{{"run_on_host", runOnHost()}, {"performance_mode", toString(performanceMode)}, {"connected_sensor_count", connectedSensors.size()}});
+    // Sent through the device: this node thread must not own the pipeline, it could become the last owner.
+    // Inside the firmware there is no host device handle and no telemetry client, so the event is host only.
+    if(device) {
+        utility::Telemetry::getInstance().event(
+            *device,
+            "depthai_dynamic_calibration_node_started",
+            nlohmann::json{{"run_on_host", runOnHost()}, {"performance_mode", toString(performanceMode)}, {"connected_sensor_count", connectedSensors.size()}});
+    }
     while(mainLoop()) {
         slept = false;
         doWork(previousLoadingTime);
