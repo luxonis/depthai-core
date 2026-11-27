@@ -1,7 +1,11 @@
 DepthAI Core is the C++ SDK for Luxonis cameras, with Python bindings
-through pybind11. It builds on Linux, macOS, and Windows (MSVC). The
-firmware for the cameras (RVC2: OAK 1 and OAK 2, RVC4: OAK 4) is a
-prebuilt download that CMake embeds in the library.
+through pybind11. It builds on Linux, macOS, and Windows (MSVC). CMake
+embeds the firmware for the cameras in the library:
+
+- RVC2 (OAK 1 and OAK 2): a prebuilt download.
+- RVC4 (OAK 4): built from `device/rvc4` in this repository, in Docker.
+  It links the vendor module (licensee-only code that is not in this
+  repository) as a prebuilt archive.
 
 ## Layout
 
@@ -17,14 +21,24 @@ prebuilt download that CMake embeds in the library.
 - `tests/src/ondevice_tests/` — tests that need an RVC2 or RVC4 device.
 - `tests/CMakeLists.txt` — `dai_add_test(...)` registers a test and its
   `ctest` labels (`onhost`, `rvc2`, `rvc4`, `usb`, `poe`, ...).
+- `device/rvc4/` — RVC4 firmware: the `depthai-device-rvc4` process that
+  runs on the device. It is a separate CMake project that adds this
+  repository (`../..`) as a subdirectory, so it compiles the shared types
+  of the same checkout. `device/rvc4/README.md` has its layout and build.
+- `device/rvc4/src/vendor/dai_device_*.h` — the C interface of the vendor
+  module.
 - `cmake/Depthai/` — firmware pins: `DepthaiDeviceSideConfig.cmake` (RVC2),
-  `DepthaiDeviceRVC4Config.cmake` (RVC4).
+  `DepthaiDeviceRVC4Config.cmake` (RVC4: the vendor archive and the build
+  image; `DEPTHAI_DEVICE_RVC4_VERSION` is empty, so the firmware builds
+  from `device/rvc4`).
+- `cmake/DepthaiDeviceRvc4FirmwareBuild.cmake` — builds the RVC4 firmware
+  package in Docker and embeds it.
 - `cmake/depthaiDependencies.cmake` — XLink and other dependencies.
 - `protos/` — protobuf schemas; run `ci/check_protobuf_consistency.sh`
   after a change.
 - `ci/` — CI check scripts. `.github/workflows/` — CI workflows.
-- `shared/`, `3rdparty/`, `bindings/python/external/` — submodules and
-  vendored code; do not edit.
+- `shared/`, `3rdparty/`, `bindings/python/external/`,
+  `device/rvc4/external/` — submodules and vendored code; do not edit.
 
 ## Build
 
@@ -35,8 +49,22 @@ cmake --build build --parallel 10
 ```
 
 The first configure builds the vcpkg dependencies and takes a long time.
-To run your own firmware, set `DEPTHAI_DEVICE_BINARY` (RVC2) or
-`DEPTHAI_DEVICE_RVC4_FWP` (RVC4).
+
+The build also builds the RVC4 firmware from `device/rvc4` in Docker. It
+needs bash and a running Docker engine, `DEPTHAI_ACCEPT_VENDOR_EULA=yes`
+for each build, and `DEPTHAI_ACCEPT_QUALCOMM_LICENSE=yes` for the first
+build with a public image (environment or cache variables). These values
+accept license agreements: ask the user before you set them. To build
+without Docker, configure with one of:
+
+- `-D DEPTHAI_ENABLE_DEVICE_RVC4_FW=OFF` — no RVC4 firmware.
+- `-D DEPTHAI_DEVICE_RVC4_VERSION=<version>` — download that firmware
+  package.
+- `-D DEPTHAI_DEVICE_RVC4_FWP_PATH=<fwp>` — embed a package that you have.
+
+To run your own firmware without a new host build, set
+`DEPTHAI_DEVICE_BINARY` (RVC2) or `DEPTHAI_DEVICE_RVC4_FWP` (RVC4). To
+build only the RVC4 firmware, see `device/rvc4/README.md` ("Building").
 
 ## Test
 
@@ -74,8 +102,17 @@ bash ci/check_protobuf_consistency.sh
 - Shared types (`datatype/`, `properties/`, `common/`): append a new field
   at the end of the struct and of the `DEPTHAI_SERIALIZE*` list, with a
   default value. Append a new `DatatypeEnum` value before `COUNT`.
-- A shared-type change also needs a firmware build with the same
-  definitions, then a firmware pin bump in `cmake/Depthai/`.
+- A shared-type change also needs an RVC2 firmware build with the same
+  definitions, then a pin bump in
+  `cmake/Depthai/DepthaiDeviceSideConfig.cmake`. The RVC4 firmware
+  compiles the same checkout: change its device code in `device/rvc4` in
+  the same PR.
+- A change to the vendor C interface
+  (`device/rvc4/src/vendor/dai_device_*.h`) needs a new vendor archive
+  (the private CI of the vendor module builds it) and a bump of
+  `DEPTHAI_DEVICE_RVC4_VENDOR_VERSION`. The prebuilt archive fits only the
+  headers of its build: the firmware build stops when a header is
+  different.
 - The Doxygen comment of a public function is its Python docstring.
 
 The full rule set is in the `depthai-cpp-review` skill
@@ -148,3 +185,6 @@ gh workflow run hil_testing_weekly.yml --ref <branch>
 
 This repository is public. Keep private firmware code, internal hostnames,
 IP addresses and customer names out of commits, PR text and comments.
+`device/rvc4` is public too: keep the code and the details of the vendor
+module out of it. The firmware uses the vendor module only through the C
+interface in `device/rvc4/src/vendor/`.
