@@ -94,11 +94,38 @@ std::string archiveMember(const RecordingIndex& index, const std::string& name) 
     return found->second;
 }
 
-std::string findByFilename(const RecordingIndex& index, const std::string& filename) {
+struct RecordingFilePick {
+    bool found = false;
+    bool ambiguous = false;
+    std::string name;
+};
+
+RecordingFilePick pickRecordingFile(const RecordingIndex& index, const std::string& filename) {
+    RecordingFilePick pick;
+    std::string root;
+    std::size_t count = 0;
     for(const auto& name : index.names) {
-        if(std::filesystem::path(name).filename() == filename) return name;
+        if(std::filesystem::path(name).filename() != filename) continue;
+        ++count;
+        if(name.find('/') == std::string::npos)
+            root = name;
+        else if(pick.name.empty())
+            pick.name = name;
     }
-    return {};
+    if(count == 0) return pick;
+    if(!root.empty()) {
+        pick.found = true;
+        pick.name = root;
+        return pick;
+    }
+    if(count == 1) {
+        pick.found = true;
+        return pick;
+    }
+    pick.ambiguous = true;
+    pick.name.clear();
+    spdlog::warn("More than one {} in replay path.", filename);
+    return pick;
 }
 
 }  // namespace
@@ -376,10 +403,12 @@ bool mockCameraFeatures(DeviceBase& device, std::filesystem::path replayPath) {
     }
     bool useTar = !platform::checkPathExists(replayPath, true);
     const auto index = indexRecording(replayPath, useTar);
-    const auto infoName = findByFilename(index, "camera_info.json");
-    const auto calibrationName = findByFilename(index, "calibration.json");
-    const bool hasCameraInfo = !infoName.empty();
-    const auto chosen = hasCameraInfo ? infoName : calibrationName;
+    const auto info = pickRecordingFile(index, "camera_info.json");
+    if(info.ambiguous) return false;
+    const auto calibration = info.found ? RecordingFilePick{} : pickRecordingFile(index, "calibration.json");
+    if(!info.found && calibration.ambiguous) return false;
+    const bool hasCameraInfo = info.found;
+    const auto chosen = hasCameraInfo ? info.name : calibration.name;
     if(!chosen.empty()) {
         std::vector<uint8_t> cameraInfoData;
         if(useTar) {
@@ -475,18 +504,19 @@ std::filesystem::path materialize(const std::filesystem::path& replayPath,
     return replayPath / entry;
 }
 
-double nominalFromDai(const std::vector<std::filesystem::path>& frames) {
-    if(frames.size() < 2) return 1.0 / 30.0;
+double nominalFromDai(const std::filesystem::path& first, const std::filesystem::path& last, std::size_t frameCount) {
+    if(frameCount < 2) return 1.0 / 30.0;
 #ifndef DEPTHAI_ENABLE_PROTOBUF
-    (void)frames;
+    (void)first;
+    (void)last;
     throw std::runtime_error("ReplayVideo node requires protobuf support");
 #else
-    ImgFrame first;
-    ImgFrame last;
-    first.load(frames.front());
-    last.load(frames.back());
-    const auto delta = last.getTimestampDevice() - first.getTimestampDevice();
-    const auto seconds = std::chrono::duration<double>(delta).count() / static_cast<double>(frames.size() - 1);
+    ImgFrame firstFrame;
+    ImgFrame lastFrame;
+    firstFrame.load(first);
+    lastFrame.load(last);
+    const auto delta = lastFrame.getTimestampDevice() - firstFrame.getTimestampDevice();
+    const auto seconds = std::chrono::duration<double>(delta).count() / static_cast<double>(frameCount - 1);
     return seconds > 0.0 ? seconds : 1.0 / 30.0;
 #endif
 }
@@ -500,13 +530,15 @@ struct MediaProbe {
 MediaProbe probeFrameMedia(const std::vector<std::filesystem::path>& local,
                            const std::string& extension,
                            const std::optional<nlohmann::json>& config,
-                           const std::string& name) {
+                           const std::string& name,
+                           std::size_t frameCount) {
     MediaProbe probe;
     if(local.empty()) throw std::runtime_error("Recording does not match the pipeline configuration.");
     if(extension == ".dai") {
 #ifndef DEPTHAI_ENABLE_PROTOBUF
         (void)config;
         (void)name;
+        (void)frameCount;
         throw std::runtime_error("ReplayVideo node requires protobuf support");
 #else
         ImgFrame first;
@@ -514,7 +546,8 @@ MediaProbe probeFrameMedia(const std::vector<std::filesystem::path>& local,
         probe.width = static_cast<int>(first.getWidth());
         probe.height = static_cast<int>(first.getHeight());
         const auto configured = configuredStreamFps(config, name);
-        probe.fps = configured.has_value() ? static_cast<double>(configured.value()) : std::round(1.0 / nominalFromDai(local));
+        probe.fps =
+            configured.has_value() ? static_cast<double>(configured.value()) : std::round(1.0 / nominalFromDai(local.front(), local.back(), frameCount));
 #endif
     } else {
         const auto image = cv::imread(local.front().string(), cv::IMREAD_UNCHANGED | cv::IMREAD_IGNORE_ORIENTATION);
@@ -622,7 +655,7 @@ bool setupHolisticReplayDevice(Pipeline& pipeline, const std::filesystem::path& 
             if(selected.extension == ".dai" && selected.frames.size() > 1) {
                 local.push_back(materialize(replayPath, index, selected.frames.back(), probeDir));
             }
-            probe = probeFrameMedia(local, selected.extension, recordConfig, name);
+            probe = probeFrameMedia(local, selected.extension, recordConfig, name, selected.frames.size());
         } else {
             const auto metadata = materialize(replayPath, index, selected.path, probeDir);
             const auto metadataSize = BytePlayer::getVideoSize(metadata.string());
@@ -716,31 +749,53 @@ bool setupHolisticReplay(Pipeline pipeline,
             return placed;
         };
 
-        recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
+        struct PlannedSource {
+            std::shared_ptr<Node> node;
+            std::string name;
+            bool camera = false;
+            replay::NamedArchiveEntry selected;
+            HolisticLayout layout = HolisticLayout::Missing;
+        };
+        std::vector<PlannedSource> planned;
+        planned.reserve(sources.size());
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
             if(nodeS == nullptr) throw std::runtime_error("Node is listed as a source node but does not implement the SourceNode interface.");
-            const auto nodeName = nodeS->getNodeRecordParams().name;
+            PlannedSource item;
+            item.node = node;
+            item.name = nodeS->getNodeRecordParams().name;
             DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
-            const bool camera = std::dynamic_pointer_cast<node::Camera>(node) || std::dynamic_pointer_cast<node::ColorCamera>(node)
-                                || std::dynamic_pointer_cast<node::MonoCamera>(node);
+            item.camera = std::dynamic_pointer_cast<node::Camera>(node) || std::dynamic_pointer_cast<node::ColorCamera>(node)
+                          || std::dynamic_pointer_cast<node::MonoCamera>(node);
             DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
-            const auto selected = replay::selectNamedArchiveEntry(index.names, nodeName, !camera);
-            const auto layout = layoutOf(selected);
-            if(layout == HolisticLayout::Missing) throw std::runtime_error("Recording does not match the pipeline configuration.");
-            if(!camera || layout == HolisticLayout::Mcap) {
-                if(layout != HolisticLayout::Mcap) throw std::runtime_error("Recording does not match the pipeline configuration.");
+            item.selected = replay::selectNamedArchiveEntry(index.names, item.name, !item.camera);
+            item.layout = layoutOf(item.selected);
+            if(item.layout == HolisticLayout::Missing) throw std::runtime_error("Recording does not match the pipeline configuration.");
+            if(!item.camera && item.layout != HolisticLayout::Mcap) throw std::runtime_error("Recording does not match the pipeline configuration.");
+            if(item.layout == HolisticLayout::Frames && item.selected.frames.empty()) {
+                throw std::runtime_error("Recording does not match the pipeline configuration.");
+            }
+            planned.push_back(std::move(item));
+        }
+
+        std::unordered_map<std::string, std::filesystem::path> published;
+        for(const auto& item : planned) {
+            auto nodeS = std::dynamic_pointer_cast<SourceNode>(item.node);
+            const auto& nodeName = item.name;
+            const auto& selected = item.selected;
+            const auto layout = item.layout;
+            if(!item.camera || layout == HolisticLayout::Mcap) {
                 const auto metadata = place({selected.path}).front();
                 auto replay = pipeline.create<dai::node::ReplayMetadataOnly>();
                 replay->setReplayFile(metadata);
-                if(camera) {
+                if(item.camera) {
                     const auto metadataSize = BytePlayer::getVideoSize(metadata.string());
                     if(!metadataSize.has_value()) throw std::runtime_error("ReplayVideo source size is not set");
                     const auto configured = configuredStreamFps(savedConfig, nodeName);
                     const double fps = configured.has_value() ? static_cast<double>(configured.value()) : 30.0;
-                    applyMockIspSize(node, static_cast<int>(std::get<0>(metadataSize.value())), static_cast<int>(std::get<1>(metadataSize.value())), fps);
+                    applyMockIspSize(item.node, static_cast<int>(std::get<0>(metadataSize.value())), static_cast<int>(std::get<1>(metadataSize.value())), fps);
                 }
-                outFilenames[nodeName] = metadata.parent_path() / metadata.stem();
+                published.emplace(nodeName, metadata.parent_path() / metadata.stem());
                 replay->out.link(nodeS->getReplayInput());
                 continue;
             }
@@ -763,8 +818,8 @@ bool setupHolisticReplay(Pipeline pipeline,
                         }
                     }
                 }
-                applyMockIspSize(node, static_cast<int>(vidWidth), static_cast<int>(vidHeight), vidFps);
-                outFilenames[nodeName] = video.parent_path() / video.stem();
+                applyMockIspSize(item.node, static_cast<int>(vidWidth), static_cast<int>(vidHeight), vidFps);
+                published.emplace(nodeName, video.parent_path() / video.stem());
                 replay->out.link(nodeS->getReplayInput());
                 continue;
             }
@@ -772,14 +827,16 @@ bool setupHolisticReplay(Pipeline pipeline,
             if(placed.empty()) throw std::runtime_error("Recording does not match the pipeline configuration.");
             std::vector<std::filesystem::path> samples{placed.front()};
             if(selected.extension == ".dai" && placed.size() > 1) samples.push_back(placed.back());
-            const auto probed = probeFrameMedia(samples, selected.extension, savedConfig, nodeName);
+            const auto probed = probeFrameMedia(samples, selected.extension, savedConfig, nodeName, selected.frames.size());
             auto replay = pipeline.create<dai::node::ReplayVideo>();
             replay->setReplayVideoFile(placed.front().parent_path());
             replay->setOutFrameType(legacy ? ImgFrame::Type::YUV420p : ImgFrame::Type::NV12);
-            applyMockIspSize(node, probed.width, probed.height, probed.fps);
-            outFilenames[nodeName] = placed.front().parent_path();
+            applyMockIspSize(item.node, probed.width, probed.height, probed.fps);
+            published.emplace(nodeName, placed.front().parent_path());
             replay->out.link(nodeS->getReplayInput());
         }
+        for(const auto& entry : published) outFilenames[entry.first] = entry.second;
+        recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
         return true;
     } catch(const std::exception& e) {
         spdlog::warn("Replay disabled: {}", e.what());
