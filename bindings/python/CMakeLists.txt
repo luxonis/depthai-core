@@ -114,6 +114,7 @@ set(SOURCE_LIST
     src/pipeline/node/EdgeDetectorBindings.cpp
     src/pipeline/node/FeatureTrackerBindings.cpp
     src/pipeline/node/OpticalFlowBindings.cpp
+    src/pipeline/node/DeblurBindings.cpp
     src/pipeline/node/ThermalBindings.cpp
     src/pipeline/node/ToFBindings.cpp
     src/pipeline/node/AprilTagBindings.cpp

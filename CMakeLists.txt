@@ -371,6 +371,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
     src/pipeline/node/OpticalFlow.cpp
+    src/pipeline/node/Deblur.cpp
     src/pipeline/node/Align.cpp
     src/pipeline/node/ImageAlign.cpp
     src/pipeline/node/Stitching.cpp

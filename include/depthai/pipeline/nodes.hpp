@@ -16,6 +16,7 @@
     #include "node/AutoCalibration.hpp"
     #include "node/DynamicCalibrationNode.hpp"
 #endif
+#include "node/Deblur.hpp"
 #include "node/EdgeDetector.hpp"
 #include "node/FeatureTracker.hpp"
 #include "node/GPUStereo.hpp"

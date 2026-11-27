@@ -6,6 +6,7 @@
 #include "depthai/properties/CameraProperties.hpp"
 #include "depthai/properties/CastProperties.hpp"
 #include "depthai/properties/ColorCameraProperties.hpp"
+#include "depthai/properties/DeblurProperties.hpp"
 #include "depthai/properties/DetectionParserProperties.hpp"
 #include "depthai/properties/DeviceNodeGroupProperties.hpp"
 #include "depthai/properties/EdgeDetectorProperties.hpp"
@@ -112,6 +113,7 @@ DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, DeviceProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, EdgeDetectorProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, FeatureTrackerProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, OpticalFlowProperties)
+DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, DeblurProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, GPUStereoProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, GateProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, GlobalProperties)
