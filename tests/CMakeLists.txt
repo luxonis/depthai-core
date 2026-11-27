@@ -633,8 +633,8 @@ endif()
 dai_add_test(telemetry_fork_test src/onhost_tests/utility/telemetry_fork_test.cpp)
 dai_set_test_labels(telemetry_fork_test onhost ci nowindows)
 
-# Telemetry exit time with a server that does not answer
-if(DEPTHAI_ENABLE_CURL)
+# Telemetry exit time with a server that does not answer (the test uses fork, pipes and POSIX sockets)
+if(DEPTHAI_ENABLE_CURL AND NOT WIN32)
     add_executable(telemetry_exit_test_child src/onhost_tests/utility/telemetry_exit_test_child.cpp)
     add_default_flags(telemetry_exit_test_child LEAN)
     target_link_libraries(telemetry_exit_test_child PRIVATE depthai::core)
