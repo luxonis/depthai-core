@@ -24,8 +24,7 @@ class LuxonisSidechannel {
         lux_sc_sensor_err_cb_add_t sensor_err_cb_add;
         lux_sc_sensor_err_cb_rm_t sensor_err_cb_rm;
         // ISP brightness -10..10; NULL with a camera HAL that does not implement it.
-        // shortcut: luxonis_sidechannel_data.h has no lux_sc_camera_brightness_set_cb_t yet. Use it, like the other ops, once it does.
-        void (*camera_brightness_set)(uint32_t camera_id, int32_t level);
+        lux_sc_camera_brightness_set_cb_t camera_brightness_set;
     };
 
     operations ops{};
