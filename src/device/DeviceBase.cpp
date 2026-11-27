@@ -49,6 +49,7 @@
 #include "utility/HolisticRecordReplay.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
+#include "utility/Platform.hpp"
 #include "utility/Resources.hpp"
 #include "utility/StartupNotifications.hpp"
 #include "utility/spdlog-fmt.hpp"
@@ -110,11 +111,6 @@ bool validateCBACalibrationData(const dai::CBACalibrationHandler& calibrationDat
     return cameraData.size() == 1 && cameraData.find(dai::CameraBoardSocket::CBA) != cameraData.end();
 }
 
-std::string lowercase(std::string value) {
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
-    return value;
-}
-
 std::string telemetryProtocolName(XLinkProtocol_t protocol) {
     switch(protocol) {
         case X_LINK_USB_VSC:
@@ -154,7 +150,7 @@ std::string telemetryProtocolSpeed(XLinkProtocol_t protocol, dai::UsbSpeed speed
 }
 
 bool isLoopbackDeviceName(std::string name) {
-    name = lowercase(std::move(name));
+    name = dai::platform::lowercase(std::move(name));
     return name == "localhost" || name == "::1" || name == "[::1]" || name.rfind("127.", 0) == 0;
 }
 
@@ -717,8 +713,8 @@ void DeviceBase::startTelemetryLifecycle(bool reconnect) {
     telemetryLifecycleStarted = true;
     try {
         nlohmann::json properties{
-            {"device_model", lowercase(getProductName())},
-            {"platform", lowercase(getPlatformAsString())},
+            {"device_model", platform::lowercase(getProductName())},
+            {"platform", platform::lowercase(getPlatformAsString())},
             {"protocol", telemetryProtocolName(deviceInfo.protocol)},
             {"protocol_speed", telemetryProtocolSpeed(deviceInfo.protocol, getUsbSpeed())},
             {"standalone", isLoopbackDeviceName(deviceInfo.name) || deviceInfo.protocol == X_LINK_LOCAL_SHDMEM},

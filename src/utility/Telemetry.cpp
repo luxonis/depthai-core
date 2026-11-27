@@ -113,11 +113,6 @@ std::string normalizeCaptureUrl(std::string url) {
     return url;
 }
 
-std::string lowercase(std::string value) {
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
-    return value;
-}
-
 std::filesystem::path defaultTelemetryBaseDir() {
     return dai::platform::getDaiCacheDir() / DEFAULT_TELEMETRY_ROOT_DIR;
 }
@@ -239,7 +234,7 @@ std::string getTelemetryHostOSImpl() {
     if(platformName == "Windows") return "windows";
     if(platformName == "Linux") return "linux";
     if(platformName == "MacOS") return "mac";
-    return lowercase(platformName);
+    return dai::platform::lowercase(platformName);
 }
 
 std::string getTelemetryHostOS() {
