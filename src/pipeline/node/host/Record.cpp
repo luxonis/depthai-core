@@ -877,10 +877,12 @@ struct RecordHostState {
 
     void drainControls() {
         while(auto control = node.inputControl.tryGet<RecordControl>()) {
+            if(!node.mainLoop()) break;
             if(stopRequested && phase == Phase::Recording) {
                 flushPending();
                 closeSegment();
             }
+            if(!node.mainLoop()) break;
             apply(control);
         }
     }
