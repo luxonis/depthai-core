@@ -21,6 +21,7 @@
 #include <set>
 #include <stdexcept>
 #include <thread>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -170,12 +171,6 @@ struct ReplayLoopSlot {
     SteadyTime startedAt{};
 };
 
-struct ReplayLoopOffset {
-    std::int64_t loopIndex = 0;
-    SteadyTime::duration maxSpan{};
-    std::int64_t maxSeqStride = 1;
-};
-
 std::shared_ptr<ReplayLoopSlot> replayLoopSlot(dai::Node& node) {
     static std::mutex mutex;
     static std::map<const void*, std::weak_ptr<ReplayLoopSlot>> slots;
@@ -235,14 +230,15 @@ class ReplayLoopSession {
     ReplayLoopSlot& slot;
 };
 
-ReplayLoopOffset updateReplayLoop(ReplayLoopSlot& slot,
-                                  bool recorded,
-                                  int count,
-                                  std::int64_t seqFirst,
-                                  std::int64_t seqLast,
-                                  SteadyTime deviceFirst,
-                                  SteadyTime deviceLast,
-                                  SteadyTime::duration nominal) {
+// loopIndex, shared span, sequence stride.
+std::tuple<std::int64_t, SteadyTime::duration, std::int64_t> updateReplayLoop(ReplayLoopSlot& slot,
+                                                                              bool recorded,
+                                                                              int count,
+                                                                              std::int64_t seqFirst,
+                                                                              std::int64_t seqLast,
+                                                                              SteadyTime deviceFirst,
+                                                                              SteadyTime deviceLast,
+                                                                              SteadyTime::duration nominal) {
     std::lock_guard<std::mutex> lock(slot.mutex);
     if(recorded) {
         const auto stride = replaySeqStride(seqFirst, seqLast);
@@ -253,14 +249,11 @@ ReplayLoopOffset updateReplayLoop(ReplayLoopSlot& slot,
             if(span > slot.maxSpan) slot.maxSpan = span;
         }
     }
-    ReplayLoopOffset offset;
-    offset.maxSpan = slot.maxSpan;
-    offset.maxSeqStride = std::max<std::int64_t>(slot.maxSeqStride, 1);
-    if(!slot.started || slot.maxSpan.count() == 0) return offset;
+    const auto seqStride = std::max<std::int64_t>(slot.maxSeqStride, 1);
+    if(!slot.started || slot.maxSpan.count() == 0) return {0, slot.maxSpan, seqStride};
     const auto elapsed = SteadyTime::clock::now() - slot.startedAt;
-    if(elapsed.count() <= 0) return offset;
-    offset.loopIndex = static_cast<std::int64_t>(elapsed / slot.maxSpan);
-    return offset;
+    if(elapsed.count() <= 0) return {0, slot.maxSpan, seqStride};
+    return {static_cast<std::int64_t>(elapsed / slot.maxSpan), slot.maxSpan, seqStride};
 }
 
 SteadyTime::duration pacedDelta(SteadyTime::duration raw, SteadyTime::duration nominal) {
@@ -1597,8 +1590,8 @@ void ReplayVideo::run() {
             if(metadata->transformation.getSize().first != 0) frame->transformation = metadata->transformation;
         }
         if(state->recorded && timing.present) {
-            const auto offset = syncLoop();
-            applyRecorded(frame, state->seqFirst, state->deviceFirst, timing, offset.loopIndex, offset.maxSpan, offset.maxSeqStride);
+            const auto [loopIndex, maxSpan, maxSeqStride] = syncLoop();
+            applyRecorded(frame, state->seqFirst, state->deviceFirst, timing, loopIndex, maxSpan, maxSeqStride);
         } else {
             frame->setSequenceNum(sent);
             frame->setTimestampSystem(std::nullopt);
@@ -1750,9 +1743,9 @@ void ReplayMetadataOnly::run() {
             else if(havePrevious)
                 recordedInterval = pacedDelta(timing.timestampDevice - previousDevice, state->nominal);
         }
-        const auto offset =
+        const auto [loopIndex, maxSpan, maxSeqStride] =
             updateReplayLoop(*state->loopSlot, true, state->count, state->seqFirst, state->seqLast, state->deviceFirst, state->deviceLast, state->nominal);
-        applyRecorded(buffer, state->seqFirst, state->deviceFirst, timing, offset.loopIndex, offset.maxSpan, offset.maxSeqStride);
+        applyRecorded(buffer, state->seqFirst, state->deviceFirst, timing, loopIndex, maxSpan, maxSeqStride);
         previousDevice = timing.timestampDevice;
         havePrevious = true;
         if(!pacing.waitToSend(recordedInterval, [this] { return mainLoop(); })) break;
