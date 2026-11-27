@@ -68,6 +68,12 @@ struct TokenBook {
     struct Lease {
         std::uint64_t token;
         std::size_t holders;
+        // Longest prepared span and sequence stride for this pipeline. The clock
+        // starts when the first of those nodes enters run().
+        Steady::duration maxSpan{};
+        std::int64_t maxSeqStride = 0;
+        bool started = false;
+        SteadyTime startedAt{};
     };
     std::mutex mutex;
     std::uint64_t next = 1;
@@ -93,6 +99,44 @@ void releaseToken(const void* key) {
     std::lock_guard<std::mutex> lock(gTokens.mutex);
     const auto found = gTokens.pipelines.find(key);
     if(found != gTokens.pipelines.end() && --found->second.holders == 0) gTokens.pipelines.erase(found);
+}
+
+void registerLoopSpan(const void* key, Steady::duration span, std::int64_t seqStride) {
+    if(seqStride < 1) seqStride = 1;
+    std::lock_guard<std::mutex> lock(gTokens.mutex);
+    const auto found = gTokens.pipelines.find(key);
+    if(found == gTokens.pipelines.end()) return;
+    if(span > found->second.maxSpan) found->second.maxSpan = span;
+    if(seqStride > found->second.maxSeqStride) found->second.maxSeqStride = seqStride;
+}
+
+void noteLoopStart(const void* key) {
+    std::lock_guard<std::mutex> lock(gTokens.mutex);
+    const auto found = gTokens.pipelines.find(key);
+    if(found == gTokens.pipelines.end() || found->second.started) return;
+    found->second.started = true;
+    found->second.startedAt = Steady::now();
+}
+
+struct LoopShift {
+    std::int64_t loopIndex = 0;
+    Steady::duration span{};
+    std::int64_t seqStride = 1;
+};
+
+LoopShift loopShiftFor(const void* key) {
+    std::lock_guard<std::mutex> lock(gTokens.mutex);
+    LoopShift shift;
+    const auto found = gTokens.pipelines.find(key);
+    if(found == gTokens.pipelines.end()) return shift;
+    const auto& lease = found->second;
+    shift.span = lease.maxSpan;
+    if(lease.maxSeqStride > 0) shift.seqStride = lease.maxSeqStride;
+    if(!lease.started || lease.maxSpan <= Steady::duration::zero()) return shift;
+    const auto elapsed = Steady::now() - lease.startedAt;
+    if(elapsed <= Steady::duration::zero()) return shift;
+    shift.loopIndex = static_cast<std::int64_t>(elapsed / lease.maxSpan);
+    return shift;
 }
 
 bool deviceIsRvc4(const DeviceNode& node) {
@@ -263,6 +307,7 @@ struct ReplayRuntime {
     SteadyTime deviceFirst{};
     SteadyTime deviceLast{};
     Steady::duration nominal{};
+    bool loopJoined = false;
     std::vector<std::shared_ptr<ImgFrame>> metadata;
     std::string metadataWarning;
     std::vector<FileSnap> snaps;
@@ -716,6 +761,18 @@ replay::CacheSlot acquireSlot(ReplayRuntime& runtime,
     return slot;
 }
 
+std::filesystem::path automaticMetadata(const std::filesystem::path& sourcePath) {
+    std::error_code error;
+    if(std::filesystem::is_directory(sourcePath, error)) return replay::inspectReplaySource(sourcePath).autoMetadata;
+    if(error) return {};
+    auto extension = sourcePath.extension().string();
+    std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+    if(extension == ".mcap") return {};
+    const auto metadata = sourcePath.parent_path() / (sourcePath.stem().string() + ".mcap");
+    if(!std::filesystem::is_regular_file(metadata)) return {};
+    return metadata;
+}
+
 void applyEnv(bool& persistent, bool persistentSet, std::int32_t& decodeMode, bool decodeModeSet, const char* nodeName) {
     if(!persistentSet) {
         const auto flag = utility::getEnvAs<std::string>("DEPTHAI_REPLAY_PERSISTENT_UPLOAD", "", false);
@@ -746,16 +803,28 @@ Steady::duration nominalOf(bool fpsSet, float fps, SteadyTime first, SteadyTime 
     return replay::playbackPeriod(30.0);
 }
 
-void applyRecorded(const std::shared_ptr<Buffer>& buffer, const ReplayRuntime& runtime, const RecordedTiming& recorded, int pass) {
-    std::int64_t seqOffset = runtime.seqFirst;
-    SteadyTime tsOffset = runtime.deviceFirst;
-    for(int index = 0; index < pass; index++) {
-        seqOffset += runtime.seqLast - runtime.seqFirst + 1;
-        tsOffset += (runtime.deviceLast - runtime.deviceFirst) + runtime.nominal;
-    }
-    const auto sequence = recorded.sequence - runtime.seqFirst + seqOffset;
-    const auto deviceOut = recorded.timestampDevice - runtime.deviceFirst + tsOffset;
-    const auto amount = deviceOut - recorded.timestampDevice;
+Steady::duration spanOf(const ReplayRuntime& runtime) {
+    if(runtime.count < 2) return runtime.nominal;
+    return (runtime.deviceLast - runtime.deviceFirst) + runtime.nominal;
+}
+
+std::int64_t seqStrideOf(const ReplayRuntime& runtime) {
+    return std::max<std::int64_t>(runtime.seqLast - runtime.seqFirst + 1, 1);
+}
+
+// Idle gaps are skipped in the wait only. The timestamp keeps the recorded delta.
+std::optional<Steady::duration> paceInterval(std::optional<Steady::duration> recorded, Steady::duration nominal) {
+    if(!recorded.has_value()) return recorded;
+    const auto raw = *recorded;
+    if(raw > nominal && raw - nominal > nominal) return nominal;
+    return recorded;
+}
+
+void applyRecorded(const std::shared_ptr<Buffer>& buffer, const ReplayRuntime& runtime, const RecordedTiming& recorded) {
+    const auto shift = loopShiftFor(runtime.pipelineKey);
+    const auto amount = shift.span * shift.loopIndex;
+    const auto sequence = recorded.sequence + shift.seqStride * shift.loopIndex;
+    const auto deviceOut = recorded.timestampDevice + amount;
     const auto originalSequence = buffer->getSequenceNum();
     const auto originalTimestamp = buffer->getTimestamp();
     const auto originalDevice = buffer->getTimestampDevice();
@@ -806,8 +875,7 @@ McapScan scanMcap(const std::filesystem::path& path, bool imgFramesOnly, const c
             first = false;
         } else {
             const auto sequence = buffer->getSequenceNum();
-            const bool constantZero = sequence == 0 && previousSeq == 0;
-            if(sequence < previousSeq || (sequence == previousSeq && !constantZero)) {
+            if(sequence < previousSeq || sequence == previousSeq) {
                 throw std::runtime_error(std::string(nodeName) + " sequence numbers do not increase: " + std::to_string(previousSeq) + " then "
                                          + std::to_string(sequence));
             }
@@ -1321,16 +1389,23 @@ void ReplayVideo::buildStage1() {
             properties.sourceHash = hash;
             properties.resolvedOnHost = false;
             runtime->cacheKeys.push_back(hash);
-            // The device opens resolvedMetadataPath. The host path in metadataPath is not
-            // on the device, so the sidecar has to be uploaded before the early return.
+            // The device opens resolvedMetadataPath. The host path is not on the device,
+            // so an explicit sidecar, or the sibling .mcap the host would open, is uploaded
+            // before the early return. A missing sibling is not uploaded.
+            const auto uploadMetadata = [&](const std::filesystem::path& metadataPath) {
+                const auto metadataHash = replay::sha256OfFile(metadataPath);
+                properties.resolvedMetadataPath = uploadFile(*getDevice(), logger, metadataPath, metadataHash);
+                runtime->cacheKeys.push_back(metadataHash);
+            };
             if(properties.metadataPathSet) {
                 const std::filesystem::path metadataPath(properties.metadataPath);
                 if(!std::filesystem::exists(metadataPath)) {
                     throw std::runtime_error("ReplayVideo metadata file is missing: " + metadataPath.string());
                 }
-                const auto metadataHash = replay::sha256OfFile(metadataPath);
-                properties.resolvedMetadataPath = uploadFile(*getDevice(), logger, metadataPath, metadataHash);
-                runtime->cacheKeys.push_back(metadataHash);
+                uploadMetadata(metadataPath);
+            } else if(!archive) {
+                const auto metadataPath = automaticMetadata(sourcePath);
+                if(!metadataPath.empty() && std::filesystem::is_regular_file(metadataPath)) uploadMetadata(metadataPath);
             }
         }
 
@@ -1482,7 +1557,11 @@ void ReplayVideo::buildStage1() {
             checkSnaps(runtime->snaps);
             runtime->reader.read(0);
         }
-        if(runtime->recorded) runtime->nominal = nominalOf(runtime->fpsSet, runtime->fps, runtime->deviceFirst, runtime->deviceLast, runtime->count);
+        if(runtime->recorded) {
+            runtime->nominal = nominalOf(runtime->fpsSet, runtime->fps, runtime->deviceFirst, runtime->deviceLast, runtime->count);
+            registerLoopSpan(runtime->pipelineKey, spanOf(*runtime), seqStrideOf(*runtime));
+            runtime->loopJoined = true;
+        }
         properties.resolvedPath = local.string();
         properties.resolvedMetadataPath = metadataPath.string();
         properties.sourceHash = hash;
@@ -1506,6 +1585,7 @@ void ReplayVideo::run() {
     auto& logger = pimpl->logger;
     if(!prepared || runtime == nullptr) throw std::runtime_error("ReplayVideo source is not prepared");
     if(!runtime->onHost) throw std::runtime_error("ReplayVideo device execution is running on the device");
+    if(runtime->loopJoined) noteLoopStart(runtime->pipelineKey);
     if(!runtime->metadataWarning.empty() && logger) logger->warn("{}", runtime->metadataWarning);
     if(!runtime->usePredecoded) runtime->reader.open(runtime->listed);
     replay::PlaybackPacer pacing(runtime->fpsSet ? runtime->fps : 0.f);
@@ -1514,7 +1594,6 @@ void ReplayVideo::run() {
     int sent = 0;
     while(mainLoop()) {
         const int index = runtime->count == 0 ? 0 : sent % runtime->count;
-        const int pass = runtime->count == 0 ? 0 : sent / runtime->count;
         if(sent > 0 && index == 0) {
             if(!runtime->loop) {
                 naturalEnd = true;
@@ -1540,9 +1619,7 @@ void ReplayVideo::run() {
             frame = frameFromPixels(pixels, *runtime, metadata);
             timing = timingFrom(pixels, metadata);
         }
-        if(runtime->recorded && timing.present)
-            applyRecorded(frame, *runtime, timing, pass);
-        else {
+        if(!runtime->recorded || !timing.present) {
             frame->setSequenceNum(sent);
             frame->setTimestampSystem(std::nullopt);
             frame->sourceFb = frame->fb;
@@ -1557,9 +1634,12 @@ void ReplayVideo::run() {
                 recordedInterval = timing.timestampDevice - *previousDevice;
             previousDevice = timing.timestampDevice;
         }
+        recordedInterval = paceInterval(recordedInterval, runtime->nominal);
         const auto sendTime = pacing.waitToSend(recordedInterval, [this] { return mainLoop(); });
         if(!sendTime) break;
-        if(!runtime->recorded || !timing.present) {
+        if(runtime->recorded && timing.present)
+            applyRecorded(frame, *runtime, timing);
+        else {
             frame->setTimestamp(*sendTime);
             frame->setTimestampDevice(*sendTime);
         }
@@ -1812,6 +1892,8 @@ void ReplayMetadataOnly::buildStage1() {
         runtime->deviceFirst = scan.deviceFirst;
         runtime->deviceLast = scan.deviceLast;
         runtime->nominal = nominalOf(runtime->fpsSet, runtime->fps, runtime->deviceFirst, runtime->deviceLast, runtime->count);
+        registerLoopSpan(runtime->pipelineKey, spanOf(*runtime), seqStrideOf(*runtime));
+        runtime->loopJoined = true;
         runtime->snaps.push_back(snapOf(local));
         properties.resolvedPath = local.string();
         properties.sourceHash = replay::sha256OfFile(std::filesystem::is_directory(sourcePath) ? local : sourcePath);
@@ -1831,6 +1913,7 @@ void ReplayMetadataOnly::run() {
     auto& logger = pimpl->logger;
     if(!prepared || runtime == nullptr || runtime->mcapPath.empty()) throw std::runtime_error("ReplayMetadataOnly source is not prepared");
     if(!runtime->onHost) throw std::runtime_error("ReplayMetadataOnly device execution is running on the device");
+    if(runtime->loopJoined) noteLoopStart(runtime->pipelineKey);
     utility::BytePlayer player;
     const auto schema = player.init(runtime->mcapPath.string());
     const auto datatype = utility::schemaNameToDatatype(schema);
@@ -1873,12 +1956,12 @@ void ReplayMetadataOnly::run() {
             else if(havePrevious)
                 recordedInterval = timing.timestampDevice - previousDevice;
         }
+        recordedInterval = paceInterval(recordedInterval, runtime->nominal);
         checkCurrentSnap(runtime->snaps, index);
-        const int pass = runtime->count == 0 ? 0 : sent / runtime->count;
-        applyRecorded(buffer, *runtime, timing, pass);
         previousDevice = timing.timestampDevice;
         havePrevious = true;
         if(!pacing.waitToSend(recordedInterval, [this] { return mainLoop(); })) break;
+        applyRecorded(buffer, *runtime, timing);
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(buffer);
