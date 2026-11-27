@@ -887,16 +887,6 @@ void PipelineImpl::remove(const std::shared_ptr<Node>& toRemove) {
     }
 }
 
-bool PipelineImpl::isSamePipeline(const Node::Output& out, const Node::Input& in) {
-    // Check whether Output 'out' and Input 'in' are on the same pipeline.
-    // By checking whether their parent nodes are on same pipeline
-    auto outputPipeline = out.getParent().parent.lock();
-    if(outputPipeline != nullptr) {
-        return (outputPipeline == in.getParent().parent.lock());
-    }
-    return false;
-}
-
 void PipelineImpl::setCalibrationData(const CalibrationHandler& calibrationDataHandler) {
     setEepromData(calibrationDataHandler.getEepromData());
 }
