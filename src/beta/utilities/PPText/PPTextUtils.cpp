@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "beta/utilities/MLSD/MLSDUtils.hpp"
 #include "utility/ErrorMacros.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -49,215 +50,19 @@ std::string formatShape(const std::vector<std::size_t>& dims) {
  * When more contours than max_detections survive the area filter, the source selects the
  * max_detections largest by area with np.argpartition(-contour_areas, max_detections)
  * [:max_detections] and processes them in the resulting (arbitrary but deterministic) order.
- * The helpers below replicate that order with a C++ port of NumPy's generic (portable scalar)
- * argpartition (introselect) algorithm on double values, taken from
- * numpy/_core/src/npysort/selection.cpp and numpy/_core/src/common/numpy_tag.h at tag v2.5.1,
- * structured like the float port in src/beta/utilities/MLSD/MLSDUtils.cpp.
+ * MLSDUtils::argIntroSelect replicates that order on double values with a C++ port of NumPy's
+ * generic (portable scalar) argpartition (introselect) algorithm.
  *
  * NumPy is licensed under the BSD 3-Clause License:
  *   Copyright (c) 2005-2025, NumPy Developers. All rights reserved.
- * The quickselect is loosely based on the public domain implementation by Nicolas Devillard
- * (http://ndevilla.free.fr/median/median/). See
- * https://github.com/numpy/numpy/blob/v2.5.1/LICENSE.txt for the full license text;
+ * See https://github.com/numpy/numpy/blob/v2.5.1/LICENSE.txt for the full license text;
  * redistribution of this derived code retains the above copyright notice per the license.
  *
  * Note: recent numpy builds dispatch argpartition of 64-bit dtypes to CPU-specific
  * x86-simd-sort kernels on AVX-512 hardware, whose ordering of equal values differs per CPU.
- * The generic scalar algorithm ported here is numpy's portable semantics used on all other
- * hardware.
+ * The generic scalar algorithm that MLSDUtils ports is numpy's portable semantics used on all
+ * other hardware.
  */
-
-/// numpy floating_point_type::less: NaN compares as the largest value (sorts to the end).
-inline bool doubleLess(double a, double b) {
-    return a < b || (b != b && a == a);
-}
-
-/// numpy npy_get_msb: index of the most significant set bit, 0 for num == 0.
-inline int npyGetMsb(std::int64_t num) {
-    int msb = 0;
-    while(num >>= 1) {
-        msb++;
-    }
-    return msb;
-}
-
-std::int64_t argIntroSelect(const double* v, std::int64_t* tosort, std::int64_t num, std::int64_t kth);
-
-/// numpy selection.cpp median3_swap_: moves the median-of-3 pivot to low and the 3-lowest
-/// element to low + 1 for the unguarded partition.
-void argMedian3Swap(const double* v, std::int64_t* tosort, std::int64_t low, std::int64_t mid, std::int64_t high) {
-    if(doubleLess(v[tosort[high]], v[tosort[mid]])) {
-        std::swap(tosort[high], tosort[mid]);
-    }
-    if(doubleLess(v[tosort[high]], v[tosort[low]])) {
-        std::swap(tosort[high], tosort[low]);
-    }
-    // move pivot to low
-    if(doubleLess(v[tosort[low]], v[tosort[mid]])) {
-        std::swap(tosort[low], tosort[mid]);
-    }
-    // move 3-lowest element to low + 1
-    std::swap(tosort[mid], tosort[low + 1]);
-}
-
-/// numpy selection.cpp median5_: selects the index of the median of five elements.
-std::int64_t argMedian5(const double* v, std::int64_t* tosort) {
-    if(doubleLess(v[tosort[1]], v[tosort[0]])) {
-        std::swap(tosort[1], tosort[0]);
-    }
-    if(doubleLess(v[tosort[4]], v[tosort[3]])) {
-        std::swap(tosort[4], tosort[3]);
-    }
-    if(doubleLess(v[tosort[3]], v[tosort[0]])) {
-        std::swap(tosort[3], tosort[0]);
-    }
-    if(doubleLess(v[tosort[4]], v[tosort[1]])) {
-        std::swap(tosort[4], tosort[1]);
-    }
-    if(doubleLess(v[tosort[2]], v[tosort[1]])) {
-        std::swap(tosort[2], tosort[1]);
-    }
-    if(doubleLess(v[tosort[3]], v[tosort[2]])) {
-        if(doubleLess(v[tosort[3]], v[tosort[1]])) {
-            return 1;
-        } else {
-            return 3;
-        }
-    } else {
-        // tosort[1] and tosort[2] swapped into order above
-        return 2;
-    }
-}
-
-/// numpy selection.cpp median_of_median5_: median of medians of blocks of 5, guaranteeing a
-/// 30%/70% split for the linear-time worst case.
-std::int64_t argMedianOfMedian5(const double* v, std::int64_t* tosort, std::int64_t num) {
-    const std::int64_t right = num - 1;
-    const std::int64_t nmed = (right + 1) / 5;
-    std::int64_t subleft = 0;
-    for(std::int64_t i = 0; i < nmed; i++, subleft += 5) {
-        const std::int64_t m = argMedian5(v, tosort + subleft);
-        std::swap(tosort[subleft + m], tosort[i]);
-    }
-
-    if(nmed > 2) {
-        argIntroSelect(v, tosort, nmed, nmed / 2);
-    }
-    return nmed / 2;
-}
-
-/// numpy selection.cpp dumb_select_: N^2 selection, fast only for very small kth.
-void argDumbSelect(const double* v, std::int64_t* tosort, std::int64_t num, std::int64_t kth) {
-    for(std::int64_t i = 0; i <= kth; i++) {
-        std::int64_t minidx = i;
-        double minval = v[tosort[i]];
-        for(std::int64_t k = i + 1; k < num; k++) {
-            if(doubleLess(v[tosort[k]], minval)) {
-                minidx = k;
-                minval = v[tosort[k]];
-            }
-        }
-        std::swap(tosort[i], tosort[minidx]);
-    }
-}
-
-/// numpy selection.cpp unguarded_partition_: partitions around the pivot; the median-of-3
-/// preparation removes the need for bound checks.
-void argUnguardedPartition(const double* v, std::int64_t* tosort, const double pivot, std::int64_t* ll, std::int64_t* hh) {
-    for(;;) {
-        do {
-            (*ll)++;
-        } while(doubleLess(v[tosort[*ll]], pivot));
-        do {
-            (*hh)--;
-        } while(doubleLess(pivot, v[tosort[*hh]]));
-
-        if(*hh < *ll) {
-            break;
-        }
-
-        std::swap(tosort[*ll], tosort[*hh]);
-    }
-}
-
-/// numpy selection.cpp introselect_ (arg variant, single kth): median-of-3 quickselect with a
-/// cutoff to median-of-medians-of-5. The numpy pivot stack is omitted: with a single kth per
-/// call it is written but never read within the call.
-std::int64_t argIntroSelect(const double* v, std::int64_t* tosort, std::int64_t num, std::int64_t kth) {
-    std::int64_t low = 0;
-    std::int64_t high = num - 1;
-
-    // use a faster O(n*kth) algorithm for very small kth
-    if(kth - low < 3) {
-        argDumbSelect(v, tosort + low, high - low + 1, kth - low);
-        return 0;
-    }
-    // useful to check if NaN present via partition(d, (x, -1))
-    else if(kth == num - 1) {
-        std::int64_t maxidx = low;
-        double maxval = v[tosort[low]];
-        for(std::int64_t k = low + 1; k < num; k++) {
-            if(!doubleLess(v[tosort[k]], maxval)) {
-                maxidx = k;
-                maxval = v[tosort[k]];
-            }
-        }
-        std::swap(tosort[kth], tosort[maxidx]);
-        return 0;
-    }
-
-    int depthLimit = npyGetMsb(num) * 2;
-
-    // guarantee three elements
-    for(; low + 1 < high;) {
-        std::int64_t ll = low + 1;
-        std::int64_t hh = high;
-
-        /*
-         * if we aren't making sufficient progress with median of 3 fall back to
-         * median-of-median5 pivot for linear worst case; med3 for small sizes is required to do
-         * unguarded partition
-         */
-        if(depthLimit > 0 || hh - ll < 5) {
-            const std::int64_t mid = low + (high - low) / 2;
-            // median of 3 pivot strategy, swapping for efficient partition
-            argMedian3Swap(v, tosort, low, mid, high);
-        } else {
-            const std::int64_t mid = ll + argMedianOfMedian5(v, tosort + ll, hh - ll);
-            std::swap(tosort[mid], tosort[low]);
-            // adapt for the larger partition than med3 pivot
-            ll--;
-            hh++;
-        }
-
-        depthLimit--;
-
-        /*
-         * find place to put pivot (in low): previous swapping removes need for bound checks
-         * pivot 3-lowest [x x x] 3-highest
-         */
-        argUnguardedPartition(v, tosort, v[tosort[low]], &ll, &hh);
-
-        // move pivot into position
-        std::swap(tosort[low], tosort[hh]);
-
-        if(hh >= kth) {
-            high = hh - 1;
-        }
-        if(hh <= kth) {
-            low = ll;
-        }
-    }
-
-    // two elements
-    if(high == low + 1) {
-        if(doubleLess(v[tosort[high]], v[tosort[low]])) {
-            std::swap(tosort[high], tosort[low]);
-        }
-    }
-
-    return 0;
-}
 
 /*
  * The box score is np.sum(predictions * mask) / (np.sum(mask) + 1e-5) in the source, where the
@@ -506,7 +311,7 @@ PPTextDetections parsePaddleDetectionOutputs(
         DAI_CHECK_V(kth >= 0 && kth < num, "kth(={}) out of bounds ({}).", maxDetections, num);
         std::vector<std::int64_t> tosort(num);
         std::iota(tosort.begin(), tosort.end(), 0);
-        argIntroSelect(negAreas.data(), tosort.data(), num, kth);
+        MLSDUtils::argIntroSelect(negAreas.data(), tosort.data(), num, kth);
 
         // [:max_detections] with Python slicing semantics
         const std::int64_t sliceEnd = maxDetections >= 0 ? static_cast<std::int64_t>(maxDetections) : std::max<std::int64_t>(0, num + maxDetections);

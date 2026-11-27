@@ -105,6 +105,24 @@ std::vector<std::int64_t> argsortDescending(const std::vector<float>& values);
  */
 std::vector<std::int64_t> argsortAscending(const std::vector<float>& values);
 
+/**
+ * @brief Partition the indices in tosort around position kth of an ascending sort by value.
+ *
+ * Replicates numpy's np.argpartition(values, kth) with a single kth, including the generic
+ * (portable scalar) introselect tie ordering. NaN compares as the largest value. After the call,
+ * tosort[kth] is the index that an ascending sort puts at position kth; the values of the
+ * indices before it are not larger and the values of the indices after it are not smaller.
+ * Defined for float and double.
+ *
+ * @param v Values, indexed by the entries of tosort.
+ * @param tosort Indices to partition in place; num entries.
+ * @param num Number of entries in tosort.
+ * @param kth Partition position, 0 <= kth < num.
+ * @return Always 0.
+ */
+template <typename T>
+std::int64_t argIntroSelect(const T* v, std::int64_t* tosort, std::int64_t num, std::int64_t kth);
+
 }  // namespace MLSDUtils
 }  // namespace utilities
 }  // namespace beta

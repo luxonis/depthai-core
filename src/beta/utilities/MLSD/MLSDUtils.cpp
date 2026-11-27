@@ -36,7 +36,8 @@ namespace {
  */
 
 /// numpy floating_point_type::less: NaN compares as the largest value (sorts to the end).
-inline bool floatLess(float a, float b) {
+template <typename T>
+inline bool floatLess(T a, T b) {
     return a < b || (b != b && a == a);
 }
 
@@ -183,11 +184,10 @@ void argQuickSort(const float* v, std::int64_t* tosort, std::int64_t num) {
     }
 }
 
-std::int64_t argIntroSelect(const float* v, std::int64_t* tosort, std::int64_t num, std::int64_t kth);
-
 /// numpy selection.cpp median3_swap_: moves the median-of-3 pivot to low and the 3-lowest
 /// element to low + 1 for the unguarded partition.
-void argMedian3Swap(const float* v, std::int64_t* tosort, std::int64_t low, std::int64_t mid, std::int64_t high) {
+template <typename T>
+void argMedian3Swap(const T* v, std::int64_t* tosort, std::int64_t low, std::int64_t mid, std::int64_t high) {
     if(floatLess(v[tosort[high]], v[tosort[mid]])) {
         std::swap(tosort[high], tosort[mid]);
     }
@@ -203,7 +203,8 @@ void argMedian3Swap(const float* v, std::int64_t* tosort, std::int64_t low, std:
 }
 
 /// numpy selection.cpp median5_: selects the index of the median of five elements.
-std::int64_t argMedian5(const float* v, std::int64_t* tosort) {
+template <typename T>
+std::int64_t argMedian5(const T* v, std::int64_t* tosort) {
     if(floatLess(v[tosort[1]], v[tosort[0]])) {
         std::swap(tosort[1], tosort[0]);
     }
@@ -233,7 +234,8 @@ std::int64_t argMedian5(const float* v, std::int64_t* tosort) {
 
 /// numpy selection.cpp median_of_median5_: median of medians of blocks of 5, guaranteeing a
 /// 30%/70% split for the linear-time worst case.
-std::int64_t argMedianOfMedian5(const float* v, std::int64_t* tosort, std::int64_t num) {
+template <typename T>
+std::int64_t argMedianOfMedian5(const T* v, std::int64_t* tosort, std::int64_t num) {
     const std::int64_t right = num - 1;
     const std::int64_t nmed = (right + 1) / 5;
     std::int64_t subleft = 0;
@@ -249,10 +251,11 @@ std::int64_t argMedianOfMedian5(const float* v, std::int64_t* tosort, std::int64
 }
 
 /// numpy selection.cpp dumb_select_: N^2 selection, fast only for very small kth.
-void argDumbSelect(const float* v, std::int64_t* tosort, std::int64_t num, std::int64_t kth) {
+template <typename T>
+void argDumbSelect(const T* v, std::int64_t* tosort, std::int64_t num, std::int64_t kth) {
     for(std::int64_t i = 0; i <= kth; i++) {
         std::int64_t minidx = i;
-        float minval = v[tosort[i]];
+        T minval = v[tosort[i]];
         for(std::int64_t k = i + 1; k < num; k++) {
             if(floatLess(v[tosort[k]], minval)) {
                 minidx = k;
@@ -265,7 +268,8 @@ void argDumbSelect(const float* v, std::int64_t* tosort, std::int64_t num, std::
 
 /// numpy selection.cpp unguarded_partition_: partitions around the pivot; the median-of-3
 /// preparation removes the need for bound checks.
-void argUnguardedPartition(const float* v, std::int64_t* tosort, const float pivot, std::int64_t* ll, std::int64_t* hh) {
+template <typename T>
+void argUnguardedPartition(const T* v, std::int64_t* tosort, const T pivot, std::int64_t* ll, std::int64_t* hh) {
     for(;;) {
         do {
             (*ll)++;
@@ -282,10 +286,13 @@ void argUnguardedPartition(const float* v, std::int64_t* tosort, const float piv
     }
 }
 
+}  // namespace
+
 /// numpy selection.cpp introselect_ (arg variant, single kth): median-of-3 quickselect with a
 /// cutoff to median-of-medians-of-5. The numpy pivot stack is omitted: with a single kth per
 /// call it is written but never read within the call.
-std::int64_t argIntroSelect(const float* v, std::int64_t* tosort, std::int64_t num, std::int64_t kth) {
+template <typename T>
+std::int64_t argIntroSelect(const T* v, std::int64_t* tosort, std::int64_t num, std::int64_t kth) {
     std::int64_t low = 0;
     std::int64_t high = num - 1;
 
@@ -297,7 +304,7 @@ std::int64_t argIntroSelect(const float* v, std::int64_t* tosort, std::int64_t n
     // useful to check if NaN present via partition(d, (x, -1))
     else if(kth == num - 1) {
         std::int64_t maxidx = low;
-        float maxval = v[tosort[low]];
+        T maxval = v[tosort[low]];
         for(std::int64_t k = low + 1; k < num; k++) {
             if(!floatLess(v[tosort[k]], maxval)) {
                 maxidx = k;
@@ -361,7 +368,8 @@ std::int64_t argIntroSelect(const float* v, std::int64_t* tosort, std::int64_t n
     return 0;
 }
 
-}  // namespace
+template std::int64_t argIntroSelect<float>(const float* v, std::int64_t* tosort, std::int64_t num, std::int64_t kth);
+template std::int64_t argIntroSelect<double>(const double* v, std::int64_t* tosort, std::int64_t num, std::int64_t kth);
 
 std::vector<std::int64_t> topKIndicesByScore(const std::vector<float>& heatValues, int topK) {
     DAI_CHECK(topK > 0, "topk_n must be a positive integer.");
