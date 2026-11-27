@@ -430,23 +430,25 @@ class DeviceBase::Impl {
     mutable std::mutex activeTelemetryPipelineMtx;
     std::string activeTelemetryPipelineId;
     nlohmann::json activeTelemetryImuNode = nlohmann::json::object();
-
     // Failure types already sent as depthai_imu_error by this device object (one pipeline, as closing the
-    // pipeline closes the device); a failing driver can log in a loop. Log thread only.
+    // pipeline closes the device); a failing driver can log in a loop. Guarded by activeTelemetryPipelineMtx.
     std::set<std::string> sentImuFailures;
 
-    // RVC2 firmware and the RVC4 IMU node report IMU failures to the host only as log messages, so a
-    // failure below the device log level (warn by default) sends no event
-    void reportImuFailure(const DeviceBase& device, const std::string& logMessage) {
+    // The IMU node reports failures to the host only as log messages, and RVC2 also as the build error of
+    // the pipeline, so a failure below the device log level (warn by default) sends no event
+    void reportImuFailure(const DeviceBase& device, const std::string& nodeIdName, const std::string& message) {
         if(!utility::Telemetry::isTelemetryEnabled()) {
             return;
         }
-        auto imuFailure = utility::imuFailureTelemetry(logMessage);
-        if(imuFailure.is_null() || !sentImuFailures.insert(imuFailure.at("error_type").get<std::string>()).second) {
+        auto imuFailure = utility::imuFailureTelemetry(nodeIdName, message);
+        if(imuFailure.is_null()) {
             return;
         }
         {
             std::lock_guard<std::mutex> lock(activeTelemetryPipelineMtx);
+            if(!sentImuFailures.insert(imuFailure.at("error_type").get<std::string>()).second) {
+                return;
+            }
             imuFailure.update(activeTelemetryImuNode);
         }
         try {
@@ -1467,7 +1469,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
                         // log the messages in incremental order (0 -> size-1)
                         for(const auto& msg : messages) {
                             pimpl->logger.logMessage(msg);
-                            pimpl->reportImuFailure(*this, msg.payload);
+                            pimpl->reportImuFailure(*this, msg.nodeIdName, msg.payload);
                         }
 
                         // Log to callbacks
@@ -2788,6 +2790,8 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     if(success) {
         pimpl->rpcCallCheckedVoid("startPipeline");
     } else {
+        // RVC2 build errors read "<node>(<id>) - <error>"
+        pimpl->reportImuFailure(*this, errorMsg.substr(0, errorMsg.find(' ')), errorMsg);
         throw std::runtime_error("Device " + getDeviceId() + " error: " + errorMsg);
         return false;
     }

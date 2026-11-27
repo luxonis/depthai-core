@@ -704,6 +704,8 @@ void TelemetrySharedState::event(std::string eventName, nlohmann::json propertie
         {"uuid", generateUuidV4()},
     };
 
+    // Device log text in properties can hold invalid UTF-8, which dump() would throw on
+    const auto serializedPayload = payload.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
     bool queued = false;
     {
         std::lock_guard<std::mutex> lock(mutex);
@@ -723,7 +725,7 @@ void TelemetrySharedState::event(std::string eventName, nlohmann::json propertie
             return;
         }
 
-        output << payload.dump();
+        output << serializedPayload;
         if(!output.good()) {
             output.close();
             std::error_code ec;
