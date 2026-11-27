@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "beta/utilities/Detection/DetectionUtils.hpp"
 #include "beta/utilities/Detection/MaskUtils.hpp"
 #include "beta/utilities/MLSD/MLSDUtils.hpp"
 #include "utility/ErrorMacros.hpp"
@@ -35,10 +36,7 @@ std::vector<std::size_t> squeezedDims(const std::vector<std::size_t>& dims) {
     return result;
 }
 
-/// Clip to [0, 1], propagating NaN like np.clip.
-float clip01(float value) {
-    return std::min(std::max(value, 0.0f), 1.0f);
-}
+using DetectionUtils::clip01;
 
 }  // namespace
 

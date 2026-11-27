@@ -425,6 +425,10 @@ ShapedTensorData getShapedTensorData(const dai::NNData& nnData, const std::strin
     return result;
 }
 
+ShapedTensorData getNchwTensorData(const dai::NNData& nnData, const std::string& tensorName) {
+    return getShapedTensorData(nnData, tensorName, TensorInfo::StorageOrder::NCHW);
+}
+
 }  // namespace ClassificationUtils
 }  // namespace utilities
 }  // namespace beta
