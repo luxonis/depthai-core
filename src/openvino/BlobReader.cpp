@@ -47,8 +47,6 @@ void BlobReader::parse(const std::vector<std::uint8_t>& blob) {
         throw std::logic_error("BlobReader error: Blob is empty");
     }
 
-    pBlob = blob.data();
-
     blobHeader = *reinterpret_cast<const mv_blob_header*>(blob.data() + sizeof(ElfN_Ehdr));
 
     if(blobHeader.magic_number != BLOB_MAGIC_NUMBER) {

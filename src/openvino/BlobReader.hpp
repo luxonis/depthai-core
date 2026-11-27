@@ -7,7 +7,6 @@
 
 #pragma once
 
-#include <utility>
 #include <vector>
 
 #include "BlobFormat.hpp"
@@ -47,8 +46,6 @@ class BlobReader {
     }
 
    private:
-    const std::uint8_t* pBlob = nullptr;
-
     mv_blob_header blobHeader = {};
 
     constexpr static std::uint32_t BLOB_MAGIC_NUMBER = 9709;
