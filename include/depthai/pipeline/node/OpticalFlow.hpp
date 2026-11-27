@@ -6,7 +6,7 @@ namespace node {
 /**
  * Native bidirectional dense optical flow on RVC4, without feature detection or
  * track maintenance. Requires matching device firmware; no RVC2/CPU fallback.
- * See docs/optical_flow.md for the packet and hardware precision contract.
+ * See examples/python/OpticalFlow/README.md for the packet and hardware precision contract.
  */
 class OpticalFlow : public DeviceNodeCRTP<DeviceNode, OpticalFlow, OpticalFlowProperties> {
    public:
