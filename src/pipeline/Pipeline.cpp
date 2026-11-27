@@ -1099,17 +1099,6 @@ bool PipelineImpl::isHostOnly() const {
     return hostOnly;
 }
 
-bool PipelineImpl::isDeviceOnly() const {
-    bool deviceOnly = true;
-    for(const auto& node : nodes) {
-        if(node->runOnHost()) {
-            deviceOnly = false;
-            break;
-        }
-    }
-    return deviceOnly;
-}
-
 std::vector<std::shared_ptr<Device>> PipelineImpl::getAllAssignedDevices() const {
     std::vector<std::shared_ptr<Device>> devices;
     std::unordered_set<Device*> seen;
