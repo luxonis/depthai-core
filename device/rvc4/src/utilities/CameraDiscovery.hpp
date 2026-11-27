@@ -23,6 +23,7 @@ struct CameraDescription {
         std::string lens;
         // TODO flash-led, eeprom...
     } v4lpath;
+    bool physicalSocketKnown = false;
 };
 
 class CameraDiscovery {

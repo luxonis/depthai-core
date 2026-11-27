@@ -340,6 +340,7 @@ CameraSensor::CameraSensor(const CameraDescription cam,
     this->eepromData = eepromData;
     curFps = wantedFps;
     cameraId = cam.id;
+    cameraStats = CameraStatsTracker::create(cam.camera.socket, cam.id);
     this->fsyncMode = fsyncMode;
     logger->info("Camera node on socket {} is a stereo sensor: {}", cameraId, stereoSensor);
     sensorMode = sensorModeIndex;
@@ -354,6 +355,7 @@ CameraSensor::CameraSensor(const CameraDescription cam,
 }
 
 CameraSensor::~CameraSensor() {
+    cameraStats->stop(readCslCameraStats(cameraId));
     IspRouteAllocator::getInstance().unregisterSensor(static_cast<int>(cameraDescription.camera.socket));
     logger->trace("CameraSensor DESTRUCTOR called");
     unregisterSensorErrorCallback();
@@ -645,6 +647,7 @@ void CameraSensor::cameraLoop() {
         curRequest.settings = curSettingsLastLocked;
         curRequest.num_output_buffers = outputBuffers.size();
         curRequest.output_buffers = outputBuffers.data();
+        cameraStats->submit(curRequest.frame_number, curRequest.num_output_buffers);
         auto res = mDevice->ops->process_capture_request(mDevice, &curRequest);
         DAI_CHECK_IN(res == 0);
         ++frameNumber;
@@ -1052,10 +1055,20 @@ void CameraSensor::run() {
     applyCameraControl(initialControl);
     curRequest.num_output_buffers = 0;
     curRequest.output_buffers = nullptr;
+    camera_metadata_ro_entry_t partialCount{};
+    uint32_t partialResultCount = 1;
+    if(find_camera_metadata_ro_entry(
+           CameraSingleton::getInstance().cameraInfos[cameraId].static_camera_characteristics, ANDROID_REQUEST_PARTIAL_RESULT_COUNT, &partialCount)
+           == 0
+       && partialCount.count > 0 && partialCount.data.i32[0] > 0) {
+        partialResultCount = static_cast<uint32_t>(partialCount.data.i32[0]);
+    }
+    cameraStats->start(partialResultCount);
     camThread = std::thread(&CameraSensor::cameraLoop, this);
 }
 
 void CameraSensor::stop() {
+    cameraStats->stop(readCslCameraStats(cameraId));
     logger->trace("CameraSensor stop called");
     CameraSingleton::getInstance().setCameraActive(cameraDescription.camera.socket, false);
     unregisterSensorErrorCallback();
@@ -1548,6 +1561,7 @@ void CameraSensor::returnStreamBuffersCb(const struct camera3_callback_ops* ops,
 }
 
 void CameraSensor::processCaptureResult(const camera3_capture_result_t* result) {
+    cameraStats->captureResult(*result);
 #ifdef ENABLE_TIMING_DEBUG
     const auto startTime = std::chrono::high_resolution_clock::now();
 #endif
@@ -1707,6 +1721,7 @@ void CameraSensor::processCaptureResult(const camera3_capture_result_t* result) 
 }
 
 void CameraSensor::handleNotify(const camera3_notify_msg_t* msg) {
+    cameraStats->notify(*msg);
     logger->trace("Notify called");
     if(msg->type == CAMERA3_MSG_SHUTTER) {
         const auto shut = msg->message.shutter;

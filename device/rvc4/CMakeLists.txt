@@ -547,6 +547,7 @@ set(DEPTHAI_PLATFORM_SOURCES
 
     # Camera
     src/camera/CameraSensor.cpp
+    src/camera/CameraStats.cpp
     src/camera/IspRouteAllocator.cpp
     src/camera/LuxonisSidechannel.cpp
     src/camera/CameraSingleton.cpp

@@ -24,6 +24,7 @@
 #include <tuple>
 
 #include "camera/CameraPool.hpp"
+#include "camera/CameraStats.hpp"
 #include "depthai/common/CameraSensorType.hpp"
 #include "depthai/common/EepromData.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
@@ -118,6 +119,7 @@ class CameraSensor : public camera3_callback_ops_t {
 
     bool onlyOnce{true};
     int cameraId = -1;
+    std::shared_ptr<CameraStatsTracker> cameraStats;
     bool hasRaw{false};
     bool isToFSensor{false};
     std::shared_ptr<spdlog::async_logger> logger;

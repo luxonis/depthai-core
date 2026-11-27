@@ -56,6 +56,9 @@
 #include "utilities/AnonymousTelemetryId.hpp"
 #include "utilities/CalibrationAccess.hpp"
 #include "utilities/CameraDiscovery.hpp"
+#ifdef TARGET_DEVICE_RVC4
+    #include "camera/CameraStats.hpp"
+#endif
 #include "utilities/DeviceTelemetry.hpp"
 #include "utilities/DeviceModel.hpp"
 #include "utilities/GpuAvailability.hpp"
@@ -1207,6 +1210,9 @@ int main(int argc, char** args) {
         rpcHandle(*mainRpc, "getConnectedCameraFeatures", []() { return dai::gate::CameraDiscovery::getInstance().getConnectedCameraFeatures(); });
 
         rpcHandle(*mainRpc, "getCameraSensorNames", []() { return dai::gate::CameraDiscovery::getInstance().getConnectedCameraSensorNames(); });
+#ifdef TARGET_DEVICE_RVC4
+        rpcHandle(*mainRpc, "getCameraStats", dai::gate::getCameraStats);
+#endif
 
         rpcHandle(*mainRpc, "setPipelineSchema", setPipelineSchema);
         rpcHandle(*mainRpc, "setAssets", setAssets);
