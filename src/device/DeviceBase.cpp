@@ -45,7 +45,6 @@
 #include "properties/GlobalProperties.hpp"
 #include "utility/EepromDataParser.hpp"
 #include "utility/Environment.hpp"
-#include "utility/Files.hpp"
 #include "utility/HolisticRecordReplay.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
