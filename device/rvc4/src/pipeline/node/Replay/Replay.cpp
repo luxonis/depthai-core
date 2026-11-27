@@ -16,7 +16,6 @@
 #include <functional>
 #include <mutex>
 #include <limits>
-#include <magic_enum/magic_enum.hpp>
 #include <optional>
 #include <stdexcept>
 #include <set>
@@ -632,8 +631,20 @@ bool isReplayOutType(ImgFrame::Type type) {
 }
 
 std::string replayTypeName(ImgFrame::Type type) {
-    const auto name = magic_enum::enum_name(type);
-    return name.empty() ? std::string("unsupported") : std::string(name);
+    switch(type) {
+        case ImgFrame::Type::NV12:
+            return "NV12";
+        case ImgFrame::Type::YUV420p:
+            return "YUV420p";
+        case ImgFrame::Type::GRAY8:
+            return "GRAY8";
+        case ImgFrame::Type::RGB888i:
+            return "RGB888i";
+        case ImgFrame::Type::BGR888i:
+            return "BGR888i";
+        default:
+            return "unsupported";
+    }
 }
 
 void rgbToYuv(int red, int green, int blue, int& y, int& u, int& v, bool fullRange) {
@@ -1172,183 +1183,188 @@ void ReplayVideo::buildStage1() {
     if(properties.resolvedPath.empty()) throw std::runtime_error("ReplayVideo source is not prepared");
     if(properties.persistentUpload) replayCacheMarkPersistent(properties.sourceHash, properties.resolvedMetadataPath);
     state = std::make_unique<State>();
-    state->hash = properties.sourceHash;
-    state->loop = properties.loop;
-    state->stopAtEnd = properties.stopPipelineAtEnd;
-    state->fpsSet = properties.fpsSet && properties.fps > 0.f && std::isfinite(properties.fps);
-    state->fps = properties.fps;
-    const auto originalName = fileNameOf(properties.sourcePath);
-    std::filesystem::path media(properties.resolvedPath);
-    auto recording = std::make_unique<RecordingReadLease>();
-    recording->acquire(media);
-    if(!std::filesystem::exists(media)) throw std::runtime_error("ReplayVideo source is missing: " + media.string());
-    if(!std::filesystem::is_directory(media) && (isArchiveName(originalName) || isArchiveName(fileNameOf(media)))) {
-        holdScratch(state->scratchLeases, unpackScratchName(media, state->hash));
-        const auto root = extractArchive(media, state->hash);
-        media = properties.archiveEntrySet ? findNamed(root, properties.archiveEntry, false) : replay::selectReplayArchiveSource(root);
-    }
-    state->media = media;
-    const auto mediaName = fileNameOf(media);
-    if(std::filesystem::is_directory(media) || mediaName.rfind(".dai") != std::string::npos) {
-        state->frames = std::filesystem::is_directory(media) ? listFrameFiles(media) : std::vector<std::filesystem::path>{media};
-        state->dai = lowerCopy(state->frames.front().extension().string()) == ".dai";
-        state->compressedImages = !state->dai;
-        state->count = static_cast<int>(state->frames.size());
-        for(const auto& frame : state->frames) requireReadablePayload(frame, fileNameOf(frame));
-        if(state->dai) {
-            bool first = true;
-            std::int64_t previousSeq = 0;
-            SteadyTime previousDevice{};
-            for(std::size_t index = 0; index < state->frames.size(); index++) {
-                auto probe = loadDaiFrame(state->frames[index]);
-                if(index == 0) {
-                    state->srcW = static_cast<int>(probe->getWidth());
-                    state->srcH = static_cast<int>(probe->getHeight());
-                    const auto sourceType = probe->getType();
-                    state->passthrough = !properties.outFrameTypeSet && !properties.sizeSet;
-                    if(state->passthrough) {
-                        state->outType = sourceType;
-                    } else if(!isReplayOutType(sourceType)) {
-                        throw std::runtime_error(std::string("ReplayVideo output type is not supported: ") + replayTypeName(sourceType));
-                    } else {
-                        state->outType = properties.outFrameTypeSet ? static_cast<ImgFrame::Type>(properties.outFrameType) : sourceType;
-                        if(!isReplayOutType(state->outType)) {
-                            throw std::runtime_error(std::string("ReplayVideo output type is not supported: ") + replayTypeName(state->outType));
+    try {
+        state->hash = properties.sourceHash;
+        state->loop = properties.loop;
+        state->stopAtEnd = properties.stopPipelineAtEnd;
+        state->fpsSet = properties.fpsSet && properties.fps > 0.f && std::isfinite(properties.fps);
+        state->fps = properties.fps;
+        const auto originalName = fileNameOf(properties.sourcePath);
+        std::filesystem::path media(properties.resolvedPath);
+        auto recording = std::make_unique<RecordingReadLease>();
+        recording->acquire(media);
+        if(!std::filesystem::exists(media)) throw std::runtime_error("ReplayVideo source is missing: " + media.string());
+        if(!std::filesystem::is_directory(media) && (isArchiveName(originalName) || isArchiveName(fileNameOf(media)))) {
+            holdScratch(state->scratchLeases, unpackScratchName(media, state->hash));
+            const auto root = extractArchive(media, state->hash);
+            media = properties.archiveEntrySet ? findNamed(root, properties.archiveEntry, false) : replay::selectReplayArchiveSource(root);
+        }
+        state->media = media;
+        const auto mediaName = fileNameOf(media);
+        if(std::filesystem::is_directory(media) || mediaName.rfind(".dai") != std::string::npos) {
+            state->frames = std::filesystem::is_directory(media) ? listFrameFiles(media) : std::vector<std::filesystem::path>{media};
+            state->dai = lowerCopy(state->frames.front().extension().string()) == ".dai";
+            state->compressedImages = !state->dai;
+            state->count = static_cast<int>(state->frames.size());
+            for(const auto& frame : state->frames) requireReadablePayload(frame, fileNameOf(frame));
+            if(state->dai) {
+                bool first = true;
+                std::int64_t previousSeq = 0;
+                SteadyTime previousDevice{};
+                for(std::size_t index = 0; index < state->frames.size(); index++) {
+                    auto probe = loadDaiFrame(state->frames[index]);
+                    if(index == 0) {
+                        state->srcW = static_cast<int>(probe->getWidth());
+                        state->srcH = static_cast<int>(probe->getHeight());
+                        const auto sourceType = probe->getType();
+                        state->passthrough = !properties.outFrameTypeSet && !properties.sizeSet;
+                        if(state->passthrough) {
+                            state->outType = sourceType;
+                        } else if(!isReplayOutType(sourceType)) {
+                            throw std::runtime_error(std::string("ReplayVideo output type is not supported: ") + replayTypeName(sourceType));
+                        } else {
+                            state->outType = properties.outFrameTypeSet ? static_cast<ImgFrame::Type>(properties.outFrameType) : sourceType;
+                            if(!isReplayOutType(state->outType)) {
+                                throw std::runtime_error(std::string("ReplayVideo output type is not supported: ") + replayTypeName(state->outType));
+                            }
                         }
                     }
-                }
-                if(first) {
-                    state->seqFirst = probe->getSequenceNum();
-                    state->deviceFirst = probe->getTimestampDevice();
-                    first = false;
-                } else {
-                    if(probe->getSequenceNum() <= previousSeq) {
-                        throw std::runtime_error("ReplayVideo sequence numbers do not increase: " + std::to_string(previousSeq) + " then "
-                                                 + std::to_string(probe->getSequenceNum()));
+                    if(first) {
+                        state->seqFirst = probe->getSequenceNum();
+                        state->deviceFirst = probe->getTimestampDevice();
+                        first = false;
+                    } else {
+                        if(probe->getSequenceNum() <= previousSeq) {
+                            throw std::runtime_error("ReplayVideo sequence numbers do not increase: " + std::to_string(previousSeq) + " then "
+                                                     + std::to_string(probe->getSequenceNum()));
+                        }
+                        if(probe->getTimestampDevice() < previousDevice) throw std::runtime_error("ReplayVideo timestamps decrease");
                     }
-                    if(probe->getTimestampDevice() < previousDevice) throw std::runtime_error("ReplayVideo timestamps decrease");
+                    previousSeq = probe->getSequenceNum();
+                    previousDevice = probe->getTimestampDevice();
                 }
-                previousSeq = probe->getSequenceNum();
-                previousDevice = probe->getTimestampDevice();
-            }
-            state->seqLast = previousSeq;
-            state->deviceLast = previousDevice;
-            state->recorded = true;
-        } else {
-            for(std::size_t index = 0; index < state->frames.size(); ++index) {
-                const auto decoded = decodeImage(state->frames[index], [this] { return !state->stopping.load(); });
-                if(!decoded.sample) throw std::runtime_error("ReplayVideo preparation cancelled");
-                if(index == 0) {
-                    state->srcW = decoded.player->width;
-                    state->srcH = decoded.player->height;
-                    state->fullRange = decoded.player->fullRange;
-                } else if(decoded.player->width != state->srcW || decoded.player->height != state->srcH) {
-                    throw std::runtime_error("ReplayVideo frame size changed: " + state->frames[index].string());
-                }
-            }
-        }
-    } else {
-        // The cache file has no extension. An unpacked frame does. Prefer the file
-        // that is actually opened, and fall back to the caller's source name.
-        const auto fromMedia = chainsFor(mediaName);
-        const auto chains = !fromMedia.empty() ? fromMedia : chainsFor(originalName);
-        if(chains.empty()) throw std::runtime_error("ReplayVideo unknown extension");
-        requireReadablePayload(media, !fromMedia.empty() ? mediaName : originalName);
-        state->player = openFirst(media, chains);
-        state->fullRange = state->player->fullRange;
-        bool eos = false;
-        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-        SamplePtr sample(pullSample(*state->player, eos, [&] { return std::chrono::steady_clock::now() < deadline && !state->stopping.load(); }), gst_sample_unref);
-        if(!sample || !state->player->readGeometry(sample.get())) throw std::runtime_error("ReplayVideo frame decode failed: " + media.string());
-        sample.reset();
-        state->player->restart();
-        state->srcW = state->player->width;
-        state->srcH = state->player->height;
-        state->count = state->player->estimatedCount();
-        state->fullRange = state->player->fullRange;
-    }
-    if(!properties.sizeSet && state->srcW > 0 && ((state->srcW % 2) != 0 || (state->srcH % 2) != 0)) {
-        throw std::runtime_error("ReplayVideo size " + std::to_string(state->srcW) + "x" + std::to_string(state->srcH) + " is not supported");
-    }
-    state->outW = properties.sizeSet ? properties.width : state->srcW;
-    state->outH = properties.sizeSet ? properties.height : state->srcH;
-    if(!state->dai) {
-        state->outType = properties.outFrameTypeSet ? static_cast<ImgFrame::Type>(properties.outFrameType) : ImgFrame::Type::YUV420p;
-    }
-    if(!state->passthrough && !isReplayOutType(state->outType)) {
-        throw std::runtime_error(std::string("ReplayVideo output type is not supported: ") + replayTypeName(state->outType));
-    }
-    std::filesystem::path metadata;
-    if(!properties.resolvedMetadataPath.empty())
-        metadata = properties.resolvedMetadataPath;
-    else if(properties.metadataPathSet)
-        metadata = properties.metadataPath;
-    else {
-        auto sibling = state->media;
-        if(std::filesystem::is_directory(sibling) && !state->frames.empty()) {
-            const auto stem = state->frames.front().stem().string();
-            sibling /= stem.substr(0, stem.rfind('_')) + ".mcap";
-        } else {
-            sibling.replace_extension(".mcap");
-        }
-        if(std::filesystem::exists(sibling)) metadata = sibling;
-    }
-    if(properties.metadataPathSet && !metadata.empty() && !std::filesystem::is_regular_file(metadata)) {
-        throw std::runtime_error("ReplayVideo metadata file is missing: " + metadata.string());
-    }
-    if(state->dai && !metadata.empty() && logger) logger->warn("ReplayVideo ignored metadata file for a .dai stream: {}", metadata.string());
-    if(!state->dai && !metadata.empty() && std::filesystem::exists(metadata)) readMetadata(metadata, *state, state->count);
-    if(state->recorded) state->nominal = nominalOf(state->fpsSet, state->fps, state->deviceFirst, state->deviceLast, state->count);
-    if(properties.decodeMode == static_cast<std::int32_t>(ReplayDecodeMode::PRE_DECODE) && (state->player != nullptr || state->compressedImages)) {
-        const auto scratchName = preScratchName(state->hash);
-        holdScratch(state->scratchLeases, scratchName);
-        const auto directory = std::filesystem::path("/data/depthai/replay_cache") / scratchName / ("node_" + std::to_string(id));
-        std::filesystem::create_directories(directory);
-        state->predecodedStride = state->srcW + state->srcW % 2;
-        state->predecodedUvOffset = state->predecodedStride * state->srcH;
-        int index = 0;
-        while(!state->stopping.load()) {
-            DecodedImage decoded;
-            GstPlayer* player = state->player.get();
-            SamplePtr sample(nullptr, gst_sample_unref);
-            if(state->compressedImages) {
-                if(index >= state->count) break;
-                decoded = decodeImage(state->frames[static_cast<std::size_t>(index)], [this] { return !state->stopping.load(); });
-                if(!decoded.sample) break;
-                player = decoded.player.get();
-                sample = std::move(decoded.sample);
+                state->seqLast = previousSeq;
+                state->deviceLast = previousDevice;
+                state->recorded = true;
             } else {
-                bool eos = false;
-                sample.reset(pullSample(*player, eos, [this] { return !state->stopping.load(); }));
-                if(!sample) {
-                    if(!eos) throw std::runtime_error("ReplayVideo frame decode failed");
-                    break;
+                for(std::size_t index = 0; index < state->frames.size(); ++index) {
+                    const auto decoded = decodeImage(state->frames[index], [this] { return !state->stopping.load(); });
+                    if(!decoded.sample) throw std::runtime_error("ReplayVideo preparation cancelled");
+                    if(index == 0) {
+                        state->srcW = decoded.player->width;
+                        state->srcH = decoded.player->height;
+                        state->fullRange = decoded.player->fullRange;
+                    } else if(decoded.player->width != state->srcW || decoded.player->height != state->srcH) {
+                        throw std::runtime_error("ReplayVideo frame size changed: " + state->frames[index].string());
+                    }
                 }
             }
-            char name[32];
-            std::snprintf(name, sizeof(name), "frame_%08d.nv12", index);
-            saveNv12Sample(*player, sample.get(), directory / name);
-            ++index;
-            const int stride = state->count > 0 ? std::max(state->count / 10, 1) : 100;
-            if(logger && (index < 10 || index % stride == 0 || index == state->count)) {
-                logger->info("Replay decode {} {}/{} frames", state->hash, index, std::max(state->count, index));
+        } else {
+            // The cache file has no extension. An unpacked frame does. Prefer the file
+            // that is actually opened, and fall back to the caller's source name.
+            const auto fromMedia = chainsFor(mediaName);
+            const auto chains = !fromMedia.empty() ? fromMedia : chainsFor(originalName);
+            if(chains.empty()) throw std::runtime_error("ReplayVideo unknown extension");
+            requireReadablePayload(media, !fromMedia.empty() ? mediaName : originalName);
+            state->player = openFirst(media, chains);
+            state->fullRange = state->player->fullRange;
+            bool eos = false;
+            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+            SamplePtr sample(pullSample(*state->player, eos, [&] { return std::chrono::steady_clock::now() < deadline && !state->stopping.load(); }), gst_sample_unref);
+            if(!sample || !state->player->readGeometry(sample.get())) throw std::runtime_error("ReplayVideo frame decode failed: " + media.string());
+            sample.reset();
+            state->player->restart();
+            state->srcW = state->player->width;
+            state->srcH = state->player->height;
+            state->count = state->player->estimatedCount();
+            state->fullRange = state->player->fullRange;
+        }
+        if(!properties.sizeSet && state->srcW > 0 && ((state->srcW % 2) != 0 || (state->srcH % 2) != 0)) {
+            throw std::runtime_error("ReplayVideo size " + std::to_string(state->srcW) + "x" + std::to_string(state->srcH) + " is not supported");
+        }
+        state->outW = properties.sizeSet ? properties.width : state->srcW;
+        state->outH = properties.sizeSet ? properties.height : state->srcH;
+        if(!state->dai) {
+            state->outType = properties.outFrameTypeSet ? static_cast<ImgFrame::Type>(properties.outFrameType) : ImgFrame::Type::YUV420p;
+        }
+        if(!state->passthrough && !isReplayOutType(state->outType)) {
+            throw std::runtime_error(std::string("ReplayVideo output type is not supported: ") + replayTypeName(state->outType));
+        }
+        std::filesystem::path metadata;
+        if(!properties.resolvedMetadataPath.empty())
+            metadata = properties.resolvedMetadataPath;
+        else if(properties.metadataPathSet)
+            metadata = properties.metadataPath;
+        else {
+            auto sibling = state->media;
+            if(std::filesystem::is_directory(sibling) && !state->frames.empty()) {
+                const auto stem = state->frames.front().stem().string();
+                sibling /= stem.substr(0, stem.rfind('_')) + ".mcap";
+            } else {
+                sibling.replace_extension(".mcap");
             }
+            if(std::filesystem::exists(sibling)) metadata = sibling;
         }
-        if(index == 0) throw std::runtime_error("ReplayVideo frame decode failed");
-        state->count = index;
-        requireFrameCount(*state, index);
+        if(properties.metadataPathSet && !metadata.empty() && !std::filesystem::is_regular_file(metadata)) {
+            throw std::runtime_error("ReplayVideo metadata file is missing: " + metadata.string());
+        }
+        if(state->dai && !metadata.empty() && logger) logger->warn("ReplayVideo ignored metadata file for a .dai stream: {}", metadata.string());
+        if(!state->dai && !metadata.empty() && std::filesystem::exists(metadata)) readMetadata(metadata, *state, state->count);
         if(state->recorded) state->nominal = nominalOf(state->fpsSet, state->fps, state->deviceFirst, state->deviceLast, state->count);
-        state->frames.clear();
-        for(int frame = 0; frame < index; frame++) {
-            char name[32];
-            std::snprintf(name, sizeof(name), "frame_%08d.nv12", frame);
-            state->frames.push_back(directory / name);
+        if(properties.decodeMode == static_cast<std::int32_t>(ReplayDecodeMode::PRE_DECODE) && (state->player != nullptr || state->compressedImages)) {
+            const auto scratchName = preScratchName(state->hash);
+            holdScratch(state->scratchLeases, scratchName);
+            const auto directory = std::filesystem::path("/data/depthai/replay_cache") / scratchName / ("node_" + std::to_string(id));
+            std::filesystem::create_directories(directory);
+            state->predecodedStride = state->srcW + state->srcW % 2;
+            state->predecodedUvOffset = state->predecodedStride * state->srcH;
+            int index = 0;
+            while(!state->stopping.load()) {
+                DecodedImage decoded;
+                GstPlayer* player = state->player.get();
+                SamplePtr sample(nullptr, gst_sample_unref);
+                if(state->compressedImages) {
+                    if(index >= state->count) break;
+                    decoded = decodeImage(state->frames[static_cast<std::size_t>(index)], [this] { return !state->stopping.load(); });
+                    if(!decoded.sample) break;
+                    player = decoded.player.get();
+                    sample = std::move(decoded.sample);
+                } else {
+                    bool eos = false;
+                    sample.reset(pullSample(*player, eos, [this] { return !state->stopping.load(); }));
+                    if(!sample) {
+                        if(!eos) throw std::runtime_error("ReplayVideo frame decode failed");
+                        break;
+                    }
+                }
+                char name[32];
+                std::snprintf(name, sizeof(name), "frame_%08d.nv12", index);
+                saveNv12Sample(*player, sample.get(), directory / name);
+                ++index;
+                const int stride = state->count > 0 ? std::max(state->count / 10, 1) : 100;
+                if(logger && (index < 10 || index % stride == 0 || index == state->count)) {
+                    logger->info("Replay decode {} {}/{} frames", state->hash, index, std::max(state->count, index));
+                }
+            }
+            if(index == 0) throw std::runtime_error("ReplayVideo frame decode failed");
+            state->count = index;
+            requireFrameCount(*state, index);
+            if(state->recorded) state->nominal = nominalOf(state->fpsSet, state->fps, state->deviceFirst, state->deviceLast, state->count);
+            state->frames.clear();
+            for(int frame = 0; frame < index; frame++) {
+                char name[32];
+                std::snprintf(name, sizeof(name), "frame_%08d.nv12", frame);
+                state->frames.push_back(directory / name);
+            }
+            if(state->player) state->player->close();
+            state->player.reset();
+            state->compressedImages = false;
         }
-        if(state->player) state->player->close();
-        state->player.reset();
-        state->compressedImages = false;
+        state->recording = std::move(recording);
+    } catch(...) {
+        state.reset();
+        throw;
     }
-    state->recording = std::move(recording);
 }
 
 void ReplayVideo::stop() {
@@ -1491,53 +1507,58 @@ void ReplayMetadataOnly::buildStage1() {
     if(properties.resolvedPath.empty()) throw std::runtime_error("ReplayMetadataOnly source is not prepared");
     if(properties.persistentUpload) replayCacheMarkPersistent(properties.sourceHash);
     state = std::make_unique<State>();
-    state->hash = properties.sourceHash;
-    state->loop = properties.loop;
-    state->stopAtEnd = properties.stopPipelineAtEnd;
-    state->fpsSet = properties.fpsSet && properties.fps > 0.f && std::isfinite(properties.fps);
-    state->fps = properties.fps;
-    std::filesystem::path media(properties.resolvedPath);
-    auto recording = std::make_unique<RecordingReadLease>();
-    recording->acquire(media);
-    if(!std::filesystem::exists(media)) throw std::runtime_error("ReplayMetadataOnly source is missing: " + media.string());
-    const auto originalName = fileNameOf(properties.sourcePath);
-    if(isArchiveName(originalName) || isArchiveName(fileNameOf(media)) || std::filesystem::is_directory(media)) {
-        std::filesystem::path root = media;
-        if(!std::filesystem::is_directory(media)) {
-            holdScratch(state->scratchLeases, unpackScratchName(media, state->hash));
-            root = extractArchive(media, state->hash);
-        }
-        if(properties.archiveEntry.empty()) throw std::runtime_error("ReplayMetadataOnly source is not an mcap file: " + media.string());
-        media = findNamed(root, properties.archiveEntry, true);
-    }
-    utility::BytePlayer player;
-    const auto schema = player.init(media.string());
-    state->datatype = replay::datatypeFromSchema(schema);
-    bool first = true;
-    std::int64_t previousSeq = 0;
-    SteadyTime previousDevice{};
-    while(auto buffer = replay::nextRecordedBuffer(player, state->datatype)) {
-        if(first) {
-            state->seqFirst = buffer->getSequenceNum();
-            state->deviceFirst = buffer->getTimestampDevice();
-            first = false;
-        } else {
-            if(buffer->getSequenceNum() <= previousSeq) {
-                throw std::runtime_error("ReplayMetadataOnly sequence numbers do not increase: " + std::to_string(previousSeq) + " then "
-                                         + std::to_string(buffer->getSequenceNum()));
+    try {
+        state->hash = properties.sourceHash;
+        state->loop = properties.loop;
+        state->stopAtEnd = properties.stopPipelineAtEnd;
+        state->fpsSet = properties.fpsSet && properties.fps > 0.f && std::isfinite(properties.fps);
+        state->fps = properties.fps;
+        std::filesystem::path media(properties.resolvedPath);
+        auto recording = std::make_unique<RecordingReadLease>();
+        recording->acquire(media);
+        if(!std::filesystem::exists(media)) throw std::runtime_error("ReplayMetadataOnly source is missing: " + media.string());
+        const auto originalName = fileNameOf(properties.sourcePath);
+        if(isArchiveName(originalName) || isArchiveName(fileNameOf(media)) || std::filesystem::is_directory(media)) {
+            std::filesystem::path root = media;
+            if(!std::filesystem::is_directory(media)) {
+                holdScratch(state->scratchLeases, unpackScratchName(media, state->hash));
+                root = extractArchive(media, state->hash);
             }
-            if(buffer->getTimestampDevice() < previousDevice) throw std::runtime_error("ReplayMetadataOnly timestamps decrease");
+            if(properties.archiveEntry.empty()) throw std::runtime_error("ReplayMetadataOnly source is not an mcap file: " + media.string());
+            media = findNamed(root, properties.archiveEntry, true);
         }
-        previousSeq = buffer->getSequenceNum();
-        previousDevice = buffer->getTimestampDevice();
-        state->count++;
+        utility::BytePlayer player;
+        const auto schema = player.init(media.string());
+        state->datatype = replay::datatypeFromSchema(schema);
+        bool first = true;
+        std::int64_t previousSeq = 0;
+        SteadyTime previousDevice{};
+        while(auto buffer = replay::nextRecordedBuffer(player, state->datatype)) {
+            if(first) {
+                state->seqFirst = buffer->getSequenceNum();
+                state->deviceFirst = buffer->getTimestampDevice();
+                first = false;
+            } else {
+                if(buffer->getSequenceNum() <= previousSeq) {
+                    throw std::runtime_error("ReplayMetadataOnly sequence numbers do not increase: " + std::to_string(previousSeq) + " then "
+                                             + std::to_string(buffer->getSequenceNum()));
+                }
+                if(buffer->getTimestampDevice() < previousDevice) throw std::runtime_error("ReplayMetadataOnly timestamps decrease");
+            }
+            previousSeq = buffer->getSequenceNum();
+            previousDevice = buffer->getTimestampDevice();
+            state->count++;
+        }
+        if(state->count == 0) throw std::runtime_error("ReplayMetadataOnly metadata file is empty: " + media.string());
+        state->seqLast = previousSeq;
+        state->deviceLast = previousDevice;
+        state->nominal = nominalOf(state->fpsSet, state->fps, state->deviceFirst, state->deviceLast, state->count);
+        state->media = media;
+        state->recording = std::move(recording);
+    } catch(...) {
+        state.reset();
+        throw;
     }
-    if(state->count == 0) throw std::runtime_error("ReplayMetadataOnly metadata file is empty: " + media.string());
-    state->seqLast = previousSeq;
-    state->deviceLast = previousDevice;
-    state->nominal = nominalOf(state->fpsSet, state->fps, state->deviceFirst, state->deviceLast, state->count);
-    state->media = media;
-    state->recording = std::move(recording);
 }
 
 void ReplayMetadataOnly::run() {
