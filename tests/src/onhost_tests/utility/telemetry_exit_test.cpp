@@ -69,10 +69,12 @@ TEST_CASE("telemetry does not hold the process exit when the server does not ans
     REQUIRE(::getsockname(server, reinterpret_cast<sockaddr*>(&address), &addressLength) == 0);
     const auto url = "http://127.0.0.1:" + std::to_string(ntohs(address.sin_port));
 
-    int exitingPipe[2] = {-1, -1};
-    REQUIRE(::pipe(exitingPipe) == 0);
-    cleanup.fds.push_back(exitingPipe[0]);
-    cleanup.fds.push_back(exitingPipe[1]);
+    int readyPipe[2] = {-1, -1};  // Child to parent: the events are queued
+    int goPipe[2] = {-1, -1};     // Parent to child: return from main
+    REQUIRE(::pipe(readyPipe) == 0);
+    cleanup.fds.insert(cleanup.fds.end(), {readyPipe[0], readyPipe[1]});
+    REQUIRE(::pipe(goPipe) == 0);
+    cleanup.fds.insert(cleanup.fds.end(), {goPipe[0], goPipe[1]});
 
     cleanup.cacheDir = dai::platform::getTempPath();
     REQUIRE(::setenv("DEPTHAI_CACHE_DIR", cleanup.cacheDir.c_str(), 1) == 0);
@@ -80,32 +82,45 @@ TEST_CASE("telemetry does not hold the process exit when the server does not ans
     REQUIRE(::setenv("DEPTHAI_TELEMETRY_API_KEY", "telemetry-exit-test", 1) == 0);
     REQUIRE(::unsetenv("DEPTHAI_TELEMETRY") == 0);
 
-    const auto pipeWriteFd = std::to_string(exitingPipe[1]);
+    const auto readyWriteFd = std::to_string(readyPipe[1]);
+    const auto goReadFd = std::to_string(goPipe[0]);
     const auto childPid = ::fork();
     REQUIRE(childPid >= 0);
     if(childPid == 0) {
         // A new program: the static destructors of a forked copy of this process are not safe to run
-        ::execl(DEPTHAI_TELEMETRY_EXIT_TEST_CHILD_PATH, DEPTHAI_TELEMETRY_EXIT_TEST_CHILD_PATH, pipeWriteFd.c_str(), static_cast<char*>(nullptr));
+        ::execl(DEPTHAI_TELEMETRY_EXIT_TEST_CHILD_PATH,
+                DEPTHAI_TELEMETRY_EXIT_TEST_CHILD_PATH,
+                readyWriteFd.c_str(),
+                goReadFd.c_str(),
+                static_cast<char*>(nullptr));
         ::_exit(127);
     }
     cleanup.pid = childPid;
-    ::close(exitingPipe[1]);  // Only the child writes: a child that ends early gives end of file
-    cleanup.fds.back() = -1;
+    // Close the ends that only the child uses: a child that ends early gives end of file
+    ::close(readyPipe[1]);
+    ::close(goPipe[0]);
+    cleanup.fds[2] = -1;
+    cleanup.fds[3] = -1;
 
-    // The child writes one byte when it returns from main; the exit time starts there
-    pollfd exiting{exitingPipe[0], POLLIN, 0};
-    int pollResult = -1;
-    do {
-        pollResult = ::poll(&exiting, 1, 30000);
-    } while(pollResult < 0 && errno == EINTR);
-    REQUIRE(pollResult == 1);
-    char exitingByte = 0;
-    REQUIRE(::read(exitingPipe[0], &exitingByte, 1) == 1);
+    const auto pollIn = [](int fd, int timeoutMs) {
+        pollfd request{fd, POLLIN, 0};
+        int result = -1;
+        do {
+            result = ::poll(&request, 1, timeoutMs);
+        } while(result < 0 && errno == EINTR);
+        return result;
+    };
+
+    REQUIRE(pollIn(readyPipe[0], 30000) == 1);
+    char readyByte = 0;
+    REQUIRE(::read(readyPipe[0], &readyByte, 1) == 1);
+
+    // The upload connects to the server: it is in progress when the exit starts
+    REQUIRE(pollIn(server, 10000) == 1);
+
+    const char goByte = 'g';
+    REQUIRE(::write(goPipe[1], &goByte, 1) == 1);
     const auto exitStart = std::chrono::steady_clock::now();
-
-    // The child connected to the server: an upload is in progress when the exit starts
-    pollfd connection{server, POLLIN, 0};
-    REQUIRE(::poll(&connection, 1, 0) == 1);
 
     int status = 0;
     std::optional<std::chrono::steady_clock::duration> exitTime;
