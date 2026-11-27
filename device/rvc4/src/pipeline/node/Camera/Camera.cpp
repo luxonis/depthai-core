@@ -19,6 +19,7 @@ extern "C" {
 #include <Eigen/Eigen>
 #include <algorithm>
 #include <chrono>
+#include <cstring>
 #include <exception>
 #include <fstream>
 #include <memory>
@@ -318,6 +319,25 @@ std::string vectorToString(const std::set<float>& vec) {
 }
 
 }  // namespace
+
+static std::shared_ptr<ImgFrame> cloneFrame(const std::shared_ptr<ImgFrame>& inFrame) {
+    auto outFrame = std::make_shared<ImgFrame>();
+    outFrame->setMetadata(*inFrame);
+    outFrame->setSize(inFrame->getWidth(), inFrame->getHeight());
+    outFrame->setType(inFrame->getType());
+    outFrame->fb = inFrame->fb;
+    outFrame->sourceFb = inFrame->sourceFb;
+    outFrame->cam = inFrame->cam;
+    outFrame->instanceNum = inFrame->instanceNum;
+    outFrame->category = inFrame->category;
+    outFrame->transformation = inFrame->transformation;
+    const auto src = inFrame->getData();
+    outFrame->data = dai::AcceleratorMemory::create(src.size());
+    if(src.size() > 0) {
+        std::memcpy(outFrame->data->getData().data(), src.data(), src.size());
+    }
+    return outFrame;
+}
 
 static std::shared_ptr<ImgFrame> convertToFormat(ImgFrame::Type type, std::shared_ptr<ImgFrame> inFrame) {
     DAI_CHECK_IN(inFrame);
@@ -1640,16 +1660,23 @@ void Camera::run() {
                 DAI_CHECK(frame != nullptr, "Received message is not ImgFrame");
                 DAI_CHECK(frame->getType() == dai::ImgFrame::Type::NV12, "mockIsp only supports NV12 input frames");
                 auto tProcessed = std::chrono::steady_clock::now();
+                if(static_cast<int>(frame->getWidth()) != properties.mockIspWidth || static_cast<int>(frame->getHeight()) != properties.mockIspHeight) {
+                    throw std::runtime_error("mockIsp frame size " + std::to_string(frame->getWidth()) + "x" + std::to_string(frame->getHeight())
+                                             + " is not the mock ISP size " + std::to_string(properties.mockIspWidth) + "x"
+                                             + std::to_string(properties.mockIspHeight));
+                }
+                const bool oneOutput = currentOutputs.size() <= 1;
                 for(auto i = 0U; i < currentOutputs.size(); ++i) {
                     const auto& req = properties.outputRequests[i];
+                    auto frameForOutput = oneOutput ? frame : cloneFrame(frame);
                     {
                         auto blockEvent = this->outputBlockEvent();
                         if(currentOutputs[i].fpsRegulator != nullptr) {
-                            currentOutputs[i].fpsRegulator->inQueue.send(frame);
+                            currentOutputs[i].fpsRegulator->inQueue.send(frameForOutput);
                         } else if(currentOutputs[i].resizer != nullptr) {
-                            currentOutputs[i].resizer->inQ.send(frame);
+                            currentOutputs[i].resizer->inQ.send(frameForOutput);
                         } else {
-                            dynamicOutputs[std::to_string(i)].send(toCorrectFormat(req, frame));
+                            dynamicOutputs[std::to_string(i)].send(toCorrectFormat(req, frameForOutput));
                         }
                     }
                 }

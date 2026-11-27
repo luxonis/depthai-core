@@ -1,6 +1,8 @@
 #pragma once
 #include <stdint.h>
 
+#include <mutex>
+
 #include "OfflineJpegEncoder.hpp"
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 #include "depthai/utility/LockingQueue.hpp"
@@ -17,6 +19,7 @@ class VideoEncoder : public node::VideoEncoder {
 
    private:
     std::shared_ptr<GstVaapiEnc> encodePipeline;
+    std::mutex encodePipelineMutex;
 
    public:
     constexpr static const char* NAME = node::VideoEncoder::NAME;
@@ -56,6 +59,8 @@ class VideoEncoder : public node::VideoEncoder {
     }
     void run() override;
     void stop() override;
+    // Safe to call from the record node while this encoder is running.
+    void requestKeyframe();
     void send_buffer(const uint8_t* buffer, const int buffer_size, const int width, const int height);
 
     LockingQueue<PassthroughMessage> passthroughQueue;

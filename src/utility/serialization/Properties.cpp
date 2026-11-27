@@ -24,7 +24,10 @@
 #include "depthai/properties/ObjectTrackerProperties.hpp"
 #include "depthai/properties/PointCloudProperties.hpp"
 #include "depthai/properties/PoolProperties.hpp"
+#include "depthai/properties/RecordVideoProperties.hpp"
 #include "depthai/properties/RectificationProperties.hpp"
+#include "depthai/properties/ReplayMetadataOnlyProperties.hpp"
+#include "depthai/properties/ReplayVideoProperties.hpp"
 #include "depthai/properties/SPIInProperties.hpp"
 #include "depthai/properties/SPIOutProperties.hpp"
 #include "depthai/properties/ScriptProperties.hpp"
@@ -124,7 +127,10 @@ DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, NeuralNetworkProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, ObjectTrackerProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, PipelineEventAggregationProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, PointCloudProperties)
+DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, RecordVideoProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, RectificationProperties)
+DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, ReplayMetadataOnlyProperties)
+DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, ReplayVideoProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, SPIInProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, SPIOutProperties)
 DEPTHAI_SERIALIZE_PROPERTIES_DEFINE(dai, ScriptProperties)

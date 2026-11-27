@@ -42,6 +42,8 @@ set(PYBIND11_TEST_FILES
     "neural_network_model_test.cpp"
     "node_holder_test.cpp"
     "message_holder_test.cpp"
+    "test_record_node.py"
+    "test_replay_node.py"
 )
 
 if(DEPTHAI_PYTHON_GIL_FREE)
@@ -71,9 +73,11 @@ set(DEPTHAI_PYTEST_COMMAND
     ${CMAKE_COMMAND} -E env
     "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
     "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$<TARGET_FILE_DIR:${TARGET_TEST_MODULE}>${SYS_PATH_SEPARATOR}${DEPTHAI_PYTHON_TEST_EXTRA_PATH}${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
+    "RECORD_TEST_DATA=${CMAKE_BINARY_DIR}/tests/record_test_data"
+    "REPLAY_TEST_DATA=${CMAKE_BINARY_DIR}/tests/replay_test_data"
     ${ASAN_ENVIRONMENT_VARS}
     ${DEPTHAI_PYTHON_TEST_ENVIRONMENT}
-    ${PYTHON_EXECUTABLE} -m pytest ${PYBIND11_PYTEST_FILES}
+    ${PYTHON_EXECUTABLE} -m pytest ${PYBIND11_PYTEST_FILES} -m "not rvc4"
 )
 
 add_test(NAME python_bindings COMMAND ${DEPTHAI_PYTEST_COMMAND})

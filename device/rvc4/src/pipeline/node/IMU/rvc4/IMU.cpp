@@ -6,6 +6,7 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -728,6 +729,9 @@ void IMU::run() {
     dai::IMUPacket lastEmittedPacket;
     bool packetEmitted = false;
     unsigned int sampleCnt = 0;
+    // Buffer::sequenceNum is the replay order key. Packet reports already have their own
+    // sequence; the batch message did not, so every recorded message stayed at 0.
+    std::int64_t messageSequence = 0;
     while(mainLoop()) {
         auto tAbsoluteBeginning = steady_clock::now();
         if(mockInEnabled) {
@@ -786,6 +790,7 @@ void IMU::run() {
                     break;
                 }
                 setTimestampFromPackets(imuDataOut);
+                imuDataOut->setSequenceNum(messageSequence++);
                 auto tProcessed = steady_clock::now();
                 {
                     auto blockEvent = this->outputBlockEvent();
@@ -805,6 +810,7 @@ void IMU::run() {
                     break;
                 }
                 setTimestampFromPackets(imuDataOut);
+                imuDataOut->setSequenceNum(messageSequence++);
                 auto tProcessed = steady_clock::now();
                 bool sent = false;
                 {

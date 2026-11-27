@@ -144,7 +144,7 @@ Luxonis builds and publishes two images from `docker/Dockerfile.sdk`. You pull t
 
 | Image | For | Content |
 |---|---|---|
-| `ghcr.io/luxonis/depthai-device-sdk:os-<OS version>-<vendor commit>` | the release firmware (target `rvc4`) | Ubuntu 22.04, the build tools, the cross compiler of Ubuntu (`g++-11-aarch64-linux-gnu`, GCC 11.4 and binutils 2.38, the versions of the Luxonis OS SDK) without its own C library, the public sysroot of Luxonis OS `<OS version>`, the FastCV headers |
+| `ghcr.io/luxonis/depthai-device-sdk:os-<OS version>-<vendor commit>` | the release firmware (target `rvc4`) | Ubuntu 22.04, the build tools, the cross compiler of Ubuntu (`g++-11-aarch64-linux-gnu`, GCC 11.4 and binutils 2.38, the versions of the Luxonis OS SDK) without its own C library, the public sysroot of Luxonis OS `<OS version>`, the FastCV headers, protoc 3.19.6 |
 | `ghcr.io/luxonis/depthai-device-sdk:os-<OS version>-<vendor commit>-dev` | the targets `rvc4-tsan` and `rvc4-asan-ubsan`, and `start_dev_shell.sh` | the same plus the sanitizer libraries of the compiler |
 
 `<vendor commit>` is the first 12 characters of the commit of the vendor repository that made the public sysroot. The
@@ -179,7 +179,8 @@ offload from source. `HEXAGON_SDK_DIR` (see above) does the same without a new i
 Each image has `/usr/share/doc/depthai-device-sdk/NOTICE.md`. It tells where the license texts and the source code
 of each part of the image are: the Ubuntu packages (`ubuntu-packages.tsv` in the same folder gives the source package
 and the version of each installed package, with a link to its source on Launchpad), numpy and the libraries in its
-wheel, the FastCV headers, the depthai-core files and the public sysroot (`/opt/rvc4-sysroot/NOTICE.md`).
+wheel, the FastCV headers, protoc 3.19.6 (`/usr/local/bin/protoc`, the host compiler that matches `libprotobuf.so.30`
+in the sysroot), the depthai-core files and the public sysroot (`/opt/rvc4-sysroot/NOTICE.md`).
 `docker/sdk/write-notices.sh` writes these files when the image is built, and stops the build when a part has no
 license text.
 

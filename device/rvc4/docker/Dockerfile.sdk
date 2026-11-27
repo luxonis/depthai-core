@@ -4,7 +4,8 @@
 # GCC 11.4 and binutils 2.38, the same versions as the Luxonis OS SDK) and the public sysroot of Luxonis OS at
 # /opt/rvc4-sysroot. The sysroot has link stubs, not the code, of the Qualcomm libraries that the firmware links; the
 # device has the real libraries. All software of the images comes from the Ubuntu archive (its source code is there),
-# except the sysroot, the FastCV headers, numpy (the wheel of PyPI) and the scripts of depthai-core.
+# except the sysroot, the FastCV headers, numpy (the wheel of PyPI), the protoc 3.19.6 binary and the scripts of
+# depthai-core.
 # /usr/share/doc/depthai-device-sdk/NOTICE.md in the images (written by sdk/write-notices.sh) tells where the license
 # texts and the source code of each part are.
 #
@@ -108,6 +109,26 @@ RUN curl -fsSL --retry 3 -o /tmp/fastcv.tgz "$FASTCV_URL" \
     && cp /tmp/fastcv/inc/fastcv.h /tmp/fastcv/inc/fastcvExt.h /opt/rvc4-sysroot/usr/include/fastcv/ \
     && cp /tmp/fastcv/LICENSE /tmp/fastcv/NOTICE /opt/rvc4-sysroot/usr/share/licenses/fastcv/ \
     && rm -rf /tmp/fastcv /tmp/fastcv.tgz
+
+# Host protoc 3.19.6. The public sysroot provides libprotobuf.so.30 (protobuf 3.19.6), and the firmware
+# generates C++ from the depthai protos with this compiler, then compiles it against that library. The
+# protobuf-compiler package of Ubuntu 22.04 is 3.12.4, which rejects the proto3 optional fields in those
+# protos. The prebuilt release archive has the compiler; the license is the LICENSE file of tag v3.19.6.
+ARG PROTOC_URL=https://github.com/protocolbuffers/protobuf/releases/download/v3.19.6/protoc-3.19.6-linux-x86_64.zip
+ARG PROTOC_SHA256=f51152d0926ccf18d89e2b4e4f31c4bf16ee5f94499d379029f80ddb8304bdd0
+ARG PROTOC_LICENSE_URL=https://raw.githubusercontent.com/protocolbuffers/protobuf/v3.19.6/LICENSE
+ARG PROTOC_LICENSE_SHA256=6e5e117324afd944dcf67f36cf329843bc1a92229a8cd9bb573d7a83130fea7d
+RUN curl -fsSL --retry 3 -o /tmp/protoc.zip "$PROTOC_URL" \
+    && echo "$PROTOC_SHA256  /tmp/protoc.zip" | sha256sum -c - \
+    && curl -fsSL --retry 3 -o /tmp/protoc-LICENSE "$PROTOC_LICENSE_URL" \
+    && echo "$PROTOC_LICENSE_SHA256  /tmp/protoc-LICENSE" | sha256sum -c - \
+    && unzip -q /tmp/protoc.zip -d /tmp/protoc \
+    && install -m 0755 /tmp/protoc/bin/protoc /usr/local/bin/protoc \
+    && mkdir -p /usr/local/share/doc/protoc \
+    && cp /tmp/protoc-LICENSE /usr/local/share/doc/protoc/LICENSE \
+    && cp /tmp/protoc/readme.txt /usr/local/share/doc/protoc/readme.txt \
+    && rm -rf /tmp/protoc /tmp/protoc.zip /tmp/protoc-LICENSE \
+    && protoc --version | grep -qx 'libprotoc 3.19.6'
 
 COPY sdk/install-hexagon-sdk.sh /usr/local/bin/
 

@@ -6,12 +6,20 @@
 #include <utility>
 
 // depthai
+#include <algorithm>
+#include <cctype>
+#include <filesystem>
+
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/utility/ReplayCache.hpp"
 
 // depthai internal utilities
 #include "utility/ErrorMacros.hpp"
 #include "utility/RecordReplayImpl.hpp"
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include "opencv/ReplayInternal.hpp"
+#endif
 
 namespace dai {
 namespace node {
@@ -274,34 +282,66 @@ Node::Output* Camera::requestOutput(const Capability& capability, bool onHost) {
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+namespace {
+
+bool replayPathIsArchive(const std::filesystem::path& path) {
+    auto filename = path.filename().string();
+    std::transform(filename.begin(), filename.end(), filename.begin(), [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+    return filename.size() >= 4 && (filename.find(".tar") != std::string::npos || filename.find(".tgz") != std::string::npos);
+}
+
+}  // namespace
+
 Camera& Camera::setMockIsp(ReplayVideo& replay) {
-    if(!replay.getReplayVideoFile().empty()) {
-        auto [width, height] = replay.getSize();
-        double fps = (double)replay.getFps();
-        if(width <= 0 || height <= 0) {
-            const auto& [vidWidth, vidHeight, vidFps] = utility::getVideoSize(replay.getReplayVideoFile().string());
-            width = vidWidth;
-            height = vidHeight;
-            fps = vidFps;
-        }
-        properties.mockIspWidth = width;
-        properties.mockIspHeight = height;
-        properties.mockIspFps = fps;
-
-        // Pick the frame type for the platform of the device this camera runs on (falls back to the pipeline default device when the node has none)
-        auto mockDevice = device ? device : getParentPipeline().getDefaultDevice();
-        if(mockDevice) {
-            if(mockDevice->getPlatform() == Platform::RVC2) {
-                replay.setOutFrameType(ImgFrame::Type::YUV420p);
-            } else {
-                replay.setOutFrameType(ImgFrame::Type::NV12);
-            }
-        }
-
-        replay.out.link(mockIsp);
-    } else {
+    const auto source = replay.getReplayVideoFile();
+    if(source.empty()) {
         throw std::runtime_error("ReplayVideo video path not set");
     }
+
+    // The output type follows the camera platform. A pipeline with no device is not RVC2.
+    auto mockDevice = device ? device : getParentPipeline().getDefaultDevice();
+    const bool rvc2 = mockDevice && mockDevice->getPlatform() == Platform::RVC2;
+    replay.setOutFrameType(rvc2 ? ImgFrame::Type::YUV420p : ImgFrame::Type::NV12);
+
+    auto [width, height] = replay.getSize();
+    double fps = replay.getFps();
+    const bool needSize = width <= 0 || height <= 0;
+    const bool needFps = !(fps > 0.0);
+    if(needSize || needFps) {
+        int probedWidth = 0;
+        int probedHeight = 0;
+        double probedFps = 0.0;
+        if(replay.getSourceLocation() == ReplaySourceLocation::DEVICE) {
+            if(!mockDevice) throw std::runtime_error("ReplayVideo source size is not set");
+            const auto size = mockDevice->replayCacheSourceSize(source.string());
+            probedWidth = std::get<0>(size);
+            probedHeight = std::get<1>(size);
+            probedFps = std::get<2>(size);
+        } else if(std::filesystem::is_directory(source)) {
+            const auto probed = replay::probeMediaSize(source);
+            probedWidth = std::get<0>(probed);
+            probedHeight = std::get<1>(probed);
+            probedFps = std::get<2>(probed);
+        } else if(replayPathIsArchive(source)) {
+            if(needSize) throw std::runtime_error("ReplayVideo source size is not set");
+        } else {
+            const auto [vidWidth, vidHeight, vidFps] = utility::getVideoSize(source.string());
+            probedWidth = static_cast<int>(vidWidth);
+            probedHeight = static_cast<int>(vidHeight);
+            probedFps = vidFps;
+        }
+        if(needSize) {
+            width = probedWidth;
+            height = probedHeight;
+        }
+        if(needFps) fps = probedFps > 0.0 ? probedFps : 30.0;
+    }
+    if(width <= 0 || height <= 0) throw std::runtime_error("ReplayVideo source size is not set");
+
+    properties.mockIspWidth = width;
+    properties.mockIspHeight = height;
+    properties.mockIspFps = fps;
+    replay.out.link(mockIsp);
     return *this;
 }
 #endif

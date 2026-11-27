@@ -83,6 +83,8 @@ enum class DatatypeEnum : std::int32_t {
     Odometry,
     MultiDeviceCalibrationControl,
     MultiDeviceCalibrationResult,
+    RecordControl,
+    RecordStatus,
     COUNT  // Sentinel used by consistency checks; must remain the last enum entry.
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);

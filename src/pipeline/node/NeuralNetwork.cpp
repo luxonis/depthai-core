@@ -10,6 +10,7 @@
 #include "depthai/depthai.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/node/host/Replay.hpp"
 #include "nn_archive/NNArchive.hpp"
 #include "openvino/BlobReader.hpp"
 #include "openvino/OpenVINO.hpp"
@@ -60,7 +61,11 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Replay
     ImgFrameCapability cap;
     if(fps.has_value()) cap.fps.value = *fps;
     cap = getFrameCapability(*nnArchive, cap);
-    input->setOutFrameType(cap.type.value());
+    const auto outType = cap.type.value();
+    if(!ReplayVideo::isSupportedOutFrameType(outType)) {
+        throw std::runtime_error(std::string("ReplayVideo output type is not supported: ") + std::string(magic_enum::enum_name(outType)));
+    }
+    input->setOutFrameType(outType);
     if(fps.has_value()) {
         input->setFps(*fps);
     }

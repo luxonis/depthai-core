@@ -1,14 +1,14 @@
 #pragma once
 
+#include <fstream>
+
+#include "EncodedVideoRecorder.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 #include "mcap/mcap.hpp"
-#ifdef DEPTHAI_ENABLE_MP4V2
-    #include <mp4v2.h>
-#endif
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include <google/protobuf/descriptor.h>
 #endif
-#include "utility/span.hpp"
+#include "depthai/utility/span.hpp"
 namespace dai {
 namespace utility {
 
@@ -22,6 +22,9 @@ class VideoRecorder {
 
     ~VideoRecorder();
     void init(const std::string& filePath, unsigned int width, unsigned int height, unsigned int fps, VideoCodec codec);
+    // Installs cached SPS and PPS before the first sample. A segment that starts
+    // on a later IDR does not always repeat them in the bitstream.
+    void setH264ParameterSets(span<const std::uint8_t> sps, span<const std::uint8_t> pps);
     void write(span<uint8_t>&, const uint32_t stride = 0);
     void close();
     bool isInitialized() const {
@@ -34,10 +37,7 @@ class VideoRecorder {
     unsigned int width = 0;
     unsigned int height = 0;
     VideoCodec codec = VideoCodec::RAW;
-#ifdef DEPTHAI_ENABLE_MP4V2
-    MP4FileHandle mp4Writer = MP4_INVALID_FILE_HANDLE;
-    MP4TrackId mp4Track = MP4_INVALID_TRACK_ID;
-#endif
+    std::unique_ptr<EncodedVideoRecorder> encodedWriter;
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     std::unique_ptr<cv::VideoWriter> cvWriter;
 #endif
@@ -81,10 +81,15 @@ class ByteRecorder {
         msg.sequence = index++;
         msg.data = reinterpret_cast<const std::byte*>(data.data());
         msg.dataSize = data.size();
-        const auto res = writer.write(msg);
-        if(!res.ok()) {
-            writer.close();
-            throw std::runtime_error("Failed to write video frame metadata: " + res.message);
+        try {
+            const auto res = writer.write(msg);
+            if(!res.ok()) throw std::runtime_error("Failed to write video frame metadata: " + res.message);
+        } catch(...) {
+            writer.terminate();
+            initialized = false;
+            output.exceptions(std::ios::goodbit);
+            output.close();
+            throw;
         }
     }
     void close();
@@ -95,6 +100,7 @@ class ByteRecorder {
    private:
     bool initialized = false;
     uint64_t index = 0;
+    std::ofstream output;
     mcap::McapWriter writer;
     mcap::ChannelId channelId;
 };

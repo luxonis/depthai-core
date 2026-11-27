@@ -157,7 +157,15 @@ set(DEPTHAI_DEVICE_KB_CORE_PATH "${_depthai_core_default_path}" CACHE PATH "Path
 set(DEPTHAI_PYTHON_EMBEDDED_MODULE ON CACHE BOOL "Set depthai python as embedded module" FORCE)
 set(DEPTHAI_BUILD_PYTHON ON CACHE BOOL "Build depthai python module" FORCE)
 set(DEPTHAI_ENABLE_CURL OFF CACHE BOOL "Enable curl" FORCE)
-set(DEPTHAI_ENABLE_PROTOBUF OFF CACHE BOOL "Enable protobuf" FORCE)
+# The RVC4 image already provides protobuf 3.19.6 as libprotobuf.so.30. The IMU
+# node links that shared library, so depthai uses the same one. A second copy
+# from vcpkg would collide with it. The matching host protoc is in the SDK sysroot.
+set(DEPTHAI_ENABLE_PROTOBUF ON CACHE BOOL "Enable protobuf" FORCE)
+set(DEPTHAI_ENABLE_MP4V2 ON CACHE BOOL "Enable encoded recording" FORCE)
+set(_DEPTHAI_RVC4_PROTOC "/usr/local/oe-sdk-hardcoded-buildpath/sysroots/x86_64-qtisdk-linux/usr/bin/protoc")
+if(EXISTS "${_DEPTHAI_RVC4_PROTOC}")
+    set(Protobuf_PROTOC_EXECUTABLE "${_DEPTHAI_RVC4_PROTOC}" CACHE FILEPATH "Host protoc for the RVC4 sysroot protobuf" FORCE)
+endif()
 set(DEPTHAI_ENABLE_REMOTE_CONNECTION OFF CACHE BOOL "Enable remote connection" FORCE)
 set(DEPTHAI_ENABLE_EVENTS_MANAGER OFF CACHE BOOL "Enable events manager" FORCE)
 set(DEPTHAI_BOOTSTRAP_VCPKG OFF CACHE BOOL "Enable vcpkg" FORCE)
@@ -511,6 +519,10 @@ set(DEPTHAI_PLATFORM_SOURCES
     src/pipeline/node/GstPipelineInterface.cpp
     src/pipeline/node/rvc4/GstVaapiEncRvc4.cpp
     src/pipeline/node/VideoEncoder.cpp
+    src/pipeline/node/Replay/Replay.cpp
+    src/utilities/ReplayCacheDevice.cpp
+    src/pipeline/node/Record/Record.cpp
+    src/utilities/RecordingStoreDevice.cpp
     src/pipeline/node/Sync/Sync.cpp
     src/pipeline/node/ImageManip/rvc4/ImageManipRvc4.cpp
     src/pipeline/node/ImageManip/rvc4/gpu/ImageManipGPU.cpp
@@ -791,7 +803,7 @@ find_package(spdlog CONFIG REQUIRED)
 message(STATUS "Found spdlog at ${spdlog_DIR}")
 
 find_package(PkgConfig REQUIRED)
-pkg_search_module(GST REQUIRED gstreamer-1.0>=1.4 gstreamer-app-1.0>=1.4 gstallocators-1.0>=1.4)
+pkg_search_module(GST REQUIRED gstreamer-1.0>=1.4 gstreamer-app-1.0>=1.4 gstreamer-video-1.0>=1.4 gstallocators-1.0>=1.4)
 message(STATUS "GST Libraries: ${GST_LIBRARIES}")
 
 # Include directories (for non-CMake targets)
@@ -829,6 +841,7 @@ target_link_libraries(depthai-device-core
 
     # PRIVATE
     depthai::core
+    messages
     Threads::Threads
     dl
     tbb

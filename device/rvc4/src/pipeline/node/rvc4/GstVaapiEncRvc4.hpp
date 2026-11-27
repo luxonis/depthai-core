@@ -1,14 +1,15 @@
 #pragma once
 
 // std
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <string>
 #include <tuple>
 
 // project
-#include "depthai/properties/VideoEncoderProperties.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/properties/VideoEncoderProperties.hpp"
 #include "depthai/utility/Memory.hpp"
 #include "utilities/GstBufferMemory.hpp"
 
@@ -28,7 +29,6 @@ class GstVaapiEnc {
     GstElement* capsfilter;
     GstElement* appsink;
     GstBus* bus;
-    GstBufferPool* fdMemoryPool = nullptr;
     GstAllocator* inputFdAllocator = nullptr;
     std::shared_ptr<spdlog::async_logger> logger;
 
@@ -48,6 +48,10 @@ class GstVaapiEnc {
     }
     void set_appsrc_caps(const int width, const int height, const int fps, dai::ImgFrame::Type type);
     void set_encoder_props(dai::VideoEncoderProperties props);
+    // Ask the encoder to emit an IDR, with SPS and PPS, on a later frame.
+    void requestKeyframe();
+    // The encoder has produced a buffer, so its Codec2 engine exists.
+    void noteEncodedFrame();
     std::tuple<bool, std::string> push_to_encoder(std::shared_ptr<dai::ImgFrame> frame);
     void run(bool run_in_thread);
     void stop();
@@ -55,9 +59,11 @@ class GstVaapiEnc {
     dai::VideoEncoderProperties props;
     int width, height;
 
-    private:
-    static constexpr const int FD_MEMPOOL_MIN_BUFFERS = 2;
-    static constexpr const int FD_MEMPOOL_MAX_BUFFERS = 10;
-
+   private:
     GstClockTime vencFrameBaseNs = GST_CLOCK_TIME_NONE;
+    // trigger-iframe faults if it runs before the first encoded frame.
+    std::atomic<bool> keyframeRequested{false};
+    std::atomic<bool> encoderStarted{false};
+
+    void emitQueuedKeyframe();
 };

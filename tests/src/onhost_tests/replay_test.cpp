@@ -2,6 +2,7 @@
 
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 #include <chrono>
 #include <cstdlib>
 #include <ctime>
@@ -70,15 +71,8 @@ TEST_CASE("ReplayMetadataOnly node") {
         replayNode->setReplayFile(std::filesystem::path(helper.testFolder).append("extracted").append("IMU.mcap"));
         replayNode->setLoop(true);
 
-        auto q = replayNode->out.createOutputQueue();
-
-        p.start();
-        for(auto i = 0U; i < NUM_MSGS; i++) {
-            if(!p.isRunning()) break;
-            auto data = q->get<dai::IMUData>();
-            REQUIRE(data != nullptr);
-        }
-        p.stop();
+        // The bundled IMU recording stores sequence number 0 on every packet.
+        REQUIRE_THROWS_WITH(p.start(), Catch::Matchers::ContainsSubstring("sequence numbers do not increase"));
     }
 }
 
@@ -153,14 +147,15 @@ TEST_CASE("ReplayMetadataOnly replays RGBDData MCAP", "[Replay][RGBDData]") {
     REQUIRE(replayedColor->getSequenceNum() == colorFrame->getSequenceNum() + sequenceNumOffset);
     REQUIRE(replayedColor->getTimestamp() == colorFrame->getTimestamp() + timestampOffset);
     REQUIRE(replayedColor->getTimestampDevice() == colorFrame->getTimestampDevice() + deviceTimestampOffset);
-    REQUIRE(replayedColor->getTimestampSystem() == colorFrame->getTimestampSystem());
+    const auto systemOffset = std::chrono::duration_cast<std::chrono::system_clock::duration>(timestampOffset);
+    REQUIRE(replayedColor->getTimestampSystem() == *colorFrame->getTimestampSystem() + systemOffset);
     REQUIRE(replayedDepth->getWidth() == depthFrame->getWidth());
     REQUIRE(replayedDepth->getHeight() == depthFrame->getHeight());
     REQUIRE(toVector(replayedDepth->getData()) == toVector(depthFrame->getData()));
     REQUIRE(replayedDepth->getSequenceNum() == depthFrame->getSequenceNum() + sequenceNumOffset);
     REQUIRE(replayedDepth->getTimestamp() == depthFrame->getTimestamp() + timestampOffset);
     REQUIRE(replayedDepth->getTimestampDevice() == depthFrame->getTimestampDevice() + deviceTimestampOffset);
-    REQUIRE(replayedDepth->getTimestampSystem() == depthFrame->getTimestampSystem());
+    REQUIRE(replayedDepth->getTimestampSystem() == *depthFrame->getTimestampSystem() + systemOffset);
     p.stop();
 }
 #endif
@@ -176,15 +171,7 @@ TEST_CASE("ReplayVideo node") {
         replayNode->setReplayVideoFile(std::filesystem::path(helper.testFolder).append("extracted").append("CameraCAM_A.mp4"));
         replayNode->setLoop(true);
 
-        auto q = replayNode->out.createOutputQueue();
-
-        p.start();
-        for(auto i = 0U; i < NUM_MSGS; i++) {
-            if(!p.isRunning()) break;
-            auto data = q->get<dai::ImgFrame>();
-            REQUIRE(data != nullptr);
-        }
-        p.stop();
+        REQUIRE_THROWS_WITH(p.start(), Catch::Matchers::ContainsSubstring("does not match"));
     }
 }
 
@@ -195,7 +182,11 @@ TEST_CASE("ReplayVideo no metadata") {
         dai::Pipeline p(false);
 
         auto replayNode = p.create<dai::node::ReplayVideo>();
-        replayNode->setReplayVideoFile(std::filesystem::path(helper.testFolder).append("extracted").append("CameraCAM_A.mp4"));
+        // The extracted recording keeps a sibling .mcap whose message count does not match the video.
+        // Copy the video alone so this case replays the file with no metadata.
+        const auto video = std::filesystem::path(helper.testFolder) / "CameraCAM_A.mp4";
+        std::filesystem::copy_file(std::filesystem::path(helper.testFolder) / "extracted" / "CameraCAM_A.mp4", video);
+        replayNode->setReplayVideoFile(video);
         replayNode->setOutFrameType(dai::ImgFrame::Type::NV12);
         replayNode->setLoop(true);
 
@@ -214,3 +205,15 @@ TEST_CASE("ReplayVideo no metadata") {
         p.stop();
     }
 }
+
+#if defined(__linux__) && defined(DEPTHAI_ENABLE_PROTOBUF)
+TEST_CASE("ByteRecorder reports a full metadata sink") {
+    dai::utility::ByteRecorder recorder;
+    // A failure may occur when the header is written or when the final chunk is flushed.
+    REQUIRE_THROWS([&] {
+        recorder.init<dai::proto::rgbd_data::RGBDData>("/dev/full", dai::RecordConfig::CompressionLevel::NONE, "frames");
+        recorder.write(std::vector<std::uint8_t>{1, 2, 3});
+        recorder.close();
+    }());
+}
+#endif

@@ -1,5 +1,9 @@
 #include "PipelineImplHelper.hpp"
 
+#include <algorithm>
+#include <iomanip>
+#include <sstream>
+
 #include "pipeline/node/internal/PipelineEventAggregation.hpp"
 #include "pipeline/node/internal/PipelineStateMerge.hpp"
 #include "pipeline/node/internal/XLinkIn.hpp"
@@ -116,56 +120,119 @@ void PipelineImplHelper::setupHolisticRecordAndReplay(const std::weak_ptr<Pipeli
         }
     }
 }
+bool PipelineImplHelper::packHolisticRecording(PipelineImpl* pipeline) {
+    if(pipeline == nullptr || !pipeline->buildingOnHost) return false;
+    if(pipeline->holisticRecordPacked) return true;
+    if(pipeline->recordConfig.state != RecordConfig::RecordReplayState::RECORD) return false;
+    if(pipeline->recordTransferFailed) {
+        std::string recordingName = "recording";
+        const auto found = pipeline->recordReplayFilenames.find("holistic_recording");
+        if(found != pipeline->recordReplayFilenames.end()) recordingName = found->second.filename().string();
+        Logging::getInstance().logger.error("Record download of {} failed: archive was not created", recordingName);
+        return false;
+    }
+
+    std::vector<std::filesystem::path> filenames;
+    std::vector<std::string> outFiles;
+    const auto addIfExists = [&](const std::filesystem::path& path, const std::string& nameInArchive) {
+        std::error_code error;
+        if(!std::filesystem::is_regular_file(path, error)) return;
+        filenames.push_back(path);
+        outFiles.push_back(nameInArchive);
+    };
+    const auto addNamed = [&](const std::string& key, const std::string& nameInArchive) {
+        const auto found = pipeline->recordReplayFilenames.find(key);
+        if(found != pipeline->recordReplayFilenames.end()) addIfExists(found->second, nameInArchive);
+    };
+
+    const auto holistic = pipeline->recordReplayFilenames.find("holistic_recording");
+    if(holistic != pipeline->recordReplayFilenames.end() && std::filesystem::is_directory(holistic->second)) {
+        for(const auto& entry : std::filesystem::recursive_directory_iterator(holistic->second)) {
+            if(!entry.is_regular_file()) continue;
+            const auto filename = entry.path().filename().string();
+            if(!filename.empty() && filename.front() == '.') continue;
+            const auto relative = std::filesystem::relative(entry.path(), holistic->second).generic_string();
+            addIfExists(entry.path(), relative);
+        }
+        addNamed("record_config", "record_config.json");
+        addNamed("camera_info", "camera_info.json");
+        for(const auto& entry : pipeline->recordReplayFilenames) {
+            if(entry.first == "record_config" || entry.first == "camera_info" || entry.first == "holistic_recording") continue;
+            if(entry.first.empty() || entry.first[0] != 'b') continue;
+            const auto nodeName = entry.first.size() > 2 ? entry.first.substr(2) : entry.first;
+            addIfExists(std::filesystem::path(entry.second).concat(".mcap"), nodeName + ".mcap");
+        }
+    } else {
+        addNamed("record_config", "record_config.json");
+        addNamed("camera_info", "camera_info.json");
+        for(const auto& entry : pipeline->recordReplayFilenames) {
+            if(entry.first == "record_config" || entry.first == "camera_info" || entry.first == "holistic_recording") continue;
+            if(entry.first.size() < 2) continue;
+            const auto nodeName = entry.first.substr(2);
+            addIfExists(std::filesystem::path(entry.second).concat(".mcap"), nodeName + ".mcap");
+            if(entry.first[0] == 'v') {
+                const auto extension = pipeline->recordConfig.videoEncoding.enabled ? ".mp4" : ".avi";
+                addIfExists(std::filesystem::path(entry.second).concat(extension), nodeName + extension);
+            }
+        }
+    }
+
+    Logging::getInstance().logger.info("Record: Creating tar.gz file with {} files", filenames.size());
+    try {
+        const auto now = std::chrono::system_clock::now();
+        const std::time_t time = std::chrono::system_clock::to_time_t(now);
+        std::tm local{};
+#if defined(_WIN32)
+        localtime_s(&local, &time);
+#else
+        localtime_r(&time, &local);
+#endif
+        std::ostringstream stamp;
+        stamp << std::put_time(&local, "%Y-%m-%d_%H-%M-%S");
+        utility::archiveFilesCompressed(platform::joinPaths(pipeline->recordConfig.outputDir, "recording_" + stamp.str() + ".tar.gz"), filenames, outFiles);
+    } catch(const std::exception& ex) {
+        Logging::getInstance().logger.error("Record: Failed to create tar file: {}", ex.what());
+        return false;
+    }
+
+    pipeline->holisticRecordPacked = true;
+    if(pipeline->removeRecordReplayFiles) {
+        Logging::getInstance().logger.info("Record and Replay: Removing temporary files");
+        for(const auto& entry : pipeline->recordReplayFilenames) {
+            std::error_code error;
+            if(entry.first == "holistic_recording") {
+                std::filesystem::remove_all(entry.second, error);
+            } else if(entry.first == "record_config" || entry.first == "camera_info") {
+                std::filesystem::remove(entry.second, error);
+            } else {
+                std::filesystem::remove(std::filesystem::path(entry.second).concat(".mcap"), error);
+                std::filesystem::remove(std::filesystem::path(entry.second).concat(pipeline->recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"), error);
+            }
+        }
+    }
+    return true;
+}
+
 void PipelineImplHelper::finishHolisticRecordAndReplay(PipelineImpl* pipeline) {
     if(pipeline->buildingOnHost) {
         if(pipeline->recordConfig.state == RecordConfig::RecordReplayState::RECORD) {
-            std::vector<std::filesystem::path> filenames = {pipeline->recordReplayFilenames["record_config"], pipeline->recordReplayFilenames["camera_info"]};
-            std::vector<std::string> outFiles = {"record_config.json", "camera_info.json"};
-            filenames.reserve(pipeline->recordReplayFilenames.size() * 2 + 1);
-            outFiles.reserve(pipeline->recordReplayFilenames.size() * 2 + 1);
-            for(auto& rstr : pipeline->recordReplayFilenames) {
-                if(rstr.first != "record_config" && rstr.first != "camera_info") {
-                    std::string nodeName = rstr.first.substr(2);
-                    std::filesystem::path filePath = rstr.second;
-                    filenames.push_back(std::filesystem::path(filePath).concat(".mcap"));
-                    outFiles.push_back(nodeName + ".mcap");
-                    if(rstr.first[0] == 'v') {
-                        filenames.push_back(std::filesystem::path(filePath).concat(pipeline->recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
-                        outFiles.push_back(nodeName + (pipeline->recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
-                    }
-                }
-            }
-            Logging::getInstance().logger.info("Record: Creating tar file with {} files", filenames.size());
-            try {
-                auto now = std::chrono::system_clock::now();
-                std::time_t t = std::chrono::system_clock::to_time_t(now);
-                std::tm tm{};
-#if defined(_WIN32)
-                localtime_s(&tm, &t);
-#else
-                localtime_r(&t, &tm);
-#endif
-                std::ostringstream oss;
-                oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
-
-                utility::archiveFiles(platform::joinPaths(pipeline->recordConfig.outputDir, "recording_" + oss.str() + ".tar"), filenames, outFiles);
-            } catch(const std::exception& e) {
-                Logging::getInstance().logger.error("Record: Failed to create tar file: {}", e.what());
-            }
-        }
-
-        if(pipeline->removeRecordReplayFiles && pipeline->recordConfig.state != RecordConfig::RecordReplayState::NONE) {
+            packHolisticRecording(pipeline);
+        } else if(pipeline->removeRecordReplayFiles && pipeline->recordConfig.state != RecordConfig::RecordReplayState::NONE) {
             Logging::getInstance().logger.info("Record and Replay: Removing temporary files");
-            for(auto& kv : pipeline->recordReplayFilenames) {
-                if(kv.first != "record_config" && kv.first != "camera_info") {
-                    std::filesystem::remove(std::filesystem::path(kv.second).concat(".mcap"));
-                    std::filesystem::remove(std::filesystem::path(kv.second).concat(pipeline->recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
+            for(const auto& entry : pipeline->recordReplayFilenames) {
+                std::error_code error;
+                if(entry.first == "record_config" || entry.first == "camera_info" || entry.first == "holistic_recording") {
+                    if(entry.first == "holistic_recording") {
+                        std::filesystem::remove_all(entry.second, error);
+                    } else {
+                        std::filesystem::remove(entry.second, error);
+                    }
                 } else {
-                    std::filesystem::remove(kv.second);
+                    std::filesystem::remove(std::filesystem::path(entry.second).concat(".mcap"), error);
+                    std::filesystem::remove(std::filesystem::path(entry.second).concat(pipeline->recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"), error);
                 }
             }
         }
-
         pipeline->recordConfig.state = RecordConfig::RecordReplayState::NONE;
     }
 }

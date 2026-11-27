@@ -11,11 +11,12 @@
 #                         link to the source on Launchpad
 #   LICENSE-depthai-core  The license of the depthai-core files in the image
 #
-# Environment (set by Dockerfile.sdk): FASTCV_URL, FASTCV_SHA256, RVC4_OS_VERSION, RVC4_CORE_REVISION.
+# Environment (set by Dockerfile.sdk): FASTCV_URL, FASTCV_SHA256, PROTOC_URL, PROTOC_SHA256,
+# RVC4_OS_VERSION, RVC4_CORE_REVISION.
 #
 # The script stops with an error when a part has no license text: an installed Ubuntu package without
-# /usr/share/doc/<package>/copyright that still has files in the image, numpy without its license file, or the
-# sysroot without NOTICE.md.
+# /usr/share/doc/<package>/copyright that still has files in the image, numpy without its license file, protoc
+# missing or not 3.19.6, or the sysroot without NOTICE.md.
 set -euo pipefail
 
 if [ $# -ne 2 ]; then
@@ -24,7 +25,7 @@ if [ $# -ne 2 ]; then
 fi
 OUT=$1
 CORE_LICENSE=$2
-: "${FASTCV_URL:?}" "${FASTCV_SHA256:?}" "${RVC4_OS_VERSION:?}"
+: "${FASTCV_URL:?}" "${FASTCV_SHA256:?}" "${PROTOC_URL:?}" "${PROTOC_SHA256:?}" "${RVC4_OS_VERSION:?}"
 CORE_REVISION=${RVC4_CORE_REVISION:-unknown}
 SYSROOT=${DEPTHAI_DEVICE_RVC4_SYSROOT:-/opt/rvc4-sysroot}
 
@@ -77,9 +78,12 @@ fi
 bundled=$(cd "$numpy_dir/numpy.libs" 2>/dev/null && ls) || bundled=""
 
 for f in "$SYSROOT/NOTICE.md" "$SYSROOT/MANIFEST.json" "$SYSROOT/usr/share/licenses/fastcv/LICENSE" \
-    "$SYSROOT/usr/share/licenses/fastcv/NOTICE"; do
+    "$SYSROOT/usr/share/licenses/fastcv/NOTICE" /usr/local/share/doc/protoc/LICENSE; do
     test -f "$f" || { echo "error: no $f" >&2; exit 1; }
 done
+test -x /usr/local/bin/protoc || { echo "error: no /usr/local/bin/protoc" >&2; exit 1; }
+protoc_version=$(/usr/local/bin/protoc --version | awk '{print $2}')
+test "$protoc_version" = 3.19.6 || { echo "error: protoc is $protoc_version, the sysroot protobuf is 3.19.6" >&2; exit 1; }
 
 if [ "$CORE_REVISION" = unknown ]; then
     core_source="https://github.com/luxonis/depthai-core (the revision of this image is not known)"
@@ -102,6 +106,7 @@ compiler (files of the Ubuntu packages in the list below).
 | $package_count Ubuntu 22.04 packages: the base system, the build tools, Python 3, the cross compiler \`g++-11-aarch64-linux-gnu\` and binutils | \`/usr\`, \`/etc\`, \`/var\` | \`/usr/share/doc/<package>/copyright\` | The source package and the version of each package, with a link to its source on Launchpad: \`ubuntu-packages.tsv\` in this folder |
 | numpy $numpy_version (wheel from PyPI): headers and module for the Python bindings of the firmware | \`$numpy_dir/numpy\`, \`numpy.libs\` | \`$numpy_license\` | See "numpy" below |
 | FastCV headers (Qualcomm Innovation Center) | \`$SYSROOT/usr/include/fastcv\` | \`$SYSROOT/usr/share/licenses/fastcv/LICENSE\` and \`NOTICE\` (BSD-3-Clause-Clear) | $FASTCV_URL (sha256 $FASTCV_SHA256) |
+| protoc $protoc_version | \`/usr/local/bin/protoc\` | \`/usr/local/share/doc/protoc/LICENSE\` (BSD-3-Clause) | $PROTOC_URL (sha256 $PROTOC_SHA256). Source of the release: https://github.com/protocolbuffers/protobuf/tree/v$protoc_version |
 | depthai-core files: \`/usr/local/bin/install-hexagon-sdk.sh\` and this notice | \`/usr/local/bin\`, this folder | \`LICENSE-depthai-core\` in this folder (MIT) | $core_source |
 | Public sysroot of Luxonis OS $RVC4_OS_VERSION | \`$SYSROOT\` | \`$SYSROOT/NOTICE.md\` lists each project and its license; \`$SYSROOT/MANIFEST.json\` lists each file | \`$SYSROOT/NOTICE.md\` |
 
@@ -153,4 +158,4 @@ EOF
 EOF
 } > "$OUT/NOTICE.md"
 
-echo "Notices written to $OUT: $package_count Ubuntu packages (${#removed[@]} without files in the image), numpy $numpy_version"
+echo "Notices written to $OUT: $package_count Ubuntu packages (${#removed[@]} without files in the image), numpy $numpy_version, protoc $protoc_version"

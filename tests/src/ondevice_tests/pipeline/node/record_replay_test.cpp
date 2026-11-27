@@ -161,6 +161,8 @@ TEST_CASE("RecordVideo encoded h264") {
     auto videoEncoder = p.create<dai::node::VideoEncoder>();
 
     auto recordNode = p.create<dai::node::RecordVideo>();
+    // Encoded frames would otherwise run the record node on RVC4, and that firmware is not in this repository.
+    recordNode->setRunOnHost(true);
     recordNode->setRecordMetadataFile(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_h264.mcap"));
     recordNode->setRecordVideoFile(std::filesystem::path(helper.testFolder).append("recording_video").append("video_h264.mp4"));
 
@@ -191,6 +193,8 @@ TEST_CASE("RecordVideo encoded mjpeg") {
     auto videoEncoder = p.create<dai::node::VideoEncoder>();
 
     auto recordNode = p.create<dai::node::RecordVideo>();
+    // Encoded frames would otherwise run the record node on RVC4, and that firmware is not in this repository.
+    recordNode->setRunOnHost(true);
     recordNode->setRecordMetadataFile(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_mjpeg.mcap"));
     recordNode->setRecordVideoFile(std::filesystem::path(helper.testFolder).append("recording_video").append("video_mjpeg.mp4"));
 

@@ -39,6 +39,8 @@ void writeMsgBinaryFile(const std::filesystem::path& path, const proto::common::
     if(!message.SerializeToOstream(&file)) {
         throw std::runtime_error("Failed to write protobuf message: " + path.string());
     }
+    file.close();
+    if(!file) throw std::runtime_error("Failed to close protobuf message: " + path.string());
 }
 
 proto::common::ProtoSerializableMessage readMsgBinaryFile(const std::filesystem::path& path) {
