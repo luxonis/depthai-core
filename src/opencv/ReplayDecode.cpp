@@ -1,8 +1,8 @@
 #include <algorithm>
 #include <cstring>
 #include <fstream>
-#include <map>
 #include <magic_enum/magic_enum.hpp>
+#include <map>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
