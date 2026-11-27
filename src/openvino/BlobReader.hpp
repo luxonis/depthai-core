@@ -32,10 +32,6 @@ class BlobReader {
         return blobHeader.stages_count;
     }
 
-    uint32_t getMagicNumber() const {
-        return blobHeader.magic_number;
-    }
-
     uint32_t getVersionMajor() const {
         return blobHeader.blob_ver_major;
     }
@@ -48,10 +44,6 @@ class BlobReader {
     }
     uint32_t getNumberOfSlices() const {
         return blobHeader.number_of_cmx_slices;
-    }
-
-    std::pair<const std::uint8_t*, size_t> getHeader() const {
-        return {pBlob, sizeof(ElfN_Ehdr) + sizeof(mv_blob_header)};
     }
 
    private:
