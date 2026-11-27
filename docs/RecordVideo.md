@@ -2,7 +2,7 @@
 
 `dai::node::RecordVideo` writes `ImgFrame` or `EncodedFrame` messages to disk. It runs on an RVC4 device unless `setRunOnHost(true)` is set. On RVC2, and in a pipeline with no device, it runs on the host. `setRunOnHost(false)` on RVC2 or with no device fails when the pipeline starts.
 
-The node does not change the frames it receives. `input` accepts `ImgFrame` and `EncodedFrame`, does not block, and keeps the 15 newest messages. `inputControl` accepts `RecordControl`, does not block, and keeps 4 messages. `status` sends one `RecordStatus` for every state change. A full status queue does not stall recording, and `getStatus()` still returns the latest status.
+The node does not change the frames it receives. `input` accepts `ImgFrame` and `EncodedFrame`, does not block, and keeps the 15 newest messages. `inputControl` accepts `RecordControl`, blocks, and the queue holds 4 messages. `status` sends one `RecordStatus` for every state change. A full status queue does not stall recording, and `getStatus()` still returns the latest status.
 
 ## Formats
 

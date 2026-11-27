@@ -49,9 +49,9 @@ class RecordVideo : public DeviceNodeCRTP<DeviceNode, RecordVideo, RecordVideoPr
     Input input{*this, {"input", DEFAULT_GROUP, false, 15, {{{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::EncodedFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
-     * Optional RecordControl input. Does not block. Queue of 4.
+     * Optional RecordControl input. It blocks and the queue holds 4 messages.
      */
-    Input inputControl{*this, {"inputControl", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::RecordControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input inputControl{*this, {"inputControl", DEFAULT_GROUP, true, 4, {{{DatatypeEnum::RecordControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * RecordStatus output. One message for each state change. Sending it does not drop a message.
