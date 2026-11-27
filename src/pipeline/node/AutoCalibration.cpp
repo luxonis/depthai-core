@@ -140,8 +140,7 @@ void AutoCalibration::logConfig() const {
     logger->info("Max Images/Recalib:     {}", initialConfig->maxImagesPerRecalibration);
     logger->info("Validation Set Size:    {}", initialConfig->validationSetSize);
     logger->info("Flash Calibration:      {}", initialConfig->flashCalibration ? "Yes" : "No");
-    // Inside the firmware the DynamicCalibration node is a separate pipeline node that logs its own constraints.
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4  // On the device, DynamicCalibration logs its own constraints
     if(const auto constraints = dynamicCalibration->getWorldConstraints()) {
         logger->info("Marker Constraints:     {} markers, {} marker distances, {} socket distances ({})",
                      utility::referencedMarkerIds(*constraints).size(),
@@ -163,9 +162,8 @@ AutoCalibration::~AutoCalibration() {
 }
 
 AutoCalibration::Properties& AutoCalibration::getProperties() {
-    // initialConfig is edited through the shared pointer; a node that runs on the device starts from the serialized copy.
     if(!runOnHost()) {
-        properties.initialConfig = *initialConfig;
+        properties.initialConfig = *initialConfig;  // A device node starts from this serialized copy
     }
     return properties;
 }
@@ -268,18 +266,15 @@ void AutoCalibration::recordAggregateRotationDifference(
     }
 }
 
-void AutoCalibration::setRunOnHost(bool runOnHost) {
-    // The dynamic calibration library is shipped only in the RVC4 firmware.
+void AutoCalibration::setRunOnHost(bool runOnHost) {  // The calibration library ships only in the RVC4 firmware
     DAI_CHECK_V(runOnHost || !device || device->getPlatform() == Platform::RVC4, "AutoCalibration: running on device is supported only on RVC4");
     runOnHostVar = runOnHost;
-    // The DynamicCalibration subnode (and its Sync) follows the node, otherwise the gated frames would still cross the link.
-    dynamicCalibration->setRunOnHost(runOnHost);
+    dynamicCalibration->setRunOnHost(runOnHost);  // Else the gated frames still cross the link
 }
 
 CalibrationHandler AutoCalibration::readCurrentCalibration() {
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    // Read on every call: the DynamicCalibration node or a host setCalibration() may replace it at any time.
-    return getParentPipeline().getCalibrationData();
+    return getParentPipeline().getCalibrationData();  // Not cached: DynamicCalibration or setCalibration() can replace it
 #else
     return device->getCalibration();
 #endif
@@ -287,8 +282,7 @@ CalibrationHandler AutoCalibration::readCurrentCalibration() {
 
 int AutoCalibration::gateFps() const {
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    // The firmware node has no gate subnode; build() sets the host gate to this rate.
-    return GATE_FPS_DEFAULT;
+    return GATE_FPS_DEFAULT;  // No gate subnode in the firmware; build() sets the host gate to this rate
 #else
     return gate->initialConfig->fps;
 #endif
@@ -347,8 +341,7 @@ bool AutoCalibration::runOnHost() const {
 
 void AutoCalibration::postBuildStage() {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    // On the device the gated frames never cross the link: nothing to throttle.
-    if(!runOnHost()) {
+    if(!runOnHost()) {  // On the device, gated frames never cross the link
         return;
     }
     auto xlinkBridge = gate->output.getXLinkBridge();
@@ -363,9 +356,7 @@ void AutoCalibration::postBuildStage() {
 #endif
 }
 
-void AutoCalibration::discardQueuedFrames() {
-    // Drop frames that passed the gate before it closed. Inside the firmware the next ResetData does this, so after
-    // loadData() one frame can carry over into the recalibration that follows.
+void AutoCalibration::discardQueuedFrames() {  // In the firmware the next ResetData drops them, so one frame can carry over after loadData()
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
 #endif
@@ -635,8 +626,7 @@ bool AutoCalibration::validateIncomingData() {
 
 void AutoCalibration::run() {
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    // The firmware constructs the node without buildInternal().
-    setUp();
+    setUp();  // The firmware constructs the node without buildInternal()
     logger->info("{} running on device.", this->getName());
 #else
     logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");

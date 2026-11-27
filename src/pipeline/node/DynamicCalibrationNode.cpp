@@ -1562,9 +1562,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
         markerObservations.clear();
         lastMarkerCoverage.reset();
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-        // Frames queued before the reset belong to the dropped data. An AutoCalibration running on the device cannot
-        // reach this queue (on the host it drains it itself).
-        syncInput.tryGetAll<dai::MessageGroup>();
+        syncInput.tryGetAll<dai::MessageGroup>();  // Drop frames queued before the reset; a device AutoCalibration cannot reach this queue
 #endif
         return ErrorCode::OK;
     } else if(std::holds_alternative<DC::Commands::SetPerformanceMode>(cmd)) {

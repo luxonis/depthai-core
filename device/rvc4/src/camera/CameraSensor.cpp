@@ -1476,14 +1476,10 @@ void CameraSensor::processCaptureResult(const camera3_capture_result_t* result) 
             if(sensorTemperatureTag.has_value()) {
                 std::array<uint8_t, 2> sensorTemperatureBytes{};
                 if(HalUtil::getMetaSensorReadOutput(result->result, *sensorTemperatureTag, sensorTemperatureBytes)) {
-                    // The camera HAL publishes the tag zeroed until it first reads the sensor's temperature register, and
-                    // always for sensors without a temperature read, so a reading counts only once it was non-zero.
-                    if(sensorTemperatureBytes != std::array<uint8_t, 2>{}) {
+                    if(sensorTemperatureBytes != std::array<uint8_t, 2>{}) {  // HAL sends zeros until its first sensor read, and always for sensors without one
                         sensorTemperatureRead = true;
                     }
-                    if(sensorTemperatureRead) {
-                        // Byte 0 is the signed integer part in Celsius, byte 1 the fraction in 1/256 Celsius; the camera
-                        // HAL converts each sensor's register format to this.
+                    if(sensorTemperatureRead) {  // Byte 0: signed whole Celsius, byte 1: 1/256 Celsius (HAL format)
                         const auto value = static_cast<int16_t>((sensorTemperatureBytes[0] << 8) | sensorTemperatureBytes[1]);
                         sensorTemperatureC = static_cast<float>(value) / 256.0f;
                     }

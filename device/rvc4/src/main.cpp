@@ -168,8 +168,7 @@ XLinkGlobalHandler_t g_xlink_glob_handler = {
 dai::PipelineSchema pipelineSchema;
 dai::Assets assets;
 dai::EepromData eepromData;
-// eepromData is written by the RPC handlers and by the on-device DynamicCalibration node (flash), each on its own thread.
-std::mutex eepromDataMtx;
+std::mutex eepromDataMtx;  // eepromData: written by RPC handlers and the on-device DynamicCalibration node, each on its own thread
 dai::gate::PipelineBuilder& pipelineBuilder{dai::gate::PipelineBuilder::getInstance()};
 dai::Pipeline pipeline = dai::Pipeline(false);
 dai::DeviceProperties deviceProperties;
