@@ -190,22 +190,6 @@ StreamPacketDesc XLinkStream::readMove() const {
     return packet;
 }
 
-// USE ONLY WHEN COPYING DATA AT LATER STAGES
-streamPacketDesc_t* XLinkStream::readRaw() const {
-    streamPacketDesc_t* pPacket = nullptr;
-    auto status = XLinkReadData(streamId, &pPacket);
-    if(status != X_LINK_SUCCESS) {
-        throw XLinkReadError(status, streamName);
-    }
-    return pPacket;
-}
-
-// USE ONLY WHEN COPYING DATA AT LATER STAGES
-void XLinkStream::readRawRelease() const {
-    XLinkError_t status;
-    if((status = XLinkReleaseData(streamId)) != X_LINK_SUCCESS) throw XLinkReadError(status, streamName);
-}
-
 // SPLIT HELPER
 void XLinkStream::writeSplit(const void* d, std::size_t size, std::size_t split) const {
     const uint8_t* data = (const uint8_t*)d;
@@ -222,10 +206,6 @@ void XLinkStream::writeSplit(const void* d, std::size_t size, std::size_t split)
         currentOffset += sizeToTransmit;
         remaining = size - currentOffset;
     }
-}
-
-void XLinkStream::writeSplit(const std::vector<uint8_t>& data, std::size_t split) const {
-    writeSplit(data.data(), data.size(), split);
 }
 
 ///////////////////////
@@ -270,32 +250,6 @@ bool XLinkStream::read(std::vector<std::uint8_t>& data, std::chrono::millisecond
     } else {
         throw XLinkReadError(status, streamName);
     }
-}
-
-bool XLinkStream::readMove(StreamPacketDesc& packet, const std::chrono::milliseconds timeout) const {
-    const auto status = XLinkReadMoveDataWithTimeout(streamId, &packet, static_cast<unsigned int>(timeout.count()));
-    if(status == X_LINK_SUCCESS) {
-        return true;
-    } else if(status == X_LINK_TIMEOUT) {
-        return false;
-    } else {
-        throw XLinkReadError(status, streamName);
-    }
-}
-
-bool XLinkStream::readRaw(streamPacketDesc_t*& pPacket, std::chrono::milliseconds timeout) const {
-    auto status = XLinkReadDataWithTimeout(streamId, &pPacket, static_cast<unsigned int>(timeout.count()));
-    if(status == X_LINK_SUCCESS) {
-        return true;
-    } else if(status == X_LINK_TIMEOUT) {
-        return false;
-    } else {
-        throw XLinkReadError(status, streamName);
-    }
-}
-
-streamId_t XLinkStream::getStreamId() const {
-    return streamId;
 }
 
 std::string XLinkStream::getStreamName() const {
