@@ -48,6 +48,7 @@ class Align : public DeviceNodeCRTP<DeviceNode, Align, AlignProperties>, public 
 
     /**
      * Outputs the input message aligned to the inputAlignTo message. Output message will be of the same type as input message.
+     * RAW16 depth values represent axial Z in the target camera coordinate system; zero remains invalid.
      */
     Output outputAligned{*this, {"outputAligned", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::Transformable, true}}}};
 

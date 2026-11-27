@@ -29,7 +29,6 @@ class ImageAlign : public ::dai::node::ImageAlign {
         return true;
     }
     void run() override;
-    void buildStage1() override;
 
    private:
     static const bool PRINT_DEBUG;
@@ -63,10 +62,13 @@ class ImageAlign : public ::dai::node::ImageAlign {
     int alignWidth;
     int alignHeight;
 
-    std::shared_ptr<Pool<ImgFrame>> up_plgPoolImageAlign, up_plgWarpPool1, up_plgWarpPool2;
+    std::shared_ptr<Pool<ImgFrame>> up_plgWarpPool1, up_plgWarpPool2;
 
     cv::Mat map_x_1, map_y_1;
     cv::Mat map_x_2, map_y_2;
+    std::vector<float> rectifiedRayZ;
+    std::vector<float> alignedDepthScales;
+    float alignedDepthOffset = 0.0f;
 
     WarpDispatcher warp1, warp2;
 };

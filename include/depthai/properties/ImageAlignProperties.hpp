@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "depthai/common/Backend.hpp"
 #include "depthai/common/Interpolation.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
@@ -13,6 +14,8 @@ namespace dai {
  * Specify properties for ImageAlign
  */
 struct ImageAlignProperties : PropertiesSerializable<Properties, ImageAlignProperties> {
+    using Backend = dai::Backend;
+
     ImageAlignConfig initialConfig;
 
     /// Num frames in output pool
@@ -42,11 +45,14 @@ struct ImageAlignProperties : PropertiesSerializable<Properties, ImageAlignPrope
      */
     std::int32_t numShaves = 2;
 
+    /// Execution backend preference. AUTO preserves the platform default.
+    Backend backend = Backend::AUTO;
+
     ~ImageAlignProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT_DECL(
-    ImageAlignProperties, initialConfig, numFramesPool, alignWidth, alignHeight, warpHwIds, interpolation, outKeepAspectRatio, numShaves);
+    ImageAlignProperties, initialConfig, numFramesPool, alignWidth, alignHeight, warpHwIds, interpolation, outKeepAspectRatio, numShaves, backend);
 
 }  // namespace dai
 

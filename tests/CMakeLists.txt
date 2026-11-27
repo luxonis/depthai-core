@@ -1089,7 +1089,16 @@ dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
 dai_set_test_labels(bridge_large_messages ondevice rvc4 rvc4ffc rvc4rgb ci)
 # ImageAlign test
 dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
+target_include_directories(image_align_node_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
 dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
+# Serialization and depth-helper cases need no OpenCV; host pipeline runs and the fused CPU helpers do.
+set(image_align_host_test_filter "ImageAlign axial depth*,ImageAlign backend preferences*")
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    string(PREPEND image_align_host_test_filter
+           "ImageAlign synthetic depth comparison across host backend preferences,ImageAlign synthetic 3D point projections on host,ImageAlign refreshes stride and static-depth caches on host,Align rebuilds depth maps after a non-frame message changes the transformation on host,Fused ImageAlign*,")
+endif()
+add_test(NAME image_align_host_test COMMAND image_align_node_test "${image_align_host_test_filter}")
+set_tests_properties(image_align_host_test PROPERTIES LABELS "onhost;ci" ENVIRONMENT "${test_env}")
 
 # MDK hardware warp regression tests (camera-independent synthetic frames)
 dai_add_test(warp_node_test src/ondevice_tests/warp_node_test.cpp)
