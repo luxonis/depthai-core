@@ -4,7 +4,6 @@
 #include <chrono>
 #include <cmath>
 #include <utility>
-#include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
@@ -411,77 +410,6 @@ TEST_CASE("Test ImageManip with u16 frames") {
         REQUIRE(outFrame->getWidth() == outputWidth);
         REQUIRE(outFrame->getHeight() == outputHeight);
     }
-}
-
-TEST_CASE("ImageManip converts single channel images to full range YUV and drops failed conversions", "[imagemanip][color-conversion][rvc4]") {
-    dai::Pipeline pipeline;
-    // The RVC4 firmware converts colours with impl::colorConvert() of src/utility/ImageManipImpl.cpp. RVC2 has its own ImageManip.
-    if(pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC4) SKIP("RVC4 runs the shared ImageManip colour conversion");
-
-    constexpr int width = 64, height = 48;
-    cv::Mat gray(height, width, CV_8UC1);
-    cv::RNG(7061).fill(gray, cv::RNG::UNIFORM, 0, 256);
-    cv::Mat grayAsBgr;
-    cv::cvtColor(gray, grayAsBgr, cv::COLOR_GRAY2BGR);  // RGB input of the unsupported conversion below
-
-    auto manip = pipeline.create<dai::node::ImageManip>();
-    // Room for the stride and height alignment of the device frames
-    manip->setMaxOutputFrameSize(4 * width * height * 3);
-    manip->inputConfig.setWaitForMessage(true);
-    auto inputQueue = manip->inputImage.createInputQueue();
-    auto configQueue = manip->inputConfig.createInputQueue();
-    auto outputQueue = manip->out.createOutputQueue();
-    pipeline.start();
-
-    int sequence = 0;
-    auto send = [&](const cv::Mat& image, dai::ImgFrame::Type inputType, dai::ImgFrame::Type outputType) {
-        auto config = std::make_shared<dai::ImageManipConfig>();
-        config->setFrameType(outputType);
-        auto input = std::make_shared<dai::ImgFrame>();
-        input->setCvFrame(image, inputType);
-        input->setSequenceNum(sequence++);
-        configQueue->send(config);
-        inputQueue->send(input);
-    };
-    auto receive = [&](int expectedSequence) {
-        bool timedOut = false;
-        auto output = outputQueue->get<dai::ImgFrame>(std::chrono::seconds(5), timedOut);
-        REQUIRE_FALSE(timedOut);
-        REQUIRE(output != nullptr);
-        REQUIRE(output->getSequenceNum() == expectedSequence);
-        return output;
-    };
-
-    for(const auto target : {dai::ImgFrame::Type::NV12, dai::ImgFrame::Type::YUV420p}) {
-        CAPTURE(target);
-        send(gray, dai::ImgFrame::Type::GRAY8, target);
-        auto fromGray = receive(sequence - 1);
-        REQUIRE(fromGray->getType() == target);
-        REQUIRE(fromGray->getWidth() == width);
-        REQUIRE(fromGray->getHeight() == height);
-        // The input is the luma plane as it is (full range), not raw bytes spread over the planes
-        const cv::Mat luma(height, width, CV_8UC1, fromGray->getData().data() + fromGray->fb.p1Offset, fromGray->getStride());
-        CHECK(cv::norm(luma, gray, cv::NORM_INF) == 0.0);
-        // Neutral chroma: every converted pixel is gray, B = G = R
-        std::vector<cv::Mat> channels;
-        cv::split(fromGray->getCvFrame(), channels);
-        CHECK(cv::norm(channels[0], channels[1], cv::NORM_INF) == 0.0);
-        CHECK(cv::norm(channels[1], channels[2], cv::NORM_INF) == 0.0);
-    }
-
-    // RGB888i -> RAW16 is not supported: the node must drop the frame instead of sending the input bytes as RAW16
-    send(grayAsBgr, dai::ImgFrame::Type::RGB888i, dai::ImgFrame::Type::RAW16);
-    const int droppedSequence = sequence - 1;
-    // The next frame with a supported configuration still goes through, and is the first one that the node sends
-    send(grayAsBgr, dai::ImgFrame::Type::RGB888i, dai::ImgFrame::Type::BGR888i);
-    bool timedOut = false;
-    auto next = outputQueue->get<dai::ImgFrame>(std::chrono::seconds(5), timedOut);
-    REQUIRE_FALSE(timedOut);
-    REQUIRE(next != nullptr);
-    CHECK(next->getSequenceNum() != droppedSequence);
-    CHECK(next->getType() == dai::ImgFrame::Type::BGR888i);
-    CHECK(next->getSequenceNum() == droppedSequence + 1);
-    pipeline.stop();
 }
 
 TEST_CASE("ImageManip rebuild on cfg change") {

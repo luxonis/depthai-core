@@ -487,14 +487,12 @@ class WarpQ : public Warp {
 };
 
 class ColorChangeQ : public ColorChange {
-   protected:
-    /// The fastcv conversions run on accelerator memory, scratch buffers included
-    std::shared_ptr<OffsetMemory> allocate(size_t size) override {
-        return AcceleratorMemory::create(size);
-    }
+    std::shared_ptr<AcceleratorMemory> ccAuxFrame;
 
    public:
-    bool apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) override;
+    void build(const FrameSpecs srcFrameSpecs, const FrameSpecs dstFrameSpecs, const ImgFrame::Type typeFrom, const ImgFrame::Type typeTo);
+
+    void apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst);
 };
 
 void setDstMetadata(const impl::ImageManipOperations<DmaHeapMemory, ColorChangeQ, WarpQ>& manip, const ImgFrame& srcFrame, ImgFrame& dstFrame) {
@@ -674,11 +672,7 @@ void ManipResizer::runThreadedResizer(int numFramesPool,
                     }
                     auto t2 = std::chrono::steady_clock::now();
                 }
-                if(!manip.apply(srcMem, ConvertedOffsetMemory::convert(dst->data))) {
-                    // dst is a reused pool frame: sending it would send an old image with the metadata of this one
-                    logger->error("Resizer processing failed, potentially unsupported config - skipping frame");
-                    continue;
-                }
+                manip.apply(srcMem, ConvertedOffsetMemory::convert(dst->data));
                 setDstMetadata(manip, *msg, *dst);
 
                 outQ.send(prepareSend(dst));
@@ -2011,7 +2005,23 @@ void WarpQ::transform(const std::shared_ptr<OffsetMemory> srcData,
     }
 }
 
-bool ColorChangeQ::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) {
+void ColorChangeQ::build(const FrameSpecs srcFrameSpecs, const FrameSpecs dstFrameSpecs, const ImgFrame::Type typeFrom, const ImgFrame::Type typeTo) {
+    from = typeFrom;
+    to = typeTo;
+    srcSpecs = srcFrameSpecs;
+    dstSpecs = dstFrameSpecs;
+    size_t newAuxFrameSize = ALIGN_UP(srcSpecs.height, DEPTHAI_HEIGHT_ALIGNMENT) * ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
+    if(!ccAuxFrame || ccAuxFrame->getOffsetSize() < newAuxFrameSize) ccAuxFrame = AcceleratorMemory::create(newAuxFrameSize);
+}
+
+void ColorChangeQ::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) {
+    float bpp;
+    int numPlanes;
+    getFrameTypeInfo(to, numPlanes, bpp);
+
+    bool done = false;
+    auto start = std::chrono::steady_clock::now();
+
     auto srcOffset = src->getOffset();
     auto accelSrc = AcceleratorMemory::convert(ConvertedOffsetMemory::cast<Memory>(src));
     if(accelSrc == nullptr) {
@@ -2025,7 +2035,66 @@ bool ColorChangeQ::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_p
     }
     if(accelDst->getOffset() == 0) accelDst->setOffset(dstOffset);
 
-    return convert(accelSrc, accelDst);
+    switch(to) {
+        case dai::ImgFrame::Type::RGB888p:
+            done = colorConvertToRGB888p({accelSrc, accelDst, srcSpecs, dstSpecs, from, ccAuxFrame});
+            break;
+        case dai::ImgFrame::Type::BGR888p:
+            done = colorConvertToBGR888p({accelSrc, accelDst, srcSpecs, dstSpecs, from, ccAuxFrame});
+            break;
+        case dai::ImgFrame::Type::RGB888i:
+            done = colorConvertToRGB888i({accelSrc, accelDst, srcSpecs, dstSpecs, from, ccAuxFrame});
+            break;
+        case dai::ImgFrame::Type::BGR888i:
+            done = colorConvertToBGR888i({accelSrc, accelDst, srcSpecs, dstSpecs, from, ccAuxFrame});
+            break;
+        case dai::ImgFrame::Type::NV12:
+            done = colorConvertToNV12({accelSrc, accelDst, srcSpecs, dstSpecs, from, ccAuxFrame});
+            break;
+        case dai::ImgFrame::Type::YUV420p:
+            done = colorConvertToYUV420p({accelSrc, accelDst, srcSpecs, dstSpecs, from, ccAuxFrame});
+            break;
+        case dai::ImgFrame::Type::GRAY8:
+        case dai::ImgFrame::Type::RAW8:
+            done = colorConvertToGRAY8({accelSrc, accelDst, srcSpecs, dstSpecs, from, ccAuxFrame});
+            break;
+        case ImgFrame::Type::YUV422i:
+        case ImgFrame::Type::YUV444p:
+        case ImgFrame::Type::YUV422p:
+        case ImgFrame::Type::YUV400p:
+        case ImgFrame::Type::RGBA8888:
+        case ImgFrame::Type::RGB161616:
+        case ImgFrame::Type::LUT2:
+        case ImgFrame::Type::LUT4:
+        case ImgFrame::Type::LUT16:
+        case ImgFrame::Type::RAW16:
+        case ImgFrame::Type::RAW14:
+        case ImgFrame::Type::RAW12:
+        case ImgFrame::Type::RAW10:
+        case ImgFrame::Type::PACK10:
+        case ImgFrame::Type::PACK12:
+        case ImgFrame::Type::YUV444i:
+        case ImgFrame::Type::NV21:
+        case ImgFrame::Type::BITSTREAM:
+        case ImgFrame::Type::HDR:
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+        case ImgFrame::Type::GRAYF16:
+        case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NONE:
+            break;
+    }
+    auto diff = std::chrono::steady_clock::now() - start;
+    if(logger) logger->trace("ImageManip | colorConvert took {}ns", std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count());
+
+    if(!done) {
+        if(logger) logger->error("Convert color from {} to {} not supported or failed.", (int)from, (int)to);
+        std::copy(src->getOffsetData().data(),
+                  src->getOffsetData().data() + (src->getOffsetSize() <= dst->getOffsetSize() ? src->getOffsetSize() : dst->getOffsetSize()),
+                  dst->getOffsetData().data());
+    }
 }
 
 }  // namespace dai::gate

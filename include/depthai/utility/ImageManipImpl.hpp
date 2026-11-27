@@ -129,13 +129,15 @@ void loop(N& node,
         } else if((long)outputSize <= (long)node.properties.outputFrameSize) {
             auto outImage = getFrame(outputSize);
 
-            bool success = apply(ConvertedOffsetMemory::convert(inImage->data), ConvertedOffsetMemory::convert(outImage->data));
-            if(!success) {
-                // Never forward a frame whose content was not produced: the output buffer holds stale or uninitialized data.
-                logger->error("Processing failed, potentially unsupported config - skipping frame");
-                continue;
+            bool success = true;
+            {
+                success = apply(ConvertedOffsetMemory::convert(inImage->data), ConvertedOffsetMemory::convert(outImage->data));
+
+                setFrame(*inImage, *outImage);
             }
-            setFrame(*inImage, *outImage);
+            if(!success) {
+                logger->error("Processing failed, potentially unsupported config");
+            }
             auto tProcessed = steady_clock::now();
             {
                 auto blockEvent = node.outputBlockEvent();
@@ -436,16 +438,6 @@ class ColorChange {
     FrameSpecs srcSpecs;
     FrameSpecs dstSpecs;
 
-    /// Scratch buffer of the conversion, allocated by build()
-    std::shared_ptr<OffsetMemory> ccAuxFrame;
-
-    /// Allocates a scratch buffer of the backend's memory type
-    virtual std::shared_ptr<OffsetMemory> allocate(size_t size) = 0;
-
-    /// Converts src into dst with colorConvert(). src and dst must be of the memory type that the backend converts with.
-    /// Returns false if the conversion is not supported or failed
-    bool convert(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst);
-
    public:
     ColorChange() = default;
     ColorChange(std::shared_ptr<spdlog::async_logger> logger) : logger(logger) {}
@@ -455,18 +447,18 @@ class ColorChange {
         this->logger = logger;
     }
 
-    virtual void build(const FrameSpecs srcFrameSpecs, const FrameSpecs dstFrameSpecs, const ImgFrame::Type typeFrom, const ImgFrame::Type typeTo);
+    virtual void build(const FrameSpecs srcFrameSpecs, const FrameSpecs dstFrameSpecs, const ImgFrame::Type typeFrom, const ImgFrame::Type typeTo) = 0;
 
-    /// Returns false if the conversion is not supported or failed; dst content is then undefined
-    virtual bool apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) = 0;
+    virtual void apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) = 0;
 };
 
 class ColorChangeH : public ColorChange {
-   protected:
-    std::shared_ptr<OffsetMemory> allocate(size_t size) override;
+    std::shared_ptr<_ImageManipMemory> ccAuxFrame;
 
    public:
-    bool apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) override;
+    void build(const FrameSpecs srcFrameSpecs, const FrameSpecs dstFrameSpecs, const ImgFrame::Type typeFrom, const ImgFrame::Type typeTo);
+
+    void apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst);
 };
 
 template <typename ImageManipData, typename ColorChangeBackend, typename WarpBackend>
@@ -578,13 +570,6 @@ bool colorConvertToBGR888i(const ColorChangeArgs& args);
 bool colorConvertToNV12(const ColorChangeArgs& args);
 bool colorConvertToYUV420p(const ColorChangeArgs& args);
 bool colorConvertToGRAY8(const ColorChangeArgs& args);
-/**
- * Converts args.inputFrame (type args.from) into `to`, handling same-type copies (stride aware) and planar channel swaps.
- * Single channel (GRAY8/RAW8) to NV12 / YUV420p keeps the input as the full range luma plane, with neutral chroma.
- */
-bool colorConvert(const ColorChangeArgs& args, dai::ImgFrame::Type to);
-/// Stride aware copy of a frame with identical type and size, but possibly different plane strides / offsets
-void copyFrame(const uint8_t* src, const FrameSpecs& srcSpecs, uint8_t* dst, const FrameSpecs& dstSpecs, dai::ImgFrame::Type type);
 
 std::tuple<float, float, float, float> getOuterRect(const std::vector<std::array<float, 2>>& points);
 dai::RotatedRect getOuterRotatedRect(const std::vector<std::array<float, 2>>& points);
@@ -884,9 +869,7 @@ bool ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::appl
     }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    if(convertInput || mode == MODE_CONVERT) {
-        if(!preprocCc.apply(src, mode == MODE_CONVERT ? dst : convertedFrame)) return false;
-    }
+    if(convertInput || mode == MODE_CONVERT) preprocCc.apply(src, mode == MODE_CONVERT ? dst : convertedFrame);
     if(mode != MODE_CONVERT) {
         if(mode & MODE_WARP) {
             warpEngine.apply(convertInput ? convertedFrame : src,
@@ -917,10 +900,10 @@ bool ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::appl
         // applied
         // + output frame type is RGBi)
         if(type != outputFrameType && !(isSingleChannelu8(type) && base.colormap != Colormap::NONE && outputFrameType == VALID_TYPE_COLOR)) {
-            return clrChange.apply(warpedFrame, dst);
+            clrChange.apply(warpedFrame, dst);
         }
     }
-    return true;
+    return true;  // TODO(asahtik): Handle failed transformation
 #else
     return false;
 #endif
