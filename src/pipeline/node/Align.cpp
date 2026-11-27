@@ -189,44 +189,6 @@ cv::Mat vecToCvMat(int rows, int cols, int type, const std::vector<std::vector<f
     return cvMat;
 }
 
-cv::Mat vecToCvMat(int rows, int cols, int type, const std::vector<float>& orig) {
-    cv::Mat cvMat = cv::Mat(rows, cols, type);
-    memcpy(cvMat.data, orig.data(), orig.size() * sizeof(orig[0]));
-    return cvMat;
-}
-
-cv::Mat arrayToCvMat(const std::array<std::array<float, 3>, 3>& orig) {
-    cv::Mat cvMat = cv::Mat(3, 3, CV_32FC1);
-    memcpy(cvMat.data, orig.data(), orig.size() * sizeof(orig[0]));
-    return cvMat;
-}
-
-std::pair<cv::Mat, cv::Mat> computeRectificationMatrices(const cv::Mat& inputIntrinsics,
-                                                         const cv::Mat& inputDistortion,
-                                                         const cv::Mat& alignIntrinsics,
-                                                         const cv::Mat& alignDistortion,
-                                                         cv::Size imageSize,
-                                                         const cv::Mat& rotation,
-                                                         const cv::Mat& translation) {
-    cv::Mat m1, m2, d1, d2, r, t;
-    inputIntrinsics.convertTo(m1, CV_64FC1);
-    alignIntrinsics.convertTo(m2, CV_64FC1);
-    inputDistortion.convertTo(d1, CV_64FC1);
-    alignDistortion.convertTo(d2, CV_64FC1);
-    rotation.convertTo(r, CV_64FC1);
-    translation.convertTo(t, CV_64FC1);
-    t = t.t();
-
-    cv::Mat r1, r2, p1, p2, q;
-    cv::stereoRectify(m1, d1, m2, d2, imageSize, r, t, r1, r2, p1, p2, q);  // todo expose alpha param to user for increased fov, maybe flags?
-
-    cv::Mat rectificationR1, rectificationR2;
-    r1.convertTo(rectificationR1, CV_32FC1);
-    r2.convertTo(rectificationR2, CV_32FC1);
-
-    return std::make_pair(rectificationR1, rectificationR2);
-}
-
 void updateShiftFactor(ImgFrameRunState& state, uint16_t staticDepthPlane) {
     int nextShiftFactor = 0;
     if(staticDepthPlane != 0) {
@@ -240,67 +202,6 @@ void updateShiftFactor(ImgFrameRunState& state, uint16_t staticDepthPlane) {
 
     state.staticDepthPlane = staticDepthPlane;
     state.shiftFactor = nextShiftFactor;
-}
-
-void shiftDepthImg(const ImgFrame& input,
-                   ImgFrame& output,
-                   const std::array<std::array<float, 3>, 3>& inputIntrinsics,
-                   const std::array<std::array<float, 4>, 4>& inputToAlignExtrinsics) {
-    int depthLut[65536];
-
-    const int width = input.getWidth();
-    const int height = input.getHeight();
-
-    const uint16_t* plane = reinterpret_cast<const uint16_t*>(input.getData().data());
-    uint16_t* alignedPlane = reinterpret_cast<uint16_t*>(output.getData().data());
-
-    const size_t lineLength = static_cast<size_t>(width) * sizeof(uint16_t);
-
-    const float shiftX = inputToAlignExtrinsics[0][3];
-    const float inputFx = inputIntrinsics[0][0];
-    const float shiftXPreComputed = shiftX * inputFx;
-
-    depthLut[0] = 0;
-    for(int i = 1; i < 65536; i++) {
-        depthLut[i] = static_cast<int>(std::round(shiftXPreComputed / static_cast<float>(i)));
-    }
-
-    for(int i = 0; i < height; i++) {
-        const uint16_t* currentLine = plane + static_cast<size_t>(width) * i;
-        uint16_t* alignedLine = alignedPlane + static_cast<size_t>(width) * i;
-
-        memset(alignedLine, 0, lineLength);
-
-        if(shiftX > 0) {
-            for(int j = width - 1; j >= 0; j--) {
-                uint16_t depth = currentLine[j];
-                if(depth == 0) continue;
-                if(depthLut[depth] == 0) {
-                    alignedLine[j] = depth;
-                    continue;
-                }
-
-                int shifted = j + depthLut[depth];
-
-                if(shifted >= 0 && shifted < width) alignedLine[shifted] = depth;
-                if(shifted + 1 >= 0 && shifted + 1 < width) alignedLine[shifted + 1] = depth;
-            }
-        } else {
-            for(int j = 0; j < width; j++) {
-                uint16_t depth = currentLine[j];
-                if(depth == 0) continue;
-                if(depthLut[depth] == 0) {
-                    alignedLine[j] = depth;
-                    continue;
-                }
-
-                int shifted = j + depthLut[depth];
-
-                if(shifted >= 0 && shifted < width) alignedLine[shifted] = depth;
-                if(shifted - 1 >= 0 && shifted - 1 < width) alignedLine[shifted - 1] = depth;
-            }
-        }
-    }
 }
 
 void remapNv12(const cv::Mat& inputNv12, cv::Mat& outputNv12, const cv::Mat& mapX, const cv::Mat& mapY, int interpolation, const cv::Scalar& bgColor) {
@@ -457,7 +358,20 @@ std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg,
     auto warp2Input = rectified;
     if(inputFrameType == ImgFrame::Type::RAW16 && state.staticDepthPlane == 0 && !state.degenerateStereoTransform) {
         auto shifted = makeRemapTarget(inputImg, rectifiedWidth, rectifiedHeight, frameSize);
-        shiftDepthImg(*rectified, *shifted, state.inputIntrinsics, state.inputToAlignExtrinsics);
+
+        const float shiftX = state.inputToAlignExtrinsics[0][3];
+        const float inputFx = state.inputIntrinsics[0][0];
+        const float shiftXPreComputed = shiftX * inputFx;
+
+        std::array<int, 65536> depthLut;
+        depthLut[0] = 0;
+        for(int i = 1; i < 65536; i++) {
+            depthLut[i] = static_cast<int>(std::round(shiftXPreComputed / static_cast<float>(i)));
+        }
+
+        const cv::Mat rectifiedDepth(rectified->getHeight(), rectified->getWidth(), CV_16UC1, rectified->getData().data(), rectified->getStride());
+        cv::Mat shiftedDepth(shifted->getHeight(), shifted->getWidth(), CV_16UC1, shifted->getData().data(), shifted->getStride());
+        dai::matrix::shiftDepthImg(rectifiedDepth, shiftedDepth, depthLut, shiftX > 0);
         warp2Input = shifted;
     }
 
@@ -492,14 +406,14 @@ ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTran
         int inputWidth = static_cast<int>(inputTransform.getSize().first);
         int inputHeight = static_cast<int>(inputTransform.getSize().second);
 
-        auto inputIntrinsicsMat = arrayToCvMat(state.inputIntrinsics);
-        auto alignIntrinsicsMat = arrayToCvMat(alignSourceIntrinsics);
+        auto inputIntrinsicsMat = dai::matrix::matrix3x3ToCvMat(state.inputIntrinsics);
+        auto alignIntrinsicsMat = dai::matrix::matrix3x3ToCvMat(alignSourceIntrinsics);
 
-        auto inputDistortion = vecToCvMat(1, inputDistortionCoefficients.size(), CV_32FC1, inputDistortionCoefficients);
+        auto inputDistortion = dai::matrix::vecToCvMat(1, inputDistortionCoefficients.size(), CV_32FC1, inputDistortionCoefficients);
         cv::Mat noDistortion = cv::Mat::zeros(1, static_cast<int>(alignDistortionCoefficients.size()), CV_32FC1);  // No distortion for aligned frame
 
         auto rotation = vecToCvMat(3, 3, CV_32FC1, inputToAlignRotation);
-        auto translationMat = vecToCvMat(1, 3, CV_32FC1, inputToAlignTranslation);
+        auto translationMat = dai::matrix::vecToCvMat(1, 3, CV_32FC1, inputToAlignTranslation);
 
         const float translationNorm =
             std::sqrt(inputToAlignTranslation[0] * inputToAlignTranslation[0] + inputToAlignTranslation[1] * inputToAlignTranslation[1]
@@ -516,8 +430,8 @@ ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTran
             rectificationR2 = cv::Mat::eye(3, 3, CV_32FC1);
         } else {
             cv::Size imageSize = cv::Size(inputWidth, inputHeight);
-            std::tie(rectificationR1, rectificationR2) =
-                computeRectificationMatrices(inputIntrinsicsMat, inputDistortion, alignIntrinsicsMat, noDistortion, imageSize, rotation, translationMat);
+            std::tie(rectificationR1, rectificationR2) = dai::matrix::computeRectificationMatrices(
+                inputIntrinsicsMat, inputDistortion, alignIntrinsicsMat, noDistortion, imageSize, rotation, translationMat);
         }
 
         cv::Mat newRotation;

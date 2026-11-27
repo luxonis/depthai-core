@@ -7,6 +7,13 @@
 #include <stdexcept>
 #include <vector>
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <cstdint>
+    #include <cstring>
+    #include <opencv2/calib3d.hpp>
+    #include <sstream>
+#endif
+
 namespace dai {
 namespace matrix {
 
@@ -741,6 +748,69 @@ cv::Mat matrix4x4ToCvMat(const std::array<std::array<float, 4>, 4>& matrix) {
         }
     }
     return cvMat;
+}
+
+cv::Mat vecToCvMat(int rows, int cols, int type, const std::vector<float>& orig) {
+    cv::Mat cvMat = cv::Mat(rows, cols, type);
+    // An empty vector (e.g. no distortion coefficients) gives an empty cv::Mat with null data
+    if(!orig.empty()) {
+        memcpy(cvMat.data, orig.data(), orig.size() * sizeof(orig[0]));
+    }
+    return cvMat;
+}
+
+std::pair<cv::Mat, cv::Mat> computeRectificationMatrices(
+    const cv::Mat& M1, const cv::Mat& d1, const cv::Mat& M2, const cv::Mat& d2, cv::Size imageSize, const cv::Mat& R, const cv::Mat& T) {
+    cv::Mat R1, R2, P1, P2, Q;
+    cv::Mat _cv_M1, _cv_M2, _cv_d1, _cv_d2, _cv_R, _cv_T;
+    M1.convertTo(_cv_M1, CV_64FC1);
+    M2.convertTo(_cv_M2, CV_64FC1);
+    d1.convertTo(_cv_d1, CV_64FC1);
+    d2.convertTo(_cv_d2, CV_64FC1);
+    R.convertTo(_cv_R, CV_64FC1);
+    T.convertTo(_cv_T, CV_64FC1);
+    _cv_T = _cv_T.t();
+
+    cv::stereoRectify(
+        _cv_M1, _cv_d1, _cv_M2, _cv_d2, imageSize, _cv_R, _cv_T, R1, R2, P1, P2, Q);  // todo expose alpha param to user for increased fov, maybe flags?
+
+    cv::Mat cv_R1, cv_R2;
+    R1.convertTo(cv_R1, CV_32FC1);
+    R2.convertTo(cv_R2, CV_32FC1);
+
+    return std::make_pair(cv_R1, cv_R2);
+}
+
+std::string matToString(const cv::Mat& mat) {
+    std::ostringstream oss;
+    oss << mat;
+    return oss.str();
+}
+
+void shiftDepthImg(const cv::Mat& input, cv::Mat& output, const std::array<int, 65536>& depthLut, bool shiftPositive) {
+    const int width = input.cols;
+    const int height = input.rows;
+    output.create(input.size(), input.type());
+
+    for(int i = 0; i < height; i++) {
+        const uint16_t* currentLine = input.ptr<uint16_t>(i);
+        uint16_t* alignedLine = output.ptr<uint16_t>(i);
+
+        memset(alignedLine, 0, width * sizeof(uint16_t));
+
+        for(int j = shiftPositive ? width - 1 : 0; j >= 0 && j < width; j += shiftPositive ? -1 : 1) {
+            const uint16_t depth = currentLine[j];
+            if(depth == 0) continue;
+            if(depthLut[depth] == 0) {
+                alignedLine[j] = depth;
+                continue;
+            }
+            const int u = j + depthLut[depth];
+            for(const int x : {u, u + (shiftPositive ? 1 : -1)}) {
+                if(x >= 0 && x < width) alignedLine[x] = depth;
+            }
+        }
+    }
 }
 
 #endif
