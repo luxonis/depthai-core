@@ -913,3 +913,36 @@ TEST_CASE("ImageManip GRAY8 undistort") {
 TEST_CASE("ImageManip RGB888i undistort") {
     runManipTests(dai::ImgFrame::Type::RGB888i, true);
 }
+
+TEST_CASE("ImageManip letterbox of a scaled frame masks only the padding", "[imagemanip][src-crops][rvc4]") {
+    const bool undistort = GENERATE(false, true);
+    CAPTURE(undistort);
+    dai::Pipeline pipeline;
+    if(pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC4) SKIP("RVC4 ImageManip source crops");
+    auto manip = pipeline.create<dai::node::ImageManip>();
+    manip->setMaxOutputFrameSize(640 * 480);
+    auto config = std::make_shared<dai::ImageManipConfig>();
+    config->setOutputSize(640, 480, dai::ImageManipConfig::ResizeMode::LETTERBOX);
+    config->setFrameType(dai::ImgFrame::Type::GRAY8);
+    config->setUndistort(undistort);
+    manip->initialConfig = config;
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+    pipeline.start();
+
+    // A half-resolution frame of a 1280x800 sensor, like an ISP-scaled camera output
+    auto input = std::make_shared<dai::ImgFrame>();
+    input->setCvFrame(cv::Mat(400, 640, CV_8UC1, cv::Scalar(128)), dai::ImgFrame::Type::GRAY8);
+    const std::array<std::array<float, 3>, 3> intrinsics = {{{800, 0, 640}, {0, 800, 400}, {0, 0, 1}}};
+    input->transformation =
+        dai::ImgTransformation(1280, 800, intrinsics, dai::CameraModel::Perspective, std::vector<float>{-0.05f, 0.01f, 0, 0, 0}).addScale(0.5f, 0.5f);
+    inputQueue->send(input);
+    auto output = outputQueue->get<dai::ImgFrame>();
+    REQUIRE(output != nullptr);
+
+    // 640x400 letterboxed into 640x480: 40 px bars at the top and the bottom
+    CHECK_FALSE(output->transformation.getDstMaskPt(320, 10));
+    CHECK_FALSE(output->transformation.getDstMaskPt(320, 470));
+    CHECK(output->transformation.getDstMaskPt(320, 240));
+    CHECK(output->transformation.getDstMaskPt(480, 360));
+}

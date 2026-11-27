@@ -518,9 +518,8 @@ void setDstMetadata(const impl::ImageManipOperations<DmaHeapMemory, ColorChangeQ
         const auto undistortBaseIntrinsics =
             getUndistortBaseIntrinsics(srcFrame.transformation, srcFrame.getWidth(), srcFrame.getHeight(), manip.getUndistortAlpha());
         const auto undistortMatrix = impl::matmul(undistortBaseIntrinsics, srcFrame.transformation.getSourceIntrinsicMatrixInv());
-        const auto totalMatrix = impl::matmul(manip.getMatrix(), undistortMatrix);
 
-        // Rebuild from source metadata so the full source->output transform can be applied directly.
+        // Rebuild from source metadata: the undistorted frame maps from the source sensor without distortion
         dstFrame.transformation = ImgTransformation(sourceSize.first,
                                                     sourceSize.second,
                                                     srcFrame.transformation.getSourceIntrinsicMatrix(),
@@ -528,13 +527,13 @@ void setDstMetadata(const impl::ImageManipOperations<DmaHeapMemory, ColorChangeQ
                                                     {},
                                                     srcFrame.transformation.getExtrinsics());
         dstFrame.transformation.addSrcCrops(srcFrame.transformation.getSrcCrops());
-        dstFrame.transformation.addSrcCrops(manip.getSrcCrops());
-        dstFrame.transformation.addTransformation(totalMatrix);
+        dstFrame.transformation.addTransformation(undistortMatrix);
     } else {
         dstFrame.transformation = srcFrame.transformation;
-        dstFrame.transformation.addTransformation(manip.getMatrix());
-        dstFrame.transformation.addSrcCrops(manip.getSrcCrops());
     }
+    // dstFrame.transformation now describes the manip input frame
+    dstFrame.transformation.addSrcCrops(manip.getSrcCrops(dstFrame.transformation));
+    dstFrame.transformation.addTransformation(manip.getMatrix());
     dstFrame.transformation.setSize(dstSpecs.width, dstSpecs.height);
 }
 

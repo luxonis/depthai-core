@@ -698,6 +698,45 @@ TEST_CASE("ImageManip CropRotated maps the requested rectangle to the output") {
     REQUIRE(srcCorners.size() == 1);
 }
 
+TEST_CASE("A crop that covers only padding leaves no valid pixel", "[ImgTransformation]") {
+    // A 200 pixel wide sensor scaled to 100 pixels and padded by 40 pixels on the right.
+    // A crop of the padding at x = 110..130 of that frame is x = 220..260 on the sensor, outside of it.
+    dai::ImgTransformation transformation(200, 100);
+    transformation.addScale(0.5f, 0.5f);
+    transformation.addPadding(0, 0, 0, 40);
+    REQUIRE(transformation.getSize() == std::pair<size_t, size_t>(140, 50));
+    transformation.addSrcCrops({dai::RotatedRect(dai::Point2f(240.0f, 50.0f), dai::Size2f(40.0f, 100.0f), 0.0f)});
+
+    CHECK_FALSE(transformation.getSrcMaskPt(0, 0));     // the empty crop has no size, also at the origin
+    CHECK_FALSE(transformation.getSrcMaskPt(100, 50));  // inside the sensor
+    CHECK_FALSE(transformation.getSrcMaskPt(240, 50));  // inside the padding crop
+    CHECK_FALSE(transformation.getDstMaskPt(0, 0));
+    CHECK_FALSE(transformation.getDstMaskPt(70, 25));  // output centre
+}
+
+TEST_CASE("ImageManip source crops map to sensor pixels", "[ImageManip][ImgTransformation]") {
+    // A 400x300 frame of an 800x600 sensor, cropped at (100, 50) with size 200x100, which is (200, 100) with size 400x200 on the sensor
+    dai::ImgFrame frame;
+    frame.setWidth(400);
+    frame.setHeight(300);
+    frame.setType(dai::ImgFrame::Type::GRAY8);
+    dai::ImageManipConfig config;
+    config.addCrop(100, 50, 200, 100);
+    dai::impl::ImageManipOperations<dai::impl::_ImageManipMemory, dai::impl::ColorChangeH, dai::impl::WarpH> manip(dai::ImageManipProperties{});
+    manip.build(config.base, config.outputFrameType, dai::impl::getSrcFrameSpecs(frame.fb), frame.getType());
+    dai::ImgTransformation input(800, 600);
+    input.addScale(0.5f, 0.5f);
+
+    const auto crops = manip.getSrcCrops(input);
+    REQUIRE_FALSE(crops.empty());
+    for(const auto& crop : crops) {
+        CHECK(crop.center.x == Catch::Approx(400.0f));
+        CHECK(crop.center.y == Catch::Approx(200.0f));
+        CHECK(crop.size.width == Catch::Approx(400.0f));
+        CHECK(crop.size.height == Catch::Approx(200.0f));
+    }
+}
+
 namespace {
 
 using GeometryMatrix = std::array<std::array<float, 3>, 3>;

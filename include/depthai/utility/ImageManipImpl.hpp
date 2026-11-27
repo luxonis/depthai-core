@@ -534,6 +534,8 @@ class ImageManipOperations {
         return outputFrameType;
     }
     std::vector<RotatedRect> getSrcCrops() const;
+    /// Source crops mapped to sensor pixels through `input`, the transformation of the input frame
+    std::vector<RotatedRect> getSrcCrops(const ImgTransformation& input) const;
     std::array<std::array<float, 3>, 3> getMatrix() const;
     bool undistortEnabled() const {
         return warpEngine.enableUndistort;
@@ -1063,6 +1065,15 @@ std::vector<RotatedRect> ImageManipOperations<ImageManipData, ColorChangeBackend
     for(const auto& corners : srcCorners) {
         auto rect = getOuterRotatedRect({corners[0], corners[1], corners[2], corners[3]});
         crops.push_back(rect);
+    }
+    return crops;
+}
+
+template <typename ImageManipData, typename ColorChangeBackend, typename WarpBackend>
+std::vector<RotatedRect> ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::getSrcCrops(const ImgTransformation& input) const {
+    auto crops = getSrcCrops();
+    for(auto& crop : crops) {
+        crop = input.invTransformRect(crop);
     }
     return crops;
 }
