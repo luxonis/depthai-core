@@ -18,9 +18,6 @@
 
 namespace dai {
 
-// It is one of float NaN and prime number
-const uint32_t STAGE_BORDER_SYMBOL = 0x7f83ff19;
-
 const uint32_t EI_NIDENT = 16;
 
 VPU_PACKED(ElfN_Ehdr {
@@ -61,12 +58,6 @@ VPU_PACKED(mv_blob_header {
     uint32_t output_info_section_offset;
     uint32_t stage_section_offset;
     uint32_t const_data_section_offset;
-};)
-
-VPU_PACKED(mv_stage_header {
-    uint32_t stage_length;
-    uint32_t stage_type;
-    uint32_t numShaves;
 };)
 
 }  // namespace dai
