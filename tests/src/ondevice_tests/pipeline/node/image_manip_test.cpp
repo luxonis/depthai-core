@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cmath>
 #include <utility>
+#include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
@@ -12,6 +13,7 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/properties/ImageManipProperties.hpp"
+#include "depthai/utility/ImageManipImpl.hpp"
 
 namespace {
 
@@ -409,6 +411,127 @@ TEST_CASE("Test ImageManip with u16 frames") {
 
         REQUIRE(outFrame->getWidth() == outputWidth);
         REQUIRE(outFrame->getHeight() == outputHeight);
+    }
+}
+
+namespace {
+
+/// ImageManip fed from the host, one config per frame. Skips the test unless the device is an RVC4: the RVC4 firmware
+/// converts colours with impl::colorConvert() of src/utility/ImageManipImpl.cpp. RVC2 has its own ImageManip.
+class HostFedManip {
+   public:
+    HostFedManip(int width, int height) {
+        if(pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC4) SKIP("RVC4 runs the shared ImageManip colour conversion");
+        auto manip = pipeline.create<dai::node::ImageManip>();
+        // Room for the stride and height alignment of the device frames
+        manip->setMaxOutputFrameSize(4 * width * height * 3);
+        manip->inputConfig.setWaitForMessage(true);
+        inputQueue = manip->inputImage.createInputQueue();
+        configQueue = manip->inputConfig.createInputQueue();
+        outputQueue = manip->out.createOutputQueue();
+        pipeline.start();
+    }
+    ~HostFedManip() {
+        pipeline.stop();
+    }
+
+    /// Sends image with a config that converts it to outputType. Returns the sequence number of the frame
+    int send(const cv::Mat& image, dai::ImgFrame::Type inputType, dai::ImgFrame::Type outputType) {
+        auto config = std::make_shared<dai::ImageManipConfig>();
+        config->setFrameType(outputType);
+        auto input = std::make_shared<dai::ImgFrame>();
+        input->setCvFrame(image, inputType);
+        input->setSequenceNum(sequence);
+        configQueue->send(config);
+        inputQueue->send(input);
+        return sequence++;
+    }
+
+    /// The next output frame. Fails the test if none arrives in time
+    std::shared_ptr<dai::ImgFrame> receive() {
+        bool timedOut = false;
+        auto output = outputQueue->get<dai::ImgFrame>(std::chrono::seconds(5), timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(output != nullptr);
+        return output;
+    }
+
+   private:
+    dai::Pipeline pipeline;
+    std::shared_ptr<dai::InputQueue> inputQueue, configQueue;
+    std::shared_ptr<dai::MessageQueue> outputQueue;
+    int sequence = 0;
+};
+
+/// Number of bytes in rows x cols of a plane that differ from value
+int countMismatches(const uint8_t* plane, uint32_t stride, uint32_t rows, uint32_t cols, uint8_t value) {
+    int mismatches = 0;
+    for(uint32_t y = 0; y < rows; ++y) {
+        for(uint32_t x = 0; x < cols; ++x) mismatches += plane[y * stride + x] != value;
+    }
+    return mismatches;
+}
+
+}  // namespace
+
+TEST_CASE("ImageManip converts single channel images to full range YUV", "[imagemanip][color-conversion][rvc4]") {
+    constexpr int width = 64, height = 48;
+    cv::Mat gray(height, width, CV_8UC1);
+    cv::RNG(7061).fill(gray, cv::RNG::UNIFORM, 0, 256);
+    HostFedManip manip(width, height);
+
+    for(const auto target : {dai::ImgFrame::Type::NV12, dai::ImgFrame::Type::YUV420p}) {
+        CAPTURE(target);
+        const int sent = manip.send(gray, dai::ImgFrame::Type::GRAY8, target);
+        auto out = manip.receive();
+        REQUIRE(out->getSequenceNum() == sent);
+        REQUIRE(out->getType() == target);
+        REQUIRE(out->getWidth() == width);
+        REQUIRE(out->getHeight() == height);
+
+        // ImgFrame stores one stride only, so take the chroma strides from the layout that the device writes, and check
+        // that this layout matches the offsets and the stride of the frame. getCvFrame() is not used: it does not
+        // handle a padded YUV420p frame.
+        const auto specs = dai::impl::getDstFrameSpecs(width, height, target);
+        REQUIRE(out->fb.p1Offset == specs.p1Offset);
+        REQUIRE(out->fb.p2Offset == specs.p2Offset);
+        REQUIRE(out->getStride() == specs.p1Stride);
+        if(target == dai::ImgFrame::Type::YUV420p) REQUIRE(out->fb.p3Offset == specs.p3Offset);
+        REQUIRE(out->getData().size() >= dai::impl::getFrameSize(target, specs));
+        const uint8_t* data = out->getData().data();
+
+        // The input is the luma plane as it is (full range), not raw bytes spread over the planes
+        const cv::Mat luma(height, width, CV_8UC1, const_cast<uint8_t*>(data) + specs.p1Offset, specs.p1Stride);
+        CHECK(cv::norm(luma, gray, cv::NORM_INF) == 0.0);
+        // Neutral chroma (128): every converted pixel is gray
+        if(target == dai::ImgFrame::Type::NV12) {
+            CHECK(countMismatches(data + specs.p2Offset, specs.p2Stride, height / 2, width, 128) == 0);  // interleaved U and V
+        } else {
+            CHECK(countMismatches(data + specs.p2Offset, specs.p2Stride, height / 2, width / 2, 128) == 0);  // U
+            CHECK(countMismatches(data + specs.p3Offset, specs.p3Stride, height / 2, width / 2, 128) == 0);  // V
+        }
+    }
+}
+
+TEST_CASE("ImageManip drops frames whose conversion failed", "[imagemanip][color-conversion][rvc4]") {
+    constexpr int width = 64, height = 48;
+    cv::Mat image(height, width, CV_8UC3);
+    cv::RNG(7061).fill(image, cv::RNG::UNIFORM, 0, 256);
+    HostFedManip manip(width, height);
+
+    // Several rounds: a dropped frame must not leave anything behind that a later frame picks up
+    for(int round = 0; round < 3; ++round) {
+        CAPTURE(round);
+        // RGB888i -> RAW16 is not supported: the node must drop the frame instead of sending the input bytes as RAW16
+        manip.send(image, dai::ImgFrame::Type::RGB888i, dai::ImgFrame::Type::RAW16);
+        // A supported conversion right after it goes through, and is the next frame that the node sends
+        const int sent = manip.send(image, dai::ImgFrame::Type::RGB888i, dai::ImgFrame::Type::BGR888i);
+        auto out = manip.receive();
+        REQUIRE(out->getSequenceNum() == sent);
+        REQUIRE(out->getType() == dai::ImgFrame::Type::BGR888i);
+        // setCvFrame() stored the BGR image as RGB888i, so the BGR888i output is the image itself
+        const cv::Mat actual(height, width, CV_8UC3, out->getData().data(), out->getStride());
+        CHECK(cv::norm(actual, image, cv::NORM_INF) == 0.0);
     }
 }
 
