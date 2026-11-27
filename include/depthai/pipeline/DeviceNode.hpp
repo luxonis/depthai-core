@@ -36,7 +36,7 @@ class DeviceNode : public ThreadedNode {
      */
     const std::shared_ptr<Device> getDevice() const;
 
-    copyable_unique_ptr<Properties> propertiesHolder;
+    std::unique_ptr<Properties> propertiesHolder;
 
     // Get properties
     virtual Properties& getProperties();

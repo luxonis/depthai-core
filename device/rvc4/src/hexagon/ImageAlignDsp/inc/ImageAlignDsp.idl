@@ -1,0 +1,12 @@
+
+#include "AEEStdDef.idl"
+#include "remote.idl"
+
+/// Enabling stub-skel mismatch check feature in the auto-gen files.
+/// Please refer to the IDL documentation for more details on the feature.
+/// It is fully supported only on Kailua and later targets.
+const string IDL_VERSION = "1.2.3";
+
+interface ImageAlignDsp : remote_handle64 {
+   AEEResult process(in sequence<uint8> inVec, in sequence<uint8> config, rout sequence<uint8> outVec);
+};

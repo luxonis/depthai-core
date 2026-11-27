@@ -93,6 +93,20 @@ std::filesystem::path getDirFromPath(const std::filesystem::path& path);
  */
 std::vector<std::string> getFilenamesInDirectory(const std::filesystem::path& path);
 
+/**
+ * @brief Get a path as a UTF-8 string. On Windows, path::string() uses the active code page, not UTF-8
+ * @param path Path to convert
+ * @return UTF-8 string
+ */
+std::string pathToUtf8String(const std::filesystem::path& path);
+
+/**
+ * @brief Convert each character of a string with std::tolower
+ * @param value String to convert
+ * @return Lowercase string
+ */
+std::string lowercase(std::string value);
+
 // TODO change this to std::thread
 void setThreadName(JoiningThread& thread, const std::string& name);
 

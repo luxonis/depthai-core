@@ -32,24 +32,6 @@ MLSDParser::Properties& MLSDParser::getProperties() {
     return properties;
 }
 
-namespace {
-
-/**
- * tpMap tensor values in NCHW orientation together with the tensor shape.
- */
-using NchwTensorData = utilities::ClassificationUtils::ShapedTensorData;
-
-/**
- * Retrieve a tensor from NNData as dequantized FP32 values in NCHW orientation, matching the
- * source parser's output.getTensor(name, StorageOrder.NCHW, dequantize=True). The tensor's
- * stored order is honored; the data is permuted to NCHW, not just re-labeled.
- */
-NchwTensorData getNchwTensorData(dai::NNData& nnData, const std::string& tensorName) {
-    return utilities::ClassificationUtils::getShapedTensorData(nnData, tensorName, TensorInfo::StorageOrder::NCHW);
-}
-
-}  // namespace
-
 NNArchive MLSDParser::createNNArchive(NNModelDescription& modelDesc) {
     // Download model from zoo
     if(modelDesc.platform.empty()) {
@@ -280,7 +262,7 @@ void MLSDParser::run() {
 
         // Extract. The tpMap tensor is permuted to NCHW orientation; the heat tensor is read in
         // its stored order and flattened.
-        auto tpMap = getNchwTensorData(*nnData, properties.outputLayerTPMap);
+        auto tpMap = utilities::ClassificationUtils::getNchwTensorData(*nnData, properties.outputLayerTPMap);
         auto heat = utilities::ClassificationUtils::getFlattenedTensorData(*nnData, properties.outputLayerHeat);
 
         // Compute. The heat map grid size is derived from the tpMap tensor shape.

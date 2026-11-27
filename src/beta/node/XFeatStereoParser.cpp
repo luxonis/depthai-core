@@ -1,8 +1,6 @@
 #include "depthai/beta/node/XFeatStereoParser.hpp"
 
-#include <cmath>
 #include <cstdint>
-#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -28,34 +26,6 @@ XFeatStereoParser::Properties& XFeatStereoParser::getProperties() {
     properties.initialConfig = *initialConfig;
     return properties;
 }
-
-namespace {
-
-/**
- * Read a (width, height) size from a head metadata extra parameter holding a list of two
- * positive integral numbers, or std::nullopt when the key is absent or null.
- */
-std::optional<std::pair<std::uint32_t, std::uint32_t>> readSizeParam(const nlohmann::json& extraParams, const char* key) {
-    if(!extraParams.is_object() || !extraParams.contains(key) || extraParams.at(key).is_null()) {
-        return std::nullopt;
-    }
-    const auto& sizeJson = extraParams.at(key);
-    DAI_CHECK_V(sizeJson.is_array() && sizeJson.size() == 2, "{} must be a list of two positive integers.", key);
-    std::uint32_t size[2];
-    for(std::size_t i = 0; i < 2; i++) {
-        const auto& valueJson = sizeJson.at(i);
-        DAI_CHECK_V(valueJson.is_number(), "{} must be a list of two positive integers.", key);
-        const double value = valueJson.get<double>();
-        DAI_CHECK_V(value > 0 && value <= std::numeric_limits<std::uint32_t>::max() && value == std::floor(value),
-                    "{} must be a list of two positive integers, got {}.",
-                    key,
-                    value);
-        size[i] = static_cast<std::uint32_t>(value);
-    }
-    return std::make_pair(size[0], size[1]);
-}
-
-}  // namespace
 
 NNArchive XFeatStereoParser::createNNArchive(NNModelDescription& modelDesc) {
     // Download model from zoo
@@ -136,20 +106,9 @@ void XFeatStereoParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
     // which then takes precedence like in the source parser; a head alone carries no model
     // input metadata, so this fallback is only possible on the full-archive path. The stereo
     // model declares one input; both sources run the same model and share the input size.
-    if(!readSizeParam(xfeatHead.metadata.extraParams, "input_size").has_value()) {
-        DAI_CHECK_V(configV1.model.inputs.size() == 1, "Only one input supported for XFeatStereoParser, got {} inputs.", configV1.model.inputs.size());
-        const auto& modelInput = configV1.model.inputs.front();
-        const std::string layout = modelInput.layout.value_or("");
-        DAI_CHECK_V(layout == "NHWC" || layout == "NCHW", "Input layout {} not supported for input_size extraction.", layout.empty() ? "None" : layout);
-        DAI_CHECK_V(modelInput.shape.size() == 4, "Expected a 4D input shape for layout {}, got {} dimensions.", layout, modelInput.shape.size());
-
-        const std::int64_t width = layout == "NHWC" ? modelInput.shape[2] : modelInput.shape[3];
-        const std::int64_t height = layout == "NHWC" ? modelInput.shape[1] : modelInput.shape[2];
-        DAI_CHECK_V(width > 0 && width <= std::numeric_limits<std::uint32_t>::max() && height > 0 && height <= std::numeric_limits<std::uint32_t>::max(),
-                    "Invalid input size ({}, {}) declared by the model input.",
-                    width,
-                    height);
-        setInputSize(static_cast<std::uint32_t>(width), static_cast<std::uint32_t>(height));
+    if(!utilities::XFeatUtils::readSizeParam(xfeatHead.metadata.extraParams, "input_size").has_value()) {
+        const auto modelInputSize = utilities::XFeatUtils::getModelInputSize(configV1.model.inputs, NAME);
+        setInputSize(modelInputSize.first, modelInputSize.second);
     }
 }
 
@@ -177,16 +136,14 @@ void XFeatStereoParser::setConfig(const dai::nn_archive::v1::Head& head) {
     // behavior.
     const auto& extraParams = head.metadata.extraParams;
 
-    if(const auto headOriginalSize = readSizeParam(extraParams, "original_size")) {
+    if(const auto headOriginalSize = utilities::XFeatUtils::readSizeParam(extraParams, "original_size")) {
         setOriginalSize(headOriginalSize->first, headOriginalSize->second);
     }
-    if(const auto headInputSize = readSizeParam(extraParams, "input_size")) {
+    if(const auto headInputSize = utilities::XFeatUtils::readSizeParam(extraParams, "input_size")) {
         setInputSize(headInputSize->first, headInputSize->second);
     }
-    if(extraParams.is_object() && extraParams.contains("max_keypoints") && !extraParams.at("max_keypoints").is_null()) {
-        const auto& maxKeypointsJson = extraParams.at("max_keypoints");
-        DAI_CHECK(maxKeypointsJson.is_number_integer(), "Maximum number of keypoints must be an int!");
-        setMaxKeypoints(maxKeypointsJson.get<int>());
+    if(const auto headMaxKeypoints = utilities::XFeatUtils::readMaxKeypointsParam(extraParams)) {
+        setMaxKeypoints(*headMaxKeypoints);
     }
 }
 

@@ -1297,11 +1297,6 @@ class DeviceBase {
     std::shared_ptr<XLinkConnection> connection;
 
     /**
-     * @brief a safe way to start a pipeline, which is closed if any exception occurs
-     */
-    void tryStartPipeline(const Pipeline& pipeline);
-
-    /**
      * Allows the derived classes to handle custom setup for starting the pipeline
      *
      * @param pipeline OpenVINO version of the pipeline must match the one which the device was booted with

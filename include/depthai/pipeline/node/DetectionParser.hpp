@@ -62,7 +62,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     Input input{*this, {"in", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::NNData, true}}}, true}};
 
     /**
-     * Outputs image frame with detected edges
+     * Outputs the parsed detections as ImgDetections
      */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgDetections, false}}}}};
 
@@ -182,7 +182,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /**
      * Set anchors for anchor-based yolo models
      * @param anchors Flattened vector of anchors
-     * @warning This method is deprecated, use setAnchorsV2 instead.
+     * @warning This method is deprecated. Use the setAnchors() overload that takes anchors per layer instead.
      */
     void setAnchors(const std::vector<float>& anchors);
 
@@ -208,7 +208,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /**
      * Set subtype for the parser.
      * @param subtype Subtype string, currently supported subtypes are:
-     * yolov6r1, yolov6r2 yolov8n, yolov6, yolov8, yolov10, yolov11, yolov3, yolov3-tiny, yolov5, yolov7, yolo-p, yolov5-u
+     * yolov6r1, yolov6r2, yolov8n, yolov6, yolov8, yolov10, yolov11, yolov12, yolov3, yolov3-tiny, yolov5, yolov7, yolo-p, yolov5-u, yolo26
      */
     void setSubtype(const std::string& subtype);
 

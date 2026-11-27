@@ -7,7 +7,6 @@
 
 #pragma once
 
-#include <utility>
 #include <vector>
 
 #include "BlobFormat.hpp"
@@ -32,10 +31,6 @@ class BlobReader {
         return blobHeader.stages_count;
     }
 
-    uint32_t getMagicNumber() const {
-        return blobHeader.magic_number;
-    }
-
     uint32_t getVersionMajor() const {
         return blobHeader.blob_ver_major;
     }
@@ -50,13 +45,7 @@ class BlobReader {
         return blobHeader.number_of_cmx_slices;
     }
 
-    std::pair<const std::uint8_t*, size_t> getHeader() const {
-        return {pBlob, sizeof(ElfN_Ehdr) + sizeof(mv_blob_header)};
-    }
-
    private:
-    const std::uint8_t* pBlob = nullptr;
-
     mv_blob_header blobHeader = {};
 
     constexpr static std::uint32_t BLOB_MAGIC_NUMBER = 9709;

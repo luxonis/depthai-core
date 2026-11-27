@@ -15,7 +15,6 @@
 #include "depthai/pipeline/AssetManager.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/utility/RecordReplay.hpp"
-#include "depthai/utility/copyable_unique_ptr.hpp"
 
 // depthai
 #include "depthai/capabilities/Capability.hpp"
@@ -121,13 +120,9 @@ class Node : public std::enable_shared_from_this<Node> {
     std::unique_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher;
 
     // helpers for setting refs
-    void setOutputRefs(std::initializer_list<Output*> l);
     void setOutputRefs(Output* outRef);
-    void setInputRefs(std::initializer_list<Input*> l);
     void setInputRefs(Input* inRef);
-    void setOutputMapRefs(std::initializer_list<OutputMap*> l);
     void setOutputMapRefs(OutputMap* outMapRef);
-    void setInputMapRefs(std::initializer_list<InputMap*> l);
     void setInputMapRefs(InputMap* inMapRef);
     void setNodeRefs(std::initializer_list<std::pair<std::string, std::shared_ptr<Node>*>> l);
     void setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef);

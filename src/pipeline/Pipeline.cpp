@@ -85,15 +85,6 @@ std::shared_ptr<Device> getAssignedDevice(const std::shared_ptr<Node>& node) {
     return deviceNode->getDevice();
 }
 
-std::string pathToUtf8String(const fs::path& path) {
-#ifdef _WIN32
-    const auto utf8 = path.u8string();
-    return {reinterpret_cast<const char*>(utf8.data()), utf8.size()};
-#else
-    return path.string();
-#endif
-}
-
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 const char* autoCalibrationModeToString(PipelineAutoCalibrationMode mode) {
     switch(mode) {
@@ -887,44 +878,6 @@ void PipelineImpl::remove(const std::shared_ptr<Node>& toRemove) {
     }
 }
 
-bool PipelineImpl::isSamePipeline(const Node::Output& out, const Node::Input& in) {
-    // Check whether Output 'out' and Input 'in' are on the same pipeline.
-    // By checking whether their parent nodes are on same pipeline
-    auto outputPipeline = out.getParent().parent.lock();
-    if(outputPipeline != nullptr) {
-        return (outputPipeline == in.getParent().parent.lock());
-    }
-    return false;
-}
-
-bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
-    // First check if on same pipeline
-    if(!isSamePipeline(out, in)) {
-        return false;
-    }
-
-    // Check that IoType match up
-    if(out.getType() == Node::Output::Type::MSender && in.getType() == Node::Input::Type::MReceiver) return false;
-    if(out.getType() == Node::Output::Type::SSender && in.getType() == Node::Input::Type::SReceiver) return false;
-
-    // Check that datatypes match up
-    for(const auto& outHierarchy : out.getPossibleDatatypes()) {
-        for(const auto& inHierarchy : in.possibleDatatypes) {
-            // Check if datatypes match for current datatype
-            if(outHierarchy.datatype == inHierarchy.datatype) return true;
-
-            // If output can produce descendants
-            if(outHierarchy.descendants && isDatatypeSubclassOf(outHierarchy.datatype, inHierarchy.datatype)) return true;
-
-            // If input allows descendants
-            if(inHierarchy.descendants && isDatatypeSubclassOf(inHierarchy.datatype, outHierarchy.datatype)) return true;
-        }
-    }
-
-    // If datatypes don't match up, return false
-    return false;
-}
-
 void PipelineImpl::setCalibrationData(const CalibrationHandler& calibrationDataHandler) {
     setEepromData(calibrationDataHandler.getEepromData());
 }
@@ -1097,17 +1050,6 @@ bool PipelineImpl::isHostOnly() const {
         }
     }
     return hostOnly;
-}
-
-bool PipelineImpl::isDeviceOnly() const {
-    bool deviceOnly = true;
-    for(const auto& node : nodes) {
-        if(node->runOnHost()) {
-            deviceOnly = false;
-            break;
-        }
-    }
-    return deviceOnly;
 }
 
 std::vector<std::shared_ptr<Device>> PipelineImpl::getAllAssignedDevices() const {
@@ -2275,8 +2217,8 @@ std::vector<uint8_t> PipelineImpl::loadResource(const fs::path& uri) {
 }
 
 static fs::path getAbsUri(fs::path& uri, fs::path& cwd) {
-    const auto uriString = pathToUtf8String(uri);
-    const auto cwdString = pathToUtf8String(cwd);
+    const auto uriString = platform::pathToUtf8String(uri);
+    const auto cwdString = platform::pathToUtf8String(cwd);
     int colonLocation = uriString.find(":");
     std::string resourceType = uriString.substr(0, colonLocation + 1);
     fs::path absAssetUri;
@@ -2298,7 +2240,7 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
         {"asset",
          [moveAsset](PipelineImpl& p, const fs::path& uri) -> std::vector<uint8_t> {
              // First check the pipeline asset manager
-             const auto uriString = pathToUtf8String(uri);
+             const auto uriString = platform::pathToUtf8String(uri);
              auto asset = p.assetManager.get(uriString);
              if(asset != nullptr) {
                  if(moveAsset) {
@@ -2326,7 +2268,7 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
     for(const auto& handler : protocolHandlers) {
         std::string protocolPrefix = std::string(handler.protocol) + ":";
 
-        const auto uriString = pathToUtf8String(uri);
+        const auto uriString = platform::pathToUtf8String(uri);
         if(uriString.find(protocolPrefix) == 0) {
             // // protocol matches, resolve URI and call handler
             // std::filesystem::path path(uri.substr(protocolPrefix.size()));
@@ -2340,7 +2282,7 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
             fs::path path;
             if(protocolPrefix == "asset:") {
                 auto absUri = getAbsUri(uri, cwd);
-                path = fs::path(pathToUtf8String(absUri).substr(protocolPrefix.size()));
+                path = fs::path(platform::pathToUtf8String(absUri).substr(protocolPrefix.size()));
             } else {
                 path = fs::path(uriString.substr(protocolPrefix.size()));
             }
