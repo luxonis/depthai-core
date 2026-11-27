@@ -355,11 +355,6 @@ class LockingQueue {
         return true;
     }
 
-    void waitEmpty() {
-        std::unique_lock<std::mutex> lock(guard);
-        signalPop.wait(lock, [this]() { return queue.empty() || destructed; });
-    }
-
    private:
     unsigned maxSize = std::numeric_limits<unsigned>::max();
     bool blocking = true;
