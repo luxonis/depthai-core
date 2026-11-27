@@ -85,14 +85,6 @@ inline bool isPointInRotatedRectangle(const dai::Point2f& p, const dai::RotatedR
 
     return std::abs(transformed[0]) <= hw && std::abs(transformed[1]) <= hh;
 }
-inline bool RRinRR(const dai::RotatedRect& in, const dai::RotatedRect& out) {
-    for(auto point : in.getPoints()) {
-        if(!isPointInRotatedRectangle(point, out)) {
-            return false;
-        }
-    }
-    return true;
-}
 
 dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransformation& from, const ImgTransformation& to) {
     const auto fromExtrinsics = from.getExtrinsics();
