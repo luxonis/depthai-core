@@ -16,6 +16,7 @@
 #include <optional>
 #include <stdexcept>
 #include <thread>
+#include <tuple>
 #include <utility>
 
 #include "depthai/pipeline/Pipeline.hpp"
@@ -64,79 +65,67 @@ namespace {
 using Steady = std::chrono::steady_clock;
 using SteadyTime = Steady::time_point;
 
-struct TokenBook {
-    struct Lease {
-        std::uint64_t token;
-        std::size_t holders;
-        // Longest prepared span and sequence stride for this pipeline. The clock
-        // starts when the first of those nodes enters run().
-        Steady::duration maxSpan{};
-        std::int64_t maxSeqStride = 0;
-        bool started = false;
-        SteadyTime startedAt{};
-    };
-    std::mutex mutex;
-    std::uint64_t next = 1;
-    std::map<const void*, Lease> pipelines;
+// One lease per pipeline. The clock starts when the first prepared node enters run().
+struct PipelineLease {
+    std::uint64_t token = 0;
+    std::size_t holders = 0;
+    Steady::duration maxSpan{};
+    std::int64_t maxSeqStride = 0;
+    bool started = false;
+    SteadyTime startedAt{};
 };
 
-TokenBook gTokens;
+std::mutex gLeaseMutex;
+std::uint64_t gNextLeaseToken = 1;
+std::map<const void*, PipelineLease> gLeases;
 
 std::uint64_t acquireToken(const void* key) {
-    std::lock_guard<std::mutex> lock(gTokens.mutex);
-    auto found = gTokens.pipelines.find(key);
-    if(found != gTokens.pipelines.end()) {
+    std::lock_guard<std::mutex> lock(gLeaseMutex);
+    auto found = gLeases.find(key);
+    if(found != gLeases.end()) {
         ++found->second.holders;
         return found->second.token;
     }
-    if(gTokens.next == 0) throw std::runtime_error("Replay pipeline token overflow");
-    const auto token = gTokens.next++;
-    gTokens.pipelines.emplace(key, TokenBook::Lease{token, 1});
+    if(gNextLeaseToken == 0) throw std::runtime_error("Replay pipeline token overflow");
+    const auto token = gNextLeaseToken++;
+    gLeases.emplace(key, PipelineLease{token, 1});
     return token;
 }
 
 void releaseToken(const void* key) {
-    std::lock_guard<std::mutex> lock(gTokens.mutex);
-    const auto found = gTokens.pipelines.find(key);
-    if(found != gTokens.pipelines.end() && --found->second.holders == 0) gTokens.pipelines.erase(found);
+    std::lock_guard<std::mutex> lock(gLeaseMutex);
+    const auto found = gLeases.find(key);
+    if(found != gLeases.end() && --found->second.holders == 0) gLeases.erase(found);
 }
 
 void registerLoopSpan(const void* key, Steady::duration span, std::int64_t seqStride) {
     if(seqStride < 1) seqStride = 1;
-    std::lock_guard<std::mutex> lock(gTokens.mutex);
-    const auto found = gTokens.pipelines.find(key);
-    if(found == gTokens.pipelines.end()) return;
+    std::lock_guard<std::mutex> lock(gLeaseMutex);
+    const auto found = gLeases.find(key);
+    if(found == gLeases.end()) return;
     if(span > found->second.maxSpan) found->second.maxSpan = span;
     if(seqStride > found->second.maxSeqStride) found->second.maxSeqStride = seqStride;
 }
 
 void noteLoopStart(const void* key) {
-    std::lock_guard<std::mutex> lock(gTokens.mutex);
-    const auto found = gTokens.pipelines.find(key);
-    if(found == gTokens.pipelines.end() || found->second.started) return;
+    std::lock_guard<std::mutex> lock(gLeaseMutex);
+    const auto found = gLeases.find(key);
+    if(found == gLeases.end() || found->second.started) return;
     found->second.started = true;
     found->second.startedAt = Steady::now();
 }
 
-struct LoopShift {
-    std::int64_t loopIndex = 0;
-    Steady::duration span{};
-    std::int64_t seqStride = 1;
-};
-
-LoopShift loopShiftFor(const void* key) {
-    std::lock_guard<std::mutex> lock(gTokens.mutex);
-    LoopShift shift;
-    const auto found = gTokens.pipelines.find(key);
-    if(found == gTokens.pipelines.end()) return shift;
+// loopIndex, shared span, sequence stride. The span is the longest one registered for this pipeline.
+std::tuple<std::int64_t, Steady::duration, std::int64_t> loopShiftFor(const void* key) {
+    std::lock_guard<std::mutex> lock(gLeaseMutex);
+    const auto found = gLeases.find(key);
+    if(found == gLeases.end()) return {0, Steady::duration::zero(), 1};
     const auto& lease = found->second;
-    shift.span = lease.maxSpan;
-    if(lease.maxSeqStride > 0) shift.seqStride = lease.maxSeqStride;
-    if(!lease.started || lease.maxSpan <= Steady::duration::zero()) return shift;
+    auto seqStride = lease.maxSeqStride > 0 ? lease.maxSeqStride : std::int64_t{1};
+    if(!lease.started || lease.maxSpan <= Steady::duration::zero()) return {0, lease.maxSpan, seqStride};
     const auto elapsed = Steady::now() - lease.startedAt;
-    if(elapsed <= Steady::duration::zero()) return shift;
-    shift.loopIndex = static_cast<std::int64_t>(elapsed / lease.maxSpan);
-    return shift;
+    if(elapsed <= Steady::duration::zero()) return {0, lease.maxSpan, seqStride};
+    return {static_cast<std::int64_t>(elapsed / lease.maxSpan), lease.maxSpan, seqStride};
 }
 
 bool deviceIsRvc4(const DeviceNode& node) {
@@ -821,9 +810,9 @@ std::optional<Steady::duration> paceInterval(std::optional<Steady::duration> rec
 }
 
 void applyRecorded(const std::shared_ptr<Buffer>& buffer, const ReplayRuntime& runtime, const RecordedTiming& recorded) {
-    const auto shift = loopShiftFor(runtime.pipelineKey);
-    const auto amount = shift.span * shift.loopIndex;
-    const auto sequence = recorded.sequence + shift.seqStride * shift.loopIndex;
+    const auto [loopIndex, span, seqStride] = loopShiftFor(runtime.pipelineKey);
+    const auto amount = span * loopIndex;
+    const auto sequence = recorded.sequence + seqStride * loopIndex;
     const auto deviceOut = recorded.timestampDevice + amount;
     const auto originalSequence = buffer->getSequenceNum();
     const auto originalTimestamp = buffer->getTimestamp();

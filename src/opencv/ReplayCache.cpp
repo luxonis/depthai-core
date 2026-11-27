@@ -8,12 +8,14 @@
 #include <cstring>
 #include <fstream>
 #include <functional>
+#include <map>
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <set>
 #include <stdexcept>
 #include <thread>
+#include <tuple>
 
 #include "ReplayInternal.hpp"
 #include "utility/Environment.hpp"
@@ -456,36 +458,6 @@ std::uint64_t usedBytes() {
     return total;
 }
 
-struct Unit {
-    std::string hash;
-    std::uint64_t size = 0;
-    std::int64_t lastUse = 0;
-    bool inUse = false;
-};
-
-std::vector<Unit> unitsOf() {
-    std::vector<Unit> units;
-    for(const auto& entry : gIndex.entries) {
-        Unit* unit = nullptr;
-        for(auto& candidate : units) {
-            if(candidate.hash == entry.sourceHash) {
-                unit = &candidate;
-                break;
-            }
-        }
-        if(unit == nullptr) {
-            units.push_back(Unit{});
-            unit = &units.back();
-            unit->hash = entry.sourceHash;
-            unit->lastUse = entry.lastUseMs;
-        }
-        unit->size += entry.sizeBytes;
-        unit->lastUse = std::max(unit->lastUse, entry.lastUseMs);
-        if(!entry.holds.empty()) unit->inUse = true;
-    }
-    return units;
-}
-
 void removeUnitFiles(const std::filesystem::path& dir, const std::string& hash) {
     for(const auto& entry : gIndex.entries) {
         if(entry.sourceHash != hash || !entry.ownsFiles || entry.relativePath.empty()) continue;
@@ -517,22 +489,35 @@ void ensureSpace(const std::filesystem::path& dir, const CacheSlotRequest& reque
     if(request.sizeBytes > limit) throwFit(request.sizeBytes, limit, freeBytes(dir));
     auto fits = [&]() { return usedBytes() + request.sizeBytes <= limit && request.diskBytes <= freeBytes(dir); };
     while(!fits()) {
-        auto groups = unitsOf();
-        std::vector<Unit> victims;
-        for(const auto& unit : groups) {
-            if(unit.inUse || unit.hash == request.sourceHash) continue;
-            victims.push_back(unit);
+        // Entries that share a source hash are evicted together. In-use groups stay.
+        std::map<std::string, std::tuple<std::uint64_t, std::int64_t, bool>> groups;
+        for(const auto& entry : gIndex.entries) {
+            const auto found = groups.find(entry.sourceHash);
+            if(found == groups.end()) {
+                groups.emplace(entry.sourceHash, std::make_tuple(entry.sizeBytes, entry.lastUseMs, !entry.holds.empty()));
+                continue;
+            }
+            std::get<0>(found->second) += entry.sizeBytes;
+            std::get<1>(found->second) = std::max(std::get<1>(found->second), entry.lastUseMs);
+            if(!entry.holds.empty()) std::get<2>(found->second) = true;
+        }
+        std::vector<std::string> victims;
+        for(const auto& group : groups) {
+            if(std::get<2>(group.second) || group.first == request.sourceHash) continue;
+            victims.push_back(group.first);
         }
         if(victims.empty()) {
             saveIndex(dir);
             throwFit(std::max(request.sizeBytes, request.diskBytes), limit, freeBytes(dir));
         }
-        std::sort(victims.begin(), victims.end(), [](const Unit& a, const Unit& b) {
-            if(a.lastUse != b.lastUse) return a.lastUse < b.lastUse;
-            return a.size > b.size;
+        std::sort(victims.begin(), victims.end(), [&](const std::string& a, const std::string& b) {
+            const auto& left = groups[a];
+            const auto& right = groups[b];
+            if(std::get<1>(left) != std::get<1>(right)) return std::get<1>(left) < std::get<1>(right);
+            return std::get<0>(left) > std::get<0>(right);
         });
-        removeUnitFiles(dir, victims.front().hash);
-        eraseUnit(victims.front().hash);
+        removeUnitFiles(dir, victims.front());
+        eraseUnit(victims.front());
         saveIndex(dir);
     }
 }
