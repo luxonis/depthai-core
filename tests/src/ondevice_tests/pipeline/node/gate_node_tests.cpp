@@ -8,6 +8,19 @@
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/Gate.hpp"
 
+// Sanitizer builds make the host slower. Timing checks that depend on the host speed use more margin there.
+#if defined(__SANITIZE_ADDRESS__) || defined(__SANITIZE_THREAD__)
+constexpr bool SANITIZER_BUILD = true;
+#elif defined(__has_feature)
+    #if __has_feature(address_sanitizer) || __has_feature(thread_sanitizer)
+constexpr bool SANITIZER_BUILD = true;
+    #else
+constexpr bool SANITIZER_BUILD = false;
+    #endif
+#else
+constexpr bool SANITIZER_BUILD = false;
+#endif
+
 TEST_CASE("ImgFrame metadata survives a device round trip") {
     constexpr unsigned int FRAME_WIDTH = 128;
     constexpr unsigned int FRAME_HEIGHT = 32;
@@ -119,8 +132,14 @@ TEST_CASE("Test Gate Timing and Data Flow") {
     // Test Parameters
     const int numCycles = 4;            // Number of times to toggle
     const double periodDuration = 2.0;  // 2 seconds per state
-    const double waitDelay = 0.05;      // 0.05s stabilization wait
-    bool currentGateState = true;       // Start with Gate ON as requested
+    const double openDelay = 0.05;      // Time for the open command to reach the gate
+    // Time for the close command to reach the gate, and for the frames that the gate sent before it to reach the host.
+    // When the host takes frames slower than the camera makes them, frames wait on the device and arrive after the close.
+    // A sanitizer build on a busy host received only ~19 of the 30 fps, and 2-3 frames arrived more than 50 ms after the close.
+    const double closeDelay = SANITIZER_BUILD ? 0.5 : 0.05;
+    // The same slow host gets fewer frames in the open period. The check only has to show that the gate is open.
+    const int minOpenFrames = SANITIZER_BUILD ? 15 : 30;
+    bool currentGateState = true;  // Start with Gate ON as requested
 
     auto startTime = std::chrono::steady_clock::now();
     int cycleCount = 0;
@@ -128,8 +147,7 @@ TEST_CASE("Test Gate Timing and Data Flow") {
     bool isMeasuring = false;
 
     // Initial Gate Control (On)
-    auto ctrl = std::make_shared<dai::GateControl>(currentGateState, -1, -1);
-    gateControlQueue->send(ctrl);
+    gateControlQueue->send(std::make_shared<dai::GateControl>(currentGateState, -1, -1));
 
     std::cout << "--- Starting Test: Gate is ON ---" << std::endl;
 
@@ -140,17 +158,16 @@ TEST_CASE("Test Gate Timing and Data Flow") {
         if(elapsed.count() >= periodDuration) {
             std::cout << "\n--- Cycle " << cycleCount << ": Toggling Gate to " << (currentGateState ? "ON" : "OFF") << " ---" << std::endl;
             if(currentGateState) {
-                CHECK(framesInPeriod > 30);
+                CHECK(framesInPeriod > minOpenFrames);
                 std::cout << "[VERIFY] Gate ON period finished. Frames received: " << framesInPeriod << std::endl;
             } else {
                 CHECK(framesInPeriod == 0);
                 std::cout << "[VERIFY] Gate OFF period finished. Frames received: " << framesInPeriod << std::endl;
             }
 
-            // Toggle State
+            // Toggle State. Send a new message: do not change a message that was already sent.
             currentGateState = !currentGateState;
-            ctrl->open = currentGateState;
-            gateControlQueue->send(ctrl);
+            gateControlQueue->send(std::make_shared<dai::GateControl>(currentGateState, -1, -1));
 
             // Reset Period
             startTime = now;
@@ -161,7 +178,7 @@ TEST_CASE("Test Gate Timing and Data Flow") {
         }
         auto frame = cameraQueue->tryGet<dai::ImgFrame>();
 
-        if(elapsed.count() >= waitDelay) {
+        if(elapsed.count() >= (currentGateState ? openDelay : closeDelay)) {
             isMeasuring = true;
         }
 
