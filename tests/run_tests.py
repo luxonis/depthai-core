@@ -259,17 +259,20 @@ if __name__ == "__main__":
             "env": {"DEPTHAI_PLATFORM": "rvc2", "DEPTHAI_PROTOCOL": "usb"},
             "labels": ["rvc2", "usb"],
             "excluded_labels": ["nousb"],
+            "replay_excluded_labels": ["noreplayrvc2"],
         },
         {
             "name": "RVC2 - POE",
             "env": {"DEPTHAI_PLATFORM": "rvc2", "DEPTHAI_PROTOCOL": "tcpip"},
             "labels": ["rvc2", "poe"],
+            "replay_excluded_labels": ["noreplayrvc2", "noreplayrvc2poe"],
         },
     ]
 
     # List to keep track of results
     resultThreads = []
-    replay_excluded_labels = ["noreplayci"]
+    # The replay job excludes these labels in all configurations. A configuration can add more with "replay_excluded_labels".
+    replay_common_excluded_labels = ["noreplayci"]
 
     # Filter configurations based on command-line arguments
     if args.rvc4:
@@ -311,7 +314,9 @@ if __name__ == "__main__":
         name = config["name"]
         env_vars = config["env"]
         labels = config.get("labels")
-        excluded_labels = config.get("excluded_labels", []) + (replay_excluded_labels if args.rvc4replay or args.rvc2replay else [])
+        excluded_labels = config.get("excluded_labels", [])
+        if args.rvc4replay or args.rvc2replay:
+            excluded_labels = excluded_labels + replay_common_excluded_labels + config.get("replay_excluded_labels", [])
 
         print(f"Running tests for configuration: {name}, on platform: {env_vars['DEPTHAI_PLATFORM'] if 'DEPTHAI_PLATFORM' in env_vars else 'HOST'}, on protocol: {env_vars['DEPTHAI_PROTOCOL'] if 'DEPTHAI_PROTOCOL' in env_vars else 'HOST'}, with labels: {",".join(labels) if labels is not None else ""}")
         resultThread = run_ctest(env_vars, labels, args.test_label, args.timeout, excluded_labels=excluded_labels, blocking=False, name=name)

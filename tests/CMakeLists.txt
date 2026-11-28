@@ -902,7 +902,7 @@ dai_set_test_labels(encoded_frame_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # MessageGroup tests
 dai_add_test(message_group_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(message_group_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(message_group_test ondevice rvc2_all rvc4 ci noreplayrvc2poe)  # RVC2 PoE cannot carry the replayed camera streams
 
 # Pointcloud test
 dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
@@ -914,7 +914,7 @@ dai_set_test_labels(pointcloud_multi_stream_device_test ondevice rvc4 rvc4ffc ci
 
 # RGBD test
 dai_add_test(rgbd_test src/ondevice_tests/rgbd_test.cpp)
-dai_set_test_labels(rgbd_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(rgbd_test ondevice rvc2_all rvc4 ci noreplayrvc2poe)  # RVC2 PoE cannot carry the replayed camera streams
 
 # Input/Output naming test
 dai_add_test(input_output_naming_test src/ondevice_tests/input_output_naming_test.cpp)
@@ -977,7 +977,7 @@ dai_add_test(subnode_test src/ondevice_tests/pipeline/subnode_test.cpp)
 dai_set_test_labels(subnode_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci)
 
 dai_add_test(depth_node_test src/ondevice_tests/pipeline/node/depth_node_test.cpp)
-dai_set_test_labels(depth_node_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(depth_node_test ondevice rvc2_all rvc4 ci noreplayrvc2poe)  # RVC2 PoE cannot carry the replayed stereo streams at the FPS the test needs
 
 # Depth algorithm selection (on-device)
 dai_add_test(depth_algorithm_selection_test src/ondevice_tests/pipeline/node/depth_algorithm_selection_test.cpp)
@@ -1031,7 +1031,7 @@ dai_set_test_labels(segmentation_parser_test ondevice rvc4 rvc4ffc ci)
 
 # Spatial detection network test
 dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp)
-dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 ci noreplayrvc2)  # The 4000x3000 replayed CAM_A leaves 5 SHAVEs for the 8-SHAVE RVC2 NN
 
 dai_add_test(neural_network_nnarchive_behavior_test src/ondevice_tests/pipeline/node/neural_network_nnarchive_behavior_test.cpp)
 target_link_libraries(neural_network_nnarchive_behavior_test PRIVATE LibArchive::LibArchive liblzma::liblzma BZip2::BZip2)
@@ -1099,7 +1099,7 @@ dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
 dai_set_test_labels(bridge_large_messages ondevice rvc4 rvc4ffc rvc4rgb ci)
 # ImageAlign test
 dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
-dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci noreplayrvc2poe)  # RVC2 PoE cannot carry the replayed camera streams
 
 # MDK hardware warp regression tests (camera-independent synthetic frames)
 dai_add_test(warp_node_test src/ondevice_tests/warp_node_test.cpp)
