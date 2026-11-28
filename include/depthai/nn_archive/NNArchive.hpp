@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <depthai/common/ModelType.hpp>
 #include <filesystem>
+#include <map>
 #include <memory>
 #include <optional>
 
@@ -127,6 +128,12 @@ class NNArchive {
      */
     model::ModelType getModelType() const;
 
+    /**
+     * @brief Get declared runtime libraries indexed by their archive paths.
+     * @return Library bytes owned by this archive. Libraries are never executed on the host.
+     */
+    const std::map<std::string, std::vector<uint8_t>>& getRuntimeLibraries() const;
+
    private:
     // Read model from archive
     std::vector<uint8_t> readModelFromArchive(const std::filesystem::path& archivePath, const std::string& modelPathInArchive) const;
@@ -145,6 +152,7 @@ class NNArchive {
 
     // Other formats
     std::shared_ptr<std::vector<uint8_t>> otherModelFormatPtr;
+    std::shared_ptr<std::map<std::string, std::vector<uint8_t>>> runtimeLibraries = std::make_shared<std::map<std::string, std::vector<uint8_t>>>();
 };
 
 }  // namespace dai

@@ -22,6 +22,7 @@
 #include "depthai/nn_archive/v1/Model.hpp"
 #include "depthai/nn_archive/v1/Output.hpp"
 #include "depthai/nn_archive/v1/PreprocessingBlock.hpp"
+#include "depthai/nn_archive/v1/RuntimeDependencies.hpp"
 #include "helper.hpp"
 
 namespace dai {
@@ -38,6 +39,15 @@ void to_json(json& j, const MetadataClass& x);
 
 void from_json(const json& j, Output& x);
 void to_json(json& j, const Output& x);
+
+void from_json(const json& j, RuntimeImplementation& x);
+void to_json(json& j, const RuntimeImplementation& x);
+
+void from_json(const json& j, SNPEUDOPackage& x);
+void to_json(json& j, const SNPEUDOPackage& x);
+
+void from_json(const json& j, RuntimeDependencies& x);
+void to_json(json& j, const RuntimeDependencies& x);
 
 void from_json(const json& j, Model& x);
 void to_json(json& j, const Model& x);
@@ -120,11 +130,61 @@ inline void to_json(json& j, const Output& x) {
     j["shape"] = x.shape;
 }
 
+namespace detail {
+// Same rules as luxonis-ml: a normalized relative POSIX path that stays inside
+// the archive, has no Windows drive and is not config.json.
+inline void validateRuntimeDependencyPath(const std::string& path) {
+    const auto invalid = [&path]() { return std::invalid_argument("Invalid NNArchive runtime dependency path: " + path); };
+    if(path.empty() || path == "config.json" || path.find_first_of(std::string("\\\0", 2)) != std::string::npos || (path.size() >= 2 && path[1] == ':')) {
+        throw invalid();
+    }
+    for(std::size_t start = 0;;) {
+        const auto end = path.find('/', start);
+        const auto part = path.substr(start, end == std::string::npos ? std::string::npos : end - start);
+        if(part.empty() || part == "." || part == "..") throw invalid();
+        if(end == std::string::npos) break;
+        start = end + 1;
+    }
+}
+}  // namespace detail
+
+inline void from_json(const json& j, RuntimeImplementation& x) {
+    j.at("runtime").get_to(x.runtime);
+    j.at("path").get_to(x.path);
+    detail::validateRuntimeDependencyPath(x.path);
+    if(j.size() != 2 || x.runtime.empty()) throw std::invalid_argument("Invalid NNArchive runtime implementation metadata");
+}
+
+inline void to_json(json& j, const RuntimeImplementation& x) {
+    j = {{"runtime", x.runtime}, {"path", x.path}};
+}
+
+inline void from_json(const json& j, SNPEUDOPackage& x) {
+    j.at("registration").get_to(x.registration);
+    j.at("implementations").get_to(x.implementations);
+    detail::validateRuntimeDependencyPath(x.registration);
+    if(j.size() != 2 || x.implementations.empty()) throw std::invalid_argument("Invalid NNArchive SNPE UDO package metadata");
+}
+
+inline void to_json(json& j, const SNPEUDOPackage& x) {
+    j = {{"registration", x.registration}, {"implementations", x.implementations}};
+}
+
+inline void from_json(const json& j, RuntimeDependencies& x) {
+    j.at("snpe_udo").get_to(x.snpeUdo);
+    if(j.size() != 1 || x.snpeUdo.empty()) throw std::invalid_argument("Invalid NNArchive runtime_dependencies metadata");
+}
+
+inline void to_json(json& j, const RuntimeDependencies& x) {
+    j = {{"snpe_udo", x.snpeUdo}};
+}
+
 inline void from_json(const json& j, Model& x) {
     x.heads = get_stack_optional<std::vector<Head>>(j, "heads");
     x.inputs = j.at("inputs").get<std::vector<Input>>();
     x.metadata = j.at("metadata").get<MetadataClass>();
     x.outputs = j.at("outputs").get<std::vector<Output>>();
+    x.runtimeDependencies = get_stack_optional<RuntimeDependencies>(j, "runtime_dependencies");
 }
 
 inline void to_json(json& j, const Model& x) {
@@ -133,6 +193,7 @@ inline void to_json(json& j, const Model& x) {
     j["inputs"] = x.inputs;
     j["metadata"] = x.metadata;
     j["outputs"] = x.outputs;
+    if(x.runtimeDependencies) j["runtime_dependencies"] = *x.runtimeDependencies;
 }
 
 inline void from_json(const json& j, Config& x) {

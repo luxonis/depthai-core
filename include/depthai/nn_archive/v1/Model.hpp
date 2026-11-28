@@ -7,6 +7,7 @@
 #include "Input.hpp"
 #include "MetadataClass.hpp"
 #include "Output.hpp"
+#include "RuntimeDependencies.hpp"
 
 namespace dai {
 namespace nn_archive {
@@ -59,6 +60,8 @@ struct Model {
      * List of Output objects defining the model outputs.
      */
     std::vector<Output> outputs;
+    /** Native libraries required by the executable, absent for ordinary models. */
+    std::optional<RuntimeDependencies> runtimeDependencies = std::nullopt;
 };
 }  // namespace v1
 }  // namespace nn_archive

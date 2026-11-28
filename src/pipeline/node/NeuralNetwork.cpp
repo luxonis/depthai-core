@@ -1,9 +1,16 @@
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 
 #include <algorithm>
+#include <cctype>
+#include <filesystem>
+#include <fstream>
 #include <magic_enum/magic_enum.hpp>
+#include <map>
 #include <optional>
+#include <set>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "capabilities/ImgFrameCapability.hpp"
 #include "common/ModelType.hpp"
@@ -17,6 +24,27 @@
 
 namespace dai {
 namespace node {
+
+namespace {
+constexpr const char* UDO_ASSET_PREFIX = "__udo/";
+
+// Each model setter replaces the whole model. A blob, a custom model, a device
+// zoo model and the UDO libraries of an NNArchive never mix.
+void clearModel(AssetManager& assetManager, NeuralNetworkProperties& properties) {
+    // Find the libraries by key: the public properties may have been edited.
+    for(const auto& asset : assetManager.getAll()) {
+        if(asset->key.rfind(UDO_ASSET_PREFIX, 0) == 0) assetManager.remove(asset->key);
+    }
+    properties.udoPackages.clear();
+    properties.udoLibraryUris.clear();
+    assetManager.remove("__blob");
+    assetManager.remove("__model");
+    properties.blobUri.clear();
+    properties.blobSize.reset();
+    properties.modelUri.clear();
+    properties.deviceModel.reset();
+}
+}  // namespace
 
 NeuralNetwork::~NeuralNetwork() = default;
 
@@ -155,28 +183,32 @@ std::optional<std::reference_wrapper<const NNArchive>> NeuralNetwork::getNNArchi
 
 void NeuralNetwork::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
-    this->nnArchive = nnArchive;
-    switch(nnArchive.getModelType()) {
+    // Store the archive only once its model is set. The argument may refer to the stored archive.
+    const NNArchive archive = nnArchive;
+    switch(archive.getModelType()) {
         case model::ModelType::BLOB:
-            setNNArchiveBlob(nnArchive);
+            setNNArchiveBlob(archive);
             break;
         case model::ModelType::SUPERBLOB:
-            setNNArchiveSuperblob(nnArchive, DEFAULT_SUPERBLOB_NUM_SHAVES);
+            setNNArchiveSuperblob(archive, DEFAULT_SUPERBLOB_NUM_SHAVES);
             break;
         case model::ModelType::OTHER:
         case model::ModelType::DLC:
-            setNNArchiveOther(nnArchive);
+            setNNArchiveOther(archive);
             break;
         case model::ModelType::NNARCHIVE:
             DAI_CHECK_V(false, "NNArchive inside NNArchive is not supported. %s: %s", __FILE__, __LINE__);
             break;
     }
+    this->nnArchive = archive;
 }
 
 void NeuralNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
-    switch(nnArchive.getModelType()) {
+    // Store the archive only once its model is set. The argument may refer to the stored archive.
+    const NNArchive archive = nnArchive;
+    switch(archive.getModelType()) {
         case model::ModelType::SUPERBLOB:
-            setNNArchiveSuperblob(nnArchive, numShaves);
+            setNNArchiveSuperblob(archive, numShaves);
             break;
         case model::ModelType::BLOB:
         case model::ModelType::OTHER:
@@ -187,6 +219,7 @@ void NeuralNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
             DAI_CHECK_V(false, "NNArchive inside NNArchive is not supported. %s: %s", __FILE__, __LINE__);
             break;
     }
+    this->nnArchive = archive;
 }
 
 void NeuralNetwork::setFromModelZoo(NNModelDescription description, bool useCached) {
@@ -214,7 +247,47 @@ void NeuralNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numSha
 void NeuralNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getModelType() == model::ModelType::DLC || nnArchive.getModelType() == model::ModelType::OTHER, "NNArchive type is not DLC or OTHER");
     DAI_CHECK_V(nnArchive.getOtherModelFormat().has_value(), "Expected model format for DLC/OTHER type");
+    const auto& dependencies = nnArchive.getConfig<nn_archive::v1::Config>().model.runtimeDependencies;
+    DAI_CHECK(!dependencies || !device || device->getPlatform() == Platform::RVC4, "NNArchive runtime dependencies require RVC4");
+
+    // The device runs UDOs on the DSP only, so it needs the registration and DSP libraries.
+    std::vector<NeuralNetworkProperties::UdoPackage> packages;
+    std::set<std::string> paths;
+    std::map<std::string, std::string> libraryNames;  // device file name -> first archive path with that name
+    const auto& libraries = nnArchive.getRuntimeLibraries();
+    const auto addLibrary = [&](const std::string& path) {
+        paths.insert(path);
+        // The device stores and looks up the libraries by file name only. Paths are
+        // validated POSIX paths; std::filesystem would re-encode them on Windows.
+        const auto name = path.substr(path.rfind('/') + 1);
+        const auto existing = libraryNames.emplace(name, path).first;
+        DAI_CHECK_V(existing->second == path || libraries.at(existing->second) == libraries.at(path),
+                    "Conflicting NNArchive UDO libraries {} and {}: the device needs distinct file names for different libraries",
+                    existing->second,
+                    path);
+    };
+    if(dependencies) {
+        for(const auto& package : dependencies->snpeUdo) {
+            NeuralNetworkProperties::UdoPackage udoPackage{package.registration, {}};
+            for(const auto& implementation : package.implementations) {
+                std::string runtime = implementation.runtime;
+                std::transform(runtime.begin(), runtime.end(), runtime.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                if(runtime == "dsp") udoPackage.dspImplementations.push_back(implementation.path);
+            }
+            DAI_CHECK_V(
+                !udoPackage.dspImplementations.empty(), "NNArchive UDO package {} has no implementation for the SNPE DSP runtime", package.registration);
+            addLibrary(udoPackage.registration);
+            for(const auto& path : udoPackage.dspImplementations) addLibrary(path);
+            packages.push_back(std::move(udoPackage));
+        }
+    }
+
     setOtherModelFormat(std::move(nnArchive.getOtherModelFormat().value()));
+    for(const auto& path : paths) {
+        const auto asset = assetManager.set(UDO_ASSET_PREFIX + path, libraries.at(path));
+        properties.udoLibraryUris.emplace(path, asset->getRelativeUri());
+    }
+    properties.udoPackages = std::move(packages);
 }
 
 // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
@@ -235,6 +308,7 @@ void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
             throw std::runtime_error(fmt::format("Loaded model is for RVC2, but the device is {}", device->getPlatformAsString()));
         }
     }
+    clearModel(assetManager, properties);
     auto asset = assetManager.set("__blob", std::move(blob.data));
     properties.blobUri = asset->getRelativeUri();
     properties.blobSize = static_cast<uint32_t>(asset->getSize());
@@ -242,12 +316,20 @@ void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
 }
 
 void NeuralNetwork::setOtherModelFormat(std::vector<uint8_t> otherModel) {
+    clearModel(assetManager, properties);
     auto asset = assetManager.set("__model", std::move(otherModel));
     properties.modelUri = asset->getRelativeUri();
     properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
 }
 
 void NeuralNetwork::setOtherModelFormat(const std::filesystem::path& path) {
+    // Check the file first, so a bad path keeps the current model. A directory
+    // opens as a stream on POSIX, so the stream check alone does not reject it.
+    std::error_code error;
+    DAI_CHECK_V(std::filesystem::is_regular_file(path, error) && std::ifstream(path, std::ios::binary).is_open(),
+                "Cannot load model, file at path {} doesn't exist or is not a readable file.",
+                path);
+    clearModel(assetManager, properties);
     auto modelAsset = assetManager.setLazy("__model", path);
     properties.modelUri = modelAsset->getRelativeUri();
     properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
@@ -300,6 +382,8 @@ int NeuralNetwork::getNumInferenceThreads() const {
 }
 
 void NeuralNetwork::setModelFromDeviceZoo(DeviceModelZoo model) {
+    // The device loads its own model, so do not transfer a previously set one.
+    clearModel(assetManager, properties);
     properties.deviceModel = model;
 }
 

@@ -2,6 +2,8 @@
 
 echo "ON DESTROY CALLED"
 SCRIPT_DIR="$(dirname "$0")"
+# The supervisor may terminate the process before its C++ destructors run.
+rm -rf -- "$SCRIPT_DIR"/../.depthai-udo-*
 . "$SCRIPT_DIR/gate_version.sh"
 gate_version_current="$(gate_version_get)"
 gate_version_limit="0.0.24"

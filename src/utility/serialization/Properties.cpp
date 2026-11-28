@@ -82,6 +82,7 @@ namespace dai {
 
 DEPTHAI_SERIALIZE_DEFINE(ColorCameraProperties::IspScale)
 DEPTHAI_SERIALIZE_EXT_DEFINE(IMUSensorConfig)
+DEPTHAI_SERIALIZE_EXT_DEFINE(NeuralNetworkProperties::UdoPackage)
 DEPTHAI_SERIALIZE_EXT_DEFINE(PoolProperties)
 DEPTHAI_SERIALIZE_DEFINE(StereoDepthProperties::RectificationMesh)
 DEPTHAI_SERIALIZE_EXT_DEFINE(StitchingProperties::Plane)

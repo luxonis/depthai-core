@@ -19,6 +19,8 @@ DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C
 ## Documentation
 Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/software-v3/depthai/)
 
+To bundle SNPE User Defined Operation libraries with an RVC4 model, see [NNArchive runtime dependencies](docs/NNArchiveRuntimeDependencies.md).
+
 ## Examples
 For the complete model-description YAML format, see [nn_model_description.yaml](./examples/models/nn_model_description.yaml).
 

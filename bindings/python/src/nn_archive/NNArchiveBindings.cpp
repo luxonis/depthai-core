@@ -2,6 +2,7 @@
 
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
+#include <pybind11/stl_bind.h>
 
 #include <filesystem>
 
@@ -20,6 +21,9 @@
 #include "depthai/nn_archive/v1/Model.hpp"
 #include "depthai/nn_archive/v1/Output.hpp"
 #include "depthai/nn_archive/v1/PreprocessingBlock.hpp"
+
+PYBIND11_MAKE_OPAQUE(std::vector<dai::nn_archive::v1::RuntimeImplementation>);
+PYBIND11_MAKE_OPAQUE(std::vector<dai::nn_archive::v1::SNPEUDOPackage>);
 
 void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -50,6 +54,9 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<v1::MetadataClass> v1metadataClass(v1m, "MetadataClass", DOC(dai, nn_archive, v1, MetadataClass));
     py::class_<v1::Output> v1output(v1m, "Output", DOC(dai, nn_archive, v1, Output));
     py::class_<v1::PreprocessingBlock> v1preprocessingBlock(v1m, "PreprocessingBlock", DOC(dai, nn_archive, v1, PreprocessingBlock));
+    py::class_<v1::RuntimeImplementation> v1runtimeImplementation(v1m, "RuntimeImplementation", DOC(dai, nn_archive, v1, RuntimeImplementation));
+    py::class_<v1::SNPEUDOPackage> v1udoPackage(v1m, "SNPEUDOPackage", DOC(dai, nn_archive, v1, SNPEUDOPackage));
+    py::class_<v1::RuntimeDependencies> v1runtimeDependencies(v1m, "RuntimeDependencies", DOC(dai, nn_archive, v1, RuntimeDependencies));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -65,6 +72,17 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Bind NNArchive
+    py::bind_vector<std::vector<v1::RuntimeImplementation>>(v1m, "RuntimeImplementationVector");
+    py::bind_vector<std::vector<v1::SNPEUDOPackage>>(v1m, "SNPEUDOPackageVector");
+    py::implicitly_convertible<py::list, std::vector<v1::RuntimeImplementation>>();
+    py::implicitly_convertible<py::list, std::vector<v1::SNPEUDOPackage>>();
+    v1runtimeImplementation.def(py::init<>())
+        .def_readwrite("runtime", &v1::RuntimeImplementation::runtime, DOC(dai, nn_archive, v1, RuntimeImplementation, runtime))
+        .def_readwrite("path", &v1::RuntimeImplementation::path, DOC(dai, nn_archive, v1, RuntimeImplementation, path));
+    v1udoPackage.def(py::init<>())
+        .def_readwrite("registration", &v1::SNPEUDOPackage::registration, DOC(dai, nn_archive, v1, SNPEUDOPackage, registration))
+        .def_readwrite("implementations", &v1::SNPEUDOPackage::implementations, DOC(dai, nn_archive, v1, SNPEUDOPackage, implementations));
+    v1runtimeDependencies.def(py::init<>()).def_readwrite("snpeUdo", &v1::RuntimeDependencies::snpeUdo, DOC(dai, nn_archive, v1, RuntimeDependencies, snpeUdo));
     nnArchive.def(py::init([](const std::filesystem::path& archivePath, NNArchiveEntry::Compression compression) {
                       NNArchiveOptions options;
                       options.compression(compression);
@@ -93,6 +111,16 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     nnArchive.def("getConfig", &NNArchive::getConfig<NNArchiveConfig>, DOC(dai, NNArchive, getConfig));
     nnArchive.def("getConfigV1", &NNArchive::getConfig<v1::Config>, DOC(dai, NNArchive, getConfig));
     nnArchive.def("getModelType", &NNArchive::getModelType, DOC(dai, NNArchive, getModelType));
+    nnArchive.def(
+        "getRuntimeLibraries",
+        [](const NNArchive& archive) {
+            py::dict libraries;
+            for(const auto& library : archive.getRuntimeLibraries()) {
+                libraries[py::str(library.first)] = py::bytes(reinterpret_cast<const char*>(library.second.data()), library.second.size());
+            }
+            return libraries;
+        },
+        DOC(dai, NNArchive, getRuntimeLibraries));
     nnArchive.def("getInputSize", &NNArchive::getInputSize, py::arg("index") = 0, DOC(dai, NNArchive, getInputSize));
     nnArchive.def("getInputWidth", &NNArchive::getInputWidth, py::arg("index") = 0, DOC(dai, NNArchive, getInputWidth));
     nnArchive.def("getInputHeight", &NNArchive::getInputHeight, py::arg("index") = 0, DOC(dai, NNArchive, getInputHeight));
@@ -154,6 +182,7 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1model.def_readwrite("inputs", &v1::Model::inputs, DOC(dai, nn_archive, v1, Model, inputs));
     v1model.def_readwrite("metadata", &v1::Model::metadata, DOC(dai, nn_archive, v1, Model, metadata));
     v1model.def_readwrite("outputs", &v1::Model::outputs, DOC(dai, nn_archive, v1, Model, outputs));
+    v1model.def_readwrite("runtimeDependencies", &v1::Model::runtimeDependencies, DOC(dai, nn_archive, v1, Model, runtimeDependencies));
 
     v1head.def(py::init<>());
     v1head.def(py::pickle([](const v1::Head& value) { return nlohmann::json(value).dump(); },

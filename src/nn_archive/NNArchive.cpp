@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
+#include <unordered_set>
 
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 
@@ -47,6 +48,45 @@ NNArchive::NNArchive(const std::filesystem::path& archivePath, NNArchiveOptions 
             DAI_CHECK(false, "Unknown archive type");
             break;
     }
+
+    const auto& dependencies = getConfig<nn_archive::v1::Config>().model.runtimeDependencies;
+    if(dependencies) {
+        DAI_CHECK(modelType == model::ModelType::DLC, "NNArchive runtime dependencies require an RVC4 SNPE DLC model");
+        for(const auto& package : dependencies->snpeUdo) {
+            runtimeLibraries->try_emplace(package.registration);
+            for(const auto& implementation : package.implementations) runtimeLibraries->try_emplace(implementation.path);
+        }
+        utility::ArchiveUtil archive(archivePath, archiveOptions.compression());
+        std::unordered_set<std::string> found;
+        struct archive_entry* entry = nullptr;
+        int status = ARCHIVE_OK;
+        // ARCHIVE_WARN reports a usable header, for example a name that could not be converted.
+        while((status = archive_read_next_header(archive.getA(), &entry)) == ARCHIVE_OK || status == ARCHIVE_WARN) {
+            // config.json declares UTF-8 paths; the locale form is the fallback for names that do not convert.
+            const char* entryPath = archive_entry_pathname_utf8(entry);
+            if(entryPath == nullptr) entryPath = archive_entry_pathname(entry);
+            // An entry without a name cannot be a declared library; a missing library is reported below.
+            if(entryPath == nullptr) continue;
+            const std::string path = entryPath;
+            const auto library = runtimeLibraries->find(path);
+            if(library == runtimeLibraries->end()) continue;
+            DAI_CHECK_V(found.insert(path).second, "Duplicate NNArchive runtime library: {}", path);
+            DAI_CHECK_V(archive_entry_filetype(entry) == AE_IFREG && archive_entry_hardlink(entry) == nullptr,
+                        "NNArchive runtime library must be a regular file: {}",
+                        path);
+            archive.readEntry(entry, library->second);
+            DAI_CHECK_V(!library->second.empty(), "Empty NNArchive runtime library: {}", path);
+        }
+        const auto* error = archive_error_string(archive.getA());
+        DAI_CHECK_V(status == ARCHIVE_EOF, "Failed reading NNArchive runtime libraries: {}", error ? error : "unknown error");
+        for(const auto& library : *runtimeLibraries) {
+            DAI_CHECK_V(found.count(library.first) != 0, "Missing NNArchive runtime library: {}", library.first);
+        }
+    }
+}
+
+const std::map<std::string, std::vector<uint8_t>>& NNArchive::getRuntimeLibraries() const {
+    return *runtimeLibraries;
 }
 
 std::optional<OpenVINO::Blob> NNArchive::getBlob() const {

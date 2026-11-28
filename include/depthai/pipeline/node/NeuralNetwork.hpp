@@ -108,6 +108,7 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
 
     /**
      * @brief Set NNArchive for this Node. If the archive's type is SUPERBLOB, use default number of shaves.
+     * @note Native runtime libraries bundled in trusted archives are loaded on RVC4 during pipeline initialization.
      *
      * @param nnArchive: NNArchive to set
      */
