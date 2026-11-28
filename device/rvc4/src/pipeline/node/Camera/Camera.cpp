@@ -152,8 +152,10 @@ dai::ImgTransformation adjustTransformationSize(dai::ImgTransformation transform
 }
 
 // The calibration is for the socket's orientation from the OS camera config, so it stays and the sensor's flip goes into
-// the transformation, after the mode's crop. Not included: the shift of a sensor whose output window isn't centred in
-// its readout (measured on the OAK4-FFC sensors: up to 3 px).
+// the transformation, after the mode's crop. A flipping sensor reads the same pixels in reverse, so pixel x of the
+// upright frame is pixel width - 1 - x of the mirrored one. addFlipHorizontal()/addFlipVertical() mirror around
+// width / 2, so each flip is shifted back by one pixel. Not included: the shift of a sensor whose output window isn't
+// centred in its readout (measured on the OAK4-FFC sensors: up to 3 px).
 void addImageOrientation(dai::ImgTransformation& transformation, dai::CameraImageOrientation orientation) {
     const auto flipMirror = CameraSensor::appliedFlipMirror(orientation);
     if(!flipMirror.has_value()) {
@@ -161,9 +163,11 @@ void addImageOrientation(dai::ImgTransformation& transformation, dai::CameraImag
     }
     if(flipMirror->first) {
         transformation.addFlipVertical();
+        transformation.addTransformation({{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}}});
     }
     if(flipMirror->second) {
         transformation.addFlipHorizontal();
+        transformation.addTransformation({{{1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}});
     }
 }
 
