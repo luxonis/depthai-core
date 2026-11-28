@@ -72,6 +72,15 @@ class ThrowingStopNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, Throw
         throw std::runtime_error("onStop() fails on purpose");
     }
 };
+
+// Its run() throws an exception that is not a std::runtime_error, like pybind11::error_already_set from a Python run()
+class LogicErrorNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, LogicErrorNode> {
+   public:
+    constexpr static const char* NAME = "LogicErrorNode";
+    void run() override {
+        throw std::logic_error("run() fails on purpose");
+    }
+};
 }  // namespace
 
 TEST_CASE("stopPipeline() from a node thread: run() returns once the stop has completed") {
@@ -111,4 +120,11 @@ TEST_CASE("stopPipeline() with a node whose onStop() throws: run() returns once 
         REQUIRE_FALSE(p.isRunning());
     }
     REQUIRE(*destroyed);
+}
+
+TEST_CASE("A node whose run() throws a non-runtime_error exception stops the pipeline") {
+    dai::Pipeline p(false);
+    p.create<LogicErrorNode>();
+    p.run();
+    REQUIRE_FALSE(p.isRunning());
 }

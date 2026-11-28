@@ -167,13 +167,13 @@ def test_with_host_nodes():
     class TestSink(dai.node.HostNode):
         def __init__(self, input):
             dai.node.HostNode.__init__(self)
-            self.count = 0
+            self.received = []
             self.link_args(input)
 
         def process(self, buffer):
-            assert buffer.test_field == self.count
-            self.count += 1
-            if self.count == 10:
+            # An exception here only stops the pipeline, so the test asserts after wait().
+            self.received.append(buffer.test_field)
+            if len(self.received) == 10:
                 self.stopPipeline()
 
 
@@ -187,6 +187,7 @@ def test_with_host_nodes():
         assert one_is_correct
         p.start()
         p.wait()
+        assert sink.received == list(range(10))
         
 
 test_with_host_nodes()
