@@ -39,49 +39,6 @@ void Rectification::run() {
 }
 #else   // DEPTHAI_HAVE_OPENCV_SUPPORT
 
-namespace {
-
-cv::Mat vecToCvMat(int rows, int cols, int type, const std::vector<float>& orig) {
-    cv::Mat cvMat = cv::Mat(rows, cols, type);
-    memcpy(cvMat.data, orig.data(), orig.size() * sizeof(orig[0]));
-    return cvMat;
-}
-
-cv::Mat arrayToCvMat(int rows, int cols, int type, const std::array<std::array<float, 3>, 3>& orig) {
-    cv::Mat cvMat = cv::Mat(rows, cols, type);
-    memcpy(cvMat.data, orig.data(), orig.size() * sizeof(orig[0]));
-    return cvMat;
-}
-
-std::pair<cv::Mat, cv::Mat> computeRectificationMatrices(cv::Mat M1, cv::Mat d1, cv::Mat M2, cv::Mat d2, cv::Size imageSize, cv::Mat R, cv::Mat T) {
-    cv::Mat R1, R2, P1, P2, Q;
-    cv::Mat _cv_M1, _cv_M2, _cv_d1, _cv_d2, _cv_R, _cv_T;
-    M1.convertTo(_cv_M1, CV_64FC1);
-    M2.convertTo(_cv_M2, CV_64FC1);
-    d1.convertTo(_cv_d1, CV_64FC1);
-    d2.convertTo(_cv_d2, CV_64FC1);
-    R.convertTo(_cv_R, CV_64FC1);
-    T.convertTo(_cv_T, CV_64FC1);
-    _cv_T = _cv_T.t();
-
-    cv::stereoRectify(
-        _cv_M1, _cv_d1, _cv_M2, _cv_d2, imageSize, _cv_R, _cv_T, R1, R2, P1, P2, Q);  // todo expose alpha param to user for increased fov, maybe flags?
-
-    cv::Mat cv_R1, cv_R2;
-    R1.convertTo(cv_R1, CV_32FC1);
-    R2.convertTo(cv_R2, CV_32FC1);
-
-    return std::make_pair(cv_R1, cv_R2);
-}
-
-std::string matToString(const cv::Mat& mat) {
-    std::ostringstream oss;
-    oss << mat;
-    return oss.str();
-}
-
-}  // namespace
-
 std::vector<std::vector<float> > applyRectificationMatrix(const dai::Extrinsics& extrinsics, const cv::Mat& rectificationMatrix) {
     cv::Mat rectificationMatrixInv;
     cv::invert(rectificationMatrix, rectificationMatrixInv);
@@ -167,24 +124,24 @@ void Rectification::run() {
             auto M1 = input1Frame->transformation.getIntrinsicMatrix();
             auto M2 = input2Frame->transformation.getIntrinsicMatrix();
 
-            auto cv_M1 = arrayToCvMat(3, 3, CV_32FC1, M1);
-            auto cv_M2 = arrayToCvMat(3, 3, CV_32FC1, M2);
+            auto cv_M1 = dai::matrix::matrix3x3ToCvMat(M1);
+            auto cv_M2 = dai::matrix::matrix3x3ToCvMat(M2);
 
             auto d1 = input1Frame->transformation.getDistortionCoefficients();
             auto d2 = input2Frame->transformation.getDistortionCoefficients();
 
-            auto cv_d1 = vecToCvMat(1, d1.size(), CV_32FC1, d1);
-            auto cv_d2 = vecToCvMat(1, d2.size(), CV_32FC1, d2);
+            auto cv_d1 = dai::matrix::vecToCvMat(1, d1.size(), CV_32FC1, d1);
+            auto cv_d2 = dai::matrix::vecToCvMat(1, d2.size(), CV_32FC1, d2);
 
             const auto extrinsics = input1Frame->transformation.getExtrinsicsTransformationMatrixTo(input2Frame->transformation);
             const auto R = dai::matrix::getRotationMatrixFromProjection4x4(extrinsics);
-            const auto cv_R = arrayToCvMat(3, 3, CV_32FC1, R);
+            const auto cv_R = dai::matrix::matrix3x3ToCvMat(R);
             const std::vector<float> T = {extrinsics[0][3], extrinsics[1][3], extrinsics[2][3]};
-            const auto cv_T = vecToCvMat(1, 3, CV_32FC1, T);
+            const auto cv_T = dai::matrix::vecToCvMat(1, 3, CV_32FC1, T);
 
             cv::Mat cv_R1, cv_R2;
             cv::Size imageSize = cv::Size(input1Frame->getWidth(), input1Frame->getHeight());
-            std::tie(cv_R1, cv_R2) = computeRectificationMatrices(cv_M1, cv_d1, cv_M2, cv_d2, imageSize, cv_R, cv_T);
+            std::tie(cv_R1, cv_R2) = dai::matrix::computeRectificationMatrices(cv_M1, cv_d1, cv_M2, cv_d2, imageSize, cv_R, cv_T);
 
             targetM1 = M1;
             targetM2 = M2;
@@ -203,8 +160,8 @@ void Rectification::run() {
 
             targetM2 = targetM1;  // TODO alignment target
 
-            auto cv_targetCameraMatrix1 = arrayToCvMat(3, 3, CV_32FC1, targetM1);
-            auto cv_targetCameraMatrix2 = arrayToCvMat(3, 3, CV_32FC1, targetM2);
+            auto cv_targetCameraMatrix1 = dai::matrix::matrix3x3ToCvMat(targetM1);
+            auto cv_targetCameraMatrix2 = dai::matrix::matrix3x3ToCvMat(targetM2);
 
             if(properties.enableRectification == false) {
                 cv_R1 = cv::Mat::eye(3, 3, CV_32FC1);
@@ -238,14 +195,14 @@ void Rectification::run() {
             output1ImgTransformation = createRectifiedImgTransformation(output1Extrinsics, cv_targetCameraMatrix1, output1FrameWidth, output1FrameHeight);
             output2ImgTransformation = createRectifiedImgTransformation(output2Extrinsics, cv_targetCameraMatrix2, output2FrameWidth, output2FrameHeight);
 
-            logger->debug("R = {}", matToString(cv_R));
-            logger->debug("T = {}", matToString(cv_T));
-            logger->debug("M1 = {}", matToString(cv_M1));
-            logger->debug("M2 = {}", matToString(cv_M2));
-            logger->debug("R1 = {}", matToString(cv_R1));
-            logger->debug("R2 = {}", matToString(cv_R2));
-            logger->debug("TARGET_MATRIX1 = {}", matToString(cv_targetCameraMatrix1));
-            logger->debug("TARGET_MATRIX2 = {}", matToString(cv_targetCameraMatrix2));
+            logger->debug("R = {}", dai::matrix::matToString(cv_R));
+            logger->debug("T = {}", dai::matrix::matToString(cv_T));
+            logger->debug("M1 = {}", dai::matrix::matToString(cv_M1));
+            logger->debug("M2 = {}", dai::matrix::matToString(cv_M2));
+            logger->debug("R1 = {}", dai::matrix::matToString(cv_R1));
+            logger->debug("R2 = {}", dai::matrix::matToString(cv_R2));
+            logger->debug("TARGET_MATRIX1 = {}", dai::matrix::matToString(cv_targetCameraMatrix1));
+            logger->debug("TARGET_MATRIX2 = {}", dai::matrix::matToString(cv_targetCameraMatrix2));
 
             initialized = true;
             previousInput1Transformation = input1Frame->transformation;

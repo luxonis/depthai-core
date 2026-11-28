@@ -6,6 +6,7 @@
 #include <array>
 #include <cmath>
 #include <iostream>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -90,6 +91,25 @@ std::array<std::array<float, 4>, 4> cvMatToMatrix4x4(const cv::Mat& cvMat);
 cv::Mat matrix3x3ToCvMat(const std::array<std::array<float, 3>, 3>& matrix);
 
 cv::Mat matrix4x4ToCvMat(const std::array<std::array<float, 4>, 4>& matrix);
+
+/** Copy a float vector into a new rows x cols cv::Mat of the given type. */
+cv::Mat vecToCvMat(int rows, int cols, int type, const std::vector<float>& orig);
+
+/**
+ * Compute the rectification rotations R1 and R2 (CV_32FC1) with cv::stereoRectify.
+ * M = intrinsics, d = distortion, R and T = rotation and translation from camera 1 to camera 2.
+ */
+std::pair<cv::Mat, cv::Mat> computeRectificationMatrices(
+    const cv::Mat& M1, const cv::Mat& d1, const cv::Mat& M2, const cv::Mat& d2, cv::Size imageSize, const cv::Mat& R, const cv::Mat& T);
+
+std::string matToString(const cv::Mat& mat);
+
+/**
+ * Shift each pixel of a CV_16UC1 depth image along its row by depthLut[depth] pixels.
+ * A shifted pixel also fills its neighbor on the shiftPositive side. shiftPositive also sets the scan order
+ * (true: right to left, false: left to right). Input pixels with depth 0 are skipped.
+ */
+void shiftDepthImg(const cv::Mat& input, cv::Mat& output, const std::array<int, 65536>& depthLut, bool shiftPositive);
 
 #endif
 
