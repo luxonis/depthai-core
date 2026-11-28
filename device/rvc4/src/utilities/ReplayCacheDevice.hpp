@@ -14,6 +14,12 @@ std::tuple<std::uint64_t, std::uint64_t, std::vector<std::tuple<std::string, std
 
 void replayCacheSetLimit(std::uint64_t bytes);
 void replayCacheClear();
+
+/// A live replay holds the real pre_* or unpack_* directory name until the node is destroyed.
+void replayCacheAcquireScratch(const std::string& name);
+void replayCacheReleaseScratch(const std::string& name);
+int replayCacheScratchHolders(const std::string& name);
+
 std::tuple<bool, std::string, std::uint64_t> replayCacheQuery(const std::string& hash);
 void replayCacheBegin(const std::string& hash, std::uint64_t totalBytes);
 std::tuple<bool, std::string, std::uint64_t> replayCachePrepareFile(const std::string& hash, std::uint64_t totalBytes);

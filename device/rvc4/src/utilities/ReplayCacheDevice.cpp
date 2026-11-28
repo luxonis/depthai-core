@@ -165,6 +165,7 @@ struct Book {
 };
 
 Book gBook;
+std::unordered_map<std::string, int> gScratchLeases;
 std::mutex gMutex;
 
 std::filesystem::path cacheDir() {
@@ -208,9 +209,89 @@ std::uint64_t freeBytes() {
     return static_cast<std::uint64_t>(space.available);
 }
 
+bool isScratchName(const std::string& name) {
+    return name.rfind("pre_", 0) == 0 || name.rfind("unpack_", 0) == 0;
+}
+
+std::uint64_t fileBytes(const std::filesystem::path& path) {
+    std::error_code error;
+    if(!std::filesystem::is_regular_file(path, error) || error) return 0;
+    const auto size = std::filesystem::file_size(path, error);
+    if(error) return 0;
+    return static_cast<std::uint64_t>(size);
+}
+
+std::uint64_t treeBytes(const std::filesystem::path& path) {
+    std::error_code error;
+    if(std::filesystem::is_regular_file(path, error) && !error) return fileBytes(path);
+    if(error || !std::filesystem::is_directory(path)) return 0;
+    std::uint64_t sum = 0;
+    const auto options = std::filesystem::directory_options::skip_permission_denied;
+    std::filesystem::recursive_directory_iterator cursor(path, options, error);
+    const std::filesystem::recursive_directory_iterator end;
+    while(!error && cursor != end) {
+        sum += fileBytes(cursor->path());
+        cursor.increment(error);
+    }
+    return sum;
+}
+
+struct ScratchDir {
+    std::filesystem::path path;
+    std::string name;
+    std::uint64_t bytes = 0;
+    std::filesystem::file_time_type mtime{};
+};
+
+std::vector<ScratchDir> scratchDirs() {
+    std::vector<ScratchDir> dirs;
+    std::error_code error;
+    std::filesystem::directory_iterator cursor(cacheDir(), error);
+    if(error) return dirs;
+    const std::filesystem::directory_iterator end;
+    for(; !error && cursor != end; cursor.increment(error)) {
+        std::error_code entryError;
+        if(!cursor->is_directory(entryError) || entryError) continue;
+        const auto name = cursor->path().filename().string();
+        if(!isScratchName(name)) continue;
+        ScratchDir dir;
+        dir.path = cursor->path();
+        dir.name = name;
+        dir.bytes = treeBytes(cursor->path());
+        dir.mtime = std::filesystem::last_write_time(cursor->path(), entryError);
+        dirs.push_back(std::move(dir));
+    }
+    return dirs;
+}
+
+std::string scratchHash(const std::string& name) {
+    if(name.rfind("pre_", 0) == 0) return name.substr(4);
+    if(name.rfind("unpack_", 0) == 0) return name.substr(7);
+    return {};
+}
+
+bool scratchHeld(const std::string& name) {
+    const auto lease = gScratchLeases.find(name);
+    if(lease != gScratchLeases.end() && lease->second > 0) return true;
+    const auto hash = scratchHash(name);
+    if(hash.empty()) return false;
+    for(const auto& entry : gBook.entries) {
+        if(entry.armed <= 0) continue;
+        if(entry.key == hash || entry.sourceHash == hash) return true;
+    }
+    return false;
+}
+
+std::uint64_t scratchBytes() {
+    std::uint64_t sum = 0;
+    for(const auto& dir : scratchDirs()) sum += dir.bytes;
+    return sum;
+}
+
 std::uint64_t usedBytes() {
     std::uint64_t sum = 0;
     for(const auto& entry : gBook.entries) sum += entry.sizeBytes;
+    sum += scratchBytes();
     return sum;
 }
 
@@ -343,8 +424,26 @@ void ensureSpace(std::uint64_t sizeBytes) {
     }
     // Evicting idle entries cannot help when the reservations and live sources
     // alone exceed the limit. Fail before removing any of those idle entries.
+    for(const auto& dir : scratchDirs()) {
+        if(!scratchHeld(dir.name)) continue;
+        if(dir.bytes > std::numeric_limits<std::uint64_t>::max() - protectedBytes) throwFit(std::numeric_limits<std::uint64_t>::max());
+        protectedBytes += dir.bytes;
+    }
     if(protectedBytes > gBook.limitBytes) throwFit(protectedBytes);
     while(usedBytes() > gBook.limitBytes - needed || diskNeeded > freeBytes()) {
+        const auto dirs = scratchDirs();
+        const ScratchDir* scratchVictim = nullptr;
+        for(const auto& dir : dirs) {
+            if(scratchHeld(dir.name)) continue;
+            if(scratchVictim == nullptr || dir.mtime < scratchVictim->mtime) scratchVictim = &dir;
+        }
+        if(scratchVictim != nullptr) {
+            const auto path = scratchVictim->path;
+            std::error_code error;
+            std::filesystem::remove_all(path, error);
+            if(std::filesystem::exists(path)) throwFit(needed);
+            continue;
+        }
         Entry* victim = nullptr;
         for(auto& entry : gBook.entries) {
             if(entry.armed > 0) continue;
@@ -433,6 +532,30 @@ void replayCacheSetLimit(std::uint64_t bytes) {
     }
 }
 
+void replayCacheAcquireScratch(const std::string& name) {
+    std::lock_guard<std::mutex> lock(gMutex);
+    if(!isScratchName(name) || name.find('/') != std::string::npos || name.find('\\') != std::string::npos) {
+        throw std::runtime_error("Replay cache scratch name is invalid");
+    }
+    auto& count = gScratchLeases[name];
+    if(count == std::numeric_limits<int>::max()) throw std::runtime_error("Replay cache hold count overflow");
+    ++count;
+}
+
+void replayCacheReleaseScratch(const std::string& name) {
+    std::lock_guard<std::mutex> lock(gMutex);
+    const auto found = gScratchLeases.find(name);
+    if(found == gScratchLeases.end()) return;
+    if(found->second > 0) --found->second;
+    if(found->second <= 0) gScratchLeases.erase(found);
+}
+
+int replayCacheScratchHolders(const std::string& name) {
+    std::lock_guard<std::mutex> lock(gMutex);
+    const auto found = gScratchLeases.find(name);
+    return found == gScratchLeases.end() ? 0 : found->second;
+}
+
 void replayCacheClear() {
     std::lock_guard<std::mutex> lock(gMutex);
     loadIndex();
@@ -444,6 +567,11 @@ void replayCacheClear() {
         }
         std::error_code error;
         std::filesystem::remove_all(blobPath(entry.key), error);
+    }
+    for(const auto& dir : scratchDirs()) {
+        if(scratchHeld(dir.name)) continue;
+        std::error_code error;
+        std::filesystem::remove_all(dir.path, error);
     }
     gBook.entries = std::move(kept);
     saveIndex();

@@ -11,7 +11,7 @@ namespace gate {
 
 /**
  * Device-side ReplayVideo. The host uploads the source and sends resolved properties.
- * H.264 and H.265 are decoded with qtic2vdec. FFV1, MJPEG, JPEG, and PNG use the software GStreamer elements.
+ * H.264 and H.265 are decoded to linear NV12. FFV1, MJPEG, JPEG, and PNG use the software GStreamer elements.
  * This class needs the ReplayVideo DeviceNode from the record-replay depthai-core, not the older host-only node.
  */
 class ReplayVideo : public ::dai::node::ReplayVideo {
