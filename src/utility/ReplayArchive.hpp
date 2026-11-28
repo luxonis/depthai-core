@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <string>
+#include <vector>
 
 namespace dai {
 namespace replay {
@@ -17,6 +19,21 @@ ArchiveListing extractReplayArchive(const std::filesystem::path& archive, const 
 
 // Select a frame directory or a single media file, unwrapping enclosing directories.
 std::filesystem::path selectReplayArchiveSource(const std::filesystem::path& root);
+
+struct NamedArchiveEntry {
+    enum class Kind { Missing, Video, Frames, Mcap };
+    Kind kind = Kind::Missing;
+    std::string archiveEntry;
+    std::string path;
+    std::string extension;
+    bool hasMetadata = false;
+    std::string metadataPath;
+    std::vector<std::string> frames;
+};
+
+NamedArchiveEntry selectNamedArchiveEntry(const std::vector<std::string>& entries, const std::string& name, bool metadataOnly);
+
+std::filesystem::path uniqueReplayTempDirectory();
 
 }  // namespace replay
 }  // namespace dai

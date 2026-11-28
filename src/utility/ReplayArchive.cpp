@@ -8,9 +8,17 @@
 #include <cctype>
 #include <fstream>
 #include <memory>
+#include <optional>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#ifndef _WIN32
+    #include <unistd.h>
+#else
+    #include <stdio.h>
+#endif
 
 namespace dai {
 namespace replay {
@@ -123,6 +131,212 @@ std::filesystem::path selectReplayArchiveSource(const std::filesystem::path& roo
         throw std::runtime_error("ReplayVideo archive needs one source or setArchiveEntry: " + directory.string());
     }
     return directory;
+}
+
+namespace {
+
+std::string normalizeEntryName(std::string path) {
+    std::replace(path.begin(), path.end(), '\\', '/');
+    while(path.rfind("./", 0) == 0) path.erase(0, 2);
+    return path;
+}
+
+std::string lowerExtension(const std::string& name) {
+    const auto slash = name.find_last_of('/');
+    const auto base = slash == std::string::npos ? name : name.substr(slash + 1);
+    const auto dot = base.find_last_of('.');
+    if(dot == std::string::npos) return {};
+    auto ext = base.substr(dot);
+    std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+    return ext;
+}
+
+bool hasFile(const std::vector<std::string>& names, const std::string& path) {
+    return std::find(names.begin(), names.end(), path) != names.end();
+}
+
+bool directoryPresent(const std::vector<std::string>& names, const std::string& entry) {
+    const auto prefix = entry + "/";
+    for(const auto& name : names) {
+        if(name.rfind(prefix, 0) == 0) return true;
+    }
+    return false;
+}
+
+struct FramePick {
+    bool valid = false;
+    bool blocked = false;
+    std::string extension;
+    std::vector<std::string> frames;
+};
+
+FramePick pickFrames(const std::vector<std::string>& names, const std::string& entry) {
+    FramePick pick;
+    const auto prefix = entry + "/";
+    std::set<std::string> prefixes;
+    std::set<std::string> extensions;
+    std::set<std::int64_t> seen;
+    std::vector<std::pair<std::int64_t, std::string>> frames;
+    for(const auto& name : names) {
+        if(name.rfind(prefix, 0) != 0) continue;
+        const auto file = name.substr(prefix.size());
+        if(file.empty() || file.find('/') != std::string::npos || file.front() == '.') continue;
+        auto ext = lowerExtension(file);
+        if(ext == ".jpeg") ext = ".jpg";
+        if(ext != ".dai" && ext != ".jpg" && ext != ".png") continue;
+        const auto stem = std::filesystem::path(file).stem().string();
+        const auto split = stem.rfind('_');
+        if(split == std::string::npos || split == 0 || split + 1 >= stem.size()) continue;
+        const auto seqText = stem.substr(split + 1);
+        if(!std::all_of(seqText.begin(), seqText.end(), [](unsigned char character) { return std::isdigit(static_cast<unsigned char>(character)) != 0; }))
+            continue;
+        std::int64_t sequence = 0;
+        try {
+            sequence = std::stoll(seqText);
+        } catch(const std::exception&) {
+            pick.blocked = true;
+            return pick;
+        }
+        if(!seen.insert(sequence).second) {
+            pick.blocked = true;
+            return pick;
+        }
+        prefixes.insert(stem.substr(0, split));
+        extensions.insert(ext);
+        frames.emplace_back(sequence, name);
+    }
+    if(frames.empty()) return pick;
+    if(prefixes.size() != 1 || extensions.size() != 1) {
+        pick.blocked = true;
+        return pick;
+    }
+    std::sort(frames.begin(), frames.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+    pick.valid = true;
+    pick.extension = *extensions.begin();
+    pick.frames.reserve(frames.size());
+    for(const auto& frame : frames) pick.frames.push_back(frame.second);
+    return pick;
+}
+
+enum class AttemptKind { Miss, Blocked, Hit };
+
+struct Attempt {
+    AttemptKind kind = AttemptKind::Miss;
+    NamedArchiveEntry entry;
+};
+
+Attempt selectAt(const std::vector<std::string>& names, const std::string& entry, bool metadataOnly) {
+    Attempt result;
+    if(metadataOnly) {
+        const auto mcap = entry + ".mcap";
+        if(!hasFile(names, mcap)) return result;
+        result.kind = AttemptKind::Hit;
+        result.entry.kind = NamedArchiveEntry::Kind::Mcap;
+        result.entry.archiveEntry = entry;
+        result.entry.path = mcap;
+        result.entry.extension = ".mcap";
+        return result;
+    }
+    if(directoryPresent(names, entry)) {
+        const auto frames = pickFrames(names, entry);
+        if(!frames.valid) {
+            result.kind = AttemptKind::Blocked;
+            return result;
+        }
+        result.kind = AttemptKind::Hit;
+        result.entry.kind = NamedArchiveEntry::Kind::Frames;
+        result.entry.archiveEntry = entry;
+        result.entry.path = entry;
+        result.entry.extension = frames.extension;
+        result.entry.frames = frames.frames;
+        const auto mcap = entry + ".mcap";
+        if(hasFile(names, mcap)) {
+            result.entry.hasMetadata = true;
+            result.entry.metadataPath = mcap;
+        }
+        return result;
+    }
+    for(const char* ext : {".mp4", ".avi", ".mcap"}) {
+        const auto path = entry + ext;
+        if(!hasFile(names, path)) continue;
+        result.kind = AttemptKind::Hit;
+        result.entry.archiveEntry = entry;
+        result.entry.path = path;
+        result.entry.extension = ext;
+        if(std::string(ext) == ".mcap") {
+            result.entry.kind = NamedArchiveEntry::Kind::Mcap;
+        } else {
+            result.entry.kind = NamedArchiveEntry::Kind::Video;
+            const auto mcap = entry + ".mcap";
+            if(hasFile(names, mcap)) {
+                result.entry.hasMetadata = true;
+                result.entry.metadataPath = mcap;
+            }
+        }
+        return result;
+    }
+    return result;
+}
+
+std::optional<std::string> commonOuterUnder(const std::vector<std::string>& names, const std::string& prefix) {
+    const auto lead = prefix.empty() ? std::string() : prefix + "/";
+    std::string top;
+    bool any = false;
+    for(const auto& name : names) {
+        if(!lead.empty() && name.rfind(lead, 0) != 0) continue;
+        const auto rest = lead.empty() ? name : name.substr(lead.size());
+        if(rest.empty()) continue;
+        const auto slash = rest.find('/');
+        if(slash == std::string::npos) return std::nullopt;
+        const auto piece = rest.substr(0, slash);
+        if(!any) {
+            top = piece;
+            any = true;
+        } else if(top != piece) {
+            return std::nullopt;
+        }
+    }
+    if(!any) return std::nullopt;
+    return top;
+}
+
+}  // namespace
+
+NamedArchiveEntry selectNamedArchiveEntry(const std::vector<std::string>& entries, const std::string& name, bool metadataOnly) {
+    std::vector<std::string> names;
+    names.reserve(entries.size());
+    for(const auto& entry : entries) {
+        auto normalized = normalizeEntryName(entry);
+        if(normalized.empty() || normalized.back() == '/') continue;
+        names.push_back(std::move(normalized));
+    }
+    std::string prefix;
+    auto attempt = selectAt(names, name, metadataOnly);
+    while(attempt.kind == AttemptKind::Miss) {
+        const auto outer = commonOuterUnder(names, prefix);
+        if(!outer.has_value()) break;
+        prefix = prefix.empty() ? *outer : prefix + "/" + *outer;
+        attempt = selectAt(names, prefix + "/" + name, metadataOnly);
+    }
+    if(attempt.kind != AttemptKind::Hit) return NamedArchiveEntry{};
+    return attempt.entry;
+}
+
+std::filesystem::path uniqueReplayTempDirectory() {
+#if defined(_WIN32)
+    auto basePath = std::filesystem::temp_directory_path() / L"depthai_XXXXXX";
+    auto baseStr = basePath.wstring();
+    if(_wmktemp_s(baseStr.data(), baseStr.size() + 1) != 0 || !std::filesystem::create_directories(baseStr)) {
+        throw std::runtime_error("Failed to create a unique temporary directory");
+    }
+    return std::filesystem::path(baseStr);
+#else
+    auto pattern = (std::filesystem::temp_directory_path() / "depthai_XXXXXX").string();
+    std::vector<char> storage(pattern.begin(), pattern.end());
+    storage.push_back('\0');
+    if(mkdtemp(storage.data()) == nullptr) throw std::runtime_error("Failed to create a unique temporary directory");
+    return std::filesystem::path(storage.data());
+#endif
 }
 
 }  // namespace replay
