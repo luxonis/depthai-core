@@ -40,10 +40,6 @@ python3 -m pip install opencv-python
 depthai cam_test
 ```
 
-## Building from source
-
-GIL-free support is opt-in with `-DDEPTHAI_PYTHON_GIL_FREE=ON` (default OFF). Select a free-threaded Python interpreter separately to build for its ABI.
-
 ## Next steps
 
 - [DepthAI v3 documentation](https://docs.luxonis.com/software-v3/depthai/): guides, API reference and node descriptions

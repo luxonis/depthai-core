@@ -1,9 +1,11 @@
 #pragma once
 
-#include <catch2/catch_all.hpp>
-#include <catch2/matchers/catch_matchers_string.hpp>
+#include <spdlog/sinks/base_sink.h>
+#include <unistd.h>
 
 #include <algorithm>
+#include <catch2/catch_all.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 #include <cerrno>
 #include <chrono>
 #include <cstdint>
@@ -15,24 +17,20 @@
 #include <iomanip>
 #include <memory>
 #include <mutex>
+#include <opencv2/videoio.hpp>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <unordered_set>
-#include <unistd.h>
 #include <utility>
 #include <vector>
-
-#include "utility/Platform.hpp"
-
-#include <opencv2/videoio.hpp>
-#include <spdlog/sinks/base_sink.h>
 
 #include "depthai/depthai.hpp"
 #include "mcap/reader.hpp"
 #include "record_test_api.hpp"
 #include "record_test_data.hpp"
 #include "utility/Logging.hpp"
+#include "utility/Platform.hpp"
 
 namespace record_test {
 
@@ -399,16 +397,20 @@ inline void watchNode(dai::ThreadedNode& node) {
 
 class DeviceLogCapture {
    public:
-    DeviceLogCapture(dai::Device& device, dai::LogLevel level) : device(&device), saved(device.getLogLevel()) {
-        device.setLogLevel(level);
-        id = device.addLogCallback([this](dai::LogMessage message) {
-            std::lock_guard<std::mutex> lock(mutex);
-            lines.push_back(LogLine{fromDai(message.level), message.payload});
-        });
+    DeviceLogCapture(dai::Device& deviceIn, dai::LogLevel levelIn) {
+        attach(deviceIn, levelIn);
     }
+    // pipeline.stop() closes the device. Restoring the log level is an RPC and would
+    // throw from this destructor, which calls std::terminate.
     ~DeviceLogCapture() {
-        if(device != nullptr && id >= 0) device->removeLogCallback(id);
-        if(device != nullptr) device->setLogLevel(saved);
+        if(device == nullptr) return;
+        if(id >= 0) device->removeLogCallback(id);
+        id = -1;
+        if(!device->isClosed()) device->setLogLevel(saved);
+        device = nullptr;
+    }
+    void rebind(dai::Device& next) {
+        attach(next, level);
     }
     DeviceLogCapture(const DeviceLogCapture&) = delete;
     DeviceLogCapture& operator=(const DeviceLogCapture&) = delete;
@@ -451,7 +453,20 @@ class DeviceLogCapture {
     }
 
    private:
+    void attach(dai::Device& next, dai::LogLevel levelIn) {
+        if(device != nullptr && id >= 0) device->removeLogCallback(id);
+        device = &next;
+        level = levelIn;
+        saved = device->getLogLevel();
+        device->setLogLevel(level);
+        id = device->addLogCallback([this](dai::LogMessage message) {
+            std::lock_guard<std::mutex> lock(mutex);
+            lines.push_back(LogLine{fromDai(message.level), message.payload});
+        });
+    }
+
     dai::Device* device = nullptr;
+    dai::LogLevel level = dai::LogLevel::WARN;
     dai::LogLevel saved = dai::LogLevel::WARN;
     int id = -1;
     mutable std::mutex mutex;
@@ -596,17 +611,19 @@ inline std::shared_ptr<dai::RecordStatus> expectStatus(const std::shared_ptr<dai
                                                        std::int32_t skipped) {
     auto status = getFor<dai::RecordStatus>(*queue, std::chrono::seconds(10));
     REQUIRE(status != nullptr);
+    REQUIRE(status->skippedFrames == skipped);
     CHECK(status->state == state);
     CHECK(status->segment == segment);
     CHECK(status->frameCount == frameCount);
     CHECK(status->firstSequenceNum == first);
     CHECK(status->lastSequenceNum == last);
-    CHECK(status->skippedFrames == skipped);
     return status;
 }
 
 // pipeline.stop() closes the status queue. Read a queued STOPPED if it is still there, otherwise getStatus() within 1s.
-inline std::shared_ptr<dai::RecordStatus> stopAndStatus(dai::Pipeline& pipeline, const std::shared_ptr<dai::MessageQueue>& queue, const dai::node::RecordVideo& rec) {
+inline std::shared_ptr<dai::RecordStatus> stopAndStatus(dai::Pipeline& pipeline,
+                                                        const std::shared_ptr<dai::MessageQueue>& queue,
+                                                        const dai::node::RecordVideo& rec) {
     pipeline.stop();
     std::shared_ptr<dai::RecordStatus> status;
     try {

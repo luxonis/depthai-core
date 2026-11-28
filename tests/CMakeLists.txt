@@ -1248,14 +1248,21 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_ENABLE_PROTOBUF)
     set(record_test_data "${CMAKE_CURRENT_BINARY_DIR}/record_test_data")
     set(replay_test_data "${CMAKE_CURRENT_BINARY_DIR}/replay_test_data")
     if(FFMPEG_EXECUTABLE AND PYTHON3_EXECUTABLE)
-        add_custom_command(OUTPUT "${record_test_data}/.done"
-            COMMAND ${PYTHON3_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR}/scripts/make_record_test_data.py "${record_test_data}"
-            DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/make_record_test_data.py)
-        add_custom_target(record_test_data_gen DEPENDS "${record_test_data}/.done")
-        add_custom_command(OUTPUT "${replay_test_data}/.done"
-            COMMAND ${PYTHON3_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR}/scripts/make_replay_test_data.py "${replay_test_data}"
-            DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/make_replay_test_data.py)
-        add_custom_target(replay_test_data_gen DEPENDS "${replay_test_data}/.done")
+        execute_process(
+            COMMAND ${PYTHON3_EXECUTABLE} -I -c "import cv2, numpy"
+            RESULT_VARIABLE record_replay_python_deps
+            OUTPUT_QUIET
+            ERROR_QUIET)
+        if(record_replay_python_deps EQUAL 0)
+            add_custom_command(OUTPUT "${record_test_data}/.done"
+                COMMAND ${PYTHON3_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR}/scripts/make_record_test_data.py "${record_test_data}"
+                DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/make_record_test_data.py)
+            add_custom_target(record_test_data_gen DEPENDS "${record_test_data}/.done")
+            add_custom_command(OUTPUT "${replay_test_data}/.done"
+                COMMAND ${PYTHON3_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR}/scripts/make_replay_test_data.py "${replay_test_data}"
+                DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/make_replay_test_data.py)
+            add_custom_target(replay_test_data_gen DEPENDS "${replay_test_data}/.done")
+        endif()
     endif()
 
     dai_add_test(record_node_host_test src/onhost_tests/pipeline/node/record_node_host_test.cpp)

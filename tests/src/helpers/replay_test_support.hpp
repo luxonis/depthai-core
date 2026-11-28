@@ -1,9 +1,8 @@
 #pragma once
 
+#include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
-
-#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -94,8 +93,10 @@ inline bool pixelsWithin(const dai::ImgFrame& left, const dai::ImgFrame& right, 
     const auto type = left.getType();
     const int width = static_cast<int>(left.getWidth());
     const int height = static_cast<int>(left.getHeight());
-    const auto planesL = planesOf(type, width, height, static_cast<int>(left.getStride()), static_cast<int>(left.fb.p2Offset), static_cast<int>(left.fb.p3Offset));
-    const auto planesR = planesOf(type, width, height, static_cast<int>(right.getStride()), static_cast<int>(right.fb.p2Offset), static_cast<int>(right.fb.p3Offset));
+    const auto planesL =
+        planesOf(type, width, height, static_cast<int>(left.getStride()), static_cast<int>(left.fb.p2Offset), static_cast<int>(left.fb.p3Offset));
+    const auto planesR =
+        planesOf(type, width, height, static_cast<int>(right.getStride()), static_cast<int>(right.fb.p2Offset), static_cast<int>(right.fb.p3Offset));
     const auto dataL = left.getData();
     const auto dataR = right.getData();
     if(planesL.size() != planesR.size()) return false;
@@ -105,7 +106,9 @@ inline bool pixelsWithin(const dai::ImgFrame& left, const dai::ImgFrame& right, 
             const int b = planesR[p].offset + row * planesR[p].stride;
             for(int col = 0; col < planesL[p].rowBytes; ++col) {
                 if(a + col >= static_cast<int>(dataL.size()) || b + col >= static_cast<int>(dataR.size())) return false;
-                if(std::abs(static_cast<int>(dataL[static_cast<std::size_t>(a + col)]) - static_cast<int>(dataR[static_cast<std::size_t>(b + col)])) > tolerance) return false;
+                if(std::abs(static_cast<int>(dataL[static_cast<std::size_t>(a + col)]) - static_cast<int>(dataR[static_cast<std::size_t>(b + col)]))
+                   > tolerance)
+                    return false;
             }
         }
     }
@@ -144,7 +147,6 @@ inline void checkArrivals(const std::vector<std::chrono::steady_clock::time_poin
         const double nominal = nominalMs[i] - nominalMs[i - 1];
         gaps.push_back(gap);
         nominalGaps.push_back(nominal);
-        CHECK(gap + 0.01 >= nominal - 10.0);
     }
     const double mean = std::accumulate(gaps.begin(), gaps.end(), 0.0) / static_cast<double>(gaps.size());
     const double nominalMean = std::accumulate(nominalGaps.begin(), nominalGaps.end(), 0.0) / static_cast<double>(nominalGaps.size());
@@ -152,6 +154,17 @@ inline void checkArrivals(const std::vector<std::chrono::steady_clock::time_poin
     const double span = std::chrono::duration<double, std::milli>(arrivals.back() - arrivals.front()).count();
     const double nominalSpan = nominalMs.back() - nominalMs.front();
     if(nominalSpan > 0.0) CHECK(std::fabs(span - nominalSpan) <= nominalSpan * 0.25);
+}
+
+// The lower bound is the node's send time. A consumer that is late for frame 0 sees a short arrival gap.
+inline void checkNodeGaps(const std::vector<std::shared_ptr<dai::ImgFrame>>& frames, const std::vector<double>& nominalMs) {
+    REQUIRE(frames.size() == nominalMs.size());
+    REQUIRE(frames.size() >= 2);
+    for(std::size_t i = 1; i < frames.size(); ++i) {
+        const double gap = static_cast<double>(timestampMs(frames[i]->getTimestampDevice()) - timestampMs(frames[i - 1]->getTimestampDevice()));
+        const double nominal = nominalMs[i] - nominalMs[i - 1];
+        CHECK(gap + 0.01 >= nominal - 10.0);
+    }
 }
 
 inline std::set<std::string> hashesOf(const dai::ReplayCacheInfo& info, CacheKind kind) {
@@ -172,11 +185,16 @@ inline int countKind(const dai::ReplayCacheInfo& info, CacheKind kind) {
 
 class CacheGuard {
    public:
-    explicit CacheGuard(dai::Device& device) : device(&device), saved(device.getReplayCacheInfo().limitBytes) {
+    explicit CacheGuard(dai::Device& device) : CacheGuard(device, device.getReplayCacheInfo().limitBytes) {}
+    CacheGuard(dai::Device& device, std::uint64_t restoreBytes) : device(&device), saved(restoreBytes) {
         device.clearReplayCache();
     }
     void watch(dai::Pipeline& pipeline) {
         watched = &pipeline;
+    }
+    // Point at a reopened device. Do not clear the cache or replace the saved limit.
+    void rebind(dai::Device& next) {
+        device = &next;
     }
     ~CacheGuard() {
         try {
@@ -225,14 +243,22 @@ struct HostReplay {
     std::shared_ptr<dai::node::ReplayVideo> node;
     std::shared_ptr<dai::MessageQueue> out;
     std::filesystem::path source;
+    int queueMax = 16;
+    bool queueBlocking = true;
 
     HostReplay() {
         node = pipeline.create<dai::node::ReplayVideo>();
         record_test::watchNode(*node);
-        out = node->out.createOutputQueue(16, true);
     }
+    // Remember the only output queue. Creating it here would add a second queue next to the default.
     void queueOf(int size, bool blocking) {
-        out = node->out.createOutputQueue(static_cast<unsigned>(size), blocking);
+        REQUIRE(out == nullptr);
+        queueMax = size;
+        queueBlocking = blocking;
+    }
+    void start() {
+        if(out == nullptr) out = node->out.createOutputQueue(static_cast<unsigned>(queueMax), queueBlocking);
+        pipeline.start();
     }
     std::filesystem::path frames(int width, int height, int count, FrameFill fill = {}) {
         source = dir.path / "src";
@@ -265,6 +291,23 @@ inline std::vector<std::chrono::steady_clock::time_point> takeTimed(const std::s
     return times;
 }
 
+struct TimedFrames {
+    std::vector<std::shared_ptr<dai::ImgFrame>> frames;
+    std::vector<std::chrono::steady_clock::time_point> arrivals;
+};
+
+inline TimedFrames takeTimedFrames(const std::shared_ptr<dai::MessageQueue>& queue, int count) {
+    TimedFrames taken;
+    taken.frames.reserve(static_cast<std::size_t>(count));
+    for(int i = 0; i < count; ++i) {
+        auto frame = record_test::getFor<dai::ImgFrame>(*queue, std::chrono::seconds(30));
+        REQUIRE(frame != nullptr);
+        taken.arrivals.push_back(std::chrono::steady_clock::now());
+        taken.frames.push_back(frame);
+    }
+    return taken;
+}
+
 struct DeviceReplay {
     std::shared_ptr<dai::Device> device;
     EnvGuard unsetReplay;
@@ -290,6 +333,26 @@ struct DeviceReplay {
         cache.watch(*pipeline);
         recordings = std::make_unique<RecordingGuard>(*device, *pipeline);
         return *pipeline;
+    }
+
+    // pipeline.stop() closes the device. A second Pipeline needs the device open again.
+    void reopenIfClosed() {
+        if(device && !device->isClosed()) return;
+        auto fresh = record_test::openRvc4OrSkip();
+        devLog.rebind(*fresh);
+        cache.rebind(*fresh);
+        device = std::move(fresh);
+    }
+
+    dai::Pipeline& nextPipeline() {
+        if(recordings) {
+            recordings->release();
+            recordings.reset();
+        }
+        if(pipeline && pipeline->isRunning()) pipeline->stop();
+        pipeline.reset();
+        reopenIfClosed();
+        return begin();
     }
 };
 

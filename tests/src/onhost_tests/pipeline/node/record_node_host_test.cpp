@@ -81,11 +81,11 @@ void beginRecord(record_test::HostRecord& fx) {
 std::shared_ptr<dai::RecordStatus> stoppedOf(
     record_test::HostRecord& fx, std::int32_t segment, std::int32_t frames, std::int64_t first, std::int64_t last, std::int32_t skipped) {
     auto stopped = readStopped(fx);
+    REQUIRE(stopped->skippedFrames == skipped);
     CHECK(stopped->segment == segment);
     CHECK(stopped->frameCount == frames);
     CHECK(stopped->firstSequenceNum == first);
     CHECK(stopped->lastSequenceNum == last);
-    CHECK(stopped->skippedFrames == skipped);
     return stopped;
 }
 
@@ -347,6 +347,12 @@ TEST_CASE("A20 two streams in one recording", "[record][host]") {
             kWait));
     }
     fx.pipeline.stop();
+    auto leftStopped = record_test::getStatus(*fx.node);
+    auto rightStopped = record_test::getStatus(*right);
+    REQUIRE(leftStopped != nullptr);
+    REQUIRE(rightStopped != nullptr);
+    REQUIRE(leftStopped->skippedFrames == 0);
+    REQUIRE(rightStopped->skippedFrames == 0);
     expectFiles(fx.recDir() / "left", {"left_00000000.dai", "left_00000001.dai"});
     expectFiles(fx.recDir() / "right", {"right_00000000.dai", "right_00000001.dai"});
     int entries = 0;
@@ -374,7 +380,8 @@ TEST_CASE("A22 default recording name is a timestamp", "[record][host]") {
     record_test::setStreamName(*fx.node, "cam");
     beginRecord(fx);
     sendRawWrote(fx, 0);
-    readStopped(fx);
+    auto stopped = readStopped(fx);
+    REQUIRE(stopped->skippedFrames == 0);
     const std::regex name("^recording_\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2}-\\d{3}$");
     std::vector<std::string> dirs;
     for(const auto& entry : std::filesystem::directory_iterator(fx.dir.path)) {
@@ -524,7 +531,8 @@ TEST_CASE("R4 sequence numbers of eight and nine digits", "[record][host]") {
     wrote(fx, 99999999);
     sendRaw(fx, 1, 100000000);
     wrote(fx, 100000000);
-    readStopped(fx);
+    auto stopped = readStopped(fx);
+    REQUIRE(stopped->skippedFrames == 0);
     expectFiles(fx.streamDir(), {"cam_100000000.dai", "cam_99999999.dai"});
 }
 
@@ -556,6 +564,9 @@ TEST_CASE("R7 files appear under their final names", "[record][host]") {
     HostRecord fx;
     beginRecord(fx);
     for(int n = 0; n < 3; ++n) sendRawWrote(fx, n);
+    auto status = record_test::getStatus(*fx.node);
+    REQUIRE(status != nullptr);
+    REQUIRE(status->skippedFrames == 0);
     REQUIRE(record_test::fileCount(fx.streamDir()) == 3);
     expectFiles(fx.streamDir(), {"cam_00000000.dai", "cam_00000001.dai", "cam_00000002.dai"});
     fx.pipeline.stop();
@@ -941,6 +952,7 @@ TEST_CASE("T16 a repeated sequence during a trigger is an error", "[record][host
     auto latest = record_test::getStatus(*fx.node);
     REQUIRE(latest != nullptr);
     CHECK(latest->state == dai::RecordStatus::State::ERROR);
+    REQUIRE(record_test::waitUntil([&] { return !fx.pipeline.isRunning(); }, kWait));
     CHECK(fx.log.countSubstring("Record sequence went back (1 -> 1)") == 1);
     fx.pipeline.stop();
 }

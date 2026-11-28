@@ -59,6 +59,7 @@ using record_test::loadImg;
 using record_test::timestampMs;
 using replay_test::CacheKind;
 using replay_test::checkArrivals;
+using replay_test::checkNodeGaps;
 using replay_test::clearHostCache;
 using replay_test::copyFile;
 using replay_test::DecodeMode;
@@ -99,6 +100,7 @@ using replay_test::setSource;
 using replay_test::setStopPipelineAtEnd;
 using replay_test::takeFrames;
 using replay_test::takeTimed;
+using replay_test::takeTimedFrames;
 using replay_test::TarKind;
 using replay_test::writeMeta;
 
@@ -106,15 +108,15 @@ namespace {
 
 void requireStartError(HostReplay& fx, const char* text = nullptr) {
     if(text == nullptr) {
-        REQUIRE_THROWS(fx.pipeline.start());
+        REQUIRE_THROWS(fx.start());
     } else {
-        REQUIRE_THROWS_WITH(fx.pipeline.start(), ContainsSubstring(text));
+        REQUIRE_THROWS_WITH(fx.start(), ContainsSubstring(text));
     }
 }
 
 void requireStartErrorEither(HostReplay& fx, const char* first, const char* second) {
     try {
-        fx.pipeline.start();
+        fx.start();
         FAIL("expected an error at the start");
     } catch(const std::exception& error) {
         const std::string text = error.what();
@@ -149,7 +151,7 @@ void checkDefault(const std::vector<std::shared_ptr<dai::ImgFrame>>& frames, con
 }
 
 void playDefault(HostReplay& fx) {
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 3);
     checkDefault(frames, fx.source, 3);
     REQUIRE(fx.log.waitFor("Replay finished", std::chrono::seconds(10)));
@@ -263,11 +265,12 @@ TEST_CASE("A3b fps zero keeps recorded pacing", "[replay][host]") {
     setLoop(*fx.node, false);
     setStopPipelineAtEnd(*fx.node, false);
     setFps(*fx.node, 0.f);
-    fx.pipeline.start();
-    const auto arrivals = takeTimed(fx.out, 30);
+    fx.start();
+    const auto taken = takeTimedFrames(fx.out, 30);
     std::vector<double> nominal(30);
     for(int index = 0; index < 30; ++index) nominal[static_cast<std::size_t>(index)] = 100.0 * index;
-    checkArrivals(arrivals, nominal);
+    checkNodeGaps(taken.frames, nominal);
+    checkArrivals(taken.arrivals, nominal);
 }
 
 TEST_CASE("A4 nan fps errors at start", "[replay][host]") {
@@ -309,7 +312,7 @@ TEST_CASE("A9 size 2x2 yields three frames", "[replay][host]") {
     HostReplay fx;
     fx.frames(64, 48, 3);
     setSize(*fx.node, 2, 2);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 3);
     for(int index = 0; index < 3; ++index) {
         CHECK(frames[static_cast<std::size_t>(index)]->getSequenceNum() == index);
@@ -391,7 +394,7 @@ TEST_CASE("A24 legacy video setters match C3", "[replay][host]") {
     setLoop(*fx.node, false);
     setStopPipelineAtEnd(*fx.node, false);
     setFps(*fx.node, 1000.f);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 30);
     REQUIRE(frames.size() == 30);
     for(int index = 0; index < 30; ++index) checkC3(*frames[static_cast<std::size_t>(index)], index);
@@ -400,8 +403,8 @@ TEST_CASE("A24 legacy video setters match C3", "[replay][host]") {
 TEST_CASE("A21 second start throws and the first run still yields frames", "[replay][host]") {
     HostReplay fx;
     fx.frames(64, 48, 3);
-    fx.pipeline.start();
-    REQUIRE_THROWS(fx.pipeline.start());
+    fx.start();
+    REQUIRE_THROWS(fx.start());
     auto frames = takeFrames(fx.out, 3);
     checkDefault(frames, fx.source, 3);
 }
@@ -412,15 +415,21 @@ TEST_CASE("A22 restart after stop reads the source again", "[replay][host]") {
     playDefault(fx);
     fx.pipeline.stop();
     fx.pipeline.wait();
-    fx.pipeline.start();
-    auto frames = takeFrames(fx.out, 3);
+    dai::Pipeline second{false};
+    auto node = second.create<dai::node::ReplayVideo>();
+    record_test::watchNode(*node);
+    setSource(*node, fx.source);
+    setFast(*node);
+    auto out = node->out.createOutputQueue(16, true);
+    second.start();
+    auto frames = takeFrames(out, 3);
     checkDefault(frames, fx.source, 3);
 }
 
 TEST_CASE("B1 directory frames are ImgFrame", "[replay][host]") {
     HostReplay fx;
     fx.frames(64, 48, 3);
-    fx.pipeline.start();
+    fx.start();
     for(int index = 0; index < 3; ++index) {
         std::shared_ptr<dai::ADatatype> message = record_test::getFor<dai::ImgFrame>(*fx.out, std::chrono::seconds(10));
         auto frame = std::dynamic_pointer_cast<dai::ImgFrame>(message);
@@ -564,11 +573,11 @@ TEST_CASE("B15 notes only errors at start", "[replay][host]") {
 
 TEST_CASE("B16 vp9 errors at start", "[replay][host]") {
     HostReplay fx;
-    const auto video = videoOf(fx, "plain_vp9.mp4");
+    const auto video = copyFile(videoOf(fx, "plain_vp9.mp4"), fx.dir.path / "a.mp4");
     setSource(*fx.node, video);
     setFast(*fx.node);
     try {
-        fx.pipeline.start();
+        fx.start();
         FAIL("expected an error at the start");
     } catch(const std::exception& error) {
         std::string text = error.what();
@@ -579,7 +588,7 @@ TEST_CASE("B16 vp9 errors at start", "[replay][host]") {
 
 TEST_CASE("B17 10-bit h265 errors at start", "[replay][host]") {
     HostReplay fx;
-    const auto video = videoOf(fx, "plain_h265_10bit.mp4");
+    const auto video = copyFile(videoOf(fx, "plain_h265_10bit.mp4"), fx.dir.path / "a.mp4");
     setSource(*fx.node, video);
     setFast(*fx.node);
     requireStartErrorEither(fx, "10", "Main 10");
@@ -593,7 +602,7 @@ TEST_CASE("B18 upper-case dai names give two frames", "[replay][host]") {
     std::filesystem::rename(source / "cam_1.dai", source / "CAM_1.DAI");
     setSource(*fx.node, source);
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 2);
     CHECK(frames[0]->getSequenceNum() == 0);
     CHECK(frames[1]->getSequenceNum() == 1);
@@ -603,7 +612,7 @@ TEST_CASE("B19 ignored underscore file gives two frames", "[replay][host]") {
     HostReplay fx;
     const auto source = customDir(fx, 64, 48, rangeSeq(3), rangeTs(3));
     std::filesystem::rename(source / "cam_2.dai", source / "_2.dai");
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 2);
     CHECK(frames[0]->getSequenceNum() == 0);
     CHECK(frames[1]->getSequenceNum() == 1);
@@ -612,7 +621,7 @@ TEST_CASE("B19 ignored underscore file gives two frames", "[replay][host]") {
 TEST_CASE("B20 stream cam_a gives two frames", "[replay][host]") {
     HostReplay fx;
     customDir(fx, 64, 48, rangeSeq(2), rangeTs(2), {}, {"cam_a_0.dai", "cam_a_1.dai"});
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 2);
     CHECK(frames[0]->getSequenceNum() == 0);
     CHECK(frames[1]->getSequenceNum() == 1);
@@ -638,7 +647,7 @@ TEST_CASE("B22 two streams error at start", "[replay][host]") {
     makeDaiFrame(source / "dog_0.dai", 64, 48, 0, 0, dai::ImgFrame::Type::NV12);
     setSource(*fx.node, source);
     try {
-        fx.pipeline.start();
+        fx.start();
         FAIL("expected an error at the start");
     } catch(const std::exception& error) {
         const std::string text = error.what();
@@ -655,7 +664,7 @@ TEST_CASE("B23 source subdirectory selects that stream", "[replay][host]") {
     const auto dog = makeDaiFrame(root / "dog" / "dog_0.dai", 64, 48, 7, 300, dai::ImgFrame::Type::NV12);
     setSource(*fx.node, root / "dog");
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 1);
     CHECK(frames[0]->getSequenceNum() == 7);
     CHECK(pixelsEqual(*frames[0], dog, 64, 48, dai::ImgFrame::Type::NV12));
@@ -679,7 +688,7 @@ TEST_CASE("B26 jpg and jpeg are one extension", "[replay][host]") {
     copyFile(jpg, source / "cam_1.jpeg");
     setSource(*fx.node, source);
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 2);
     CHECK(frames.size() == 2);
 }
@@ -687,7 +696,7 @@ TEST_CASE("B26 jpg and jpeg are one extension", "[replay][host]") {
 TEST_CASE("B27 dai extension case is ignored", "[replay][host]") {
     HostReplay fx;
     customDir(fx, 64, 48, rangeSeq(2), rangeTs(2), {}, {"cam_0.DAI", "cam_1.dai"});
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 2);
     CHECK(frames[0]->getSequenceNum() == 0);
     CHECK(frames[1]->getSequenceNum() == 1);
@@ -696,7 +705,7 @@ TEST_CASE("B27 dai extension case is ignored", "[replay][host]") {
 TEST_CASE("B28 frames sort by sequence number", "[replay][host]") {
     HostReplay fx;
     customDir(fx, 64, 48, {7, 10, 2}, {700, 1000, 200}, {}, {"cam_7.dai", "cam_010.dai", "cam_2.dai"});
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 3);
     checkTs(*frames[0], 2, 200);
     checkTs(*frames[1], 7, 700);
@@ -708,7 +717,7 @@ TEST_CASE("B29 sequence numbers above 32 bits keep order", "[replay][host]") {
     const std::int64_t first = 4294967296LL;
     const std::int64_t second = 4294967297LL;
     customDir(fx, 64, 48, {first, second}, {0, 100});
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 2);
     CHECK(frames[0]->getSequenceNum() == first);
     CHECK(frames[1]->getSequenceNum() == second);
@@ -739,6 +748,7 @@ TEST_CASE("B35 bitstream dai errors at start", "[replay][host]") {
 }
 
 TEST_CASE("B36 h264 dai errors at start", "[replay][host]") {
+    if(!replay_test::replayDataAvailable() && !record_test::recordDataAvailable()) SKIP("needs the generated data");
     HostReplay fx;
     const auto source = fx.dir.path / "src";
     std::filesystem::create_directories(source);
@@ -748,6 +758,7 @@ TEST_CASE("B36 h264 dai errors at start", "[replay][host]") {
 }
 
 TEST_CASE("B37 mjpeg dai frames decode", "[replay][host]") {
+    if(!replay_test::replayDataAvailable() && !record_test::recordDataAvailable()) SKIP("needs the generated data");
     HostReplay fx;
     const auto source = fx.dir.path / "src";
     std::filesystem::create_directories(source);
@@ -755,7 +766,7 @@ TEST_CASE("B37 mjpeg dai frames decode", "[replay][host]") {
     makeDaiOther(source / "cam_1.dai", OtherKind::MJPEG, 6);
     setSource(*fx.node, source);
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 2);
     CHECK(frames[0]->getType() == dai::ImgFrame::Type::YUV420p);
     CHECK(frames[1]->getType() == dai::ImgFrame::Type::YUV420p);
@@ -818,7 +829,7 @@ TEST_CASE("B42 setSize resizes the odd jpeg", "[replay][host]") {
     setSource(*fx.node, source);
     setSize(*fx.node, 640, 480);
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 1);
     CHECK(frames[0]->getType() == dai::ImgFrame::Type::YUV420p);
     CHECK(frames[0]->getWidth() == 640);
@@ -833,7 +844,7 @@ TEST_CASE("B43 jpeg source is yuv420p near 98", "[replay][host]") {
     copyFile(videoOf(fx, "gray100.jpg"), source / "img_0.jpg");
     setSource(*fx.node, source);
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 1);
     CHECK(frames[0]->getType() == dai::ImgFrame::Type::YUV420p);
     CHECK(frames[0]->getWidth() == 64);
@@ -849,7 +860,7 @@ TEST_CASE("B44 png source mean Y is near 100", "[replay][host]") {
     copyFile(videoOf(fx, "gray100.png"), source / "img_0.png");
     setSource(*fx.node, source);
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 1);
     CHECK(frames[0]->getType() == dai::ImgFrame::Type::YUV420p);
     CHECK(near(meanY(*frames[0]), 100.0, 2.0));
@@ -862,7 +873,7 @@ TEST_CASE("B45 rgba png drops alpha", "[replay][host]") {
     copyFile(videoOf(fx, "rgba.png"), source / "img_0.png");
     setSource(*fx.node, source);
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 1);
     CHECK(frames[0]->getType() == dai::ImgFrame::Type::YUV420p);
     CHECK(near(meanY(*frames[0]), 100.0, 2.0));
@@ -881,7 +892,7 @@ TEST_CASE("B49 h264 mean Y follows 16 plus 7n", "[replay][host]") {
     HostReplay fx;
     setSource(*fx.node, videoOf(fx, "plain_h264.mp4"));
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 30);
     REQUIRE(frames.size() == 30);
     checkMeanY(frames, 2.0);
@@ -891,7 +902,7 @@ TEST_CASE("B50 ffv1 mean Y is exact", "[replay][host]") {
     HostReplay fx;
     setSource(*fx.node, videoOf(fx, "plain_ffv1.avi"));
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 30);
     REQUIRE(frames.size() == 30);
     checkMeanY(frames, 0.01);
@@ -901,7 +912,7 @@ TEST_CASE("B51 mjpeg mean Y follows 16 plus 7n", "[replay][host]") {
     HostReplay fx;
     setSource(*fx.node, videoOf(fx, "plain_mjpeg.mp4"));
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 30);
     REQUIRE(frames.size() == 30);
     checkMeanY(frames, 2.0);
@@ -912,7 +923,7 @@ TEST_CASE("B52 S1 order timestamps and finished", "[replay][host]") {
     const auto source = makeS1(fx.dir.path / "s1");
     setSource(*fx.node, source);
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 5);
     const std::int64_t sequences[] = {0, 1, 2, 5, 7};
     const std::int64_t times[] = {0, 100, 200, 500, 700};
@@ -951,7 +962,7 @@ TEST_CASE("C3 metadata overrides h264 timestamps", "[replay][host]") {
     setSource(*fx.node, videoOf(fx, "plain_h264.mp4"));
     setMetadataFile(*fx.node, metaFile(fx.dir.path, "meta30.mcap", 30, 100, 2000, 1920, 1080, 100));
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 30);
     REQUIRE(frames.size() == 30);
     for(int index = 0; index < 30; ++index) checkC3(*frames[static_cast<std::size_t>(index)], index);
@@ -1024,7 +1035,7 @@ TEST_CASE("C10 image metadata supplies sequence and time", "[replay][host]") {
     writeMeta(source / "img.mcap", 2, 40, 0, 64, 48, 100);
     setSource(*fx.node, source);
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 2);
     checkTs(*frames[0], 40, 0);
     checkTs(*frames[1], 41, 100);
@@ -1035,7 +1046,7 @@ TEST_CASE("C11 video fb fields", "[replay][host]") {
     setSource(*fx.node, videoOf(fx, "plain_h264.mp4"));
     setMetadataFile(*fx.node, metaFile(fx.dir.path, "meta30.mcap", 30, 100, 2000, 1920, 1080, 100));
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frame = takeFrames(fx.out, 1).front();
     CHECK(frame->fb.type == dai::ImgFrame::Type::YUV420p);
     CHECK(frame->fb.width == 1920);
@@ -1047,7 +1058,7 @@ TEST_CASE("C12 video without metadata uses defaults", "[replay][host]") {
     HostReplay fx;
     setSource(*fx.node, videoOf(fx, "plain_h264.mp4"));
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 30);
     REQUIRE(frames.size() == 30);
     std::int64_t previous = -1;
@@ -1077,7 +1088,7 @@ TEST_CASE("C13 loop continues sequence numbers", "[replay][host]") {
     setLoop(*fx.node, true);
     setStopPipelineAtEnd(*fx.node, false);
     setFps(*fx.node, 1000.f);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 60);
     for(int index = 30; index < 60; ++index) CHECK(frames[static_cast<std::size_t>(index)]->getSequenceNum() == index);
 }
@@ -1085,7 +1096,7 @@ TEST_CASE("C13 loop continues sequence numbers", "[replay][host]") {
 TEST_CASE("C14 first device timestamp is the steady epoch", "[replay][host]") {
     HostReplay fx;
     fx.frames(64, 48, 3);
-    fx.pipeline.start();
+    fx.start();
     auto frame = takeFrames(fx.out, 1).front();
     CHECK(timestampMs(frame->getTimestampDevice()) == 0);
 }
@@ -1096,7 +1107,7 @@ TEST_CASE("C15 loop extrapolates recorded intervals", "[replay][host]") {
     customDir(fx, 64, 48, {10, 11, 12}, {1000, 1100, 1300});
     setLoop(*fx.node, true);
     setFps(*fx.node, 0.f);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 7);
     const std::pair<std::int64_t, std::int64_t> expected[] = {{10, 1000}, {11, 1100}, {12, 1300}, {13, 1450}, {14, 1550}, {15, 1750}, {16, 1900}};
     for(int index = 0; index < 7; ++index) checkTs(*frames[static_cast<std::size_t>(index)], expected[index].first, expected[index].second);
@@ -1108,7 +1119,7 @@ TEST_CASE("C16 set fps keeps recorded timestamps inside the shared span", "[repl
     customDir(fx, 64, 48, {10, 11, 12}, {1000, 1100, 1300});
     setLoop(*fx.node, true);
     setFps(*fx.node, 20.f);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 4);
     const std::pair<std::int64_t, std::int64_t> expected[] = {{10, 1000}, {11, 1100}, {12, 1300}, {10, 1000}};
     for(int index = 0; index < 4; ++index) checkTs(*frames[static_cast<std::size_t>(index)], expected[index].first, expected[index].second);
@@ -1120,7 +1131,7 @@ TEST_CASE("C17 S1 loop pass one", "[replay][host]") {
     setLoop(*fx.node, true);
     setStopPipelineAtEnd(*fx.node, false);
     setFps(*fx.node, 0.f);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 10);
     const std::pair<std::int64_t, std::int64_t> pass1[] = {{8, 875}, {9, 975}, {10, 1075}, {13, 1375}, {15, 1575}};
     for(int index = 0; index < 5; ++index) checkTs(*frames[static_cast<std::size_t>(5 + index)], pass1[index].first, pass1[index].second);
@@ -1131,7 +1142,7 @@ TEST_CASE("C18 two-frame loop offset", "[replay][host]") {
     customDir(fx, 64, 48, {0, 1}, {0, 100});
     setLoop(*fx.node, true);
     setFps(*fx.node, 0.f);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 7);
     for(int index = 0; index < 7; ++index) checkTs(*frames[static_cast<std::size_t>(index)], index, index * 100);
 }
@@ -1151,7 +1162,7 @@ TEST_CASE("C20 decreasing timestamp errors at start", "[replay][host]") {
 TEST_CASE("C21 equal timestamps are allowed", "[replay][host]") {
     HostReplay fx;
     customDir(fx, 64, 48, {0, 1}, {500, 500});
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 2);
     CHECK(frames.size() == 2);
 }
@@ -1161,7 +1172,7 @@ TEST_CASE("C22 one frame loop uses one thirtieth of a second", "[replay][host]")
     customDir(fx, 64, 48, {0}, {0});
     setLoop(*fx.node, true);
     setFps(*fx.node, 0.f);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 2);
     CHECK(frames[1]->getSequenceNum() == 1);
     CHECK(std::llabs(timestampMs(frames[1]->getTimestampDevice()) - 33) <= 1);
@@ -1171,7 +1182,7 @@ TEST_CASE("C23 resize updates the transformation", "[replay][host]") {
     HostReplay fx;
     customDir(fx, 640, 480, rangeSeq(2), rangeTs(2));
     setSize(*fx.node, 320, 240);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 2);
     for(const auto& frame : frames) {
         CHECK(frame->getWidth() == 320);
@@ -1191,7 +1202,7 @@ TEST_CASE("D1 plain nv12 matches the file", "[replay][host]") {
     HostReplay fx;
     const auto fill = FrameFill::plainYuv(100, 128, 128);
     customDir(fx, 64, 48, {0}, {0}, fill);
-    fx.pipeline.start();
+    fx.start();
     auto frame = takeFrames(fx.out, 1).front();
     CHECK(frame->getType() == dai::ImgFrame::Type::NV12);
     CHECK(pixelsEqual(*frame, packedOf(fx.source / "cam_0.dai"), 64, 48, dai::ImgFrame::Type::NV12));
@@ -1201,7 +1212,7 @@ TEST_CASE("D2 gray output is the Y plane", "[replay][host]") {
     HostReplay fx;
     customDir(fx, 64, 48, {0}, {0}, FrameFill::plainYuv(100, 128, 128));
     setOutFrameType(*fx.node, dai::ImgFrame::Type::GRAY8);
-    fx.pipeline.start();
+    fx.start();
     auto frame = takeFrames(fx.out, 1).front();
     CHECK(frame->getType() == dai::ImgFrame::Type::GRAY8);
     CHECK(bytesNear(*frame, 100, 0));
@@ -1211,7 +1222,7 @@ TEST_CASE("D3 rgb output is near 98", "[replay][host]") {
     HostReplay fx;
     customDir(fx, 64, 48, {0}, {0}, FrameFill::plainYuv(100, 128, 128));
     setOutFrameType(*fx.node, dai::ImgFrame::Type::RGB888i);
-    fx.pipeline.start();
+    fx.start();
     auto frame = takeFrames(fx.out, 1).front();
     CHECK(frame->getType() == dai::ImgFrame::Type::RGB888i);
     CHECK(bytesNear(*frame, 98, 2));
@@ -1221,7 +1232,7 @@ TEST_CASE("D4 bgr output is near 98", "[replay][host]") {
     HostReplay fx;
     customDir(fx, 64, 48, {0}, {0}, FrameFill::plainYuv(100, 128, 128));
     setOutFrameType(*fx.node, dai::ImgFrame::Type::BGR888i);
-    fx.pipeline.start();
+    fx.start();
     auto frame = takeFrames(fx.out, 1).front();
     CHECK(frame->getType() == dai::ImgFrame::Type::BGR888i);
     CHECK(bytesNear(*frame, 98, 2));
@@ -1231,7 +1242,7 @@ TEST_CASE("D5 yuv420p planes keep the plain values", "[replay][host]") {
     HostReplay fx;
     customDir(fx, 64, 48, {0}, {0}, FrameFill::plainYuv(100, 128, 128));
     setOutFrameType(*fx.node, dai::ImgFrame::Type::YUV420p);
-    fx.pipeline.start();
+    fx.start();
     auto frame = takeFrames(fx.out, 1).front();
     CHECK(frame->getType() == dai::ImgFrame::Type::YUV420p);
     CHECK(near(meanY(*frame), 100.0, 0.01));
@@ -1246,7 +1257,7 @@ TEST_CASE("D6 nv12 output matches the file", "[replay][host]") {
     HostReplay fx;
     customDir(fx, 64, 48, {0}, {0}, FrameFill::plainYuv(100, 128, 128));
     setOutFrameType(*fx.node, dai::ImgFrame::Type::NV12);
-    fx.pipeline.start();
+    fx.start();
     auto frame = takeFrames(fx.out, 1).front();
     CHECK(pixelsEqual(*frame, packedOf(fx.source / "cam_0.dai"), 64, 48, dai::ImgFrame::Type::NV12));
 }
@@ -1260,7 +1271,7 @@ TEST_CASE("D7 gray source to nv12 fills UV with 128", "[replay][host]") {
     setSource(*fx.node, source);
     setFast(*fx.node);
     setOutFrameType(*fx.node, dai::ImgFrame::Type::NV12);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 2);
     for(const auto& frame : frames) {
         CHECK(frame->getType() == dai::ImgFrame::Type::NV12);
@@ -1277,7 +1288,7 @@ TEST_CASE("D8 raw16 stays raw16", "[replay][host]") {
     const auto second = makeDaiFrame(source / "cam_1.dai", 64, 48, 1, 100, dai::ImgFrame::Type::RAW16, FrameFill::plainByte(40));
     setSource(*fx.node, source);
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 2);
     CHECK(frames[0]->getType() == dai::ImgFrame::Type::RAW16);
     CHECK(frames[1]->getType() == dai::ImgFrame::Type::RAW16);
@@ -1315,7 +1326,7 @@ TEST_CASE("D11 jpeg to gray is near 98", "[replay][host]") {
     setSource(*fx.node, source);
     setOutFrameType(*fx.node, dai::ImgFrame::Type::GRAY8);
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto frame = takeFrames(fx.out, 1).front();
     CHECK(frame->getType() == dai::ImgFrame::Type::GRAY8);
     CHECK(bytesNear(*frame, 98, 2));
@@ -1334,7 +1345,7 @@ TEST_CASE("D12 two nodes convert independently", "[replay][host]") {
     setFast(*second);
     setOutFrameType(*second, dai::ImgFrame::Type::GRAY8);
     auto gray = second->out.createOutputQueue(16, true);
-    fx.pipeline.start();
+    fx.start();
     auto frame = record_test::getFor<dai::ImgFrame>(*gray, std::chrono::seconds(10));
     REQUIRE(frame != nullptr);
     CHECK(frame->getType() == dai::ImgFrame::Type::GRAY8);
@@ -1345,7 +1356,7 @@ TEST_CASE("D13 half size keeps plain yuv within 1", "[replay][host]") {
     HostReplay fx;
     customDir(fx, 640, 480, rangeSeq(2), rangeTs(2), FrameFill::plainYuv(90, 100, 160));
     setSize(*fx.node, 320, 240);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 2);
     for(const auto& frame : frames) {
         CHECK(frame->getWidth() == 320);
@@ -1358,7 +1369,7 @@ TEST_CASE("D14 same size does not resize", "[replay][host]") {
     HostReplay fx;
     const auto source = customDir(fx, 640, 480, rangeSeq(2), rangeTs(2));
     setSize(*fx.node, 640, 480);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 2);
     for(int index = 0; index < 2; ++index) {
         CHECK(pixelsEqual(
@@ -1370,7 +1381,7 @@ TEST_CASE("D15 width-only resize keeps Y", "[replay][host]") {
     HostReplay fx;
     customDir(fx, 640, 480, rangeSeq(2), rangeTs(2), FrameFill::plainYuv(90, 100, 160));
     setSize(*fx.node, 320, 480);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 2);
     for(const auto& frame : frames) {
         CHECK(frame->getWidth() == 320);
@@ -1382,7 +1393,7 @@ TEST_CASE("D15 width-only resize keeps Y", "[replay][host]") {
 TEST_CASE("D16 fb stride covers the row", "[replay][host]") {
     HostReplay fx;
     const auto source = fx.frames(64, 48, 3);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 3);
     for(const auto& frame : frames) {
         CHECK(frame->fb.width == 64);
@@ -1396,7 +1407,7 @@ TEST_CASE("D17 loop sequence has no gap", "[replay][host]") {
     HostReplay fx;
     fx.frames(64, 48, 20);
     setLoop(*fx.node, true);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 40);
     for(int index = 0; index < 40; ++index) CHECK(frames[static_cast<std::size_t>(index)]->getSequenceNum() == index);
 }
@@ -1406,7 +1417,7 @@ TEST_CASE("D18 predecode matches stream pixels", "[replay][host]") {
     const auto video = videoOf(fx, "plain_h264.mp4");
     setSource(*fx.node, video);
     setFast(*fx.node);
-    fx.pipeline.start();
+    fx.start();
     auto streamed = takeFrames(fx.out, 30);
     fx.pipeline.stop();
     fx.pipeline.wait();
@@ -1414,7 +1425,7 @@ TEST_CASE("D18 predecode matches stream pixels", "[replay][host]") {
     setSource(*pre.node, video);
     setFast(*pre.node);
     setDecodeMode(*pre.node, DecodeMode::PRE_DECODE);
-    pre.pipeline.start();
+    pre.start();
     auto decoded = takeFrames(pre.out, 30);
     REQUIRE(decoded.size() == streamed.size());
     for(std::size_t index = 0; index < decoded.size(); ++index) {
@@ -1427,7 +1438,7 @@ TEST_CASE("D19 predecode rgb matches D3", "[replay][host]") {
     customDir(fx, 64, 48, {0}, {0}, FrameFill::plainYuv(100, 128, 128));
     setOutFrameType(*fx.node, dai::ImgFrame::Type::RGB888i);
     setDecodeMode(*fx.node, DecodeMode::PRE_DECODE);
-    fx.pipeline.start();
+    fx.start();
     auto frame = takeFrames(fx.out, 1).front();
     CHECK(frame->getType() == dai::ImgFrame::Type::RGB888i);
     CHECK(bytesNear(*frame, 98, 2));
@@ -1437,10 +1448,12 @@ TEST_CASE("E1 ten frames at 10 fps", "[replay][host]") {
     HostReplay fx;
     fx.frames(64, 48, 10);
     setFps(*fx.node, 10.f);
-    fx.pipeline.start();
+    fx.start();
+    const auto taken = takeTimedFrames(fx.out, 10);
     std::vector<double> nominal(10);
     for(int index = 0; index < 10; ++index) nominal[static_cast<std::size_t>(index)] = 100.0 * index;
-    checkArrivals(takeTimed(fx.out, 10), nominal);
+    checkNodeGaps(taken.frames, nominal);
+    checkArrivals(taken.arrivals, nominal);
 }
 
 TEST_CASE("E2 queue of one catches up after a hold", "[replay][host]") {
@@ -1448,7 +1461,7 @@ TEST_CASE("E2 queue of one catches up after a hold", "[replay][host]") {
     fx.frames(64, 48, 10);
     setFps(*fx.node, 10.f);
     fx.queueOf(1, true);
-    fx.pipeline.start();
+    fx.start();
     std::vector<std::chrono::steady_clock::time_point> arrivals;
     std::vector<std::int64_t> sequences;
     for(int index = 0; index < 10; ++index) {
@@ -1472,10 +1485,10 @@ TEST_CASE("E3 recorded gaps without fps", "[replay][host]") {
     HostReplay fx;
     customDir(fx, 64, 48, rangeSeq(4), {0, 100, 300, 300});
     setFps(*fx.node, 0.f);
-    fx.pipeline.start();
-    const auto arrivals = takeTimed(fx.out, 4);
-    std::vector<double> nominal{0, 100, 300, 333};
-    checkArrivals(arrivals, nominal);
+    fx.start();
+    const auto taken = takeTimedFrames(fx.out, 4);
+    checkNodeGaps(taken.frames, {0, 100, 300, 300});
+    checkArrivals(taken.arrivals, {0, 100, 300, 333});
 }
 
 TEST_CASE("E4 loop boundary pacing", "[replay][host]") {
@@ -1483,8 +1496,11 @@ TEST_CASE("E4 loop boundary pacing", "[replay][host]") {
     customDir(fx, 64, 48, {10, 11, 12}, {1000, 1100, 1300});
     setLoop(*fx.node, true);
     setFps(*fx.node, 0.f);
-    fx.pipeline.start();
-    checkArrivals(takeTimed(fx.out, 6), {0, 100, 300, 450, 550, 750});
+    fx.start();
+    const auto taken = takeTimedFrames(fx.out, 6);
+    const std::vector<double> nominal{0, 100, 300, 450, 550, 750};
+    checkNodeGaps(taken.frames, nominal);
+    checkArrivals(taken.arrivals, nominal);
 }
 
 TEST_CASE("E5 container duration without metadata", "[replay][host]") {
@@ -1495,7 +1511,7 @@ TEST_CASE("E5 container duration without metadata", "[replay][host]") {
         setSource(*fx.node, videoOf(fx, "plain_h264.mp4"));
         setLoop(*fx.node, false);
         setStopPipelineAtEnd(*fx.node, false);
-        fx.pipeline.start();
+        fx.start();
         const auto start = std::chrono::steady_clock::now();
         auto frames = takeFrames(fx.out, 30);
         const auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
@@ -1514,7 +1530,7 @@ TEST_CASE("E6 fast fps does not drop for a slow consumer", "[replay][host]") {
     fx.frames(64, 48, 20);
     setFps(*fx.node, 1000.f);
     fx.queueOf(1, true);
-    fx.pipeline.start();
+    fx.start();
     const auto start = std::chrono::steady_clock::now();
     for(int index = 0; index < 20; ++index) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -1536,7 +1552,7 @@ TEST_CASE("E7 metadata at max rate finishes inside one second", "[replay][host]"
     setFps(*fx.node, 1000.f);
     setLoop(*fx.node, false);
     setStopPipelineAtEnd(*fx.node, false);
-    fx.pipeline.start();
+    fx.start();
     const auto start = std::chrono::steady_clock::now();
     auto first = record_test::getFor<dai::ImgFrame>(*fx.out, std::chrono::seconds(10));
     REQUIRE(first != nullptr);
@@ -1554,7 +1570,7 @@ TEST_CASE("E8 set fps beats metadata intervals", "[replay][host]") {
     setFps(*fx.node, 20.f);
     setLoop(*fx.node, false);
     setStopPipelineAtEnd(*fx.node, false);
-    fx.pipeline.start();
+    fx.start();
     const auto arrivals = takeTimed(fx.out, 30);
     std::vector<double> gaps;
     for(std::size_t index = 1; index < arrivals.size(); ++index) {
@@ -1570,7 +1586,7 @@ TEST_CASE("E9 loop with stop at end still runs and warns nothing", "[replay][hos
     fx.frames(64, 48, 3);
     setLoop(*fx.node, true);
     setStopPipelineAtEnd(*fx.node, true);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 9);
     CHECK(frames.size() == 9);
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -1581,7 +1597,7 @@ TEST_CASE("E9 loop with stop at end still runs and warns nothing", "[replay][hos
 TEST_CASE("E10 finished leaves the pipeline running", "[replay][host]") {
     HostReplay fx;
     fx.frames(64, 48, 3);
-    fx.pipeline.start();
+    fx.start();
     CHECK(takeFrames(fx.out, 3).size() == 3);
     REQUIRE(fx.log.waitFor("Replay finished", std::chrono::seconds(10)));
     CHECK(fx.log.count(LineLevel::INFO, "Replay finished") >= 1);
@@ -1593,7 +1609,7 @@ TEST_CASE("E11 stop at end stops the pipeline", "[replay][host]") {
     HostReplay fx;
     fx.frames(64, 48, 3);
     setStopPipelineAtEnd(*fx.node, true);
-    fx.pipeline.start();
+    fx.start();
     CHECK(takeFrames(fx.out, 3).size() == 3);
     CHECK(record_test::waitUntil([&] { return !fx.pipeline.isRunning(); }, std::chrono::seconds(10)));
     fx.pipeline.wait();
@@ -1612,7 +1628,7 @@ TEST_CASE("E12 the first finished node stops the pipeline", "[replay][host]") {
     setFps(*slow, 10.f);
     setStopPipelineAtEnd(*slow, true);
     slow->out.createOutputQueue(4, false);
-    fx.pipeline.start();
+    fx.start();
     auto frames = takeFrames(fx.out, 3);
     REQUIRE(frames.size() == 3);
     const auto marked = std::chrono::steady_clock::now();
@@ -1630,7 +1646,7 @@ TEST_CASE("G1 persistent predecode keeps one decoded entry", "[replay][host]") {
     setFast(*fx.node);
     setDecodeMode(*fx.node, DecodeMode::PRE_DECODE);
     setPersistentUpload(*fx.node, true);
-    fx.pipeline.start();
+    fx.start();
     REQUIRE(fx.log.waitFor("100/100", std::chrono::seconds(60)));
     CHECK(fx.log.count(LineLevel::INFO, "Replay decode") == 10);
     fx.pipeline.stop();
@@ -1657,7 +1673,7 @@ TEST_CASE("G2 second run reuses the decoded entry", "[replay][host]") {
     setFast(*fx.node);
     setDecodeMode(*fx.node, DecodeMode::PRE_DECODE);
     setPersistentUpload(*fx.node, true);
-    fx.pipeline.start();
+    fx.start();
     REQUIRE(fx.log.waitFor("100/100", std::chrono::seconds(60)));
     fx.pipeline.stop();
     fx.pipeline.wait();
@@ -1665,9 +1681,19 @@ TEST_CASE("G2 second run reuses the decoded entry", "[replay][host]") {
     // run cannot send frames or log "Replay finished". Reuse is the second prepare: the
     // source and the decoded entry both hit the cache, and decode does not run again.
     const int before = fx.log.countSubstring("Replay decode");
-    fx.pipeline.start();
-    REQUIRE(record_test::waitUntil([&] { return fx.log.countSubstring("Replay cache hit") >= 2; }, std::chrono::seconds(30)));
-    fx.pipeline.stop();
+    const int finished = fx.log.countSubstring("Replay finished");
+    dai::Pipeline second{false};
+    auto node = second.create<dai::node::ReplayVideo>();
+    record_test::watchNode(*node);
+    setSource(*node, source);
+    setFast(*node);
+    setDecodeMode(*node, DecodeMode::PRE_DECODE);
+    setPersistentUpload(*node, true);
+    auto out = node->out.createOutputQueue(16, true);
+    (void)out;
+    second.start();
+    REQUIRE(record_test::waitUntil([&] { return fx.log.countSubstring("Replay finished") > finished; }, std::chrono::seconds(30)));
+    second.stop();
     CHECK(fx.log.countSubstring("Replay decode") == before);
     CHECK(getHostCacheInfo().entries.size() == 2);
 }
@@ -1695,7 +1721,9 @@ TEST_CASE("G4 exact cache limit starts", "[replay][host]") {
     setFast(*fx.node);
     setDecodeMode(*fx.node, DecodeMode::PRE_DECODE);
     setPersistentUpload(*fx.node, true);
-    fx.pipeline.start();
+    fx.start();
+    const bool present = record_test::waitUntil([&] { return !getHostCacheInfo().entries.empty(); }, std::chrono::seconds(60));
+    REQUIRE(present);
     CHECK(fx.pipeline.isRunning());
     fx.pipeline.stop();
 }
@@ -1722,9 +1750,10 @@ TEST_CASE("G6 clear host cache removes the entry", "[replay][host]") {
     setFast(*fx.node);
     setDecodeMode(*fx.node, DecodeMode::PRE_DECODE);
     setPersistentUpload(*fx.node, true);
-    fx.pipeline.start();
+    fx.start();
     REQUIRE(fx.log.waitFor("100/100", std::chrono::seconds(60)));
     fx.pipeline.stop();
+    REQUIRE_FALSE(getHostCacheInfo().entries.empty());
     clearHostCache();
     CHECK(getHostCacheInfo().entries.empty());
 }
@@ -1737,7 +1766,7 @@ TEST_CASE("G7 default upload keeps the entry at stop", "[replay][host]") {
     setSource(*fx.node, source);
     setFast(*fx.node);
     setDecodeMode(*fx.node, DecodeMode::PRE_DECODE);
-    fx.pipeline.start();
+    fx.start();
     REQUIRE(takeFrames(fx.out, 1).size() == 1);
     const auto during = getHostCacheInfo();
     REQUIRE(during.entries.size() == 2);

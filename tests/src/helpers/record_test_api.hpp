@@ -1,7 +1,5 @@
 #pragma once
 
-// Thin wrappers for the record-node API. Spec names are proposals; call these, not the node, from tests.
-
 #include <cstdint>
 #include <filesystem>
 #include <memory>
