@@ -490,12 +490,10 @@ TEST_CASE("DynamicCalibration: StopCalibration halts further results") {
 
     auto first = calibrationOutput->get<dai::DynamicCalibrationResult>();
     REQUIRE(first != nullptr);
-    // Count only the results that come after Stop.
     while(calibrationOutput->tryGet<dai::DynamicCalibrationResult>() != nullptr) {
     }
 
-    // The node reads one command between two cycles. A cycle that runs when Stop arrives still sends its result.
-    // The node does the metrics command after the Stop, so the metrics show that the Stop is done.
+    // The node reads one command per cycle: the metrics come after the Stop is done, and the cycle in progress can still send one result.
     commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StopCalibration{}));
     commandInput->send(dai::DynamicCalibrationControl::computeCalibrationMetrics(calibration));
     bool metricsTimedOut = true;

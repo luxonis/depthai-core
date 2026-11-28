@@ -271,7 +271,6 @@ if __name__ == "__main__":
 
     # List to keep track of results
     resultThreads = []
-    # The replay job excludes these labels in all configurations. A configuration can add more with "replay_excluded_labels".
     replay_common_excluded_labels = ["noreplayci"]
 
     # Filter configurations based on command-line arguments
