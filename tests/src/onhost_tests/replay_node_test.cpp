@@ -19,6 +19,7 @@
 #include "depthai/utility/Compression.hpp"
 #include "depthai/utility/Serialization.hpp"
 #include "opencv/ReplayInternal.hpp"
+#include "utility/ReplayPacing.hpp"
 
 #ifdef _WIN32
     #include <process.h>
@@ -618,7 +619,9 @@ TEST_CASE("S10 paced replay slips and does not drop", "[pacing]") {
         REQUIRE(frame->getSequenceNum() == index);
         arrivals.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
     }
-    const std::vector<long long> expected{0, 100, 200, 300, 650, 650, 650, 750, 850, 950};
+    // Frame 4 sits in the queue until the hold ends. Frames 5 and 6 are already due,
+    // so they leave with it. The following frame is the 700 ms point on the original grid.
+    const std::vector<long long> expected{0, 100, 200, 300, 650, 650, 650, 700, 800, 900};
     for(int index = 1; index < 10; index++) {
         REQUIRE(std::llabs(arrivals[static_cast<std::size_t>(index)] - expected[static_cast<std::size_t>(index)]) <= 20);
     }
@@ -814,8 +817,11 @@ TEST_CASE("PC-2 recorded frame gaps determine wall-clock playback", "[pacing]") 
     auto queue = replay->out.createOutputQueue(1, true);
     pipeline.start();
     std::chrono::steady_clock::time_point start;
-    const std::vector<long long> expected{0, 80, 113, 333, 433, 513};
-    const std::vector<long long> stamps{1000, 1080, 1080, 1300, 1400, 1480};
+    // The 220 ms gap is more than twice the 100 ms mean, so that wait is one nominal period.
+    // The second pass then starts before the 400 ms span has elapsed and keeps the recorded numbers.
+    const std::vector<long long> expected{0, 80, 113, 213, 313, 393};
+    const std::vector<long long> sequences{10, 11, 12, 13, 10, 11};
+    const std::vector<long long> stamps{1000, 1080, 1080, 1300, 1000, 1080};
     for(int index = 0; index < 6; ++index) {
         bool timeout = false;
         const auto frame = queue->get<dai::ImgFrame>(2s, timeout);
@@ -825,9 +831,9 @@ TEST_CASE("PC-2 recorded frame gaps determine wall-clock playback", "[pacing]") 
         if(index == 0) start = received;
         const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(received - start).count();
         REQUIRE(std::llabs(elapsed - expected[index]) <= 25);
-        REQUIRE(frame->getSequenceNum() == 10 + index);
+        REQUIRE(frame->getSequenceNum() == sequences[static_cast<std::size_t>(index)]);
         const auto stamp = std::chrono::duration_cast<std::chrono::milliseconds>(frame->getTimestampDevice().time_since_epoch()).count();
-        REQUIRE(stamp == stamps[index]);
+        REQUIRE(stamp == stamps[static_cast<std::size_t>(index)]);
     }
     pipeline.stop();
 }
@@ -840,7 +846,10 @@ TEST_CASE("PC-3 frames without metadata use actual send timestamps at 30 fps", "
     replay->setSource(source.archive).setRunOnHost(true).setLoop(false).setStopPipelineAtEnd(false);
     auto queue = replay->out.createOutputQueue(1, true);
     pipeline.start();
+    // A late wake is followed by a shorter gap so the next frame lands back on the 30 fps grid.
+    const auto period = dai::replay::playbackPeriod(30.0);
     std::optional<std::chrono::steady_clock::time_point> previous;
+    std::optional<std::chrono::steady_clock::time_point> firstSent;
     for(int index = 0; index < 3; ++index) {
         bool timeout = false;
         const auto frame = queue->get<dai::ImgFrame>(2s, timeout);
@@ -851,11 +860,15 @@ TEST_CASE("PC-3 frames without metadata use actual send timestamps at 30 fps", "
         REQUIRE(sent <= received);
         REQUIRE(received - sent < 25ms);
         if(previous) {
-            REQUIRE(sent - *previous >= std::chrono::nanoseconds(33333333));
             REQUIRE(sent - *previous < 60ms);
+        } else {
+            firstSent = sent;
         }
         previous = sent;
     }
+    REQUIRE(firstSent);
+    REQUIRE(*previous - *firstSent >= period * 2);
+    REQUIRE(*previous - *firstSent < 100ms);
     pipeline.stop();
 }
 

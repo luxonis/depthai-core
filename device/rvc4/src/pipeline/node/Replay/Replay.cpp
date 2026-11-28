@@ -161,7 +161,7 @@ struct RecordedTiming {
 };
 
 // One clock per pipeline, shared by ReplayVideo and ReplayMetadataOnly.
-// The offset is elapsed / max span from the first run() entry, not this node's pass.
+// The offset is elapsed / max span from the first run() entry, and it does not pass the pass being sent.
 struct ReplayLoopSlot {
     std::mutex mutex;
     SteadyTime::duration maxSpan{};
@@ -231,6 +231,11 @@ class ReplayLoopSession {
 };
 
 // loopIndex, shared span, sequence stride.
+std::int64_t playedPass(int sent, int count) {
+    if(count <= 0 || sent <= 0) return 0;
+    return static_cast<std::int64_t>(sent) / count;
+}
+
 std::tuple<std::int64_t, SteadyTime::duration, std::int64_t> updateReplayLoop(ReplayLoopSlot& slot,
                                                                               bool recorded,
                                                                               int count,
@@ -238,7 +243,8 @@ std::tuple<std::int64_t, SteadyTime::duration, std::int64_t> updateReplayLoop(Re
                                                                               std::int64_t seqLast,
                                                                               SteadyTime deviceFirst,
                                                                               SteadyTime deviceLast,
-                                                                              SteadyTime::duration nominal) {
+                                                                              SteadyTime::duration nominal,
+                                                                              std::int64_t playedPass) {
     std::lock_guard<std::mutex> lock(slot.mutex);
     if(recorded) {
         const auto stride = replaySeqStride(seqFirst, seqLast);
@@ -253,7 +259,9 @@ std::tuple<std::int64_t, SteadyTime::duration, std::int64_t> updateReplayLoop(Re
     if(!slot.started || slot.maxSpan.count() == 0) return {0, slot.maxSpan, seqStride};
     const auto elapsed = SteadyTime::clock::now() - slot.startedAt;
     if(elapsed.count() <= 0) return {0, slot.maxSpan, seqStride};
-    return {static_cast<std::int64_t>(elapsed / slot.maxSpan), slot.maxSpan, seqStride};
+    const auto elapsedIndex = static_cast<std::int64_t>(elapsed / slot.maxSpan);
+    if(playedPass < 0) playedPass = 0;
+    return {std::min(elapsedIndex, playedPass), slot.maxSpan, seqStride};
 }
 
 SteadyTime::duration pacedDelta(SteadyTime::duration raw, SteadyTime::duration nominal) {
@@ -1479,7 +1487,7 @@ void ReplayVideo::buildStage1() {
         }
         if(state->loopSlot) {
             updateReplayLoop(
-                *state->loopSlot, state->recorded, state->count, state->seqFirst, state->seqLast, state->deviceFirst, state->deviceLast, state->nominal);
+                *state->loopSlot, state->recorded, state->count, state->seqFirst, state->seqLast, state->deviceFirst, state->deviceLast, state->nominal, 0);
         }
         state->recording = std::move(recording);
     } catch(...) {
@@ -1506,8 +1514,15 @@ void ReplayVideo::run() {
     bool naturalEnd = false;
     int sent = 0;
     auto syncLoop = [&]() {
-        return updateReplayLoop(
-            *state->loopSlot, state->recorded, state->count, state->seqFirst, state->seqLast, state->deviceFirst, state->deviceLast, state->nominal);
+        return updateReplayLoop(*state->loopSlot,
+                                state->recorded,
+                                state->count,
+                                state->seqFirst,
+                                state->seqLast,
+                                state->deviceFirst,
+                                state->deviceLast,
+                                state->nominal,
+                                playedPass(sent, state->count));
     };
     while(mainLoop() && !state->stopping.load()) {
         const int index = state->count > 0 ? sent % state->count : sent;
@@ -1688,7 +1703,7 @@ void ReplayMetadataOnly::buildStage1() {
         state->deviceLast = previousDevice;
         state->nominal = nominalOf(state->fpsSet, state->fps, state->deviceFirst, state->deviceLast, state->count);
         if(state->loopSlot) {
-            updateReplayLoop(*state->loopSlot, true, state->count, state->seqFirst, state->seqLast, state->deviceFirst, state->deviceLast, state->nominal);
+            updateReplayLoop(*state->loopSlot, true, state->count, state->seqFirst, state->seqLast, state->deviceFirst, state->deviceLast, state->nominal, 0);
         }
         state->media = media;
         state->recording = std::move(recording);
@@ -1743,8 +1758,15 @@ void ReplayMetadataOnly::run() {
             else if(havePrevious)
                 recordedInterval = pacedDelta(timing.timestampDevice - previousDevice, state->nominal);
         }
-        const auto [loopIndex, maxSpan, maxSeqStride] =
-            updateReplayLoop(*state->loopSlot, true, state->count, state->seqFirst, state->seqLast, state->deviceFirst, state->deviceLast, state->nominal);
+        const auto [loopIndex, maxSpan, maxSeqStride] = updateReplayLoop(*state->loopSlot,
+                                                                         true,
+                                                                         state->count,
+                                                                         state->seqFirst,
+                                                                         state->seqLast,
+                                                                         state->deviceFirst,
+                                                                         state->deviceLast,
+                                                                         state->nominal,
+                                                                         playedPass(sent, state->count));
         applyRecorded(buffer, state->seqFirst, state->deviceFirst, timing, loopIndex, maxSpan, maxSeqStride);
         previousDevice = timing.timestampDevice;
         havePrevious = true;

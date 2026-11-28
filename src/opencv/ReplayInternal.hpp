@@ -106,6 +106,9 @@ struct DecodedPixels {
     std::optional<std::chrono::system_clock::time_point> timestampSystem;
 };
 
+/// Width, height, type, and timing from a .dai file. The pixel payload is not read.
+DecodedPixels probeDaiHeader(const std::filesystem::path& path);
+
 class FrameReader {
    public:
     FrameReader();

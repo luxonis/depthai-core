@@ -1604,6 +1604,38 @@ TEST_CASE("V9 fps sets the video duration", "[record][host]") {
     CHECK(record_test::videoDurationS(fx.recDir() / "enc.mp4") == Catch::Approx(0.4).margin(0.02));
 }
 
+TEST_CASE("V10 unset fps stores the source rate", "[record][host]") {
+    record_test::requireRecordData();
+    HostRecord fx;
+    record_test::setFormat(*fx.node, record_test::Format::VIDEO);
+    record_test::setStreamName(*fx.node, "enc");
+    fx.pipeline.start();
+    expectStatus(fx.status, dai::RecordStatus::State::STARTED, 0, 0, -1, -1, 0);
+    std::vector<std::shared_ptr<dai::ADatatype>> frames;
+    for(int n = 0; n < 20; ++n) frames.push_back(makeEnc(n));
+    record_test::sendPaced(fx.frames, frames, 20, &fx.pipeline);
+    REQUIRE(fx.log.waitFor("Record wrote frame 19", kWait));
+    stoppedOf(fx, 0, 20, 0, 19, 0);
+    // Device timestamps are 100 ms apart, so twenty frames at the source rate last 2 s.
+    CHECK(record_test::videoDurationS(fx.recDir() / "enc.mp4") == Catch::Approx(2.0).margin(0.04));
+}
+
+TEST_CASE("V11 a short recording measures fps from the intervals", "[record][host]") {
+    record_test::requireRecordData();
+    HostRecord fx;
+    record_test::setFormat(*fx.node, record_test::Format::VIDEO);
+    record_test::setStreamName(*fx.node, "enc");
+    record_test::setWaitForTrigger(*fx.node, true);
+    fx.control();
+    fx.pipeline.start();
+    sendControl(fx, record_test::startControl(4, -1));
+    expectStatus(fx.status, dai::RecordStatus::State::STARTED, 0, 0, -1, -1, 0);
+    for(int n = 0; n < 4; ++n) sendFrame(fx.frames, makeEnc(n));
+    REQUIRE(fx.log.waitFor("Record wrote frame 3", kWait));
+    stoppedOf(fx, 0, 4, 0, 3, 0);
+    CHECK(record_test::videoDurationS(fx.recDir() / "enc.mp4") == Catch::Approx(0.4).margin(0.02));
+}
+
 TEST_CASE("H1 a full filesystem stops the recording", "[record][host]") {
     if(geteuid() != 0) SKIP("needs root for a 1 MiB tmpfs");
     HostRecord fx;

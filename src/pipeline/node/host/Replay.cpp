@@ -116,7 +116,8 @@ void noteLoopStart(const void* key) {
 }
 
 // loopIndex, shared span, sequence stride. The span is the longest one registered for this pipeline.
-std::tuple<std::int64_t, Steady::duration, std::int64_t> loopShiftFor(const void* key) {
+// The index follows the steady clock, and it does not move past the pass this node is sending.
+std::tuple<std::int64_t, Steady::duration, std::int64_t> loopShiftFor(const void* key, std::int64_t playedPass) {
     std::lock_guard<std::mutex> lock(gLeaseMutex);
     const auto found = gLeases.find(key);
     if(found == gLeases.end()) return {0, Steady::duration::zero(), 1};
@@ -125,7 +126,14 @@ std::tuple<std::int64_t, Steady::duration, std::int64_t> loopShiftFor(const void
     if(!lease.started || lease.maxSpan <= Steady::duration::zero()) return {0, lease.maxSpan, seqStride};
     const auto elapsed = Steady::now() - lease.startedAt;
     if(elapsed <= Steady::duration::zero()) return {0, lease.maxSpan, seqStride};
-    return {static_cast<std::int64_t>(elapsed / lease.maxSpan), lease.maxSpan, seqStride};
+    const auto elapsedIndex = static_cast<std::int64_t>(elapsed / lease.maxSpan);
+    if(playedPass < 0) playedPass = 0;
+    return {std::min(elapsedIndex, playedPass), lease.maxSpan, seqStride};
+}
+
+std::int64_t playedPass(int sent, int count) {
+    if(count <= 0 || sent <= 0) return 0;
+    return static_cast<std::int64_t>(sent) / count;
 }
 
 bool deviceIsRvc4(const DeviceNode& node) {
@@ -609,6 +617,7 @@ std::string uploadFile(Device& device, const std::shared_ptr<spdlog::async_logge
             if(logger) logger->info("Replay cache hit {}", hash);
             return std::get<1>(prepared);
         }
+        if(logger && total > 0) logger->warn("Replay upload {} {} bytes", hash, total);
         std::ifstream input(file, std::ios::binary);
         if(!input) throw std::runtime_error("ReplayVideo source cannot be read: " + file.string());
         std::uint64_t offset = 0;
@@ -689,6 +698,7 @@ std::pair<std::string, std::string> uploadDirectory(Device& device,
             if(logger) logger->info("Replay cache hit {}", hash);
             return {hash, std::get<1>(prepared)};
         }
+        if(logger && total > 0) logger->warn("Replay upload {} {} bytes", hash, total);
         std::uint64_t done = 0;
         int lastBucket = 0;
         std::vector<std::uint8_t> chunk(static_cast<std::size_t>(replay::kUploadChunk));
@@ -809,8 +819,8 @@ std::optional<Steady::duration> paceInterval(std::optional<Steady::duration> rec
     return recorded;
 }
 
-void applyRecorded(const std::shared_ptr<Buffer>& buffer, const ReplayRuntime& runtime, const RecordedTiming& recorded) {
-    const auto [loopIndex, span, seqStride] = loopShiftFor(runtime.pipelineKey);
+void applyRecorded(const std::shared_ptr<Buffer>& buffer, const ReplayRuntime& runtime, const RecordedTiming& recorded, std::int64_t playedPass) {
+    const auto [loopIndex, span, seqStride] = loopShiftFor(runtime.pipelineKey, playedPass);
     const auto amount = span * loopIndex;
     const auto sequence = recorded.sequence + seqStride * loopIndex;
     const auto deviceOut = recorded.timestampDevice + amount;
@@ -1499,6 +1509,14 @@ void ReplayVideo::buildStage1() {
                 try {
                     for(int index = 0; index < runtime->count; index++) {
                         checkCurrentSnap(runtime->snaps, index);
+                        // Timing comes from the .dai header. Pixels stay on disk until playback or PRE_DECODE.
+                        if(runtime->listed.dai && !decodingToCache) {
+                            if(metadataPath.empty()) {
+                                const auto header = replay::probeDaiHeader(runtime->listed.frames[static_cast<std::size_t>(index)].path);
+                                noteDaiTiming(*runtime, header, index);
+                            }
+                            continue;
+                        }
                         auto pixels = runtime->reader.read(index);
                         if(runtime->listed.dai && metadataPath.empty()) noteDaiTiming(*runtime, pixels, index);
                         if(decodingToCache) {
@@ -1629,7 +1647,7 @@ void ReplayVideo::run() {
         const auto sendTime = pacing.waitToSend(recordedInterval, [this] { return mainLoop(); });
         if(!sendTime) break;
         if(runtime->recorded && timing.present)
-            applyRecorded(frame, *runtime, timing);
+            applyRecorded(frame, *runtime, timing, playedPass(sent, runtime->count));
         else {
             frame->setTimestamp(*sendTime);
             frame->setTimestampDevice(*sendTime);
@@ -1954,7 +1972,7 @@ void ReplayMetadataOnly::run() {
         previousDevice = timing.timestampDevice;
         havePrevious = true;
         if(!pacing.waitToSend(recordedInterval, [this] { return mainLoop(); })) break;
-        applyRecorded(buffer, *runtime, timing);
+        applyRecorded(buffer, *runtime, timing, playedPass(sent, runtime->count));
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(buffer);

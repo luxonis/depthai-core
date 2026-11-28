@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
-#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <thread>
@@ -21,9 +20,9 @@ inline PlaybackClock::duration playbackPeriod(double fps) {
     return Duration(std::max<Duration::rep>(1, static_cast<Duration::rep>(ticks)));
 }
 
-// PC-1..PC-6: decode first, then wait before sending. T is the actual send
-// start, C is the time every consumer accepted it. A late frame moves the
-// schedule forward; no frame is skipped or sent early to recover lost time.
+// Frame n is due at the first send plus the sum of the intervals so far. A sleep that wakes late
+// does not move that grid, so one frame still lands in each interval and the rate does not drift.
+// A frame that is already due is sent immediately.
 class PlaybackPacer {
    public:
     using Time = PlaybackClock::time_point;
@@ -44,32 +43,39 @@ class PlaybackPacer {
     template <typename Running, typename Now, typename Sleep>
     std::optional<Time> waitToSend(std::optional<Duration> recordedInterval, Running running, Now now, Sleep sleep) {
         const auto interval = fixedInterval.value_or(recordedInterval && *recordedInterval > Duration::zero() ? *recordedInterval : playbackPeriod(30));
-        auto target = now();
-        if(started) {
-            const auto next = sendStarted > Time::max() - interval ? Time::max() : sendStarted + interval;
-            target = std::max(next, sendCompleted);
-        }
+        if(!haveOrigin) return now();
+        scheduled = addBounded(scheduled, interval);
+        const auto target = dueAt();
         while(running()) {
-            const auto current = now();
-            if(current >= target) {
-                sendStarted = current;
-                started = true;
-                return current;
-            }
-            sleep(std::min(target - current, std::chrono::duration_cast<Duration>(std::chrono::milliseconds(50))));
+            const auto at = now();
+            if(at >= target) return at;
+            sleep(std::min(target - at, std::chrono::duration_cast<Duration>(std::chrono::milliseconds(50))));
         }
         return std::nullopt;
     }
 
     void sent(Time completed = PlaybackClock::now()) {
-        sendCompleted = completed;
+        if(haveOrigin) return;
+        origin = completed;
+        haveOrigin = true;
     }
 
    private:
+    static Duration addBounded(Duration base, Duration span) {
+        if(span <= Duration::zero()) return base;
+        if(base > Duration::max() - span) return Duration::max();
+        return base + span;
+    }
+
+    Time dueAt() const {
+        if(origin > Time::max() - scheduled) return Time::max();
+        return origin + scheduled;
+    }
+
     std::optional<Duration> fixedInterval;
-    bool started = false;
-    Time sendStarted{};
-    Time sendCompleted{};
+    bool haveOrigin = false;
+    Duration scheduled{};
+    Time origin{};
 };
 
 }  // namespace replay

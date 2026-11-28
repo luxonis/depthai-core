@@ -1,6 +1,9 @@
 #include <algorithm>
+#include <chrono>
+#include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <limits>
 #include <magic_enum/magic_enum.hpp>
 #include <map>
 #include <opencv2/imgcodecs.hpp>
@@ -14,6 +17,8 @@
 #include "utility/RecordReplayImpl.hpp"
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "depthai/schemas/EncodedFrame.pb.h"
+    #include "depthai/schemas/ImgFrame.pb.h"
     #include "depthai/schemas/common.pb.h"
 #endif
 
@@ -87,16 +92,32 @@ void yuvToRgb(int y, int u, int v, int& r, int& g, int& b) {
     b = clamp8((1164 * c + 2018 * d + 500) / 1000);
 }
 
-void checkPngHeader(const std::filesystem::path& path) {
+std::uint32_t pngBigEndian(const unsigned char* bytes) {
+    return (static_cast<std::uint32_t>(bytes[0]) << 24) | (static_cast<std::uint32_t>(bytes[1]) << 16) | (static_cast<std::uint32_t>(bytes[2]) << 8)
+           | static_cast<std::uint32_t>(bytes[3]);
+}
+
+std::pair<int, int> pngSize(const std::filesystem::path& path) {
     std::ifstream in(path, std::ios::binary);
     unsigned char header[26] = {};
     in.read(reinterpret_cast<char*>(header), 26);
     static const unsigned char kSig[8] = {0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
-    if(!in || std::memcmp(header, kSig, 8) != 0) fail("ReplayVideo png header is not valid: " + path.string());
+    if(!in || std::memcmp(header, kSig, 8) != 0 || std::memcmp(header + 12, "IHDR", 4) != 0) fail("ReplayVideo png header is not valid: " + path.string());
     const int bitDepth = header[24];
     const int colorType = header[25];
     if(bitDepth == 16) fail("ReplayVideo png bit depth 16 is not supported: " + path.string());
     if(colorType == 3) fail("ReplayVideo png palette is not supported: " + path.string());
+    const auto width = pngBigEndian(header + 16);
+    const auto height = pngBigEndian(header + 20);
+    if(width == 0 || height == 0 || width > static_cast<std::uint32_t>(std::numeric_limits<int>::max())
+       || height > static_cast<std::uint32_t>(std::numeric_limits<int>::max())) {
+        fail("ReplayVideo png header is not valid: " + path.string());
+    }
+    return {static_cast<int>(width), static_cast<int>(height)};
+}
+
+void checkPngHeader(const std::filesystem::path& path) {
+    pngSize(path);
 }
 
 std::pair<int, int> jpegSize(const std::filesystem::path& path) {
@@ -128,6 +149,273 @@ std::pair<int, int> jpegSize(const std::filesystem::path& path) {
         in.seekg(length - 2, std::ios::cur);
     }
     fail("ReplayVideo jpeg header is not valid: " + path.string());
+}
+
+class ProtoCursor {
+    std::ifstream& in;
+
+   public:
+    explicit ProtoCursor(std::ifstream& input) : in(input) {}
+
+    bool readVarint(std::uint64_t& budget, std::uint64_t& value) {
+        value = 0;
+        for(int shift = 0; shift < 64; shift += 7) {
+            if(budget == 0) return false;
+            char byte = 0;
+            if(!in.read(&byte, 1)) return false;
+            --budget;
+            const auto bits = static_cast<std::uint64_t>(static_cast<unsigned char>(byte));
+            value |= (bits & 0x7fu) << shift;
+            if((bits & 0x80u) == 0) return true;
+        }
+        return false;
+    }
+
+    bool skip(std::uint64_t& budget, std::uint64_t count) {
+        if(count > budget) return false;
+        if(count == 0) return true;
+        in.seekg(static_cast<std::streamoff>(count), std::ios::cur);
+        if(!in) return false;
+        budget -= count;
+        return true;
+    }
+
+    bool readString(std::uint64_t& budget, std::string& out, std::uint64_t count) {
+        if(count > budget || count > 512) return false;
+        out.assign(static_cast<std::size_t>(count), '\0');
+        if(count > 0 && !in.read(out.data(), static_cast<std::streamsize>(count))) return false;
+        budget -= count;
+        return static_cast<bool>(in);
+    }
+
+    bool skipField(std::uint64_t& budget, std::uint64_t wire) {
+        if(wire == 0) {
+            std::uint64_t ignored = 0;
+            return readVarint(budget, ignored);
+        }
+        if(wire == 1) return skip(budget, 8);
+        if(wire == 5) return skip(budget, 4);
+        if(wire != 2) return false;
+        std::uint64_t length = 0;
+        return readVarint(budget, length) && skip(budget, length);
+    }
+
+    bool takeLength(std::uint64_t& budget, std::uint64_t& length) {
+        if(!readVarint(budget, length) || length > budget) return false;
+        budget -= length;
+        return true;
+    }
+};
+
+struct ProtoKey {
+    std::uint64_t field = 0;
+    std::uint64_t wire = 0;
+};
+
+bool readKey(ProtoCursor& cursor, std::uint64_t& budget, ProtoKey& key) {
+    std::uint64_t raw = 0;
+    if(!cursor.readVarint(budget, raw)) return false;
+    key.field = raw >> 3;
+    key.wire = raw & 7u;
+    return key.field != 0;
+}
+
+struct DaiHeader {
+    int width = 0;
+    int height = 0;
+    ImgFrame::Type type = ImgFrame::Type::NONE;
+    bool mjpeg = false;
+    bool passthrough = false;
+    bool hasTiming = false;
+    std::int64_t sequenceNum = 0;
+    std::chrono::steady_clock::time_point timestamp{};
+    std::chrono::steady_clock::time_point timestampDevice{};
+    std::optional<std::chrono::system_clock::time_point> timestampSystem;
+};
+
+struct ClockParts {
+    bool present = false;
+    std::int64_t sec = 0;
+    std::int64_t nsec = 0;
+};
+
+bool readClock(ProtoCursor& cursor, std::uint64_t budget, ClockParts& clock) {
+    while(budget > 0) {
+        ProtoKey key;
+        if(!readKey(cursor, budget, key)) return false;
+        if(key.wire == 0 && (key.field == 1 || key.field == 2)) {
+            std::uint64_t value = 0;
+            if(!cursor.readVarint(budget, value)) return false;
+            if(key.field == 1)
+                clock.sec = static_cast<std::int64_t>(value);
+            else
+                clock.nsec = static_cast<std::int64_t>(value);
+            clock.present = true;
+        } else if(!cursor.skipField(budget, key.wire)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::chrono::steady_clock::time_point toSteady(const ClockParts& clock) {
+    if(!clock.present) return {};
+    const auto total = std::chrono::seconds(clock.sec) + std::chrono::nanoseconds(clock.nsec);
+    return std::chrono::time_point<std::chrono::steady_clock>(std::chrono::duration_cast<std::chrono::steady_clock::duration>(total));
+}
+
+std::optional<std::chrono::system_clock::time_point> toSystem(const ClockParts& clock) {
+    if(!clock.present) return std::nullopt;
+    const auto total = std::chrono::seconds(clock.sec) + std::chrono::nanoseconds(clock.nsec);
+    return std::chrono::time_point<std::chrono::system_clock>(std::chrono::duration_cast<std::chrono::system_clock::duration>(total));
+}
+
+bool fitUint32(std::uint64_t value, std::uint32_t& out) {
+    if(value > std::numeric_limits<std::uint32_t>::max()) return false;
+    out = static_cast<std::uint32_t>(value);
+    return true;
+}
+
+bool readSpecs(ProtoCursor& cursor, std::uint64_t budget, int& type, std::uint32_t& width, std::uint32_t& height) {
+    while(budget > 0) {
+        ProtoKey key;
+        if(!readKey(cursor, budget, key)) return false;
+        if(key.wire == 0 && key.field >= 1 && key.field <= 3) {
+            std::uint64_t value = 0;
+            if(!cursor.readVarint(budget, value)) return false;
+            if(key.field == 1) {
+                if(value > static_cast<std::uint64_t>(std::numeric_limits<int>::max())) return false;
+                type = static_cast<int>(value);
+            } else if(key.field == 2) {
+                if(!fitUint32(value, width)) return false;
+            } else if(!fitUint32(value, height)) {
+                return false;
+            }
+        } else if(!cursor.skipField(budget, key.wire)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool dimension(std::uint32_t value, int& out) {
+    if(value == 0 || value > static_cast<std::uint32_t>(std::numeric_limits<int>::max())) return false;
+    out = static_cast<int>(value);
+    return true;
+}
+
+DaiHeader readDaiHeader(const std::filesystem::path& path) {
+#ifndef DEPTHAI_ENABLE_PROTOBUF
+    (void)path;
+    fail("ReplayVideo node requires protobuf support");
+#else
+    const auto bytes = fileSizeOf(path);
+    std::ifstream file(path, std::ios::binary);
+    if(!file || bytes == 0) fail("ReplayVideo source cannot be read: " + path.string());
+    ProtoCursor cursor(file);
+    std::uint64_t budget = bytes;
+    std::string schema;
+    bool sawMessage = false;
+    DaiHeader header;
+    const auto imageSchema = proto::img_frame::ImgFrame::descriptor()->full_name();
+    const auto encodedSchema = proto::encoded_frame::EncodedFrame::descriptor()->full_name();
+    while(budget > 0) {
+        ProtoKey key;
+        if(!readKey(cursor, budget, key)) fail("ReplayVideo dai envelope is not valid: " + path.string());
+        if(key.wire == 2 && (key.field == 1 || key.field == 3)) {
+            std::uint64_t length = 0;
+            if(!cursor.takeLength(budget, length)) fail("ReplayVideo dai envelope is not valid: " + path.string());
+            if(key.field == 1) {
+                if(!cursor.readString(length, schema, length)) fail("ReplayVideo dai envelope is not valid: " + path.string());
+                continue;
+            }
+            if(schema != imageSchema && schema != encodedSchema) fail("ReplayVideo dai message type is not supported: " + path.string());
+            const bool image = schema == imageSchema;
+            std::uint64_t inner = length;
+            int rawType = 0;
+            std::uint32_t width = 0;
+            std::uint32_t height = 0;
+            int profile = 0;
+            ClockParts timestamp;
+            ClockParts timestampDevice;
+            ClockParts timestampSystem;
+            bool sawSequence = false;
+            while(inner > 0) {
+                ProtoKey field;
+                if(!readKey(cursor, inner, field)) fail("ReplayVideo dai envelope is not valid: " + path.string());
+                const bool clockField = field.wire == 2
+                                        && ((image && (field.field == 1 || field.field == 2 || field.field == 12))
+                                            || (!image && (field.field == 13 || field.field == 14 || field.field == 17)));
+                const bool specsField = image && field.wire == 2 && field.field == 4;
+                const bool dataField = field.wire == 2 && ((image && field.field == 11) || (!image && field.field == 16));
+                if(specsField || clockField) {
+                    std::uint64_t nested = 0;
+                    if(!cursor.takeLength(inner, nested)) fail("ReplayVideo dai envelope is not valid: " + path.string());
+                    bool ok = false;
+                    if(specsField) {
+                        ok = readSpecs(cursor, nested, rawType, width, height);
+                    } else if((image && field.field == 1) || (!image && field.field == 13)) {
+                        ok = readClock(cursor, nested, timestamp);
+                    } else if((image && field.field == 2) || (!image && field.field == 14)) {
+                        ok = readClock(cursor, nested, timestampDevice);
+                    } else {
+                        ok = readClock(cursor, nested, timestampSystem);
+                    }
+                    if(!ok) fail("ReplayVideo dai envelope is not valid: " + path.string());
+                } else if(field.wire == 0
+                          && ((image && field.field == 3) || (!image && (field.field == 3 || field.field == 4 || field.field == 7 || field.field == 12)))) {
+                    std::uint64_t value = 0;
+                    if(!cursor.readVarint(inner, value)) fail("ReplayVideo dai envelope is not valid: " + path.string());
+                    if(image && field.field == 3) {
+                        header.sequenceNum = static_cast<std::int64_t>(value);
+                        sawSequence = true;
+                    } else if(!image && field.field == 3) {
+                        if(!fitUint32(value, width)) fail("ReplayVideo dai envelope is not valid: " + path.string());
+                    } else if(!image && field.field == 4) {
+                        if(!fitUint32(value, height)) fail("ReplayVideo dai envelope is not valid: " + path.string());
+                    } else if(!image && field.field == 7) {
+                        if(value > 2) fail("ReplayVideo dai message type is not supported: " + path.string());
+                        profile = static_cast<int>(value);
+                    } else if(!image && field.field == 12) {
+                        header.sequenceNum = static_cast<std::int64_t>(value);
+                        sawSequence = true;
+                    }
+                } else if(dataField) {
+                    std::uint64_t payload = 0;
+                    if(!cursor.takeLength(inner, payload) || !cursor.skip(payload, payload)) fail("ReplayVideo dai envelope is not valid: " + path.string());
+                } else if(!cursor.skipField(inner, field.wire)) {
+                    fail("ReplayVideo dai envelope is not valid: " + path.string());
+                }
+            }
+            if(!dimension(width, header.width) || !dimension(height, header.height)) fail("ReplayVideo dai envelope is not valid: " + path.string());
+            if(image) {
+                if(!magic_enum::enum_contains(static_cast<ImgFrame::Type>(rawType))) fail("ReplayVideo dai envelope is not valid: " + path.string());
+                header.type = static_cast<ImgFrame::Type>(rawType);
+                if(header.type == ImgFrame::Type::BITSTREAM) fail("ReplayVideo BITSTREAM is not supported: " + path.string());
+                header.passthrough = !isReplayOutType(header.type);
+            } else {
+                if(profile == static_cast<int>(EncodedFrame::Profile::AVC) || profile == static_cast<int>(EncodedFrame::Profile::HEVC)) {
+                    fail("ReplayVideo H264 or H265 EncodedFrame is not supported in .dai: " + path.string());
+                }
+                if(profile != static_cast<int>(EncodedFrame::Profile::JPEG)) fail("ReplayVideo dai message type is not supported: " + path.string());
+                header.mjpeg = true;
+                header.type = ImgFrame::Type::NV12;
+                header.passthrough = false;
+            }
+            header.hasTiming = true;
+            if(!sawSequence) header.sequenceNum = 0;
+            header.timestamp = toSteady(timestamp);
+            header.timestampDevice = toSteady(timestampDevice);
+            header.timestampSystem = toSystem(timestampSystem);
+            sawMessage = true;
+            break;
+        }
+        if(!cursor.skipField(budget, key.wire)) fail("ReplayVideo dai envelope is not valid: " + path.string());
+    }
+    if(!sawMessage) fail("ReplayVideo dai envelope is not valid: " + path.string());
+    if(!file) fail("ReplayVideo dai envelope is not valid: " + path.string());
+    return header;
+#endif
 }
 
 struct DaiInfo {
@@ -284,18 +572,18 @@ ListedSource listFrameDirectory(const std::filesystem::path& directory) {
     const auto metadata = directory / (source.stream + ".mcap");
     if(std::filesystem::exists(metadata)) source.autoMetadata = metadata;
     if(source.dai) {
-        const auto first = readDai(frames.front().path);
+        const auto first = readDaiHeader(frames.front().path);
         source.width = first.width;
         source.height = first.height;
         source.sourceType = first.type;
-        source.passthrough = first.pixels.passthrough && !first.mjpeg;
+        source.passthrough = first.passthrough && !first.mjpeg;
         source.mjpegDai = first.mjpeg;
         if(first.mjpeg) {
             source.sourceType = ImgFrame::Type::NV12;
             source.passthrough = false;
         }
         for(std::size_t i = 1; i < frames.size(); i++) {
-            const auto other = readDai(frames[i].path);
+            const auto other = readDaiHeader(frames[i].path);
             if(other.width != source.width || other.height != source.height) {
                 fail("ReplayVideo frame size does not match: " + frames[i].path.string() + " is " + std::to_string(other.width) + "x"
                      + std::to_string(other.height));
@@ -306,25 +594,12 @@ ListedSource listFrameDirectory(const std::filesystem::path& directory) {
         }
     } else {
         const bool png = *extensions.begin() == ".png";
-        if(png) checkPngHeader(frames.front().path);
-        const auto size = png ? [](const std::filesystem::path& path) {
-            checkPngHeader(path);
-            const auto image = cv::imread(path.string(), cv::IMREAD_UNCHANGED | cv::IMREAD_IGNORE_ORIENTATION);
-            if(image.empty()) fail("ReplayVideo png header is not valid: " + path.string());
-            return std::pair<int, int>{image.cols, image.rows};
-        }(frames.front().path)
-                              : jpegSize(frames.front().path);
+        const auto size = png ? pngSize(frames.front().path) : jpegSize(frames.front().path);
         source.width = size.first;
         source.height = size.second;
         source.sourceType = ImgFrame::Type::NV12;
         for(std::size_t i = 1; i < frames.size(); i++) {
-            const auto other = png ? [&]() {
-                checkPngHeader(frames[i].path);
-                const auto image = cv::imread(frames[i].path.string(), cv::IMREAD_UNCHANGED | cv::IMREAD_IGNORE_ORIENTATION);
-                if(image.empty()) fail("ReplayVideo png header is not valid: " + frames[i].path.string());
-                return std::pair<int, int>{image.cols, image.rows};
-            }()
-                                   : jpegSize(frames[i].path);
+            const auto other = png ? pngSize(frames[i].path) : jpegSize(frames[i].path);
             if(other.first != source.width || other.second != source.height) {
                 fail("ReplayVideo frame size does not match: " + frames[i].path.string() + " is " + std::to_string(other.first) + "x"
                      + std::to_string(other.second));
@@ -370,6 +645,7 @@ void openLibav(LibavVideo& video, const std::filesystem::path& path) {
     const AVCodec* decoder = avcodec_find_decoder(stream->codecpar->codec_id);
     if(decoder == nullptr) fail("ReplayVideo missing decoder support for " + codecName(stream->codecpar->codec_id));
     video.codec = avcodec_alloc_context3(decoder);
+    video.codec->thread_count = 0;
     if(avcodec_parameters_to_context(video.codec, stream->codecpar) < 0 || avcodec_open2(video.codec, decoder, nullptr) < 0) {
         fail("ReplayVideo missing decoder support for " + codecName(stream->codecpar->codec_id));
     }
@@ -611,6 +887,22 @@ void bgrToPlanes(const cv::Mat& bgr, bool fullRange, cv::Mat& y, cv::Mat& u, cv:
 }
 
 }  // namespace
+
+DecodedPixels probeDaiHeader(const std::filesystem::path& path) {
+    const DaiHeader header = readDaiHeader(path);
+    DecodedPixels pixels;
+    pixels.width = header.width;
+    pixels.height = header.height;
+    pixels.type = header.type;
+    pixels.passthrough = header.passthrough;
+    pixels.fullRange = header.mjpeg;
+    pixels.hasTiming = header.hasTiming;
+    pixels.sequenceNum = header.sequenceNum;
+    pixels.timestamp = header.timestamp;
+    pixels.timestampDevice = header.timestampDevice;
+    pixels.timestampSystem = header.timestampSystem;
+    return pixels;
+}
 
 bool isReplayOutType(ImgFrame::Type type) {
     return type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p || type == ImgFrame::Type::GRAY8 || type == ImgFrame::Type::RGB888i

@@ -29,8 +29,10 @@ with dai.Pipeline(False) as pipeline:
 
     pipeline.start()
     while pipeline.isRunning():
-        frame = queue.tryGet()
-        if frame is None:
-            continue
-        print(f"{frame.getWidth()}x{frame.getHeight()} sequence {frame.getSequenceNum()}")
-    pipeline.stop()
+        try:
+            frame = queue.tryGet()
+            if frame is None:
+                continue
+            print(f"{frame.getWidth()}x{frame.getHeight()} sequence {frame.getSequenceNum()}")
+        except dai.MessageQueue.QueueException:
+            print("Pipeline stopped by replay node")

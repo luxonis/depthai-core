@@ -147,8 +147,9 @@ unsigned measuredContainerFps(const std::vector<std::chrono::steady_clock::time_
     if(count < 2) return fallbackFps;
     const auto span = std::chrono::duration_cast<std::chrono::microseconds>(stamps[count - 1] - stamps[0]).count();
     if(span <= 0) return fallbackFps;
-    const float samples = count >= 10 ? 10.f : static_cast<float>(count);
-    const float rounded = std::round((samples * 1e6f) / static_cast<float>(span));
+    // The span covers count - 1 intervals. Counting the stamps stores a steady 10 fps source as 11.
+    const float intervals = static_cast<float>(count - 1);
+    const float rounded = std::round((intervals * 1e6f) / static_cast<float>(span));
     if(rounded < 1.f) return 1u;
     return static_cast<unsigned>(rounded);
 }

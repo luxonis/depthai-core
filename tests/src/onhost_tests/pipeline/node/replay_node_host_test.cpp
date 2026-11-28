@@ -1125,6 +1125,18 @@ TEST_CASE("C16 set fps keeps recorded timestamps inside the shared span", "[repl
     for(int index = 0; index < 4; ++index) checkTs(*frames[static_cast<std::size_t>(index)], expected[index].first, expected[index].second);
 }
 
+TEST_CASE("C16b a slow playback keeps recorded sequence numbers", "[replay][host]") {
+    // 2 fps takes 1 s to send the third frame. The shared span is 800 ms, so the clock is already on the next pass.
+    HostReplay fx;
+    customDir(fx, 64, 48, {10, 11, 12}, {1000, 1100, 1300});
+    setLoop(*fx.node, true);
+    setFps(*fx.node, 2.f);
+    fx.start();
+    auto frames = takeFrames(fx.out, 4);
+    const std::pair<std::int64_t, std::int64_t> expected[] = {{10, 1000}, {11, 1100}, {12, 1300}, {13, 1800}};
+    for(int index = 0; index < 4; ++index) checkTs(*frames[static_cast<std::size_t>(index)], expected[index].first, expected[index].second);
+}
+
 TEST_CASE("C17 S1 loop pass one", "[replay][host]") {
     HostReplay fx;
     setSource(*fx.node, makeS1(fx.dir.path / "s1"));
@@ -1475,6 +1487,8 @@ TEST_CASE("E2 queue of one catches up after a hold", "[replay][host]") {
     const auto gap = [](const std::chrono::steady_clock::time_point& left, const std::chrono::steady_clock::time_point& right) {
         return std::chrono::duration<double, std::milli>(right - left).count();
     };
+    // Frames 4 and 5 were held in the queue, and frame 6 was already due, so those
+    // three arrive together. Later frames return to the original 100 ms grid.
     CHECK(gap(arrivals[4], arrivals[5]) < 50.0);
     CHECK(gap(arrivals[5], arrivals[6]) < 50.0);
     CHECK(gap(arrivals[7], arrivals[8]) >= 90.0);

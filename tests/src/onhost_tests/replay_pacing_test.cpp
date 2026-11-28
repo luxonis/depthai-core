@@ -38,7 +38,7 @@ long long millis(Pacer::Time time) {
 
 }  // namespace
 
-TEST_CASE("PC-1 and PC-5 implement the S10 backpressure schedule", "[pacing]") {
+TEST_CASE("A blocked send does not move the grid", "[pacing]") {
     Pacer pacer(10);
     SimulatedClock clock;
     std::vector<long long> starts;
@@ -47,27 +47,43 @@ TEST_CASE("PC-1 and PC-5 implement the S10 backpressure schedule", "[pacing]") {
         REQUIRE(time);
         starts.push_back(millis(*time));
         // The send of frame 5 waits for the consumer to take frame 4 at 650 ms.
+        // That acceptance does not move the origin. Frame 6 was due at 600 ms.
         if(frame == 5) clock.current = Pacer::Time(650ms);
         pacer.sent(clock.current);
     }
-    REQUIRE(starts == std::vector<long long>{0, 100, 200, 300, 400, 500, 650, 750, 850, 950});
+    REQUIRE(starts == std::vector<long long>{0, 100, 200, 300, 400, 500, 650, 700, 800, 900});
 }
 
-TEST_CASE("PC-6 late decode moves the next send forward without catching up", "[pacing]") {
+TEST_CASE("A late decode sends the backlog immediately and then returns to the grid", "[pacing]") {
     Pacer pacer(10);
     SimulatedClock clock;
     REQUIRE(millis(*clock.send(pacer)) == 0);
     pacer.sent(clock.current);
-    // Decoding the next frame exceeds its 100 ms deadline.
+    // Decoding the next frame passes the 100 ms and 200 ms due times.
     clock.current = Pacer::Time(250ms);
     REQUIRE(millis(*clock.send(pacer)) == 250);
     pacer.sent(clock.current);
-    REQUIRE(millis(*clock.send(pacer)) == 350);
+    REQUIRE(millis(*clock.send(pacer)) == 250);
     pacer.sent(clock.current);
-    REQUIRE(millis(*clock.send(pacer)) == 450);
+    REQUIRE(millis(*clock.send(pacer)) == 300);
+    pacer.sent(clock.current);
+    REQUIRE(millis(*clock.send(pacer)) == 400);
+    pacer.sent(clock.current);
+    REQUIRE(millis(*clock.send(pacer)) == 500);
 }
 
-TEST_CASE("Scheduler oversleep uses the actual send start", "[pacing]") {
+TEST_CASE("A recorded overrun sends immediately and the next gap stays on the original sum", "[pacing]") {
+    Pacer pacer;
+    SimulatedClock clock;
+    REQUIRE(millis(*clock.send(pacer)) == 0);
+    pacer.sent(clock.current);
+    clock.current = Pacer::Time(50ms);
+    REQUIRE(millis(*clock.send(pacer, 40ms)) == 50);
+    pacer.sent(clock.current);
+    REQUIRE(millis(*clock.send(pacer, 100ms)) == 140);
+}
+
+TEST_CASE("A late wake does not stretch the following interval", "[pacing]") {
     Pacer pacer(10);
     SimulatedClock clock;
     clock.send(pacer);
@@ -75,7 +91,38 @@ TEST_CASE("Scheduler oversleep uses the actual send start", "[pacing]") {
     clock.oversleep = 100ms;
     REQUIRE(millis(*clock.send(pacer)) == 150);
     pacer.sent(clock.current);
-    REQUIRE(millis(*clock.send(pacer)) == 250);
+    REQUIRE(millis(*clock.send(pacer)) == 200);
+}
+
+TEST_CASE("A frame one nanosecond late is sent immediately and the next stays on the grid", "[pacing]") {
+    Pacer pacer(10);
+    SimulatedClock clock;
+    REQUIRE(clock.send(pacer) == Pacer::Time{});
+    pacer.sent(clock.current);
+    clock.current = Pacer::Time(100ms + 1ns);
+    REQUIRE(clock.send(pacer) == Pacer::Time(100ms + 1ns));
+    REQUIRE(clock.sleeps.empty());
+    pacer.sent(clock.current);
+    REQUIRE(clock.send(pacer) == Pacer::Time(200ms));
+}
+
+TEST_CASE("A twenty percent late sleep keeps one frame in each interval", "[pacing]") {
+    Pacer pacer(250);
+    const auto interval = dai::replay::playbackPeriod(250);
+    auto current = Pacer::Time{};
+    const auto send = [&] {
+        return pacer.waitToSend(std::nullopt, [] { return true; }, [&] { return current; }, [&](Pacer::Duration delay) { current += delay + delay / 5; });
+    };
+    REQUIRE(send() == Pacer::Time{});
+    pacer.sent(current);
+    for(int frame = 1; frame < 30; ++frame) {
+        const auto time = send();
+        REQUIRE(time);
+        const auto elapsed = *time - Pacer::Time{};
+        REQUIRE(elapsed >= interval * frame);
+        REQUIRE(elapsed < interval * (frame + 1));
+        pacer.sent(current);
+    }
 }
 
 TEST_CASE("PC-2 preserves long gaps, equal timestamp fallback, and pass intervals", "[pacing]") {

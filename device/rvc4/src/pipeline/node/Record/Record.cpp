@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <charconv>
 #include <chrono>
 #include <cmath>
 #include <deque>
@@ -12,11 +13,14 @@
 #include <sstream>
 #include <stdexcept>
 #include <thread>
+#include <unordered_set>
+#include <variant>
 #include <vector>
 
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/schemas/ImgFrame.pb.h"
 #include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/utility/RecordingStore.hpp"
@@ -52,6 +56,67 @@ std::string resolveStream(const RecordVideoProperties& properties) {
     return stream;
 }
 
+std::optional<double> positiveFps(float fps) {
+    if(!std::isfinite(fps) || fps <= 0.f) return std::nullopt;
+    return static_cast<double>(fps);
+}
+
+std::optional<double> capabilityFps(const CapabilityRange<float>& range) {
+    if(!range.value) return std::nullopt;
+    const auto& value = *range.value;
+    if(const auto* fixed = std::get_if<float>(&value)) return positiveFps(*fixed);
+    if(const auto* bounds = std::get_if<std::pair<float, float>>(&value)) return positiveFps(bounds->first);
+    if(const auto* choices = std::get_if<std::vector<float>>(&value)) {
+        if(choices->empty()) return std::nullopt;
+        return positiveFps(choices->front());
+    }
+    return std::nullopt;
+}
+
+std::optional<double> configuredCameraFps(node::Camera& camera, const std::string& group, const std::string& name) {
+    if(group == "dynamicOutputs") {
+        std::size_t index = 0;
+        const auto parsed = std::from_chars(name.data(), name.data() + name.size(), index);
+        if(parsed.ec == std::errc() && parsed.ptr == name.data() + name.size() && index < camera.properties.outputRequests.size()) {
+            if(const auto fps = capabilityFps(camera.properties.outputRequests[index].fps)) return fps;
+        }
+    }
+    // Mock ISP replaces the sensor rate. An explicit output fps above still wins.
+    if(camera.mockIsp.isConnected()) {
+        if(const auto fps = positiveFps(camera.properties.mockIspFps)) return fps;
+    }
+    if(const auto fps = positiveFps(camera.properties.fps)) return fps;
+    return positiveFps(camera.properties.mockIspFps);
+}
+
+std::optional<double> fpsFromInput(const Pipeline::NodeConnectionMap& connections,
+                                   const Node::Input* input,
+                                   int depth,
+                                   std::unordered_set<const Node::Input*>& seen) {
+    if(input == nullptr || depth > 8 || !seen.insert(input).second) return std::nullopt;
+    for(const auto& entry : connections) {
+        for(const auto& connection : entry.second) {
+            if(connection.in != input) continue;
+            const auto producer = connection.outputNode.lock();
+            if(!producer) continue;
+            if(auto* camera = dynamic_cast<node::Camera*>(producer.get())) {
+                if(const auto fps = configuredCameraFps(*camera, connection.outputGroup, connection.outputName)) return fps;
+                continue;
+            }
+            for(const Node::Input* upstream : producer->getInputRefs()) {
+                if(const auto fps = fpsFromInput(connections, upstream, depth + 1, seen)) return fps;
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<double> upstreamCameraFps(RecordVideo& node) {
+    const auto connections = node.getParentPipeline().getConnectionMap();
+    std::unordered_set<const Node::Input*> seen;
+    return fpsFromInput(connections, &node.input, 0, seen);
+}
+
 }  // namespace
 
 struct RecordVideo::State {
@@ -59,6 +124,8 @@ struct RecordVideo::State {
     RecordVideo& node;
     std::shared_ptr<spdlog::async_logger> logger;
     const RecordVideoProperties config;
+    double videoFps = 30.0;
+    bool videoFpsReady = false;
     const std::string stream;
     std::filesystem::path directory;
     bool reserved = false;
@@ -91,7 +158,17 @@ struct RecordVideo::State {
     bool waitingForIdr = false;
 
     State(RecordVideo& self, const RecordVideoProperties& properties)
-        : node(self), logger(self.pimpl->logger), config(properties), stream(resolveStream(properties)) {}
+        : node(self), logger(self.pimpl->logger), config(properties), videoFps(properties.fps), stream(resolveStream(properties)) {}
+
+    void ensureVideoFps() {
+        if(videoFpsReady) return;
+        videoFpsReady = true;
+        if(config.fpsSet) return;
+        if(const auto rate = upstreamCameraFps(node)) {
+            videoFps = *rate;
+            logger->debug("Record video fps {} from the upstream camera", videoFps);
+        }
+    }
 
     ~State() {
         if(reserved) store->release(config.recordingName, stream);
@@ -386,7 +463,8 @@ struct RecordVideo::State {
         store->claimFiles(config.recordingName, {videoPath.filename().string(), metadataPath.filename().string()});
         video = std::make_unique<utility::EncodedVideoRecorder>();
         const bool mjpeg = profile == EncodedFrame::Profile::JPEG;
-        video->init(videoPath.string(), width, height, config.fps, mjpeg);
+        ensureVideoFps();
+        video->init(videoPath.string(), width, height, videoFps, mjpeg);
         // The node drops only the undecodable prefix. Later frames are written
         // until a limit or STOP closes the segment.
         if(!mjpeg && !h264Sps.empty() && !h264Pps.empty()) video->setH264ParameterSets(h264Sps, h264Pps);
@@ -450,7 +528,8 @@ struct RecordVideo::State {
             }
         }
         if(latest.frameCount == 0) {
-            const double rate = static_cast<double>(frame.bytes) * config.fps;
+            ensureVideoFps();
+            const double rate = static_cast<double>(frame.bytes) * videoFps;
             if(rate > 100000000) logger->warn("Record expected write rate {:.0f} MB/s, frames can be skipped", rate / 1000000);
         }
         if(config.format == static_cast<std::int32_t>(RecordFormat::RAW_FRAMES))

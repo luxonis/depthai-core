@@ -2885,6 +2885,7 @@ void DeviceBase::downloadRecording(const std::string& name, const std::filesyste
         const auto files = pimpl->rpcCallChecked<std::vector<std::tuple<std::string, std::uint64_t>>>("recordStoreListFiles", name);
         std::uint64_t total = 0;
         for(const auto& file : files) total += std::get<1>(file);
+        if(total > 0) Logging::getInstance().logger.warn("Record download {} bytes", total);
         std::uint64_t done = 0;
         int lastBucket = 0;
         constexpr std::uint64_t chunkBytes = 1024ull * 1024ull;
