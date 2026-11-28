@@ -151,6 +151,26 @@ dai::ImgTransformation adjustTransformationSize(dai::ImgTransformation transform
     return transformation;
 }
 
+// The calibration is for the socket's orientation from the OS camera config, so it stays and the sensor's flip goes into
+// the transformation, after the mode's crop. A flipping sensor reads the same pixels in reverse, so pixel x of the
+// upright frame is pixel width - 1 - x of the mirrored one. addFlipHorizontal()/addFlipVertical() mirror around
+// width / 2, so each flip is shifted back by one pixel. Not included: the shift of a sensor whose output window isn't
+// centred in its readout (measured on the OAK4-FFC sensors: up to 3 px).
+void addImageOrientation(dai::ImgTransformation& transformation, dai::CameraImageOrientation orientation) {
+    const auto flipMirror = CameraSensor::appliedFlipMirror(orientation);
+    if(!flipMirror.has_value()) {
+        return;
+    }
+    if(flipMirror->first) {
+        transformation.addFlipVertical();
+        transformation.addTransformation({{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}}});
+    }
+    if(flipMirror->second) {
+        transformation.addFlipHorizontal();
+        transformation.addTransformation({{{1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}});
+    }
+}
+
 bool trySendSyncedOutput(Node::Output& output, const std::shared_ptr<ADatatype>& msg) {
     for(const auto& connection : output.getConnections()) {
         if(connection.in != nullptr && connection.in->isFull()) {
@@ -710,6 +730,9 @@ void Camera::sendBuffer(CameraSensor::FrameCallbackArgs args) {
                                                                                    currentOutputs[outIndex].resolutionHeight,
                                                                                    warnedForMissingCalibration,
                                                                                    logger);
+                if(!mockIspEnabled) {
+                    addImageOrientation(currentOutputs[outIndex].transformation, properties.imageOrientation);
+                }
             } else if(!warnedForMissingCalibration) {
                 logMissingCameraIntrinsics(calibHandler.getEepromData().productName, properties.boardSocket, logger);
             }
@@ -1026,6 +1049,9 @@ void Camera::setupResizers(const SensorConfig& config) {
                                    static_cast<int>(std::round(fov.y)),
                                    static_cast<int>(std::round(fov.width)),
                                    static_cast<int>(std::round(fov.height)));
+    }
+    if(!mockIspEnabled) {
+        addImageOrientation(baseTransformation, properties.imageOrientation);
     }
     for(const auto spec : properties.outputRequests) {
         std::optional<float> parsedFps;

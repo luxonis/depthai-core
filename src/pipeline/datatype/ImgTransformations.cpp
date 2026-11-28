@@ -250,7 +250,8 @@ float ImgTransformation::getDFov(bool source) const {
     return diagonalFovDegrees;
 }
 float ImgTransformation::getHFov(bool source) const {
-    float fx = source ? getSourceIntrinsicMatrix()[0][0] : getIntrinsicMatrix()[0][0];
+    // A mirrored frame has a negative fx
+    float fx = std::abs(source ? getSourceIntrinsicMatrix()[0][0] : getIntrinsicMatrix()[0][0]);
     float fovWidth = source ? srcWidth : width;
 
     // Calculate horizontal FoV (in radians)
@@ -260,7 +261,8 @@ float ImgTransformation::getHFov(bool source) const {
     return horizontalFoV * 180.0f / (float)M_PI;
 }
 float ImgTransformation::getVFov(bool source) const {
-    float fy = source ? getSourceIntrinsicMatrix()[1][1] : getIntrinsicMatrix()[1][1];
+    // A flipped frame has a negative fy
+    float fy = std::abs(source ? getSourceIntrinsicMatrix()[1][1] : getIntrinsicMatrix()[1][1]);
     float fovHeight = source ? srcHeight : height;
 
     // Calculate vertical FoV (in radians)

@@ -73,6 +73,7 @@ LuxonisSidechannel::LuxonisSidechannel(void* camxDlopenHandle) {
         scExposureUpdateListen(exposureUpdateCb);
         ops.camera_mode_set = (lux_sc_camera_mode_set_cb_t)dlsym(camxDlopenHandle, "lux_sc_camera_mode_set");
         DAI_CHECK_IN(ops.camera_mode_set);
+        ops.camera_mode_set_v2 = (lux_sc_camera_mode_set_v2_cb_t)dlsym(camxDlopenHandle, "lux_sc_camera_mode_set_v2");
         ops.camera_sockets_config = (lux_sc_camera_sockets_config_cb_t)dlsym(camxDlopenHandle, "lux_sc_camera_sockets_config");
         DAI_CHECK_IN(ops.camera_sockets_config);
         ops.camera_lens_pos_set = (lux_sc_camera_lens_pos_set_cb_t)dlsym(camxDlopenHandle, "lux_sc_camera_lens_pos_set");

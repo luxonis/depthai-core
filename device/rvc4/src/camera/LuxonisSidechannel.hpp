@@ -14,6 +14,7 @@ class LuxonisSidechannel {
     // This can be NULL on old sidechannel version so always check and handle correctly before calling!!!
     struct operations {
         lux_sc_camera_mode_set_cb_t camera_mode_set;
+        lux_sc_camera_mode_set_v2_cb_t camera_mode_set_v2;
         lux_sc_camera_sockets_config_cb_t camera_sockets_config;
         lux_sc_camera_lens_pos_set_cb_t camera_lens_pos_set;
         lux_sc_sensor_register_control_cb_t sensor_register_control;
