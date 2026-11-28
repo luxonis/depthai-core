@@ -1,10 +1,12 @@
 #include "depthai/pipeline/node/host/Record.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cerrno>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <deque>
 #include <filesystem>
@@ -18,6 +20,12 @@
 #include <thread>
 #include <utility>
 #include <vector>
+
+#if defined(_WIN32)
+    #include <process.h>
+#else
+    #include <unistd.h>
+#endif
 
 #include "depthai/config/config.hpp"
 #include "depthai/device/Platform.hpp"
@@ -83,6 +91,68 @@ RecordConfig::CompressionLevel compressionFrom(std::int32_t value) {
     return static_cast<RecordConfig::CompressionLevel>(value);
 }
 
+std::uint64_t processId() {
+#if defined(_WIN32)
+    return static_cast<std::uint64_t>(_getpid());
+#else
+    return static_cast<std::uint64_t>(::getpid());
+#endif
+}
+
+std::filesystem::path envPath(const char* key) {
+    const char* value = std::getenv(key);
+    if(value == nullptr || value[0] == '\0') return {};
+    return std::filesystem::path(value);
+}
+
+std::filesystem::path userCacheRecordings() {
+    if(auto xdg = envPath("XDG_CACHE_HOME"); !xdg.empty()) return xdg / "depthai" / "recordings";
+#if defined(_WIN32)
+    if(auto local = envPath("LOCALAPPDATA"); !local.empty()) return local / "depthai" / "recordings";
+#elif defined(__APPLE__)
+    if(auto home = envPath("HOME"); !home.empty()) return home / "Library" / "Caches" / "depthai" / "recordings";
+#else
+    if(auto home = envPath("HOME"); !home.empty()) return home / ".cache" / "depthai" / "recordings";
+#endif
+    return std::filesystem::current_path();
+}
+
+std::string makeUniqueRecordingName() {
+    static std::atomic<std::uint32_t> counter{0};
+    const auto id = counter.fetch_add(1, std::memory_order_relaxed);
+    std::ostringstream text;
+    text << "recording_" << makeRecordingTimestamp() << '_' << processId() << '_' << id;
+    return text.str();
+}
+
+std::filesystem::path canonicalPath(std::filesystem::path path) {
+    if(path.empty()) return {};
+    if(path.parent_path().empty()) path = std::filesystem::current_path() / path;
+    std::error_code error;
+    auto canonical = std::filesystem::weakly_canonical(path, error);
+    if(!error) return canonical;
+    auto absolute = std::filesystem::absolute(path, error);
+    if(!error) return absolute.lexically_normal();
+    return path.lexically_normal();
+}
+
+void createDirectories(const std::filesystem::path& directory) {
+    if(directory.empty()) return;
+    std::filesystem::create_directories(directory);
+}
+
+unsigned measuredContainerFps(const std::vector<std::chrono::steady_clock::time_point>& stamps, float fallback) {
+    const auto fallbackFps = static_cast<unsigned>(std::max<long>(1, std::lround(fallback)));
+    const auto count = std::min<std::size_t>(stamps.size(), 10);
+    if(count < 2) return fallbackFps;
+    const auto span = std::chrono::duration_cast<std::chrono::microseconds>(stamps[count - 1] - stamps[0]).count();
+    if(span <= 0) return fallbackFps;
+    const float samples = count >= 10 ? 10.f : static_cast<float>(count);
+    const float rounded = std::round((samples * 1e6f) / static_cast<float>(span));
+    if(rounded < 1.f) return 1u;
+    return static_cast<unsigned>(rounded);
+}
+
 }  // namespace
 
 struct RecordHostState {
@@ -128,14 +198,26 @@ struct RecordHostState {
     bool waitingForIdr = false;
     std::vector<std::uint8_t> h264Sps;
     std::vector<std::uint8_t> h264Pps;
+    bool measuredReady = false;
+    unsigned measuredFps = 0;
+    std::deque<HeldFrame> measuredHold;
+    std::uint64_t leadingDrops = 0;
+    std::uint64_t idrDrops = 0;
+    std::uint64_t explicitDrops = 0;
+    bool leadingTaken = false;
+    bool dropWarned = false;
 
     explicit RecordHostState(RecordVideo& self) : node(self), logger(self.pimpl->logger) {}
+
+    ~RecordHostState() {
+        removeEmptyRecordingTree();
+    }
 
     std::filesystem::path recordingDirectory() const {
         return node.resolved.outputDirectory / node.resolved.recordingName;
     }
 
-    void publish(RecordStatus::State state, const std::string& error, bool idleValues) {
+    void publish(RecordStatus::State state, const std::string& error, bool idleValues, std::chrono::steady_clock::time_point when) {
         auto message = std::make_shared<RecordStatus>();
         message->state = state;
         message->path = recordingDirectory().string();
@@ -153,11 +235,24 @@ struct RecordHostState {
             message->lastSequenceNum = framesInSegment == 0 ? -1 : lastSeq;
             message->skippedFrames = skipped;
         }
-        const auto now = std::chrono::steady_clock::now();
-        message->setTimestamp(now);
-        message->setTimestampDevice(now);
+        message->setTimestamp(when);
+        message->setTimestampDevice(when);
         message->setSequenceNum(statusSequence++);
         node.publishStatus(message);
+    }
+
+    void addSkipped(std::uint64_t extra) {
+        if(extra == 0 || skipped >= std::numeric_limits<std::int32_t>::max()) return;
+        const auto room = static_cast<std::uint64_t>(std::numeric_limits<std::int32_t>::max() - skipped);
+        const auto add = std::min(extra, room);
+        skipped += static_cast<std::int32_t>(add);
+        explicitDrops += add;
+    }
+
+    void warnDrops() {
+        if(explicitDrops == 0 || dropWarned) return;
+        dropWarned = true;
+        logger->warn("Record dropped {} frames", explicitDrops);
     }
 
     void fail(const std::string& text) {
@@ -169,7 +264,8 @@ struct RecordHostState {
                 error += mp4Ok ? "; mp4 close succeeded" : "; mp4 close failed";
             }
             const bool idle = phase != Phase::Recording;
-            publish(RecordStatus::State::ERROR, error, idle);
+            removeMarker();
+            publish(RecordStatus::State::ERROR, error, idle, std::chrono::steady_clock::now());
             logger->error("{}", error);
             throw std::runtime_error(error);
         }
@@ -179,10 +275,28 @@ struct RecordHostState {
     void writeMarker(const std::string& contents) {
         if(!node.resolved.onHost || node.resolved.legacy) return;
         const auto path = recordingDirectory() / (".dai_closed_" + node.resolved.streamName);
-        std::error_code error;
-        std::filesystem::create_directories(path.parent_path(), error);
+        createDirectories(path.parent_path());
         std::ofstream output(path, std::ios::trunc);
         if(output) output << contents;
+    }
+
+    void removeMarker() {
+        if(!node.resolved.onHost || node.resolved.legacy) return;
+        std::error_code error;
+        std::filesystem::remove(recordingDirectory() / (".dai_closed_" + node.resolved.streamName), error);
+    }
+
+    void removeEmptyRecordingTree() {
+        removeMarker();
+        if(!node.resolved.onHost || node.resolved.legacy) return;
+        std::error_code error;
+        const auto root = recordingDirectory();
+        if(!std::filesystem::is_directory(root, error)) return;
+        const auto streamDir = root / node.resolved.streamName;
+        if(std::filesystem::is_directory(streamDir, error) && std::filesystem::is_empty(streamDir, error)) {
+            std::filesystem::remove(streamDir, error);
+        }
+        if(std::filesystem::is_empty(root, error)) std::filesystem::remove(root, error);
     }
 
     bool closeFilesQuiet(std::string* failure = nullptr) {
@@ -312,10 +426,10 @@ struct RecordHostState {
             metadataPath = directory / (node.resolved.streamName + suffix + ".mcap");
         }
         if(!videoPath.empty()) {
-            std::filesystem::create_directories(videoPath.parent_path());
+            createDirectories(videoPath.parent_path());
             ensureSpace(videoPath.parent_path(), message->getData().size());
             video = std::make_unique<utility::VideoRecorder>();
-            const auto fps = static_cast<unsigned int>(std::max<long>(1, std::lround(node.resolved.fps)));
+            const auto fps = containerFps();
             if(kind == FrameKind::Encoded) {
                 const auto encoded = std::dynamic_pointer_cast<EncodedFrame>(message);
                 const auto codec =
@@ -333,7 +447,7 @@ struct RecordHostState {
         }
 #ifdef DEPTHAI_ENABLE_PROTOBUF
         if(!metadataPath.empty()) {
-            std::filesystem::create_directories(metadataPath.parent_path());
+            createDirectories(metadataPath.parent_path());
             metadata = std::make_unique<utility::ByteRecorder>();
             metadata->init<dai::proto::img_frame::ImgFrame>(metadataPath.string(), node.resolved.compression, "video");
         }
@@ -420,7 +534,38 @@ struct RecordHostState {
 #endif
     }
 
+    unsigned containerFps() const {
+        if(node.resolved.fpsExplicit) return static_cast<unsigned>(std::max<long>(1, std::lround(node.resolved.fps)));
+        return std::max(1u, measuredFps);
+    }
+
+    bool needsMeasuredFps() const {
+        return !node.resolved.fpsExplicit && node.resolved.format == RecordFormat::VIDEO && !measuredReady;
+    }
+
+    unsigned fpsFromHold() const {
+        std::vector<std::chrono::steady_clock::time_point> stamps;
+        stamps.reserve(measuredHold.size());
+        for(const auto& held : measuredHold) stamps.push_back(held.message->getTimestampDevice());
+        return measuredContainerFps(stamps, node.resolved.fps);
+    }
+
+    void accountLeadingDrops() {
+        if(leadingTaken) return;
+        leadingTaken = true;
+        addSkipped(leadingDrops);
+        leadingDrops = 0;
+        addSkipped(idrDrops);
+        idrDrops = 0;
+        addSkipped(node.inputQueueDrops.exchange(0, std::memory_order_relaxed));
+    }
+
     void writeFrame(const HeldFrame& held) {
+        if(framesInSegment == 0) {
+            accountLeadingDrops();
+        } else {
+            node.inputQueueDrops.exchange(0, std::memory_order_relaxed);
+        }
         try {
             checkVideoShape(held.message);
             noteRate(held.bytes);
@@ -498,6 +643,7 @@ struct RecordHostState {
 
     void dropUntilKeyframe(const HeldFrame& held) {
         rememberH264(held.message);
+        if(idrDrops < std::numeric_limits<std::uint64_t>::max()) ++idrDrops;
         logger->debug("Record dropped frame {} until the segment keyframe", held.message->getSequenceNum());
     }
 
@@ -564,6 +710,13 @@ struct RecordHostState {
         videoOpened = false;
         filesOpen = false;
         stopRequested = false;
+        measuredHold.clear();
+        measuredReady = node.resolved.fpsExplicit;
+        if(!measuredReady) measuredFps = 0;
+        leadingTaken = false;
+        explicitDrops = 0;
+        dropWarned = false;
+        idrDrops = 0;
         if(maxFrames > 0) {
             while(static_cast<std::int32_t>(pretrigger.size()) > maxFrames) dropOldestIdle();
         }
@@ -577,8 +730,29 @@ struct RecordHostState {
         pretriggerRemaining = pending.size();
         incoming.clear();
         dropUndecodablePretrigger();
+        leadingDrops = node.inputQueueDrops.exchange(0, std::memory_order_relaxed);
+        publish(RecordStatus::State::STARTED, "", false, segmentStart);
         writeMarker("open");
-        publish(RecordStatus::State::STARTED, "", false);
+    }
+
+    void flushMeasuredHold() {
+        if(measuredHold.empty()) return;
+        if(!measuredReady) {
+            measuredFps = fpsFromHold();
+            measuredReady = true;
+        }
+        std::deque<HeldFrame> held;
+        held.swap(measuredHold);
+        bool stopped = false;
+        for(auto& frame : held) {
+            if(stopped) {
+                pushIdle(frame);
+                continue;
+            }
+            writeFrame(frame);
+            segmentBytes += frame.bytes;
+            if((maxFramesLimit > 0 && framesInSegment >= maxFramesLimit) || sizeReached()) stopped = true;
+        }
     }
 
     void closeSegment() {
@@ -586,14 +760,22 @@ struct RecordHostState {
             stopRequested = false;
             return;
         }
+        const auto stoppedAt = std::chrono::steady_clock::now();
+        flushMeasuredHold();
+        if(!leadingTaken) {
+            accountLeadingDrops();
+        } else {
+            addSkipped(node.inputQueueDrops.exchange(0, std::memory_order_relaxed));
+        }
+        warnDrops();
         std::string closeFailure;
         const bool mp4Ok = closeFilesQuiet(&closeFailure);
         if(!closeFailure.empty()) {
             if(videoOpened) closeFailure += mp4Ok ? "; mp4 close succeeded" : "; mp4 close failed";
             fail(closeFailure);
         }
-        writeMarker("closed");
-        publish(RecordStatus::State::STOPPED, "", false);
+        removeMarker();
+        publish(RecordStatus::State::STOPPED, "", false, stoppedAt);
         phase = Phase::Idle;
         lastClosedSegment = segmentIndex;
         stopRequested = false;
@@ -637,6 +819,18 @@ struct RecordHostState {
             } else {
                 waitingForIdr = false;
             }
+        }
+        if(needsMeasuredFps()) {
+            measuredHold.push_back(std::move(held));
+            const bool enough = measuredHold.size() >= 10 || (maxFramesLimit > 0 && static_cast<std::int32_t>(measuredHold.size()) >= maxFramesLimit);
+            if(!enough) return;
+            measuredFps = fpsFromHold();
+            measuredReady = true;
+            for(auto it = measuredHold.rbegin(); it != measuredHold.rend(); ++it) pending.push_front(std::move(*it));
+            measuredHold.clear();
+            if(pretriggerRemaining == 0) handoffIncoming();
+            held = std::move(pending.front());
+            pending.pop_front();
         }
         writeFrame(held);
         segmentBytes += held.bytes;
@@ -683,10 +877,12 @@ struct RecordHostState {
 
     void drainControls() {
         while(auto control = node.inputControl.tryGet<RecordControl>()) {
+            if(!node.mainLoop()) break;
             if(stopRequested && phase == Phase::Recording) {
                 flushPending();
                 closeSegment();
             }
+            if(!node.mainLoop()) break;
             apply(control);
         }
     }
@@ -709,15 +905,32 @@ struct RecordHostState {
     }
 
     void onPipelineStop() {
-        if(fatal) return;
+        if(fatal) {
+            removeEmptyRecordingTree();
+            return;
+        }
         if(phase == Phase::Recording) {
             flushPending();
-            closeSegment();
+            if(phase == Phase::Recording) {
+                std::uint64_t left = 0;
+                if(node.input.isClosed()) {
+                    left = node.input.getSize();
+                } else {
+                    try {
+                        while(node.input.tryGet<Buffer>()) ++left;
+                    } catch(const MessageQueue::QueueException&) {
+                        left += node.input.getSize();
+                    }
+                }
+                addSkipped(left);
+                closeSegment();
+            }
         } else {
-            // An idle pipeline stop discards the pre-trigger buffer and leaves the closed-marker open.
             pretrigger.clear();
             preBytes = 0;
+            removeMarker();
         }
+        removeEmptyRecordingTree();
     }
 
     void run() {
@@ -729,6 +942,7 @@ struct RecordHostState {
             try {
                 drainControls();
                 if(phase == Phase::Recording && pretriggerRemaining > 0 && !stopRequested) pullIncoming();
+                if(pending.empty() && !measuredHold.empty() && needsMeasuredFps() && pretriggerRemaining == 0) handoffIncoming();
                 if(!pending.empty()) {
                     writeOne();
                     continue;
@@ -759,7 +973,31 @@ struct RecordHostState {
 
 RecordVideo::RecordVideo(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, RecordVideo, RecordVideoProperties>(std::move(props)) {}
 
-RecordVideo::~RecordVideo() = default;
+RecordVideo::~RecordVideo() {
+    if(inputDropCallback >= 0) input.removeCallback(inputDropCallback);
+    if(controlDropCallback >= 0) inputControl.removeCallback(controlDropCallback);
+}
+
+RecordVideo::DropWatchInstall::DropWatchInstall(RecordVideo* self) {
+    self->installDropWatchers();
+}
+
+void RecordVideo::installDropWatchers() {
+    if(inputDropCallback < 0) {
+        inputDropCallback = input.addCallback([this](const std::shared_ptr<ADatatype>&) {
+            if(!countInputDrops.load(std::memory_order_relaxed) || input.getBlocking() || !input.isFull()) return;
+            inputQueueDrops.fetch_add(1, std::memory_order_relaxed);
+        });
+    }
+    if(controlDropCallback < 0) {
+        controlDropCallback = inputControl.addCallback([this](const std::shared_ptr<ADatatype>&) {
+            if(inputControl.getBlocking() || !inputControl.isFull()) return;
+            if(controlDropWarned.exchange(true, std::memory_order_relaxed)) return;
+            if(pimpl && pimpl->logger) pimpl->logger->warn("Record dropped a control");
+        });
+    }
+    countInputDrops.store(true, std::memory_order_relaxed);
+}
 
 bool RecordVideo::deviceIsRvc4() const {
     const auto device = getDevice();
@@ -836,6 +1074,9 @@ void RecordVideo::buildStage1() {
     if(legacy && format == RecordFormat::RAW_FRAMES) {
         throw std::runtime_error("Record RAW_FRAMES cannot be used with setRecordVideoFile or setRecordMetadataFile");
     }
+    if(properties.recordMetadataFileSet && properties.recordVideoFile.empty()) {
+        throw std::runtime_error("RecordVideo recordVideoFile must be set");
+    }
     if(!(properties.fps > 0.f) || !std::isfinite(properties.fps)) {
         throw std::runtime_error("Record invalid fps");
     }
@@ -846,15 +1087,26 @@ void RecordVideo::buildStage1() {
         throw std::runtime_error("Record invalid maxPreTriggerBytes");
     }
     if(!properties.outputDirectorySet) {
-        properties.outputDirectory = std::filesystem::current_path().string();
+        properties.outputDirectory = (legacy ? std::filesystem::current_path() : userCacheRecordings()).string();
     }
     if(properties.outputDirectory.empty()) {
         throw std::runtime_error("Record invalid outputDirectory");
     }
-    if(!properties.recordingNameSet || properties.recordingName.empty()) {
-        properties.recordingName = makeDefaultRecordingName();
+    if(properties.recordingNameSet) {
+        validateRecordingName(properties.recordingName);
+    } else {
+        std::string shared;
+        for(const auto& candidate : getParentPipeline().getAllNodes()) {
+            const auto other = std::dynamic_pointer_cast<RecordVideo>(candidate);
+            if(!other || other.get() == this || !other->resolved.ready || other->properties.recordingNameSet) continue;
+            if(!other->resolved.recordingName.empty()) {
+                shared = other->resolved.recordingName;
+                break;
+            }
+        }
+        properties.recordingName = shared.empty() ? makeUniqueRecordingName() : shared;
+        validateRecordingName(properties.recordingName);
     }
-    validateRecordingName(properties.recordingName);
     std::string streamName = properties.streamName;
     if(legacy) {
         streamName = std::filesystem::path(properties.recordVideoFile).stem().string();
@@ -873,6 +1125,7 @@ void RecordVideo::buildStage1() {
     resolved.outputDirectory = properties.outputDirectory;
     resolved.streamName = streamName;
     resolved.fps = properties.fps;
+    resolved.fpsExplicit = properties.fpsSet;
     resolved.compression = compressionFrom(properties.compressionLevel);
     resolved.waitForTrigger = properties.waitForTrigger;
     resolved.preTriggerFrames = properties.preTriggerFrames;
@@ -882,29 +1135,74 @@ void RecordVideo::buildStage1() {
     resolved.recordVideoFile = properties.recordVideoFile;
     resolved.recordMetadataFile = properties.recordMetadataFile;
 
+    const auto outputKeys = [](bool hostNode,
+                               bool legacyNode,
+                               const std::filesystem::path& directory,
+                               const std::string& name,
+                               const std::string& stream,
+                               const std::filesystem::path& video,
+                               const std::filesystem::path& metadata) {
+        std::vector<std::string> keys;
+        if(!hostNode) {
+            keys.push_back("device:" + name + "/" + stream);
+            return keys;
+        }
+        if(legacyNode) {
+            if(!video.empty()) keys.push_back(canonicalPath(video).generic_string());
+            if(!metadata.empty()) keys.push_back(canonicalPath(metadata).generic_string());
+            return keys;
+        }
+        if(!name.empty() && !stream.empty()) keys.push_back(canonicalPath(directory / name / stream).generic_string());
+        return keys;
+    };
+    const auto keysOf = [&](const RecordVideo& node) {
+        if(node.resolved.ready) {
+            return outputKeys(node.resolved.onHost,
+                              node.resolved.legacy,
+                              node.resolved.outputDirectory,
+                              node.resolved.recordingName,
+                              node.resolved.streamName,
+                              node.resolved.recordVideoFile,
+                              node.resolved.recordMetadataFile);
+        }
+        const bool nodeLegacy = node.properties.recordVideoFileSet || node.properties.recordMetadataFileSet;
+        std::filesystem::path directory;
+        if(node.properties.outputDirectorySet) {
+            directory = node.properties.outputDirectory;
+        } else if(nodeLegacy) {
+            directory = std::filesystem::current_path();
+        } else {
+            directory = userCacheRecordings();
+        }
+        std::string name = node.properties.recordingName;
+        if(!node.properties.recordingNameSet) name = properties.recordingNameSet ? std::string() : properties.recordingName;
+        std::string stream = node.properties.streamName;
+        if(nodeLegacy) {
+            stream = std::filesystem::path(node.properties.recordVideoFile).stem().string();
+            if(stream.empty()) stream = std::filesystem::path(node.properties.recordMetadataFile).stem().string();
+            if(stream.empty()) stream = "video";
+        }
+        return outputKeys(node.runOnHost(), nodeLegacy, directory, name, stream, node.properties.recordVideoFile, node.properties.recordMetadataFile);
+    };
+    const auto ownKeys = outputKeys(resolved.onHost,
+                                    resolved.legacy,
+                                    resolved.outputDirectory,
+                                    resolved.recordingName,
+                                    resolved.streamName,
+                                    resolved.recordVideoFile,
+                                    resolved.recordMetadataFile);
     for(const auto& candidate : getParentPipeline().getAllNodes()) {
         const auto other = std::dynamic_pointer_cast<RecordVideo>(candidate);
         if(!other || other.get() == this) continue;
-        std::string otherName;
-        std::string otherStream;
-        bool otherLegacy = false;
-        if(other->resolved.ready) {
-            otherName = other->resolved.recordingName;
-            otherStream = other->resolved.streamName;
-            otherLegacy = other->resolved.legacy;
-        } else if(other->properties.recordingNameSet) {
-            otherName = other->properties.recordingName;
-            otherLegacy = other->properties.recordVideoFileSet || other->properties.recordMetadataFileSet;
-            otherStream = other->properties.streamName;
-            if(otherLegacy) {
-                otherStream = std::filesystem::path(other->properties.recordVideoFile).stem().string();
-                if(otherStream.empty()) otherStream = std::filesystem::path(other->properties.recordMetadataFile).stem().string();
-            }
-        } else {
+        if(!other->resolved.ready && !other->properties.recordingNameSet && properties.recordingNameSet && !resolved.legacy
+           && !other->properties.recordVideoFileSet && !other->properties.recordMetadataFileSet) {
             continue;
         }
-        if(otherName == resolved.recordingName && otherStream == resolved.streamName) {
-            throw std::runtime_error("Record stream '" + resolved.streamName + "' is already used in recording '" + resolved.recordingName + "'");
+        for(const auto& key : keysOf(*other)) {
+            if(key.empty()) continue;
+            if(std::find(ownKeys.begin(), ownKeys.end(), key) != ownKeys.end()) {
+                throw std::runtime_error("Record output path is already used: " + key);
+            }
         }
     }
 
@@ -913,7 +1211,8 @@ void RecordVideo::buildStage1() {
         for(const auto& candidate : getParentPipeline().getAllNodes()) {
             const auto other = std::dynamic_pointer_cast<RecordVideo>(candidate);
             if(!other || other.get() == this || !other->resolved.ready) continue;
-            if(other->id < id && other->resolved.onHost && !other->resolved.legacy && other->resolved.recordingName == resolved.recordingName) {
+            if(other->id < id && other->resolved.onHost && !other->resolved.legacy && other->resolved.recordingName == resolved.recordingName
+               && canonicalPath(other->resolved.outputDirectory) == canonicalPath(resolved.outputDirectory)) {
                 creator = false;
             }
         }
@@ -957,6 +1256,8 @@ void RecordVideo::buildStage1() {
     if(legacy && properties.outputDirectorySet) logger->warn("Record legacy layout: setOutputDirectory ignored");
     if(legacy && properties.streamNameSet) logger->warn("Record legacy layout: setStreamName ignored");
     if(properties.waitForTrigger && !inputControl.isConnected()) logger->warn("Record no trigger source");
+    installDropWatchers();
+    if(onHost) countInputDrops.store(true, std::memory_order_relaxed);
 }
 
 void RecordVideo::run() {
@@ -981,7 +1282,7 @@ void RecordVideo::publishStatus(const std::shared_ptr<RecordStatus>& message) {
     }
     try {
         auto block = outputBlockEvent();
-        status.send(message);
+        status.trySend(message);
     } catch(const std::exception&) {
         // The status is kept for getStatus even when the output queue is already closed.
     }

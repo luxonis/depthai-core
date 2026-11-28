@@ -2,7 +2,7 @@
 
 `dai::node::RecordVideo` writes `ImgFrame` or `EncodedFrame` messages to disk. It runs on an RVC4 device unless `setRunOnHost(true)` is set. On RVC2, and in a pipeline with no device, it runs on the host. `setRunOnHost(false)` on RVC2 or with no device fails when the pipeline starts.
 
-The node does not change the frames it receives. `input` accepts `ImgFrame` and `EncodedFrame`, does not block, and keeps the 15 newest messages. `inputControl` accepts `RecordControl`, does not block, and keeps 4 messages. `status` sends one `RecordStatus` for every state change.
+The node does not change the frames it receives. `input` accepts `ImgFrame` and `EncodedFrame`, does not block, and keeps the 15 newest messages. `inputControl` accepts `RecordControl`, blocks, and the queue holds 4 messages. `status` sends one `RecordStatus` for every state change. A full status queue does not stall recording, and `getStatus()` still returns the latest status.
 
 ## Formats
 
@@ -11,7 +11,7 @@ The node does not change the frames it receives. `input` accepts `ImgFrame` and 
 - An `EncodedFrame` becomes an `.mp4` file. H.264 and MJPEG are supported. H.265 fails with `Record H265 is not supported in VIDEO format`.
 - An `ImgFrame` on the host becomes an `.avi` file. An `ImgFrame` on the device is rejected. Encode it with `VideoEncoder`, or use `RAW_FRAMES`.
 - A `BITSTREAM` `ImgFrame` is rejected in both formats.
-- `setFps` is stored in the video file. It is not measured from the stream. The default is 30.
+- `setFps`, when set, is stored in the video file. When it is not set, the file uses the source rate. The rate warning still uses 30.
 
 `setFormat(RecordFormat::RAW_FRAMES)` writes one `<recording>/<stream>/<stream>_<sequence>.dai` file per frame. The sequence is eight digits when it fits. `sequenceNum` below 0 is an error, and a file that already exists is an error. H.264 and H.265 frames are written and produce one warning that they cannot be replayed.
 
@@ -21,7 +21,7 @@ The node does not change the frames it receives. `input` accepts `ImgFrame` and 
 
 `setRecordingName`, `setOutputDirectory`, and `setStreamName` are checked when the pipeline starts. A name may contain letters, digits, `.`, `_`, and `-`. It cannot be empty, `.`, or `..`. A stream name cannot end in `_` plus digits. `cam_` is valid. `cam_12` is not.
 
-The default recording name is `recording_<local time with milliseconds>`. The default output directory is the current directory. The default stream name is `frames`. The first host node that uses a recording name creates `<output directory>/<recording name>`. If that directory already exists, the pipeline does not start.
+The default recording name is `recording_<local time with milliseconds>_<pid>_<counter>`. The default output directory is `$XDG_CACHE_HOME/depthai/recordings` when that variable is set, otherwise `~/Library/Caches/depthai/recordings` on macOS and `~/.cache/depthai/recordings` on Linux. The default stream name is `frames`. The first host node that uses a recording name creates `<output directory>/<recording name>`. If that directory already exists, the pipeline does not start.
 
 ## Trigger
 
@@ -72,7 +72,7 @@ Holistic nodes do not wait for a trigger and do not keep a pre-trigger buffer. S
 ## What changed from earlier releases
 
 - `input` no longer blocks. A full queue drops the oldest message.
-- `setFps` is no longer measured from the stream. The default is 30.
+- `setFps`, when set, is stored as given. When it is not set, the file uses the source rate.
 - `CompressionLevel::NONE` is uncompressed. It used to be overwritten with LZ4.
 - On RVC4, a new-layout node and a legacy node fed by `EncodedFrame` run on the device. Encoded record tests that must stay on the host call `setRunOnHost(true)`.
 - The node can run on the host or on an RVC4 device. The same configuration produces the same files, status, and skip counts, except that device `VIDEO` cannot record a raw `ImgFrame` and an RVC4 frame can be larger because of stride padding.
