@@ -947,42 +947,30 @@ std::vector<std::shared_ptr<ImgFrame>> alignMetadata(const McapScan& scan, int f
 }
 #endif
 
-void noteDaiTiming(ReplayRuntime& runtime, const replay::DecodedPixels& pixels, int index) {
-    if(!pixels.hasTiming) return;
+void noteDaiTiming(ReplayRuntime& runtime, const ImgFrame& frame, int index) {
     if(index == 0) {
-        runtime.seqFirst = pixels.sequenceNum;
-        runtime.deviceFirst = pixels.timestampDevice;
+        runtime.seqFirst = frame.getSequenceNum();
+        runtime.deviceFirst = frame.getTimestampDevice();
         runtime.recorded = true;
     } else {
-        if(pixels.sequenceNum <= runtime.seqLast) throw std::runtime_error("ReplayVideo sequence numbers do not increase");
-        if(pixels.timestampDevice < runtime.deviceLast) throw std::runtime_error("ReplayVideo timestamps decrease");
+        if(frame.getSequenceNum() <= runtime.seqLast) throw std::runtime_error("ReplayVideo sequence numbers do not increase");
+        if(frame.getTimestampDevice() < runtime.deviceLast) throw std::runtime_error("ReplayVideo timestamps decrease");
     }
-    runtime.seqLast = pixels.sequenceNum;
-    runtime.deviceLast = pixels.timestampDevice;
+    runtime.seqLast = frame.getSequenceNum();
+    runtime.deviceLast = frame.getTimestampDevice();
 }
 
-std::shared_ptr<ImgFrame> frameFromPixels(const replay::DecodedPixels& raw, const ReplayRuntime& runtime, const std::shared_ptr<ImgFrame>& metadata) {
-    auto converted = raw.passthrough || runtime.passthrough ? raw : replay::convertPixels(raw, runtime.outType, runtime.outW, runtime.outH);
-    if(!raw.passthrough && !runtime.passthrough) {
-        converted.transformation = raw.transformation;
-        converted.sourceFb = raw.sourceFb;
-        converted.cam = raw.cam;
-        converted.instanceNum = raw.instanceNum;
-        converted.category = raw.category;
-    }
-    auto frame = replay::pixelsToFrame(converted);
+std::shared_ptr<ImgFrame> frameFromPixels(const std::shared_ptr<ImgFrame>& raw, const ReplayRuntime& runtime, const std::shared_ptr<ImgFrame>& metadata) {
+    const bool passthrough = runtime.passthrough || !replay::isReplayOutType(raw->getType());
+    auto frame = passthrough ? raw : replay::convertPixels(raw, runtime.outType, runtime.outW, runtime.outH);
     if(metadata != nullptr) {
         frame->sourceFb = metadata->sourceFb;
         frame->cam = metadata->cam;
         frame->instanceNum = metadata->instanceNum;
         frame->category = metadata->category;
         frame->transformation = metadata->transformation;
-    } else if(raw.sourceFb.width != 0) {
-        frame->sourceFb = raw.sourceFb;
-        frame->cam = raw.cam;
-        frame->instanceNum = raw.instanceNum;
-        frame->category = raw.category;
-        if(raw.transformation.getSize().first != 0) frame->transformation = raw.transformation;
+    } else if(!passthrough && raw->sourceFb.width == 0) {
+        frame->sourceFb = frame->fb;
     }
     if(!runtime.passthrough && (runtime.outW != runtime.listed.width || runtime.outH != runtime.listed.height) && runtime.listed.width > 0
        && runtime.listed.height > 0 && frame->transformation.getSize().first == static_cast<std::size_t>(runtime.listed.width)
@@ -990,10 +978,13 @@ std::shared_ptr<ImgFrame> frameFromPixels(const replay::DecodedPixels& raw, cons
         frame->transformation.addScale(static_cast<float>(runtime.outW) / static_cast<float>(runtime.listed.width),
                                        static_cast<float>(runtime.outH) / static_cast<float>(runtime.listed.height));
     }
+    if(!passthrough && frame->transformation.getSize().first == 0) {
+        frame->transformation = ImgTransformation(static_cast<size_t>(frame->getWidth()), static_cast<size_t>(frame->getHeight()));
+    }
     return frame;
 }
 
-RecordedTiming timingFrom(const replay::DecodedPixels& pixels, const std::shared_ptr<ImgFrame>& metadata) {
+RecordedTiming timingFrom(const ImgFrame& frame, const std::shared_ptr<ImgFrame>& metadata, bool useFrameTiming) {
     RecordedTiming timing;
     if(metadata != nullptr) {
         timing.present = true;
@@ -1003,12 +994,12 @@ RecordedTiming timingFrom(const replay::DecodedPixels& pixels, const std::shared
         timing.timestampSystem = metadata->getTimestampSystem();
         return timing;
     }
-    if(pixels.hasTiming) {
+    if(useFrameTiming) {
         timing.present = true;
-        timing.sequence = pixels.sequenceNum;
-        timing.timestamp = pixels.timestamp;
-        timing.timestampDevice = pixels.timestampDevice;
-        timing.timestampSystem = pixels.timestampSystem;
+        timing.sequence = frame.getSequenceNum();
+        timing.timestamp = frame.getTimestamp();
+        timing.timestampDevice = frame.getTimestampDevice();
+        timing.timestampSystem = frame.getTimestampSystem();
     }
     return timing;
 }
@@ -1513,19 +1504,17 @@ void ReplayVideo::buildStage1() {
                         if(runtime->listed.dai && !decodingToCache) {
                             if(metadataPath.empty()) {
                                 const auto header = replay::probeDaiHeader(runtime->listed.frames[static_cast<std::size_t>(index)].path);
-                                noteDaiTiming(*runtime, header, index);
+                                noteDaiTiming(*runtime, *header, index);
                             }
                             continue;
                         }
                         auto pixels = runtime->reader.read(index);
-                        if(runtime->listed.dai && metadataPath.empty()) noteDaiTiming(*runtime, pixels, index);
+                        if(runtime->listed.dai && metadataPath.empty()) noteDaiTiming(*runtime, *pixels, index);
                         if(decodingToCache) {
-                            auto frame = frameFromPixels(
-                                pixels,
-                                *runtime,
-                                index < static_cast<int>(runtime->metadata.size()) ? runtime->metadata[static_cast<std::size_t>(index)] : nullptr);
-                            const auto timing = timingFrom(
-                                pixels, index < static_cast<int>(runtime->metadata.size()) ? runtime->metadata[static_cast<std::size_t>(index)] : nullptr);
+                            const auto metadata =
+                                index < static_cast<int>(runtime->metadata.size()) ? runtime->metadata[static_cast<std::size_t>(index)] : nullptr;
+                            auto frame = frameFromPixels(pixels, *runtime, metadata);
+                            const auto timing = timingFrom(*pixels, metadata, runtime->listed.dai);
                             if(timing.present) {
                                 frame->setSequenceNum(timing.sequence);
                                 frame->setTimestamp(timing.timestamp);
@@ -1626,7 +1615,7 @@ void ReplayVideo::run() {
             auto pixels = runtime->reader.read(index);
             const auto metadata = index < static_cast<int>(runtime->metadata.size()) ? runtime->metadata[static_cast<std::size_t>(index)] : nullptr;
             frame = frameFromPixels(pixels, *runtime, metadata);
-            timing = timingFrom(pixels, metadata);
+            timing = timingFrom(*pixels, metadata, runtime->listed.dai);
         }
         if(!runtime->recorded || !timing.present) {
             frame->setSequenceNum(sent);

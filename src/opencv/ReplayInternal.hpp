@@ -1,10 +1,8 @@
 #pragma once
 
-#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -84,30 +82,8 @@ ListedSource inspectReplaySource(const std::filesystem::path& path);
 /// Selects `<entry>` inside a holistic directory: a frame directory, a video, or an mcap.
 std::filesystem::path resolveArchiveEntry(const std::filesystem::path& root, const std::string& entry, bool metadataOnly);
 
-struct DecodedPixels {
-    int width = 0;
-    int height = 0;
-    ImgFrame::Type type = ImgFrame::Type::YUV420p;
-    /// Payload in the supplied fb layout, or tightly packed when fb has no stride/offsets.
-    std::vector<std::uint8_t> data;
-    bool passthrough = false;
-    bool fullRange = false;
-    ImgFrame::Specs fb{};
-    ImgFrame::Specs sourceFb{};
-    ImgFrame::CameraSettings cam{};
-    ImgTransformation transformation{};
-    std::uint32_t instanceNum = 0;
-    std::uint32_t category = 0;
-    /// Recorded `.dai` timing. Video frames leave this unset and use metadata or the schedule.
-    bool hasTiming = false;
-    std::int64_t sequenceNum = 0;
-    std::chrono::steady_clock::time_point timestamp{};
-    std::chrono::steady_clock::time_point timestampDevice{};
-    std::optional<std::chrono::system_clock::time_point> timestampSystem;
-};
-
 /// Width, height, type, and timing from a .dai file. The pixel payload is not read.
-DecodedPixels probeDaiHeader(const std::filesystem::path& path);
+std::shared_ptr<ImgFrame> probeDaiHeader(const std::filesystem::path& path);
 
 class FrameReader {
    public:
@@ -117,7 +93,7 @@ class FrameReader {
     FrameReader& operator=(FrameReader&&) noexcept;
     void open(const ListedSource& source);
     int count() const;
-    DecodedPixels read(int index);
+    std::shared_ptr<ImgFrame> read(int index);
 
    private:
     struct State;
@@ -125,13 +101,12 @@ class FrameReader {
 };
 
 /**
- * Converts `pixels` to `outType` and `outW` x `outH`.
- * YUV and RGB use BT.601 limited range, except a full-range JPEG source.
- * A size equal to the source is not resized.
+ * Converts `frame` to `outType` and `outW` x `outH`.
+ * YUV420p, NV12, gray, and raw share the luma plane and only rearrange chroma.
+ * RGB and BGR use one cv::cvtColor into the output buffer.
+ * A frame whose type and size already match is not converted, and its bytes stay equal.
  */
-DecodedPixels convertPixels(const DecodedPixels& pixels, ImgFrame::Type outType, int outW, int outH);
-
-std::shared_ptr<ImgFrame> pixelsToFrame(const DecodedPixels& pixels);
+std::shared_ptr<ImgFrame> convertPixels(const std::shared_ptr<ImgFrame>& frame, ImgFrame::Type outType, int outW, int outH);
 
 bool isReplayOutType(ImgFrame::Type type);
 std::string frameTypeName(ImgFrame::Type type);

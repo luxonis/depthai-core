@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/RGBDData.hpp"
 #include "depthai/utility/Clock.hpp"

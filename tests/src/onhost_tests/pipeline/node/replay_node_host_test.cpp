@@ -1220,7 +1220,7 @@ TEST_CASE("D1 plain nv12 matches the file", "[replay][host]") {
     CHECK(pixelsEqual(*frame, packedOf(fx.source / "cam_0.dai"), 64, 48, dai::ImgFrame::Type::NV12));
 }
 
-TEST_CASE("D2 gray output is the Y plane", "[replay][host]") {
+TEST_CASE("D2 gray output is the luma plane", "[replay][host]") {
     HostReplay fx;
     customDir(fx, 64, 48, {0}, {0}, FrameFill::plainYuv(100, 128, 128));
     setOutFrameType(*fx.node, dai::ImgFrame::Type::GRAY8);

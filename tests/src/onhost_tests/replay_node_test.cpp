@@ -793,16 +793,16 @@ TEST_CASE("Replay archives resize odd and one-pixel source images", "[archive]")
 }
 
 TEST_CASE("Replay image resize retains chroma from a one-pixel source", "[archive]") {
-    dai::replay::DecodedPixels source;
-    source.width = 1;
-    source.height = 1;
-    source.type = dai::ImgFrame::Type::BGR888i;
-    source.data = {0, 0, 255};
-    const auto pixels = dai::replay::convertPixels(source, dai::ImgFrame::Type::YUV420p, 16, 8);
-    REQUIRE(pixels.data.size() == 16 * 8 * 3 / 2);
-    REQUIRE(pixels.data[0] == 82);
-    REQUIRE(pixels.data[16 * 8] == 90);
-    REQUIRE(pixels.data[16 * 8 * 5 / 4] == 240);
+    auto source = std::make_shared<dai::ImgFrame>();
+    source->setType(dai::ImgFrame::Type::BGR888i);
+    source->setSize(1, 1);
+    source->setData(std::vector<std::uint8_t>{0, 0, 255});
+    const auto frame = dai::replay::convertPixels(source, dai::ImgFrame::Type::YUV420p, 16, 8);
+    const auto data = frame->getData();
+    REQUIRE(data.size() == 16 * 8 * 3 / 2);
+    REQUIRE(data[0] == 82);
+    REQUIRE(data[16 * 8] == 90);
+    REQUIRE(data[16 * 8 * 5 / 4] == 240);
 }
 
 TEST_CASE("PC-2 recorded frame gaps determine wall-clock playback", "[pacing]") {
@@ -882,38 +882,51 @@ TEST_CASE("Replay rejects a negative fps at start", "[pacing]") {
 TEST_CASE("Replay conversion respects padded planes and rejects short payloads", "[spec-quick]") {
     const auto type = GENERATE(
         dai::ImgFrame::Type::GRAY8, dai::ImgFrame::Type::RGB888i, dai::ImgFrame::Type::BGR888i, dai::ImgFrame::Type::NV12, dai::ImgFrame::Type::YUV420p);
-    dai::replay::DecodedPixels tight;
-    tight.width = 4;
-    tight.height = 4;
-    tight.type = type;
+    auto tight = std::make_shared<dai::ImgFrame>();
+    tight->setType(type);
+    tight->setSize(4, 4);
     const bool color = type == dai::ImgFrame::Type::RGB888i || type == dai::ImgFrame::Type::BGR888i;
     const int rowBytes = color ? 12 : 4;
-    tight.data.resize(color ? 48 : type == dai::ImgFrame::Type::GRAY8 ? 16 : 24);
-    for(std::size_t index = 0; index < tight.data.size(); ++index) tight.data[index] = static_cast<std::uint8_t>(40 + index * 3);
-    auto padded = tight;
-    padded.fb.stride = rowBytes + 4;
-    padded.fb.p1Offset = 3;
-    padded.data.assign(128, 255);
+    std::vector<std::uint8_t> tightBytes(color ? 48 : type == dai::ImgFrame::Type::GRAY8 ? 16 : 24);
+    for(std::size_t index = 0; index < tightBytes.size(); ++index) tightBytes[index] = static_cast<std::uint8_t>(40 + index * 3);
+    tight->setData(tightBytes);
+    auto padded = std::make_shared<dai::ImgFrame>();
+    padded->setType(type);
+    padded->setSize(4, 4);
+    padded->fb.stride = static_cast<unsigned>(rowBytes + 4);
+    padded->fb.p1Offset = 3;
+    std::vector<std::uint8_t> paddedBytes(128, 255);
     for(int row = 0; row < 4; ++row) {
-        std::copy_n(tight.data.begin() + row * rowBytes, rowBytes, padded.data.begin() + 3 + row * padded.fb.stride);
+        std::copy_n(tightBytes.begin() + static_cast<std::size_t>(row * rowBytes),
+                    rowBytes,
+                    paddedBytes.begin() + 3 + static_cast<std::size_t>(row) * padded->fb.stride);
     }
-    std::size_t end = 3 + 3 * padded.fb.stride + rowBytes;
+    std::size_t end = 3 + 3 * static_cast<std::size_t>(padded->fb.stride) + static_cast<std::size_t>(rowBytes);
     if(type == dai::ImgFrame::Type::NV12) {
-        padded.fb.p2Offset = 64;
-        for(int row = 0; row < 2; ++row) std::copy_n(tight.data.begin() + 16 + row * 4, 4, padded.data.begin() + 64 + row * 8);
+        padded->fb.p2Offset = 64;
+        for(int row = 0; row < 2; ++row) {
+            std::copy_n(tightBytes.begin() + 16 + static_cast<std::size_t>(row * 4), 4, paddedBytes.begin() + 64 + static_cast<std::size_t>(row * 8));
+        }
         end = 76;
     } else if(type == dai::ImgFrame::Type::YUV420p) {
-        padded.fb.p2Offset = 64;
-        padded.fb.p3Offset = 80;
+        padded->fb.p2Offset = 64;
+        padded->fb.p3Offset = 80;
         for(int row = 0; row < 2; ++row) {
-            std::copy_n(tight.data.begin() + 16 + row * 2, 2, padded.data.begin() + 64 + row * 4);
-            std::copy_n(tight.data.begin() + 20 + row * 2, 2, padded.data.begin() + 80 + row * 4);
+            std::copy_n(tightBytes.begin() + 16 + static_cast<std::size_t>(row * 2), 2, paddedBytes.begin() + 64 + static_cast<std::size_t>(row * 4));
+            std::copy_n(tightBytes.begin() + 20 + static_cast<std::size_t>(row * 2), 2, paddedBytes.begin() + 80 + static_cast<std::size_t>(row * 4));
         }
         end = 86;
     }
-    padded.data.resize(end);
-    REQUIRE(dai::replay::convertPixels(padded, type, 4, 4).data == dai::replay::convertPixels(tight, type, 4, 4).data);
-    padded.data.pop_back();
+    paddedBytes.resize(end);
+    padded->setData(paddedBytes);
+    const auto bytesOf = [](const std::shared_ptr<dai::ImgFrame>& frame) {
+        const auto data = frame->getData();
+        return std::vector<std::uint8_t>(data.begin(), data.end());
+    };
+    REQUIRE(bytesOf(dai::replay::convertPixels(padded, type, 4, 4)) == bytesOf(dai::replay::convertPixels(tight, type, 4, 4)));
+    paddedBytes.pop_back();
+    // The const setData overload copies into the existing allocation and keeps the old size.
+    padded->setData(std::move(paddedBytes));
     REQUIRE_THROWS_WITH(dai::replay::convertPixels(padded, type, 4, 4), ContainsSubstring("payload"));
 }
 

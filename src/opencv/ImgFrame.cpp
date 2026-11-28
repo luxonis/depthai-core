@@ -238,10 +238,10 @@ cv::Mat ImgFrame::getCvFrame(cv::MatAllocator* allocator) {
         case Type::NV21: {
             int code = (getType() == Type::NV12) ? cv::ColorConversionCodes::COLOR_YUV2BGR_NV12 : cv::ColorConversionCodes::COLOR_YUV2BGR_NV21;
             cv::Size s(getWidth(), getHeight());
-            int type = CV_8UC1;
             int step = getStride();
-            cv::Mat frameY(s, type, getData().data(), step);
-            cv::Mat frameUV(s / 2, type, getData().data() + getPlaneStride(), step);
+            cv::Mat frameY(s, CV_8UC1, getData().data(), step);
+            // Chroma is interleaved, so each pixel is two bytes. A one-channel view of width/2 reads only half of the row.
+            cv::Mat frameUV(s / 2, CV_8UC2, getData().data() + getPlaneStride(), step);
             cv::cvtColorTwoPlane(frameY, frameUV, output, code);
         } break;
 

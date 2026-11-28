@@ -31,7 +31,7 @@ The default output type is `YUV420p`. `setOutFrameType` accepts `NV12`, `YUV420p
 
 `getOutFrameType()` returns the configured type. Until `setOutFrameType` is called, that value stays `YUV420p` even when a `.dai` stream is sent in its stored type.
 
-JPEG and MJPEG use full range. Other conversions use BT.601 limited range. PNG color type 3 and 16-bit PNG fail at start.
+YUV420p, NV12, and gray share one luma plane: replay copies that plane and only rearranges chroma. Conversion between those formats and RGB uses one OpenCV BT.601 transform, including JPEG and MJPEG. PNG color type 3 and 16-bit PNG fail at start.
 
 ## Rate, loop, and timestamps
 

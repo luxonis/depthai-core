@@ -67,31 +67,6 @@ std::uint64_t fileSizeOf(const std::filesystem::path& path) {
     return static_cast<std::uint64_t>(size);
 }
 
-int clamp8(int value) {
-    return std::max(0, std::min(255, value));
-}
-
-void limitedRgbToYuv(int r, int g, int b, std::uint8_t& y, std::uint8_t& u, std::uint8_t& v) {
-    y = static_cast<std::uint8_t>(clamp8(((66 * r + 129 * g + 25 * b + 128) >> 8) + 16));
-    u = static_cast<std::uint8_t>(clamp8(((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128));
-    v = static_cast<std::uint8_t>(clamp8(((112 * r - 94 * g - 18 * b + 128) >> 8) + 128));
-}
-
-void fullRgbToYuv(int r, int g, int b, std::uint8_t& y, std::uint8_t& u, std::uint8_t& v) {
-    y = static_cast<std::uint8_t>(clamp8((299 * r + 587 * g + 114 * b + 500) / 1000));
-    u = static_cast<std::uint8_t>(clamp8(((-169 * r - 331 * g + 500 * b + 500) / 1000) + 128));
-    v = static_cast<std::uint8_t>(clamp8(((500 * r - 419 * g - 81 * b + 500) / 1000) + 128));
-}
-
-void yuvToRgb(int y, int u, int v, int& r, int& g, int& b) {
-    const int c = y - 16;
-    const int d = u - 128;
-    const int e = v - 128;
-    r = clamp8((1164 * c + 1596 * e + 500) / 1000);
-    g = clamp8((1164 * c - 391 * d - 813 * e + 500) / 1000);
-    b = clamp8((1164 * c + 2018 * d + 500) / 1000);
-}
-
 std::uint32_t pngBigEndian(const unsigned char* bytes) {
     return (static_cast<std::uint32_t>(bytes[0]) << 24) | (static_cast<std::uint32_t>(bytes[1]) << 16) | (static_cast<std::uint32_t>(bytes[2]) << 8)
            | static_cast<std::uint32_t>(bytes[3]);
@@ -226,7 +201,6 @@ struct DaiHeader {
     ImgFrame::Type type = ImgFrame::Type::NONE;
     bool mjpeg = false;
     bool passthrough = false;
-    bool hasTiming = false;
     std::int64_t sequenceNum = 0;
     std::chrono::steady_clock::time_point timestamp{};
     std::chrono::steady_clock::time_point timestampDevice{};
@@ -402,7 +376,6 @@ DaiHeader readDaiHeader(const std::filesystem::path& path) {
                 header.type = ImgFrame::Type::NV12;
                 header.passthrough = false;
             }
-            header.hasTiming = true;
             if(!sawSequence) header.sequenceNum = 0;
             header.timestamp = toSteady(timestamp);
             header.timestampDevice = toSteady(timestampDevice);
@@ -418,16 +391,60 @@ DaiHeader readDaiHeader(const std::filesystem::path& path) {
 #endif
 }
 
-struct DaiInfo {
-    bool encoded = false;
-    bool mjpeg = false;
-    ImgFrame::Type type = ImgFrame::Type::NONE;
-    int width = 0;
-    int height = 0;
-    DecodedPixels pixels;
-};
+void setPackedLayout(ImgFrame& frame, ImgFrame::Type type, unsigned width, unsigned height) {
+    frame.setType(type);
+    frame.setSize(width, height);
+    const unsigned ySize = width * height;
+    frame.fb.p1Offset = 0;
+    if(type == ImgFrame::Type::GRAY8 || type == ImgFrame::Type::RAW8) {
+        frame.fb.stride = width;
+        frame.fb.p2Offset = 0;
+        frame.fb.p3Offset = 0;
+    } else if(type == ImgFrame::Type::RGB888p || type == ImgFrame::Type::BGR888p) {
+        frame.fb.stride = width;
+        frame.fb.p2Offset = ySize;
+        frame.fb.p3Offset = ySize * 2;
+    } else if(type == ImgFrame::Type::YUV420p) {
+        frame.fb.stride = width;
+        frame.fb.p2Offset = ySize;
+        frame.fb.p3Offset = ySize + ySize / 4;
+    } else if(type == ImgFrame::Type::NV12) {
+        frame.fb.stride = width;
+        frame.fb.p2Offset = ySize;
+        frame.fb.p3Offset = ySize;
+    } else {
+        frame.fb.stride = width * 3;
+        frame.fb.p2Offset = 0;
+        frame.fb.p3Offset = 0;
+    }
+}
 
-DaiInfo readDai(const std::filesystem::path& path) {
+std::shared_ptr<ImgFrame> frameFromPacked(ImgFrame::Type type, int width, int height, std::vector<std::uint8_t> data) {
+    auto frame = std::make_shared<ImgFrame>();
+    setPackedLayout(*frame, type, static_cast<unsigned>(width), static_cast<unsigned>(height));
+    frame->setData(std::move(data));
+    return frame;
+}
+
+std::shared_ptr<ImgFrame> frameFromMat(const cv::Mat& image, ImgFrame::Type type) {
+    auto frame = std::make_shared<ImgFrame>();
+    frame->setCvFrame(image, type);
+    return frame;
+}
+
+void copyPlaybackInfo(ImgFrame& dst, const ImgFrame& src) {
+    dst.sourceFb = src.sourceFb;
+    dst.cam = src.cam;
+    dst.instanceNum = src.instanceNum;
+    dst.category = src.category;
+    dst.transformation = src.transformation;
+    dst.setSequenceNum(src.getSequenceNum());
+    dst.setTimestamp(src.getTimestamp());
+    dst.setTimestampDevice(src.getTimestampDevice());
+    dst.setTimestampSystem(src.getTimestampSystem());
+}
+
+std::shared_ptr<ImgFrame> readDai(const std::filesystem::path& path) {
 #ifndef DEPTHAI_ENABLE_PROTOBUF
     (void)path;
     fail("ReplayVideo node requires protobuf support");
@@ -438,36 +455,11 @@ DaiInfo readDai(const std::filesystem::path& path) {
     if(!envelope.ParseFromIstream(&file)) fail("ReplayVideo dai envelope is not valid: " + path.string());
     ImgFrame imgProbe;
     EncodedFrame encProbe;
-    DaiInfo info;
     if(envelope.schema_name() == imgProbe.serializeSchema().schemaName) {
-        ImgFrame frame;
-        frame.load(path);
-        if(frame.getType() == ImgFrame::Type::BITSTREAM) fail("ReplayVideo BITSTREAM is not supported: " + path.string());
-        info.type = frame.getType();
-        info.width = static_cast<int>(frame.getWidth());
-        info.height = static_cast<int>(frame.getHeight());
-        info.pixels.width = info.width;
-        info.pixels.height = info.height;
-        info.pixels.type = info.type;
-        info.pixels.passthrough = !isReplayOutType(info.type);
-        info.pixels.fb = frame.fb;
-        info.pixels.sourceFb = frame.sourceFb;
-        info.pixels.cam = frame.cam;
-        info.pixels.transformation = frame.transformation;
-        info.pixels.instanceNum = frame.instanceNum;
-        info.pixels.category = frame.category;
-        info.pixels.hasTiming = true;
-        info.pixels.sequenceNum = frame.getSequenceNum();
-        info.pixels.timestamp = frame.getTimestamp();
-        info.pixels.timestampDevice = frame.getTimestampDevice();
-        info.pixels.timestampSystem = frame.getTimestampSystem();
-        const auto span = frame.getData();
-        info.pixels.data.assign(span.begin(), span.end());
-        if(info.type == ImgFrame::Type::YUV420p || info.type == ImgFrame::Type::NV12 || info.type == ImgFrame::Type::GRAY8
-           || info.type == ImgFrame::Type::RGB888i || info.type == ImgFrame::Type::BGR888i) {
-            info.pixels.passthrough = false;
-        }
-        return info;
+        auto frame = std::make_shared<ImgFrame>();
+        frame->load(path);
+        if(frame->getType() == ImgFrame::Type::BITSTREAM) fail("ReplayVideo BITSTREAM is not supported: " + path.string());
+        return frame;
     }
     if(envelope.schema_name() == encProbe.serializeSchema().schemaName) {
         EncodedFrame encoded;
@@ -475,37 +467,19 @@ DaiInfo readDai(const std::filesystem::path& path) {
         if(encoded.profile == EncodedFrame::Profile::AVC || encoded.profile == EncodedFrame::Profile::HEVC) {
             fail("ReplayVideo H264 or H265 EncodedFrame is not supported in .dai: " + path.string());
         }
-        info.encoded = true;
-        info.mjpeg = true;
-        info.pixels.fullRange = true;
         const auto span = encoded.getData();
         std::vector<std::uint8_t> bytes(span.begin(), span.end());
         cv::Mat buffer(1, static_cast<int>(bytes.size()), CV_8UC1, bytes.data());
         cv::Mat image = cv::imdecode(buffer, cv::IMREAD_UNCHANGED | cv::IMREAD_IGNORE_ORIENTATION);
         if(image.empty()) fail("ReplayVideo jpeg data is not valid: " + path.string());
-        info.width = image.cols;
-        info.height = image.rows;
-        info.pixels.width = info.width;
-        info.pixels.height = info.height;
-        info.type = ImgFrame::Type::NV12;
-        info.pixels.type = ImgFrame::Type::NV12;
-        if(image.channels() == 1) {
-            info.pixels.data.assign(image.datastart, image.dataend);
-            info.pixels.type = ImgFrame::Type::GRAY8;
-            info.type = ImgFrame::Type::GRAY8;
-        } else {
-            if(image.channels() == 4) cv::cvtColor(image, image, cv::COLOR_BGRA2BGR);
-            info.pixels.data.assign(image.datastart, image.dataend);
-            info.pixels.type = ImgFrame::Type::BGR888i;
-            info.type = ImgFrame::Type::BGR888i;
-        }
-        info.pixels.fullRange = true;
-        info.pixels.hasTiming = true;
-        info.pixels.sequenceNum = encoded.getSequenceNum();
-        info.pixels.timestamp = encoded.getTimestamp();
-        info.pixels.timestampDevice = encoded.getTimestampDevice();
-        info.pixels.timestampSystem = encoded.getTimestampSystem();
-        return info;
+        if(image.channels() == 4) cv::cvtColor(image, image, cv::COLOR_BGRA2BGR);
+        const auto type = image.channels() == 1 ? ImgFrame::Type::GRAY8 : ImgFrame::Type::BGR888i;
+        auto frame = frameFromMat(image, type);
+        frame->setSequenceNum(encoded.getSequenceNum());
+        frame->setTimestamp(encoded.getTimestamp());
+        frame->setTimestampDevice(encoded.getTimestampDevice());
+        frame->setTimestampSystem(encoded.getTimestampSystem());
+        return frame;
     }
     fail("ReplayVideo dai message type is not supported: " + path.string());
 #endif
@@ -620,7 +594,6 @@ struct LibavVideo {
     AVFrame* frame = nullptr;
     int streamIndex = -1;
     int next = 0;
-    bool jpeg = false;
     ~LibavVideo() {
         if(frame) av_frame_free(&frame);
         if(packet) av_packet_free(&packet);
@@ -651,7 +624,6 @@ void openLibav(LibavVideo& video, const std::filesystem::path& path) {
     }
     video.packet = av_packet_alloc();
     video.frame = av_frame_alloc();
-    video.jpeg = stream->codecpar->codec_id == AV_CODEC_ID_MJPEG;
 }
 
 ListedSource probeLibav(const std::filesystem::path& path) {
@@ -697,7 +669,7 @@ ListedSource probeLibav(const std::filesystem::path& path) {
     return source;
 }
 
-DecodedPixels readLibavFrame(LibavVideo& video) {
+std::shared_ptr<ImgFrame> readLibavFrame(LibavVideo& video) {
     bool flushed = false;
     while(true) {
         const int received = avcodec_receive_frame(video.codec, video.frame);
@@ -707,26 +679,21 @@ DecodedPixels readLibavFrame(LibavVideo& video) {
             }
             const int width = video.frame->width;
             const int height = video.frame->height;
-            DecodedPixels pixels;
-            pixels.width = width;
-            pixels.height = height;
-            pixels.type = ImgFrame::Type::YUV420p;
-            pixels.fullRange = video.jpeg || video.frame->format == AV_PIX_FMT_YUVJ420P;
             const int ySize = width * height;
             const int cSize = ySize / 4;
-            pixels.data.resize(static_cast<std::size_t>(ySize + 2 * cSize));
+            std::vector<std::uint8_t> data(static_cast<std::size_t>(ySize + 2 * cSize));
             for(int row = 0; row < height; row++) {
-                std::memcpy(pixels.data.data() + static_cast<std::size_t>(row * width), video.frame->data[0] + row * video.frame->linesize[0], width);
+                std::memcpy(data.data() + static_cast<std::size_t>(row * width), video.frame->data[0] + row * video.frame->linesize[0], width);
             }
             for(int row = 0; row < height / 2; row++) {
                 std::memcpy(
-                    pixels.data.data() + static_cast<std::size_t>(ySize + row * (width / 2)), video.frame->data[1] + row * video.frame->linesize[1], width / 2);
-                std::memcpy(pixels.data.data() + static_cast<std::size_t>(ySize + cSize + row * (width / 2)),
+                    data.data() + static_cast<std::size_t>(ySize + row * (width / 2)), video.frame->data[1] + row * video.frame->linesize[1], width / 2);
+                std::memcpy(data.data() + static_cast<std::size_t>(ySize + cSize + row * (width / 2)),
                             video.frame->data[2] + row * video.frame->linesize[2],
                             width / 2);
             }
             video.next++;
-            return pixels;
+            return frameFromPacked(ImgFrame::Type::YUV420p, width, height, std::move(data));
         }
         if(received != AVERROR(EAGAIN)) fail("ReplayVideo frame decode failed");
         if(av_read_frame(video.format, video.packet) < 0) {
@@ -826,82 +793,339 @@ cv::Mat resizeMat(const cv::Mat& image, int width, int height) {
     return out;
 }
 
-void packYuv(DecodedPixels& pixels, const cv::Mat& y, const cv::Mat& u, const cv::Mat& v, ImgFrame::Type type) {
-    const int width = y.cols;
-    const int height = y.rows;
-    pixels.width = width;
-    pixels.height = height;
-    pixels.type = type;
-    if(type == ImgFrame::Type::GRAY8 || type == ImgFrame::Type::RAW8) {
-        pixels.data.assign(y.datastart, y.dataend);
-        return;
+int rowBytesOf(ImgFrame::Type type, int width) {
+    if(type == ImgFrame::Type::RGB888i || type == ImgFrame::Type::BGR888i) return width * 3;
+    return width;
+}
+
+std::size_t packedBytes(ImgFrame::Type type, int width, int height) {
+    const auto area = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+    if(type == ImgFrame::Type::GRAY8 || type == ImgFrame::Type::RAW8) return area;
+    if(type == ImgFrame::Type::YUV420p || type == ImgFrame::Type::NV12) return area + area / 2;
+    if(type == ImgFrame::Type::RGB888i || type == ImgFrame::Type::BGR888i || type == ImgFrame::Type::RGB888p || type == ImgFrame::Type::BGR888p)
+        return area * 3;
+    return 0;
+}
+
+void copyRows(std::vector<std::uint8_t>& out, const std::uint8_t* data, std::size_t size, int rows, int rowBytes, std::size_t offset, std::size_t stride) {
+    if(rows <= 0 || rowBytes <= 0 || stride < static_cast<std::size_t>(rowBytes) || offset > size || size - offset < static_cast<std::size_t>(rowBytes)
+       || static_cast<std::size_t>(rows - 1) > (size - offset - static_cast<std::size_t>(rowBytes)) / stride) {
+        fail("ReplayVideo frame payload is too small or has an invalid plane layout");
     }
-    const int ySize = width * height;
-    const int cSize = ySize / 4;
-    pixels.data.assign(static_cast<std::size_t>(ySize + (type == ImgFrame::Type::GRAY8 ? 0 : 2 * cSize)), 0);
-    std::memcpy(pixels.data.data(), y.data, static_cast<std::size_t>(ySize));
-    if(type == ImgFrame::Type::YUV420p) {
-        std::memcpy(pixels.data.data() + ySize, u.data, static_cast<std::size_t>(cSize));
-        std::memcpy(pixels.data.data() + ySize + cSize, v.data, static_cast<std::size_t>(cSize));
-    } else if(type == ImgFrame::Type::NV12) {
-        for(int i = 0; i < cSize; i++) {
-            pixels.data[static_cast<std::size_t>(ySize + i * 2)] = u.data[i];
-            pixels.data[static_cast<std::size_t>(ySize + i * 2 + 1)] = v.data[i];
-        }
+    const auto start = out.size();
+    out.resize(start + static_cast<std::size_t>(rows) * static_cast<std::size_t>(rowBytes));
+    for(int row = 0; row < rows; row++) {
+        std::memcpy(out.data() + start + static_cast<std::size_t>(row) * static_cast<std::size_t>(rowBytes),
+                    data + offset + static_cast<std::size_t>(row) * stride,
+                    static_cast<std::size_t>(rowBytes));
     }
 }
 
-void bgrToPlanes(const cv::Mat& bgr, bool fullRange, cv::Mat& y, cv::Mat& u, cv::Mat& v) {
-    y.create(bgr.rows, bgr.cols, CV_8UC1);
-    const int chromaRows = bgr.rows / 2 + bgr.rows % 2;
-    const int chromaCols = bgr.cols / 2 + bgr.cols % 2;
-    u.create(chromaRows, chromaCols, CV_8UC1);
-    v.create(chromaRows, chromaCols, CV_8UC1);
-    std::vector<int> uAcc(static_cast<std::size_t>(chromaRows) * chromaCols, 0);
-    std::vector<int> vAcc = uAcc;
-    for(int row = 0; row < bgr.rows; row++) {
-        for(int col = 0; col < bgr.cols; col++) {
-            const auto pixel = bgr.at<cv::Vec3b>(row, col);
-            std::uint8_t yv = 0;
-            std::uint8_t uv = 0;
-            std::uint8_t vv = 0;
-            if(fullRange)
-                fullRgbToYuv(pixel[2], pixel[1], pixel[0], yv, uv, vv);
-            else
-                limitedRgbToYuv(pixel[2], pixel[1], pixel[0], yv, uv, vv);
-            y.at<std::uint8_t>(row, col) = yv;
-            if(row / 2 >= u.rows || col / 2 >= u.cols) continue;
-            const auto index = static_cast<std::size_t>((row / 2) * u.cols + col / 2);
-            uAcc[index] += uv;
-            vAcc[index] += vv;
-        }
+bool canonicalLayout(const ImgFrame& frame) {
+    const auto type = frame.getType();
+    const int width = static_cast<int>(frame.getWidth());
+    const int height = static_cast<int>(frame.getHeight());
+    const auto need = packedBytes(type, width, height);
+    if(width <= 0 || height <= 0 || need == 0 || frame.getData().size() < need) return false;
+    const int rowBytes = rowBytesOf(type, width);
+    if(frame.fb.stride != 0 && static_cast<int>(frame.fb.stride) != rowBytes) return false;
+    if(frame.fb.p1Offset != 0) return false;
+    const auto area = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+    if(type == ImgFrame::Type::YUV420p) {
+        if(frame.fb.p2Offset != 0 && frame.fb.p2Offset != area) return false;
+        if(frame.fb.p3Offset != 0 && frame.fb.p3Offset != area + area / 4) return false;
+    } else if(type == ImgFrame::Type::NV12) {
+        if(frame.fb.p2Offset != 0 && frame.fb.p2Offset != area) return false;
+        if(frame.fb.p3Offset != 0 && frame.fb.p3Offset != area) return false;
+    } else if(type == ImgFrame::Type::RGB888p || type == ImgFrame::Type::BGR888p) {
+        if(frame.fb.p2Offset != 0 && frame.fb.p2Offset != area) return false;
+        if(frame.fb.p3Offset != 0 && frame.fb.p3Offset != area * 2) return false;
+    } else if(frame.fb.p2Offset != 0 || frame.fb.p3Offset != 0) {
+        return false;
     }
-    for(int row = 0; row < u.rows; row++) {
-        for(int col = 0; col < u.cols; col++) {
-            const int count = std::min(2, bgr.rows - row * 2) * std::min(2, bgr.cols - col * 2);
-            const auto index = static_cast<std::size_t>(row * u.cols + col);
-            u.at<std::uint8_t>(row, col) = static_cast<std::uint8_t>((uAcc[index] + count / 2) / count);
-            v.at<std::uint8_t>(row, col) = static_cast<std::uint8_t>((vAcc[index] + count / 2) / count);
-        }
+    return true;
+}
+
+std::shared_ptr<ImgFrame> repack(const ImgFrame& frame) {
+    const auto type = frame.getType();
+    const int width = static_cast<int>(frame.getWidth());
+    const int height = static_cast<int>(frame.getHeight());
+    const auto bytes = frame.getData();
+    const auto* data = bytes.data();
+    const auto size = bytes.size();
+    const bool explicitOffsets = frame.fb.p1Offset != 0 || frame.fb.p2Offset != 0 || frame.fb.p3Offset != 0;
+    const auto rowStride = frame.fb.stride != 0 ? static_cast<std::size_t>(frame.fb.stride) : static_cast<std::size_t>(rowBytesOf(type, width));
+    const auto first = static_cast<std::size_t>(frame.fb.p1Offset);
+    std::vector<std::uint8_t> packed;
+    const auto need = packedBytes(type, width, height);
+    if(need != 0) packed.reserve(need);
+    if(type == ImgFrame::Type::GRAY8 || type == ImgFrame::Type::RAW8) {
+        copyRows(packed, data, size, height, width, first, rowStride);
+    } else if(type == ImgFrame::Type::BGR888i || type == ImgFrame::Type::RGB888i) {
+        copyRows(packed, data, size, height, width * 3, first, rowStride);
+    } else if(type == ImgFrame::Type::BGR888p || type == ImgFrame::Type::RGB888p) {
+        const auto area = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+        const auto stride = frame.fb.stride != 0 ? static_cast<std::size_t>(frame.fb.stride) : static_cast<std::size_t>(width);
+        const auto plane0 = explicitOffsets ? static_cast<std::size_t>(frame.fb.p1Offset) : 0;
+        const auto plane1 = explicitOffsets ? static_cast<std::size_t>(frame.fb.p2Offset) : area;
+        const auto plane2 = explicitOffsets ? static_cast<std::size_t>(frame.fb.p3Offset) : area * 2;
+        copyRows(packed, data, size, height, width, plane0, stride);
+        copyRows(packed, data, size, height, width, plane1, stride);
+        copyRows(packed, data, size, height, width, plane2, stride);
+    } else if(type == ImgFrame::Type::YUV420p) {
+        const int chromaWidth = width / 2 + width % 2;
+        const int chromaHeight = height / 2 + height % 2;
+        const auto chromaStride = (rowStride + 1) / 2;
+        const auto second = explicitOffsets ? static_cast<std::size_t>(frame.fb.p2Offset) : rowStride * static_cast<std::size_t>(height);
+        const auto third = explicitOffsets ? static_cast<std::size_t>(frame.fb.p3Offset) : second + chromaStride * static_cast<std::size_t>(chromaHeight);
+        copyRows(packed, data, size, height, width, first, rowStride);
+        copyRows(packed, data, size, chromaHeight, chromaWidth, second, chromaStride);
+        copyRows(packed, data, size, chromaHeight, chromaWidth, third, chromaStride);
+    } else if(type == ImgFrame::Type::NV12) {
+        const int chromaHeight = height / 2 + height % 2;
+        const int chromaWidth = width / 2 + width % 2;
+        const auto second = explicitOffsets ? static_cast<std::size_t>(frame.fb.p2Offset) : rowStride * static_cast<std::size_t>(height);
+        copyRows(packed, data, size, height, width, first, rowStride);
+        copyRows(packed, data, size, chromaHeight, chromaWidth * 2, second, rowStride);
+    } else {
+        fail(std::string("ReplayVideo output type is not supported: ") + frameTypeName(type));
     }
+    auto out = frameFromPacked(type, width, height, std::move(packed));
+    copyPlaybackInfo(*out, frame);
+    return out;
+}
+
+bool isLuma(ImgFrame::Type type) {
+    return type == ImgFrame::Type::GRAY8 || type == ImgFrame::Type::RAW8 || type == ImgFrame::Type::YUV420p || type == ImgFrame::Type::NV12;
+}
+
+std::shared_ptr<ImgFrame> finishPacked(ImgFrame::Type type, int width, int height, std::vector<std::uint8_t> data, const ImgFrame& source) {
+    auto out = frameFromPacked(type, width, height, std::move(data));
+    copyPlaybackInfo(*out, source);
+    return out;
+}
+
+void interleaveChroma(std::uint8_t* dst, const std::uint8_t* u, const std::uint8_t* v, int count) {
+    for(int index = 0; index < count; ++index) {
+        dst[static_cast<std::size_t>(index) * 2] = u[index];
+        dst[static_cast<std::size_t>(index) * 2 + 1] = v[index];
+    }
+}
+
+void splitChroma(std::uint8_t* u, std::uint8_t* v, const std::uint8_t* src, int count) {
+    for(int index = 0; index < count; ++index) {
+        u[index] = src[static_cast<std::size_t>(index) * 2];
+        v[index] = src[static_cast<std::size_t>(index) * 2 + 1];
+    }
+}
+
+void placePlane(const cv::Mat& src, cv::Mat& dst) {
+    if(src.cols == dst.cols && src.rows == dst.rows) {
+        if(src.data == dst.data) return;
+        src.copyTo(dst);
+        return;
+    }
+    const bool down = static_cast<std::int64_t>(dst.cols) * dst.rows < static_cast<std::int64_t>(src.cols) * src.rows;
+    cv::resize(src, dst, dst.size(), 0, 0, down ? cv::INTER_AREA : cv::INTER_LINEAR);
+}
+
+// YUV420p, NV12, gray, and raw share luma. Copy that plane and rearrange chroma. A BGR round-trip is lossy and slower.
+std::shared_ptr<ImgFrame> convertLuma(const ImgFrame& frame, ImgFrame::Type outType, int outW, int outH) {
+    const int width = static_cast<int>(frame.getWidth());
+    const int height = static_cast<int>(frame.getHeight());
+    const auto bytes = frame.getData();
+    const auto* src = bytes.data();
+    const int ySize = width * height;
+    const int outY = outW * outH;
+    const auto srcType = frame.getType();
+    const bool srcChroma = srcType == ImgFrame::Type::YUV420p || srcType == ImgFrame::Type::NV12;
+    const bool outChroma = outType == ImgFrame::Type::YUV420p || outType == ImgFrame::Type::NV12;
+    std::vector<std::uint8_t> packed(packedBytes(outType, outW, outH));
+
+    if(srcChroma && srcType == ImgFrame::Type::YUV420p && outType == ImgFrame::Type::NV12 && width == outW && height == outH) {
+        std::memcpy(packed.data(), src, static_cast<std::size_t>(ySize));
+        const int chroma = ySize / 4;
+        interleaveChroma(packed.data() + ySize, src + ySize, src + ySize + chroma, chroma);
+        return finishPacked(outType, outW, outH, std::move(packed), frame);
+    }
+    if(srcChroma && srcType == ImgFrame::Type::NV12 && outType == ImgFrame::Type::YUV420p && width == outW && height == outH) {
+        std::memcpy(packed.data(), src, static_cast<std::size_t>(ySize));
+        const int chroma = ySize / 4;
+        splitChroma(packed.data() + ySize, packed.data() + ySize + chroma, src + ySize, chroma);
+        return finishPacked(outType, outW, outH, std::move(packed), frame);
+    }
+
+    cv::Mat ySrc(height, width, CV_8UC1, const_cast<std::uint8_t*>(src));
+    cv::Mat yDst(outH, outW, CV_8UC1, packed.data());
+    placePlane(ySrc, yDst);
+    if(!outChroma) return finishPacked(outType, outW, outH, std::move(packed), frame);
+
+    const int chromaRows = outH / 2;
+    const int chromaCols = outW / 2;
+    const int chroma = chromaRows * chromaCols;
+    if(!srcChroma) {
+        std::memset(packed.data() + outY, 128, packed.size() - static_cast<std::size_t>(outY));
+        return finishPacked(outType, outW, outH, std::move(packed), frame);
+    }
+    if((width % 2) != 0 || (height % 2) != 0) fail("ReplayVideo frame dimensions are invalid");
+
+    if(srcType == ImgFrame::Type::YUV420p && outType == ImgFrame::Type::YUV420p) {
+        cv::Mat uSrc(height / 2, width / 2, CV_8UC1, const_cast<std::uint8_t*>(src + ySize));
+        cv::Mat vSrc(height / 2, width / 2, CV_8UC1, const_cast<std::uint8_t*>(src + ySize + ySize / 4));
+        cv::Mat uDst(chromaRows, chromaCols, CV_8UC1, packed.data() + outY);
+        cv::Mat vDst(chromaRows, chromaCols, CV_8UC1, packed.data() + outY + chroma);
+        placePlane(uSrc, uDst);
+        placePlane(vSrc, vDst);
+    } else if(srcType == ImgFrame::Type::NV12 && outType == ImgFrame::Type::NV12) {
+        cv::Mat uvSrc(height / 2, width / 2, CV_8UC2, const_cast<std::uint8_t*>(src + ySize));
+        cv::Mat uvDst(chromaRows, chromaCols, CV_8UC2, packed.data() + outY);
+        placePlane(uvSrc, uvDst);
+    } else if(srcType == ImgFrame::Type::YUV420p) {
+        cv::Mat uSrc(height / 2, width / 2, CV_8UC1, const_cast<std::uint8_t*>(src + ySize));
+        cv::Mat vSrc(height / 2, width / 2, CV_8UC1, const_cast<std::uint8_t*>(src + ySize + ySize / 4));
+        cv::Mat u(chromaRows, chromaCols, CV_8UC1);
+        cv::Mat v(chromaRows, chromaCols, CV_8UC1);
+        placePlane(uSrc, u);
+        placePlane(vSrc, v);
+        interleaveChroma(packed.data() + outY, u.data, v.data, chroma);
+    } else {
+        cv::Mat uvSrc(height / 2, width / 2, CV_8UC2, const_cast<std::uint8_t*>(src + ySize));
+        cv::Mat uv(chromaRows, chromaCols, CV_8UC2);
+        placePlane(uvSrc, uv);
+        splitChroma(packed.data() + outY, packed.data() + outY + chroma, uv.data, chroma);
+    }
+    return finishPacked(outType, outW, outH, std::move(packed), frame);
+}
+
+cv::Mat bgrFromColor(const ImgFrame& frame) {
+    const auto bytes = frame.getData();
+    auto* data = const_cast<std::uint8_t*>(bytes.data());
+    const int width = static_cast<int>(frame.getWidth());
+    const int height = static_cast<int>(frame.getHeight());
+    const auto area = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+    if(frame.getType() == ImgFrame::Type::BGR888i) return cv::Mat(height, width, CV_8UC3, data);
+    if(frame.getType() == ImgFrame::Type::RGB888i) {
+        cv::Mat bgr;
+        cv::cvtColor(cv::Mat(height, width, CV_8UC3, data), bgr, cv::COLOR_RGB2BGR);
+        return bgr;
+    }
+    cv::Mat first(height, width, CV_8UC1, data);
+    cv::Mat second(height, width, CV_8UC1, data + area);
+    cv::Mat third(height, width, CV_8UC1, data + area * 2);
+    cv::Mat bgr;
+    if(frame.getType() == ImgFrame::Type::BGR888p)
+        cv::merge(std::vector<cv::Mat>{first, second, third}, bgr);
+    else
+        cv::merge(std::vector<cv::Mat>{third, second, first}, bgr);
+    return bgr;
+}
+
+std::shared_ptr<ImgFrame> packFromBgr(const cv::Mat& bgr, ImgFrame::Type outType, const ImgFrame& source) {
+    const int width = bgr.cols;
+    const int height = bgr.rows;
+    if(outType == ImgFrame::Type::BGR888i) {
+        std::vector<std::uint8_t> packed(static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 3);
+        cv::Mat dst(height, width, CV_8UC3, packed.data());
+        bgr.copyTo(dst);
+        return finishPacked(outType, width, height, std::move(packed), source);
+    }
+    if(outType == ImgFrame::Type::RGB888i) {
+        std::vector<std::uint8_t> packed(static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 3);
+        cv::Mat dst(height, width, CV_8UC3, packed.data());
+        cv::cvtColor(bgr, dst, cv::COLOR_BGR2RGB);
+        return finishPacked(outType, width, height, std::move(packed), source);
+    }
+    if(outType == ImgFrame::Type::BGR888p || outType == ImgFrame::Type::RGB888p) {
+        const auto area = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+        std::vector<std::uint8_t> packed(area * 3);
+        cv::Mat channel0(height, width, CV_8UC1, packed.data());
+        cv::Mat channel1(height, width, CV_8UC1, packed.data() + area);
+        cv::Mat channel2(height, width, CV_8UC1, packed.data() + area * 2);
+        if(outType == ImgFrame::Type::BGR888p)
+            cv::split(bgr, std::vector<cv::Mat>{channel0, channel1, channel2});
+        else
+            cv::split(bgr, std::vector<cv::Mat>{channel2, channel1, channel0});
+        return finishPacked(outType, width, height, std::move(packed), source);
+    }
+    if(outType == ImgFrame::Type::GRAY8 || outType == ImgFrame::Type::RAW8) {
+        std::vector<std::uint8_t> packed(static_cast<std::size_t>(width) * static_cast<std::size_t>(height));
+        cv::Mat dst(height, width, CV_8UC1, packed.data());
+        if(bgr.channels() == 1)
+            bgr.copyTo(dst);
+        else
+            cv::cvtColor(bgr, dst, cv::COLOR_BGR2GRAY);
+        return finishPacked(outType, width, height, std::move(packed), source);
+    }
+    const int ySize = width * height;
+    const int chroma = ySize / 4;
+    if(outType == ImgFrame::Type::YUV420p) {
+        std::vector<std::uint8_t> packed(static_cast<std::size_t>(ySize + 2 * chroma));
+        cv::Mat dst(height * 3 / 2, width, CV_8UC1, packed.data());
+        cv::cvtColor(bgr, dst, cv::COLOR_BGR2YUV_I420);
+        return finishPacked(outType, width, height, std::move(packed), source);
+    }
+    std::vector<std::uint8_t> i420(static_cast<std::size_t>(ySize + 2 * chroma));
+    cv::Mat dst(height * 3 / 2, width, CV_8UC1, i420.data());
+    cv::cvtColor(bgr, dst, cv::COLOR_BGR2YUV_I420);
+    std::vector<std::uint8_t> packed(i420.size());
+    std::memcpy(packed.data(), i420.data(), static_cast<std::size_t>(ySize));
+    interleaveChroma(packed.data() + ySize, i420.data() + ySize, i420.data() + ySize + chroma, chroma);
+    return finishPacked(outType, width, height, std::move(packed), source);
+}
+
+std::shared_ptr<ImgFrame> convertYuvToColor(const ImgFrame& frame, ImgFrame::Type outType, int outW, int outH) {
+    const int width = static_cast<int>(frame.getWidth());
+    const int height = static_cast<int>(frame.getHeight());
+    const auto bytes = frame.getData();
+    cv::Mat yuv(height * 3 / 2, width, CV_8UC1, const_cast<std::uint8_t*>(bytes.data()));
+    const bool nv12 = frame.getType() == ImgFrame::Type::NV12;
+    if((outType == ImgFrame::Type::BGR888i || outType == ImgFrame::Type::RGB888i) && width == outW && height == outH) {
+        std::vector<std::uint8_t> packed(static_cast<std::size_t>(outW) * static_cast<std::size_t>(outH) * 3);
+        cv::Mat dst(outH, outW, CV_8UC3, packed.data());
+        const bool rgb = outType == ImgFrame::Type::RGB888i;
+        const auto code = nv12 ? (rgb ? cv::COLOR_YUV2RGB_NV12 : cv::COLOR_YUV2BGR_NV12) : (rgb ? cv::COLOR_YUV2RGB_IYUV : cv::COLOR_YUV2BGR_IYUV);
+        cv::cvtColor(yuv, dst, code);
+        return finishPacked(outType, outW, outH, std::move(packed), frame);
+    }
+    cv::Mat bgr;
+    cv::cvtColor(yuv, bgr, nv12 ? cv::COLOR_YUV2BGR_NV12 : cv::COLOR_YUV2BGR_IYUV);
+    if(bgr.cols != outW || bgr.rows != outH) bgr = resizeMat(bgr, outW, outH);
+    return packFromBgr(bgr, outType, frame);
+}
+
+std::shared_ptr<ImgFrame> convertColor(const ImgFrame& frame, ImgFrame::Type outType, int outW, int outH) {
+    if(frame.getType() == ImgFrame::Type::GRAY8 || frame.getType() == ImgFrame::Type::RAW8) {
+        const auto bytes = frame.getData();
+        cv::Mat gray(static_cast<int>(frame.getHeight()), static_cast<int>(frame.getWidth()), CV_8UC1, const_cast<std::uint8_t*>(bytes.data()));
+        if(gray.cols != outW || gray.rows != outH) gray = resizeMat(gray, outW, outH);
+        if(outType == ImgFrame::Type::BGR888i || outType == ImgFrame::Type::RGB888i) {
+            std::vector<std::uint8_t> packed(static_cast<std::size_t>(outW) * static_cast<std::size_t>(outH) * 3);
+            cv::Mat dst(outH, outW, CV_8UC3, packed.data());
+            cv::cvtColor(gray, dst, cv::COLOR_GRAY2BGR);
+            return finishPacked(outType, outW, outH, std::move(packed), frame);
+        }
+        cv::Mat bgr;
+        cv::cvtColor(gray, bgr, cv::COLOR_GRAY2BGR);
+        return packFromBgr(bgr, outType, frame);
+    }
+    if(frame.getType() == ImgFrame::Type::YUV420p || frame.getType() == ImgFrame::Type::NV12) return convertYuvToColor(frame, outType, outW, outH);
+    cv::Mat bgr = bgrFromColor(frame);
+    if(bgr.cols != outW || bgr.rows != outH) bgr = resizeMat(bgr, outW, outH);
+    return packFromBgr(bgr, outType, frame);
 }
 
 }  // namespace
 
-DecodedPixels probeDaiHeader(const std::filesystem::path& path) {
+std::shared_ptr<ImgFrame> probeDaiHeader(const std::filesystem::path& path) {
     const DaiHeader header = readDaiHeader(path);
-    DecodedPixels pixels;
-    pixels.width = header.width;
-    pixels.height = header.height;
-    pixels.type = header.type;
-    pixels.passthrough = header.passthrough;
-    pixels.fullRange = header.mjpeg;
-    pixels.hasTiming = header.hasTiming;
-    pixels.sequenceNum = header.sequenceNum;
-    pixels.timestamp = header.timestamp;
-    pixels.timestampDevice = header.timestampDevice;
-    pixels.timestampSystem = header.timestampSystem;
-    return pixels;
+    auto frame = std::make_shared<ImgFrame>();
+    frame->setType(header.type);
+    frame->setSize(static_cast<unsigned>(header.width), static_cast<unsigned>(header.height));
+    frame->setSequenceNum(header.sequenceNum);
+    frame->setTimestamp(header.timestamp);
+    frame->setTimestampDevice(header.timestampDevice);
+    frame->setTimestampSystem(header.timestampSystem);
+    return frame;
 }
 
 bool isReplayOutType(ImgFrame::Type type) {
@@ -971,7 +1195,6 @@ struct FrameReader::State {
 #endif
     cv::VideoCapture capture;
     bool opencv = false;
-    bool mjpeg = false;
     bool rawYuv = false;
 };
 
@@ -993,7 +1216,6 @@ void FrameReader::open(const ListedSource& source) {
         state->opencv = true;
         std::string codec = state->source.codec;
         std::transform(codec.begin(), codec.end(), codec.begin(), [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
-        state->mjpeg = codec.find("mjp") != std::string::npos || codec.find("jpeg") != std::string::npos;
         state->rawYuv = codec.find("ffv1") != std::string::npos;
         if(state->rawYuv) state->capture.set(cv::CAP_PROP_CONVERT_RGB, 0);
         state->capture.open(state->source.path.string(), cv::CAP_FFMPEG);
@@ -1007,278 +1229,81 @@ int FrameReader::count() const {
     return state ? state->source.frameCount : 0;
 }
 
-DecodedPixels FrameReader::read(int index) {
+std::shared_ptr<ImgFrame> FrameReader::read(int index) {
     if(!state) fail("ReplayVideo reader is not open");
     if(index < state->next) open(state->source);
     if(state->source.kind == ListedSource::Kind::Frames) {
         if(index < 0 || index >= static_cast<int>(state->source.frames.size())) fail("ReplayVideo frame is missing");
         const auto& path = state->source.frames[static_cast<std::size_t>(index)].path;
         const auto ext = lowerExt(path);
-        DecodedPixels pixels;
+        std::shared_ptr<ImgFrame> frame;
         if(ext == ".dai") {
-            auto dai = readDai(path);
-            pixels = std::move(dai.pixels);
-            if(dai.mjpeg && pixels.type == ImgFrame::Type::BGR888i) pixels.fullRange = true;
+            frame = readDai(path);
         } else {
             if(ext == ".png") checkPngHeader(path);
             cv::Mat image = cv::imread(path.string(), cv::IMREAD_UNCHANGED | cv::IMREAD_IGNORE_ORIENTATION);
             if(image.empty()) fail("ReplayVideo image cannot be read: " + path.string());
-            pixels.width = image.cols;
-            pixels.height = image.rows;
-            pixels.fullRange = ext != ".png";
             if(image.channels() == 4) cv::cvtColor(image, image, cv::COLOR_BGRA2BGR);
-            if(image.channels() == 1) {
-                pixels.type = ImgFrame::Type::GRAY8;
-                pixels.data.assign(image.datastart, image.dataend);
-                pixels.fullRange = false;
-            } else {
-                pixels.type = ImgFrame::Type::BGR888i;
-                if(!image.isContinuous()) image = image.clone();
-                pixels.data.assign(image.datastart, image.dataend);
-            }
+            const auto type = image.channels() == 1 ? ImgFrame::Type::GRAY8 : ImgFrame::Type::BGR888i;
+            frame = frameFromMat(image, type);
         }
         state->next = index + 1;
         const auto expected = state->source.frames[static_cast<std::size_t>(index)].path;
         if(!std::filesystem::exists(expected)) fail("ReplayVideo frame changed during replay: " + expected.string());
-        return pixels;
+        return frame;
     }
 #ifdef DEPTHAI_HAVE_LIBAV
     if(state->libav) {
         while(state->libav->next <= index) {
-            auto pixels = readLibavFrame(*state->libav);
+            auto decoded = readLibavFrame(*state->libav);
             if(state->libav->next - 1 == index) {
                 state->next = index + 1;
-                return pixels;
+                return decoded;
             }
         }
     }
 #endif
     if(state->opencv) {
         while(state->next <= index) {
-            cv::Mat frame;
-            if(!state->capture.read(frame) || frame.empty()) fail("ReplayVideo frame decode failed");
-            DecodedPixels pixels;
-            const bool i420 = state->rawYuv && frame.type() == CV_8UC1 && frame.cols == state->source.width && state->source.height > 0
-                              && frame.rows == state->source.height * 3 / 2;
+            cv::Mat image;
+            if(!state->capture.read(image) || image.empty()) fail("ReplayVideo frame decode failed");
+            std::shared_ptr<ImgFrame> frame;
+            const bool i420 = state->rawYuv && image.type() == CV_8UC1 && image.cols == state->source.width && state->source.height > 0
+                              && image.rows == state->source.height * 3 / 2;
             if(i420) {
-                pixels.width = state->source.width;
-                pixels.height = state->source.height;
-                pixels.type = ImgFrame::Type::YUV420p;
-                pixels.fullRange = state->mjpeg;
+                if(!image.isContinuous()) image = image.clone();
+                std::vector<std::uint8_t> bytes(image.datastart, image.dataend);
+                frame = frameFromPacked(ImgFrame::Type::YUV420p, state->source.width, state->source.height, std::move(bytes));
             } else {
-                if(frame.channels() == 4) cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR);
-                if(frame.channels() == 1) cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
-                pixels.width = frame.cols;
-                pixels.height = frame.rows;
-                pixels.type = ImgFrame::Type::BGR888i;
-                pixels.fullRange = state->mjpeg;
+                if(image.channels() == 4) cv::cvtColor(image, image, cv::COLOR_BGRA2BGR);
+                if(image.channels() == 1) cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
+                frame = frameFromMat(image, ImgFrame::Type::BGR888i);
             }
-            if(!frame.isContinuous()) frame = frame.clone();
-            pixels.data.assign(frame.datastart, frame.dataend);
             state->next++;
-            if(state->next - 1 == index) return pixels;
+            if(state->next - 1 == index) return frame;
         }
     }
     fail("ReplayVideo frame decode failed");
 }
 
-DecodedPixels convertPixels(const DecodedPixels& pixels, ImgFrame::Type outType, int outW, int outH) {
-    if(pixels.passthrough) return pixels;
+std::shared_ptr<ImgFrame> convertPixels(const std::shared_ptr<ImgFrame>& frame, ImgFrame::Type outType, int outW, int outH) {
+    if(!frame) fail("ReplayVideo frame is missing");
+    if(!isReplayOutType(frame->getType())) return frame;
     if((outW % 2) != 0 || (outH % 2) != 0) {
         fail("ReplayVideo size " + std::to_string(outW) + "x" + std::to_string(outH) + " is not supported");
     }
-    cv::Mat y;
-    cv::Mat u;
-    cv::Mat v;
-    cv::Mat bgr;
-    const int width = pixels.width;
-    const int height = pixels.height;
+    const int width = static_cast<int>(frame->getWidth());
+    const int height = static_cast<int>(frame->getHeight());
     if(width <= 0 || height <= 0 || outW <= 0 || outH <= 0) fail("ReplayVideo frame dimensions are invalid");
-    const bool explicitOffsets = pixels.fb.p1Offset != 0 || pixels.fb.p2Offset != 0 || pixels.fb.p3Offset != 0;
-    const auto firstOffset = static_cast<std::size_t>(pixels.fb.p1Offset);
-    const auto rowStride = pixels.fb.stride != 0
-                               ? static_cast<std::size_t>(pixels.fb.stride)
-                               : static_cast<std::size_t>(width) * ((pixels.type == ImgFrame::Type::RGB888i || pixels.type == ImgFrame::Type::BGR888i) ? 3 : 1);
-    const auto plane = [&](int rows, int cols, int type, std::size_t offset, std::size_t stride) {
-        const auto rowBytes = static_cast<std::size_t>(cols) * CV_ELEM_SIZE(type);
-        if(rows <= 0 || cols <= 0 || stride < rowBytes || offset > pixels.data.size() || pixels.data.size() - offset < rowBytes
-           || static_cast<std::size_t>(rows - 1) > (pixels.data.size() - offset - rowBytes) / stride) {
-            fail("ReplayVideo frame payload is too small or has an invalid plane layout");
-        }
-        return cv::Mat(rows, cols, type, const_cast<std::uint8_t*>(pixels.data.data() + offset), stride).clone();
-    };
-    const int chromaWidth = width / 2 + width % 2;
-    const int chromaHeight = height / 2 + height % 2;
-    if(pixels.type == ImgFrame::Type::GRAY8 || pixels.type == ImgFrame::Type::RAW8) {
-        y = plane(height, width, CV_8UC1, firstOffset, rowStride);
-        u = cv::Mat(chromaHeight, chromaWidth, CV_8UC1, cv::Scalar(128));
-        v = u.clone();
-    } else if(pixels.type == ImgFrame::Type::BGR888p || pixels.type == ImgFrame::Type::RGB888p) {
-        const auto area = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
-        const auto stride = pixels.fb.stride != 0 ? static_cast<std::size_t>(pixels.fb.stride) : static_cast<std::size_t>(width);
-        const auto plane0 = explicitOffsets ? static_cast<std::size_t>(pixels.fb.p1Offset) : 0;
-        const auto plane1 = explicitOffsets ? static_cast<std::size_t>(pixels.fb.p2Offset) : area;
-        const auto plane2 = explicitOffsets ? static_cast<std::size_t>(pixels.fb.p3Offset) : area * 2;
-        const auto channel0 = plane(height, width, CV_8UC1, plane0, stride);
-        const auto channel1 = plane(height, width, CV_8UC1, plane1, stride);
-        const auto channel2 = plane(height, width, CV_8UC1, plane2, stride);
-        bgr.create(height, width, CV_8UC3);
-        for(int row = 0; row < height; row++) {
-            for(int col = 0; col < width; col++) {
-                const auto b = pixels.type == ImgFrame::Type::BGR888p ? channel0.at<std::uint8_t>(row, col) : channel2.at<std::uint8_t>(row, col);
-                const auto g = channel1.at<std::uint8_t>(row, col);
-                const auto r = pixels.type == ImgFrame::Type::BGR888p ? channel2.at<std::uint8_t>(row, col) : channel0.at<std::uint8_t>(row, col);
-                bgr.at<cv::Vec3b>(row, col) = cv::Vec3b(b, g, r);
-            }
-        }
-        bgrToPlanes(bgr, pixels.fullRange, y, u, v);
-    } else if(pixels.type == ImgFrame::Type::BGR888i || pixels.type == ImgFrame::Type::RGB888i) {
-        bgr = plane(height, width, CV_8UC3, firstOffset, rowStride);
-        if(pixels.type == ImgFrame::Type::RGB888i) cv::cvtColor(bgr, bgr, cv::COLOR_RGB2BGR);
-        bgrToPlanes(bgr, pixels.fullRange, y, u, v);
-    } else if(pixels.type == ImgFrame::Type::YUV420p) {
-        const auto chromaStride = (rowStride + 1) / 2;
-        const auto secondOffset = explicitOffsets ? static_cast<std::size_t>(pixels.fb.p2Offset) : rowStride * height;
-        const auto thirdOffset = explicitOffsets ? static_cast<std::size_t>(pixels.fb.p3Offset) : secondOffset + chromaStride * chromaHeight;
-        y = plane(height, width, CV_8UC1, firstOffset, rowStride);
-        u = plane(chromaHeight, chromaWidth, CV_8UC1, secondOffset, chromaStride);
-        v = plane(chromaHeight, chromaWidth, CV_8UC1, thirdOffset, chromaStride);
-    } else if(pixels.type == ImgFrame::Type::NV12) {
-        const auto secondOffset = explicitOffsets ? static_cast<std::size_t>(pixels.fb.p2Offset) : rowStride * height;
-        y = plane(height, width, CV_8UC1, firstOffset, rowStride);
-        const auto uv = plane(chromaHeight, chromaWidth, CV_8UC2, secondOffset, rowStride);
-        std::vector<cv::Mat> planes;
-        cv::split(uv, planes);
-        u = planes[0];
-        v = planes[1];
-    } else {
-        fail(std::string("ReplayVideo output type is not supported: ") + frameTypeName(pixels.type));
-    }
-    if(width != outW || height != outH) {
-        y = resizeMat(y, outW, outH);
-        u = resizeMat(u, outW / 2, outH / 2);
-        v = resizeMat(v, outW / 2, outH / 2);
-    }
-    DecodedPixels out;
-    out.fullRange = pixels.fullRange;
-    out.width = outW;
-    out.height = outH;
-    out.type = outType;
-    if(outType == ImgFrame::Type::GRAY8 || outType == ImgFrame::Type::RAW8 || outType == ImgFrame::Type::YUV420p || outType == ImgFrame::Type::NV12) {
-        packYuv(out, y, u, v, outType);
-        return out;
-    }
-    if(outType == ImgFrame::Type::RGB888p || outType == ImgFrame::Type::BGR888p) {
-        const int area = outW * outH;
-        out.data.resize(static_cast<std::size_t>(area) * 3);
-        for(int row = 0; row < outH; row++) {
-            for(int col = 0; col < outW; col++) {
-                const int uvRow = row / 2;
-                const int uvCol = col / 2;
-                int r = 0;
-                int g = 0;
-                int b = 0;
-                yuvToRgb(y.at<std::uint8_t>(row, col), u.at<std::uint8_t>(uvRow, uvCol), v.at<std::uint8_t>(uvRow, uvCol), r, g, b);
-                const auto pixel = static_cast<std::size_t>(row * outW + col);
-                if(outType == ImgFrame::Type::BGR888p) {
-                    out.data[pixel] = static_cast<std::uint8_t>(b);
-                    out.data[static_cast<std::size_t>(area) + pixel] = static_cast<std::uint8_t>(g);
-                    out.data[static_cast<std::size_t>(area) * 2 + pixel] = static_cast<std::uint8_t>(r);
-                } else {
-                    out.data[pixel] = static_cast<std::uint8_t>(r);
-                    out.data[static_cast<std::size_t>(area) + pixel] = static_cast<std::uint8_t>(g);
-                    out.data[static_cast<std::size_t>(area) * 2 + pixel] = static_cast<std::uint8_t>(b);
-                }
-            }
-        }
-        return out;
-    }
-    if(outType != ImgFrame::Type::RGB888i && outType != ImgFrame::Type::BGR888i) {
-        fail(std::string("ReplayVideo output type is not supported: ") + frameTypeName(outType));
-    }
-    out.data.resize(static_cast<std::size_t>(outW * outH * 3));
-    for(int row = 0; row < outH; row++) {
-        for(int col = 0; col < outW; col++) {
-            const int uvRow = row / 2;
-            const int uvCol = col / 2;
-            int r = 0;
-            int g = 0;
-            int b = 0;
-            yuvToRgb(y.at<std::uint8_t>(row, col), u.at<std::uint8_t>(uvRow, uvCol), v.at<std::uint8_t>(uvRow, uvCol), r, g, b);
-            const auto offset = static_cast<std::size_t>((row * outW + col) * 3);
-            if(outType == ImgFrame::Type::BGR888i) {
-                out.data[offset] = static_cast<std::uint8_t>(b);
-                out.data[offset + 1] = static_cast<std::uint8_t>(g);
-                out.data[offset + 2] = static_cast<std::uint8_t>(r);
-            } else {
-                out.data[offset] = static_cast<std::uint8_t>(r);
-                out.data[offset + 1] = static_cast<std::uint8_t>(g);
-                out.data[offset + 2] = static_cast<std::uint8_t>(b);
-            }
-        }
-    }
-    return out;
-}
+    if(!isReplayOutType(outType)) fail(std::string("ReplayVideo output type is not supported: ") + frameTypeName(outType));
 
-std::shared_ptr<ImgFrame> pixelsToFrame(const DecodedPixels& pixels) {
-    auto frame = std::make_shared<ImgFrame>();
-    frame->setType(pixels.type);
-    frame->setWidth(static_cast<unsigned int>(pixels.width));
-    frame->setHeight(static_cast<unsigned int>(pixels.height));
-    frame->fb = pixels.fb;
-    frame->sourceFb = pixels.sourceFb;
-    frame->cam = pixels.cam;
-    frame->instanceNum = pixels.instanceNum;
-    frame->category = pixels.category;
-    frame->transformation = pixels.transformation;
-    if(pixels.passthrough) {
-        frame->setData(pixels.data);
-        return frame;
-    }
-    const unsigned int width = static_cast<unsigned int>(pixels.width);
-    const unsigned int height = static_cast<unsigned int>(pixels.height);
-    const unsigned int ySize = width * height;
-    frame->fb.type = pixels.type;
-    frame->fb.width = width;
-    frame->fb.height = height;
-    frame->sourceFb.type = pixels.type;
-    frame->sourceFb.width = width;
-    frame->sourceFb.height = height;
-    if(pixels.type == ImgFrame::Type::GRAY8 || pixels.type == ImgFrame::Type::RAW8) {
-        frame->fb.stride = width;
-        frame->fb.bytesPP = 1;
-        frame->fb.p1Offset = 0;
-        frame->fb.p2Offset = 0;
-        frame->fb.p3Offset = 0;
-    } else if(pixels.type == ImgFrame::Type::RGB888p || pixels.type == ImgFrame::Type::BGR888p) {
-        frame->fb.stride = width;
-        frame->fb.bytesPP = 1;
-        frame->fb.p1Offset = 0;
-        frame->fb.p2Offset = ySize;
-        frame->fb.p3Offset = ySize * 2;
-    } else if(pixels.type == ImgFrame::Type::YUV420p) {
-        frame->fb.stride = width;
-        frame->fb.bytesPP = 1;
-        frame->fb.p1Offset = 0;
-        frame->fb.p2Offset = ySize;
-        frame->fb.p3Offset = ySize + ySize / 4;
-    } else if(pixels.type == ImgFrame::Type::NV12) {
-        frame->fb.stride = width;
-        frame->fb.bytesPP = 1;
-        frame->fb.p1Offset = 0;
-        frame->fb.p2Offset = ySize;
-        frame->fb.p3Offset = ySize;
-    } else {
-        frame->fb.stride = width * 3;
-        frame->fb.bytesPP = 3;
-        frame->fb.p1Offset = 0;
-        frame->fb.p2Offset = 0;
-        frame->fb.p3Offset = 0;
-    }
-    frame->sourceFb = frame->fb;
-    frame->setData(pixels.data);
-    if(pixels.transformation.getSize().first == 0) frame->transformation = ImgTransformation(width, height);
-    return frame;
+    const bool same = frame->getType() == outType && width == outW && height == outH;
+    if(same && canonicalLayout(*frame)) return frame;
+    auto tight = canonicalLayout(*frame) ? frame : repack(*frame);
+    if(same) return tight;
+
+    if(isLuma(tight->getType()) && isLuma(outType)) return convertLuma(*tight, outType, outW, outH);
+    return convertColor(*tight, outType, outW, outH);
 }
 
 }  // namespace replay
