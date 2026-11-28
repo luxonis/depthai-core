@@ -23,6 +23,8 @@ class LuxonisSidechannel {
         lux_sc_sensor_get_error_gpio_cb_t sensor_get_error_gpio;
         lux_sc_sensor_err_cb_add_t sensor_err_cb_add;
         lux_sc_sensor_err_cb_rm_t sensor_err_cb_rm;
+        // ISP brightness -10..10; NULL with a camera HAL that does not implement it.
+        lux_sc_camera_brightness_set_cb_t camera_brightness_set;
     };
 
     operations ops{};

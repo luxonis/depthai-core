@@ -1293,6 +1293,16 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                         auto res = curSettingsNext.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.contrast.level"), &contrast, 1);
                         DAI_CHECK_IN(res == 0);
                     } break;
+                    case dai::CameraControl::Command::BRIGHTNESS: {
+                        // Range: -10 - 10 Default: 0. The camera HAL clamps it and applies it to the ISP output gamma curve
+                        auto brightnessSet = LuxonisSidechannel::getInstance().ops.camera_brightness_set;
+                        if(brightnessSet) {
+                            brightnessSet(cameraId, control.brightness);
+                        } else if(!warnedBrightnessUnsupported) {
+                            warnedBrightnessUnsupported = true;
+                            logger->warn("Camera[{}] brightness is not supported by this OS version", cameraId);
+                        }
+                    } break;
                     case dai::CameraControl::Command::AF_TRIGGER: {
                         logger->info("Camera[{}] AF trigger", cameraId);
                         const uint8_t afTrigger = ANDROID_CONTROL_AF_TRIGGER_START;
