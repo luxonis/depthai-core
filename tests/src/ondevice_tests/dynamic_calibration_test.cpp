@@ -478,9 +478,11 @@ TEST_CASE("DynamicCalibration: StopCalibration halts further results") {
     REQUIRE(dynCalib);
 
     auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
+    auto metricsOutput = dynCalib->metricsOutput.createOutputQueue();
     auto commandInput = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
 
-    device->setCalibration(device->getCalibration());
+    auto calibration = device->getCalibration();
+    device->setCalibration(calibration);
 
     pipeline.start();
 
@@ -488,11 +490,21 @@ TEST_CASE("DynamicCalibration: StopCalibration halts further results") {
 
     auto first = calibrationOutput->get<dai::DynamicCalibrationResult>();
     REQUIRE(first != nullptr);
+    while(calibrationOutput->tryGet<dai::DynamicCalibrationResult>() != nullptr) {
+    }
 
-    // Stop
+    // The node reads one command per cycle: the metrics come after the Stop is done, and the cycle in progress can still send one result.
     commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StopCalibration{}));
-
-    (void)calibrationOutput->tryGet<dai::DynamicCalibrationResult>();  // drain in-flight if any
+    commandInput->send(dai::DynamicCalibrationControl::computeCalibrationMetrics(calibration));
+    bool metricsTimedOut = true;
+    auto metrics = metricsOutput->get<dai::CalibrationMetrics>(30s, metricsTimedOut);
+    REQUIRE_FALSE(metricsTimedOut);
+    REQUIRE(metrics != nullptr);
+    int resultsAfterStop = 0;
+    while(calibrationOutput->tryGet<dai::DynamicCalibrationResult>() != nullptr) {
+        ++resultsAfterStop;
+    }
+    REQUIRE(resultsAfterStop <= 1);
 
     std::this_thread::sleep_for(4s);
     auto shouldBeNull = calibrationOutput->tryGet<dai::DynamicCalibrationResult>();
