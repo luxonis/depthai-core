@@ -2464,16 +2464,39 @@ void PipelineImpl::stop() {
         }
     }
 
+    // The user's max size stays. One slot releases a status send already blocked in push.
+    // The second releases the final STOPPED or ERROR from onPipelineStop(). connectedInputs
+    // includes a Node::Input linked to status, not only queues from getQueueConnections().
+    constexpr unsigned statusOverflowSends = 2;
+    for(const auto& node : getAllNodes()) {
+        const auto record = std::dynamic_pointer_cast<node::RecordVideo>(node);
+        if(record == nullptr || !record->runOnHost()) continue;
+        for(MessageQueue* statusQueue : record->status.connectedInputs) {
+            if(statusQueue == nullptr || !statusQueue->getBlocking()) continue;
+            for(unsigned slot = 0; slot < statusOverflowSends; ++slot) {
+                statusQueue->allowOneOverflow();
+            }
+        }
+    }
+
     // Record threads close files and publish the final status before output queues close.
     waitForRecordNodes();
+    for(const auto& node : getAllNodes()) {
+        const auto record = std::dynamic_pointer_cast<node::RecordVideo>(node);
+        if(record == nullptr || !record->runOnHost()) continue;
+        for(MessageQueue* statusQueue : record->status.connectedInputs) {
+            if(statusQueue == nullptr) continue;
+            statusQueue->clearOverflow();
+        }
+    }
     utility::PipelineImplHelper::packHolisticRecording(this);
-    // Replay threads release cache holds after they leave run().
-    waitForReplayNodes();
 
-    // Close all the output queues
     for(auto& queue : outputQueues) {
         queue->close();
     }
+
+    // Replay threads release cache holds after they leave run().
+    waitForReplayNodes();
 
     // Close the task queue
     tasks.destruct();

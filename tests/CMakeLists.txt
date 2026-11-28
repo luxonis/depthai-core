@@ -582,6 +582,9 @@ dai_set_test_labels(depth_unit_test onhost ci)
 dai_add_test(message_queue_test src/onhost_tests/message_queue_test.cpp)
 dai_set_test_labels(message_queue_test onhost ci)
 
+dai_add_test(pipeline_stop_full_queue_test src/onhost_tests/pipeline/pipeline_stop_full_queue_test.cpp)
+dai_set_test_labels(pipeline_stop_full_queue_test onhost ci)
+
 # StreamMessageParser tests
 dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_test.cpp)
 # The allocator test uses XLink's private headers, including platform compatibility headers.
