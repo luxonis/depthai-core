@@ -32,7 +32,6 @@ namespace {
 
 bool isDsxSizeSupported(int inputWidth, int inputHeight, int outputWidth, int outputHeight) {
     const auto supportedAxis = [](std::int64_t input, std::int64_t output) {
-        // DSX accepts identity or a reduction between 1.25x and 4x.
         return input > 0 && output > 0 && (input == output || (input * 4 >= output * 5 && input <= output * 4));
     };
     return supportedAxis(inputWidth, outputWidth) && supportedAxis(inputHeight, outputHeight);
@@ -223,7 +222,6 @@ void ImageAlign::extractCalibrationData(int depthWidth, int depthHeight) {
     cv_newR.copyTo(cv_combinedExtrinsics(cv::Rect(0, 0, 3, 3)));
     cv_newT.copyTo(cv_combinedExtrinsics(cv::Rect(3, 0, 1, 3)));
 
-    // Rotate the depth to the RGB frame
     cv::Mat cv_R_back = cv_R2.t();
 
     cv_meshSize = cv::Size(alignWidth, alignHeight);
@@ -363,18 +361,7 @@ void ImageAlign::initialize(const std::shared_ptr<ImgFrame>& inputImg,
 }
 
 void ImageAlign::buildStage1() {
-    // This warms up the dsp so it works afterwards when called.
-    // Without this it fails in some cases with:
-    // Remote_session_control failed
-    // as it has some race conditions with some unknown stuff.
-    // Main suspects are the hardware accelerator and fastCV. fastCV and the accelerator already had a race condition,
-    // where fastCV had to be configured before the accelerator or the accelerator init would fail.
-    //
-    // THEORY:
-    // As the accelerator init also uses CDSP this is probably the same s**t.
-    // fastCV maybe reconfigures / overrides some global CDSP state
-    // and that doesn't play nice with other CDSP stuff.
-    dai::device::openDspSession(dai_device_dsp_open_align, "dai_device_dsp_open_align");
+    dai::device::openDspSession(dai_device_dsp_open_align, "dai_device_dsp_open_align");  // Warms up the DSP: else later calls can fail (CDSP race)
 }
 
 void ImageAlign::run() {
@@ -516,7 +503,6 @@ void ImageAlign::run() {
             t1 = steady_clock::now();
         }
 
-        // warp1
         auto depthImgRectified = up_plgWarpPool1->get();
 
         depthImgRectified->setMetadata(*inputImg);
@@ -607,7 +593,6 @@ void ImageAlign::run() {
             t1 = steady_clock::now();
         }
 
-        // warp2
         auto alignedImg = up_plgWarpPool2->get();
         if(PRINT_DEBUG) {
             t2 = steady_clock::now();
@@ -616,7 +601,6 @@ void ImageAlign::run() {
             t1 = steady_clock::now();
         }
 
-        // manually set metadata as the true metadata is a combination of inputImg and inputAlignToImg
         alignedImg->cam = inputImg->cam;
         alignedImg->category = inputImg->category;
         alignedImg->event = inputImg->event;

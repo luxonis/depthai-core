@@ -15,7 +15,6 @@ void EncodedFrame::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& 
     datatype = DatatypeEnum::EncodedFrame;
 }
 
-// getters
 unsigned int EncodedFrame::getInstanceNum() const {
     return instanceNum;
 }
@@ -154,8 +153,7 @@ ImgFrame EncodedFrame::getImgFrameMeta() const {
     frame.setHeight(height);
     frame.setType(ImgFrame::Type::BITSTREAM);
     frame.setSourceSize(transformation.getSourceSize());
-    // Important to set the transformation last as setting the source size resets it
-    frame.transformation = transformation;
+    frame.transformation = transformation;  // Set last: setSourceSize() resets the transformation
     frame.setBufferMetadataFrom(this);
     return frame;
 }

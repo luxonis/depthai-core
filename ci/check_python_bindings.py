@@ -31,10 +31,7 @@ def walk(node):
 
 
 def parse(source, keep_conditionals=False):
-    # Headers need conditional structure to preserve branch-specific access.
-    # Binding expression chains are inspected across all branches together.
-    # Preserve positions so diagnostics still point to the original source.
-    directive = r"^[ \t]*#"
+    directive = r"^[ \t]*#"  # Masked text becomes spaces to keep positions; headers keep #if for branch access
     if keep_conditionals:
         directive += r"(?!\s*(?:if|ifdef|ifndef|elif|else|endif)\b)"
     pattern = (
@@ -42,8 +39,7 @@ def parse(source, keep_conditionals=False):
         r'|//[^\n]*|/\*[\s\S]*?\*/|\[\[[\s\S]*?\]\]'
         r'|' + directive + r'(?:[^\n]*\\\n)*[^\n]*'
         r'|\bDEPTHAI_(?:BEGIN|END)_SUPPRESS_DEPRECATION_WARNING\b'
-        # Explicit instantiation declarations declare no API, and tree-sitter-cpp cannot parse them.
-        r'|\bextern\s+template\b[^;]*;'
+        r'|\bextern\s+template\b[^;]*;'  # Declares no API, and tree-sitter-cpp cannot parse it
     )
     source = re.sub(pattern, lambda m: m[0] if m[0][0] in "\"'" else re.sub(r"[^\n]", " ", m[0]), source, flags=re.M)
     return PARSER.parse(source.encode()).root_node
@@ -53,7 +49,6 @@ def function_signature(function):
     parameters = function.child_by_field_name("parameters")
     types = []
     for param in parameters.named_children:
-        # Parameter names/defaults are not overload identities.
         end = param.child_by_field_name("default_value")
         value = param.text.decode() if end is None else param.text[:end.start_byte - param.start_byte].decode().rstrip(" =")
         declarator = param.child_by_field_name("declarator")
@@ -97,8 +92,6 @@ def public_api(source, path):
         if node.type == "access_specifier":
             return node.text == b"public"
         if node.type in ("preproc_if", "preproc_ifdef", "preproc_elif", "preproc_else"):
-            # Each alternative starts with the incoming access, not its sibling's
-            # final access. After #endif, retain visibility in any possible branch.
             alternative = node.child_by_field_name("alternative")
             branch_access = access
             for child in node.named_children:
@@ -167,9 +160,7 @@ def public_api(source, path):
                     signature = ""
                 symbol = Symbol("::".join((*scope, name)), signature, path, node.start_point.row + 1)
                 symbols[symbol.key] = symbol
-            # Nested types occur inside field declarations; never inspect bodies,
-            # initializers, parameters or local variables as public declarations.
-            for child in node.named_children:
+            for child in node.named_children:  # Nested types occur inside field declarations; skip bodies, initializers
                 if child.type in ("class_specifier", "struct_specifier", "enum_specifier", "ERROR"):
                     visit(child, scope, access)
             return
@@ -205,7 +196,6 @@ def binding_evidence(source):
         def qualify(name):
             first, sep, rest = name.partition("::")
             seen = set()
-            # An alias can name another alias (using Command = DCC::Command), so expand until none is left.
             while first in aliases and first not in seen:
                 seen.add(first)
                 name = aliases[first] + (sep + rest if sep else "")
@@ -257,7 +247,6 @@ def binding_evidence(source):
                 continue
             first = args.named_children[0]
             constructor = re.match(r"(?:py|pybind11)::init(?:_alias)?[<(]", re.sub(r"\s+", "", first.text.decode()))
-            # Only inspect callables/values, never Python names, DOCs or default arguments.
             if constructor:
                 callbacks = args.named_children[:1]
             else:
@@ -274,8 +263,6 @@ def binding_evidence(source):
                         member = value.rsplit("::", 1)[-1]
                         references = qualify(value)
                         for enum in owners:
-                            # Unscoped enumerators may also be named through the
-                            # enclosing namespace/class, or without qualification.
                             enclosing = enum.rpartition("::")[0]
                             unscoped = enclosing + "::" + member if enclosing else member
                             if callback.type == "identifier" or {enum + "::" + member, unscoped} & references:
@@ -302,8 +289,7 @@ def binding_evidence(source):
                         receiver = ref.child_by_field_name("argument")
                         if receiver.type != "identifier" or receiver.text != names[0]:
                             continue
-                        # A nested lambda may shadow the instance parameter.
-                        scope = ref.parent
+                        scope = ref.parent  # A nested lambda may shadow the instance parameter
                         while scope is not None and scope.type != "lambda_expression":
                             scope = scope.parent
                         if scope == callback:
@@ -314,7 +300,6 @@ def binding_evidence(source):
                         if ref.type in ("identifier", "qualified_identifier") and ref.parent.type == "pointer_expression":
                             targets.update(qualify(re.sub(r"\s+", "", ref.text.decode())))
 
-                # Explicit overload casts and constructors give usable C++ parameter types.
                 callee = callback.child_by_field_name("function")
                 if callee is not None and re.match(
                     r"(?:py|pybind11)::(?:overload_cast|init|init_alias)<", re.sub(r"\s+", "", callee.text.decode())
@@ -328,9 +313,7 @@ def binding_evidence(source):
                     ):
                         signature += "const"
                 elif callee is not None and callee.type == "template_function" and callee.child_by_field_name("name").text == b"static_cast":
-                    # Tree-sitter misparses member-pointer types inside template
-                    # arguments. Reparse the exact type as a named declaration.
-                    cast_type = callee.child_by_field_name("arguments").text[1:-1].decode()
+                    cast_type = callee.child_by_field_name("arguments").text[1:-1].decode()  # Tree-sitter misparses it
                     declaration, replaced = re.subn(r"\(\s*(?:[^()]*?::\s*)?\*\s*\)", " _binding_signature", cast_type, count=1)
                     signature = ""  # An unresolved explicit cast cannot cover an arbitrary overload.
                     if replaced:
@@ -340,8 +323,7 @@ def binding_evidence(source):
                                 if function.type == "function_declarator" and function.child_by_field_name("declarator").text == b"_binding_signature":
                                     signature = function_signature(function)
                                     break
-                # Aliases/docstrings for one callable must not count as extra overloads.
-                fingerprint = re.sub(r"\s+", "", callback.text.decode())
+                fingerprint = re.sub(r"\s+", "", callback.text.decode())  # Aliases of one callable are not overloads
                 for name in targets:
                     evidence[name].add((signature, fingerprint))
     return evidence

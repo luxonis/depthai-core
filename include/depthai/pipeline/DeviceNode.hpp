@@ -21,11 +21,9 @@ class DeviceNode : public ThreadedNode {
    public:
     DeviceNode() = delete;
     virtual ~DeviceNode() = default;
-    // virtual 'run' method
     virtual void run() override;
 
     bool runOnHost() const override {
-        // By default, don't allow running on host, but can be overridden
         return false;
     }
 
@@ -38,7 +36,6 @@ class DeviceNode : public ThreadedNode {
 
     std::unique_ptr<Properties> propertiesHolder;
 
-    // Get properties
     virtual Properties& getProperties();
 
     void setLogLevel(dai::LogLevel level) override;
@@ -66,7 +63,6 @@ class DeviceNode : public ThreadedNode {
     void setDevice(const std::shared_ptr<Device>& device);
 };
 
-// Node CRTP class
 template <typename Base, typename Derived, typename Props, bool BuiltInNode = true>
 class DeviceNodeCRTP : public Base {
    public:
@@ -84,11 +80,6 @@ class DeviceNodeCRTP : public Base {
         return BuiltInNode;
     }
 
-    // std::unique_ptr<Node> clone() const override {
-    //     return std::make_unique<Derived>(static_cast<const Derived&>(*this));
-    // };
-
-    // No public constructor, only a factory function.
     template <typename... Args>
     [[nodiscard]] static std::shared_ptr<Derived> create(Args&&... args) {
         auto nodePtr = std::shared_ptr<Derived>(new Derived(std::forward<Args>(args)...));
@@ -96,7 +87,6 @@ class DeviceNodeCRTP : public Base {
         return nodePtr;
     }
 
-    // No public constructor, only a factory function.
     template <typename... Args>
     [[nodiscard]] static std::shared_ptr<Derived> create(std::shared_ptr<Device> device, Args&&... args) {
         auto nodePtr = std::shared_ptr<Derived>(new Derived(device, std::forward<Args>(args)...));

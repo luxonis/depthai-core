@@ -14,13 +14,10 @@ class Subnode {
    public:
     Subnode(Node& parent, std::string alias) {
         if(!parent.configureMode) {
-            // Create node as well
             node = std::make_shared<T>();
             node->setAlias(alias);
 
-            // If node is DeviceNode, copy device from parent
             if(auto deviceNode = std::dynamic_pointer_cast<DeviceNode>(node); deviceNode != nullptr) {
-                // Check if the parent is DeviceNode
                 if(dynamic_cast<DeviceNode*>(&parent) == nullptr) {
                     if(std::dynamic_pointer_cast<HostRunnable>(node) == nullptr) {
                         throw std::runtime_error("The parent node of a non HostRunnable DeviceNode must be a DeviceNode");
@@ -30,15 +27,11 @@ class Subnode {
                 }
             }
 
-            // Use Node::add (not raw nodeMap.push_back) so PipelineImpl::adoptSubtree runs when the
-            // parent is already in a pipeline; otherwise lazy subnodes never get parent weak_ptr.
-            parent.add(node);
+            parent.add(node);  // Node::add, not nodeMap.push_back: it runs adoptSubtree, else lazy subnodes get no parent
 
-            // Now that node is created, call buildInternal
             node->buildInternal();
         }
 
-        // Add reference
         parent.nodeRefs.push_back(&node);
     }
     T& operator*() const noexcept {

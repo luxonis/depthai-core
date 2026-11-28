@@ -81,11 +81,9 @@ void bind_beta_multidevicecalibrationresult(pybind11::module& m, void* pCallstac
 #endif  // DEPTHAI_HAVE_BETA
 
 void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
-    // Bind common datatypebindings
     callstack.push_front(DatatypeBindings::bind);
 
-    // Bind all datatypes (order matters)
-    callstack.push_front(bind_adatatype);
+    callstack.push_front(bind_adatatype);  // Order matters
     callstack.push_front(bind_buffer);
     callstack.push_front(bind_protoserializable);
     callstack.push_front(bind_transformable);
@@ -168,18 +166,10 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     py::enum_<DatatypeEnum> datatypeEnum(m, "DatatypeEnum", DOC(dai, DatatypeEnum));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     m.def("isDatatypeSubclassOf", &isDatatypeSubclassOf);
 

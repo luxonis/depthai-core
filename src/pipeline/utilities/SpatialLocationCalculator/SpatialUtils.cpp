@@ -71,7 +71,6 @@ float DepthStats::calculateDepth(SpatialLocationCalculatorAlgorithm algo) {
             std::size_t valueRange = static_cast<std::size_t>(maxVal - minVal) + 1;
 
             if(valueRange <= MAX_HISTOGRAM_RANGE) {
-                // Small range: build a dense histogram for cache-friendly mode lookup
                 std::vector<uint32_t> histogram(valueRange, 0);
                 for(const auto& px : validPixels) {
                     if(px < minVal || px > maxVal) {
@@ -324,8 +323,7 @@ dai::SpatialImgDetection computeSpatialDetection(const dai::ImgFrame& depthFrame
 
     const dai::RotatedRect detectionBBox = detection.getBoundingBox();
     dai::RotatedRect denormalizedRect = scaleRect(detectionBBox, config.bBoxScaleFactor);
-    // dai::Rect(RotatedRect) rotates normalized values; calculate the outer bounds in pixels of the detections frame.
-    const auto detectionsSize = detectionsTransformation.getSize();
+    const auto detectionsSize = detectionsTransformation.getSize();  // Not dai::Rect(RotatedRect): it rotates normalized values
     const auto [roiXmin, roiYmin, roiXmax, roiYmax] = denormalizedRect.getOuterRectInFrame(detectionsSize.first, detectionsSize.second);
     boundingBoxMapping.roi = dai::Rect(roiXmin, roiYmin, roiXmax - roiXmin, roiYmax - roiYmin);
     if(!areAligned) denormalizedRect = detectionsTransformation.remapRectTo(*depthTransformation, denormalizedRect);
@@ -346,7 +344,6 @@ dai::SpatialImgDetection computeSpatialDetection(const dai::ImgFrame& depthFrame
         return maskSpan[maskIndex] == instanceIndex;
     };
 
-    // object depth
     std::uint32_t maxNumPixels = ((denormalizedRect.size.width * denormalizedRect.size.height) / (stepSize * stepSize));
     DepthStats depthStats(lowerThreshold, upperThreshold, maxNumPixels);
     populateDepthStats(depthStats, denormalizedRect, stepSize, depthWidth, depthFrame, usePixelSeg);

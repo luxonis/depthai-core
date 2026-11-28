@@ -117,7 +117,6 @@ CalibrationHandler::ExtrinsicGraphValidationResult CalibrationHandler::validateE
         std::vector<std::vector<float>> srcOriginMatrix = getExtrinsicsToOrigin(start, false, originCamera);
         originMap[start] = originCamera;
     }
-    // Now, check that all cameras have the same origin
     if(!originMap.empty()) {
         CameraBoardSocket expectedOrigin = originMap.begin()->second;
 
@@ -256,7 +255,6 @@ CalibrationHandler::CalibrationHandler(std::filesystem::path calibrationDataPath
 
     std::vector<float> calibrationBuff(versionSize / sizeof(float));
     file.read(reinterpret_cast<char*>(calibrationBuff.data()), fSize);
-    // std::vector<float> calibrationBuff(std::istreambuf_iterator<char>(file), {});
 
     eepromData.stereoRectificationData.rectifiedRotationLeft = matrixConv(calibrationBuff, 0);
     eepromData.stereoRectificationData.rectifiedRotationRight = matrixConv(calibrationBuff, 9);
@@ -333,7 +331,6 @@ bool CalibrationHandler::hasCalibrationData() const {
 }
 
 bool CalibrationHandler::hasCameraCalibration(CameraBoardSocket cameraId) const {
-    // Checks both that the device has a current calibration version and that data exists for this camera.
     return hasCalibrationData() && eepromData.cameraData.find(cameraId) != eepromData.cameraData.end();
 }
 
@@ -466,8 +463,6 @@ std::vector<float> CalibrationHandler::getDistortionCoefficients(CameraBoardSock
     validateIntrinsicsMatrix(cameraId);
 
     if(eepromData.cameraData.at(cameraId).cameraType == CameraModel::Fisheye) {
-        // in this case the camera model is Fisheye; we only want to return four floats.
-        // camera calibration is stored as 14 floats in eeprom, only return the first four.
         std::vector<float> ret(4);
         for(int i = 0; i < 4; i++) {
             ret[i] = eepromData.cameraData.at(cameraId).distortionCoeff[i];
@@ -475,7 +470,6 @@ std::vector<float> CalibrationHandler::getDistortionCoefficients(CameraBoardSock
         return ret;
     }
 
-    // in this case the camera model is Perspective, we want to return all 14
     return eepromData.cameraData.at(cameraId).distortionCoeff;
 }
 
@@ -485,7 +479,6 @@ float CalibrationHandler::getFov(CameraBoardSocket cameraId, bool useSpec) const
     if(useSpec) {
         return eepromData.cameraData.at(cameraId).specHfovDeg;
     }
-    // Calculate fov from intrinsics
     std::vector<std::vector<float>> intrinsics;
     int width, height;
     std::tie(intrinsics, width, height) = CalibrationHandler::getDefaultIntrinsics(cameraId);
@@ -519,14 +512,6 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
                                                                         CameraBoardSocket dstCamera,
                                                                         bool useSpecTranslation,
                                                                         LengthUnit unit) const {
-    /**
-     * 1. Check if both camera ID exists.
-     * 2. Check if the forward link exists from source and destination camera to origin camera.
-     * 3. Call computeExtrinsicMatrix to get the projection matrix from source -> origin camera.
-     * 4. Invert the matrix from destination -> origin camera.
-     * 5. Multiply the two matrices to get the projection matrix from source -> destination camera.
-     * 6. Return the projection matrix.
-     */
     if(!hasCameraCalibration(srcCamera)) {
         throw std::runtime_error("There is no Camera data available corresponding to the requested source cameraId");
     }
@@ -538,7 +523,6 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
     CameraBoardSocket originCamera1;
     CameraBoardSocket originCamera2;
 
-    // Get matrix from src to -1 camera and dst to -1 camera and set originCamera1 and originCamera2
     std::vector<std::vector<float>> srcOriginMatrix = getExtrinsicsToOrigin(srcCamera, useSpecTranslation, originCamera1);
     std::vector<std::vector<float>> dstOriginMatrix = getExtrinsicsToOrigin(dstCamera, useSpecTranslation, originCamera2);
 
@@ -546,10 +530,8 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
         throw std::runtime_error("Missing extrinsic link from source camera to to destination camera.");
     }
 
-    // Invert the matrix dstOriginMatrix
     invertSe3Matrix4x4InPlace(dstOriginMatrix);
 
-    // Get the matrix from src to dst camera
     extrinsics = matMul(dstOriginMatrix, srcOriginMatrix);
     scaleTranslationInPlace(extrinsics, unit);
     return extrinsics;
@@ -560,14 +542,12 @@ std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(Camera
                                                                           CameraBoardSocket& originSocket) const {
     std::vector<std::vector<float>> extrinsics;
 
-    // Check if the cameraId exists in the data
     auto cameraIt = eepromData.cameraData.find(cameraId);
     if(cameraIt == eepromData.cameraData.end()) {
         logger::error("Camera ID {} does not exist in the calibration data.", static_cast<int>(cameraId));
         throw std::runtime_error("Camera ID does not exist in the calibration data.");
     }
 
-    // Traverse to find the origin camera (the one that has toCameraSocket == AUTO/-1)
     CameraBoardSocket currentCameraId = cameraId;
     std::vector<CameraBoardSocket> path;  // To store the path of sockets
     path.push_back(currentCameraId);
@@ -581,7 +561,6 @@ std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(Camera
 
         CameraBoardSocket nextCameraSocket = currentIt->second.extrinsics.toCameraSocket;
 
-        // Prevent infinite loop in case of cyclic connections
         if(std::find(path.begin(), path.end(), nextCameraSocket) != path.end()) {
             throw std::runtime_error("Cyclic extrinsics detected in device calibration data.");
         }
@@ -590,17 +569,12 @@ std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(Camera
             break;
         }
 
-        // Move to the next camera in the chain
         currentCameraId = nextCameraSocket;
         path.push_back(currentCameraId);
     }
 
-    // Set the origin camera
     originSocket = currentCameraId;
 
-    // Now compute the extrinsic matrix from cameraId to the origin
-
-    // If the cameraId is the origin (no actual transformation needed), return identity matrix
     if(cameraId == currentCameraId) {
         extrinsics = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
     } else {
@@ -630,9 +604,8 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOriginExt
     const float mmToUnitScale = getDistanceUnitScale(unit, LengthUnit::MILLIMETER);
     const Extrinsics& housingExtrinsics = eepromData.housingExtrinsics;
 
-    originSocket = housingExtrinsics.toCameraSocket;
+    originSocket = housingExtrinsics.toCameraSocket;  // Also cast to HousingCoordinateSystem: both enums must keep the same order
 
-    // Convert CameraBoardSocket to HousingCoordinateSystem (they have the same enum order)
     HousingCoordinateSystem housingOrigin = static_cast<HousingCoordinateSystem>(static_cast<int32_t>(housingExtrinsics.toCameraSocket));
 
     auto housingRotation = housingExtrinsics.rotationMatrix;
@@ -641,56 +614,39 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOriginExt
     const auto housingSpecTranslationVector = housingExtrinsics.getTranslationVector(true, unit);
     auto housingSpecTranslation = Point3f(housingSpecTranslationVector[0], housingSpecTranslationVector[1], housingSpecTranslationVector[2]);
 
-    // ------------------------------------------------------------
-    // If using spec translation, try to get it from the database
-    // ------------------------------------------------------------
     if(useSpecTranslation) {
         if(const auto dbTranslation = lookupHousingEntry(eepromData.productName, housingOrigin)) {
-            // Get the translation from the database (in mm) and convert to cm.
-            // The database positions are in the housing frame, but the translation
-            // column of [R | t] must be in the destination (housing-origin) frame:
-            // t = -R * db / scale
-            std::vector<std::vector<float>> c = {
-                {-(*dbTranslation)[0] * mmToUnitScale}, {-(*dbTranslation)[1] * mmToUnitScale}, {-(*dbTranslation)[2] * mmToUnitScale}};
+            std::vector<std::vector<float>> c = {// db positions (mm) are in the housing frame; [R | t] needs t in the housing-origin frame: t = -R * db
+                                                 {-(*dbTranslation)[0] * mmToUnitScale},
+                                                 {-(*dbTranslation)[1] * mmToUnitScale},
+                                                 {-(*dbTranslation)[2] * mmToUnitScale}};
             auto rc = matMul(housingRotation, c);
             housingSpecTranslation = Point3f(rc[0][0], rc[1][0], rc[2][0]);
         }
     }
 
-    // Build 4x4 transform matrix from HousingOrigin to Housing
     std::vector<std::vector<float>> translationHousingToHousingOrigin(4, std::vector<float>(4, 0.0f));
 
     for(int r = 0; r < 3; ++r) {
-        // Copy rotation row
         for(int c = 0; c < 3; ++c) {
             translationHousingToHousingOrigin[r][c] = housingRotation[r][c];
         }
 
-        // Pick translation vector
         const auto& t = useSpecTranslation ? housingSpecTranslation : housingTranslation;
 
-        // Map row index -> x/y/z
         float tval = (r == 0 ? t.x : (r == 1 ? t.y : t.z));
         translationHousingToHousingOrigin[r][3] = tval;
     }
 
-    // Last row = [0 0 0 1]
     translationHousingToHousingOrigin[3][3] = 1.0f;
 
-    // ------------------------------------------------------------
-    // Get the requested specific housing coordinate system translation and subtract it
-    // ------------------------------------------------------------
     if(useSpecTranslation && housingCS != HousingCoordinateSystem::AUTO) {
-        if(const auto requestedDbTranslation = lookupHousingEntry(eepromData.productName, housingCS)) {
-            // All housing coordinate systems share the same orientation;
-            // only their origins differ. Build the pure-translation transform
-            // translationSpecificHousing_to_Housing from the database position.
+        if(const auto requestedDbTranslation = lookupHousingEntry(eepromData.productName, housingCS)) {  // Housing systems differ only in their origin
             std::vector<std::vector<float>> translationSpecificHousingToHousing = {{1.0f, 0.0f, 0.0f, (*requestedDbTranslation)[0] * mmToUnitScale},
                                                                                    {0.0f, 1.0f, 0.0f, (*requestedDbTranslation)[1] * mmToUnitScale},
                                                                                    {0.0f, 0.0f, 1.0f, (*requestedDbTranslation)[2] * mmToUnitScale},
                                                                                    {0.0f, 0.0f, 0.0f, 1.0f}};
 
-            // Compose: translationSpecificHousing→HousingOrigin = translationHousing→HousingOrigin * translationSpecificHousing→Housing
             translationHousingToHousingOrigin = matMul(translationHousingToHousingOrigin, translationSpecificHousingToHousing);
         }
     }
@@ -702,7 +658,6 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(Camera
                                                                           const HousingCoordinateSystem housingCS,
                                                                           bool useSpecTranslation,
                                                                           LengthUnit unit) const {
-    // Ensure we have calibration data for the requested source camera
     if(eepromData.cameraData.find(srcCamera) == eepromData.cameraData.end()) {
         throw std::runtime_error("There is no Camera data available corresponding to the requested source cameraId");
     }
@@ -713,48 +668,20 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(Camera
     CameraBoardSocket originCamera1;
     CameraBoardSocket originCamera2;
 
-    // ------------------------------------------------------------
-    // 1. Retrieve the following transformations:
-    //    cam_src           → origin
-    //    housing_origin    → origin
-    //    housing           → housing_origin
-    // These are provided by the calibration data.
-    // ------------------------------------------------------------
-
     std::vector<std::vector<float>> housingToHousingOrigin = getHousingToHousingOriginExtrinsics(housingCS, useSpecTranslation, housingOriginCamera);
 
     std::vector<std::vector<float>> housingOriginToOrigin = getExtrinsicsToOrigin(housingOriginCamera, useSpecTranslation, originCamera1);
 
     std::vector<std::vector<float>> camToOrigin = getExtrinsicsToOrigin(srcCamera, useSpecTranslation, originCamera2);
 
-    // The "origin" for both lookups must be the same camera
     if(originCamera1 != originCamera2) {
         throw std::runtime_error("Missing extrinsic link from source camera to destination camera.");
     }
 
-    // ------------------------------------------------------------
-    // 2. To combine cam_src → origin with origin → housing_origin,
-    //    we need the matrices:
-    //         origin → housing_origin
-    //         housing_origin → housing
-    //    But what we have:
-    //         housing_origin → origin
-    //         housing → housing_origin
-    //    So we invert that SE3 transform first.
-    // ------------------------------------------------------------
     invertSe3Matrix4x4InPlace(housingOriginToOrigin);   // now represents origin → housing_origin
     invertSe3Matrix4x4InPlace(housingToHousingOrigin);  // now represents housing_origin → housing
-    // ------------------------------------------------------------
-    // 3. Compose transformations:
-    //    cam_src → origin → housing_origin
-    // ------------------------------------------------------------
     camToHousingOrigin = matMul(housingOriginToOrigin, camToOrigin);
 
-    // ------------------------------------------------------------
-    // 4. And finally:
-    //    cam_src → housing_origin → housing
-    //    Which gives us: cam_src → housing
-    // ------------------------------------------------------------
     camToHousing = matMul(housingToHousingOrigin, camToHousingOrigin);
     scaleTranslationInPlace(camToHousing, unit);
 
@@ -994,7 +921,6 @@ void CalibrationHandler::setBoardInfo(const std::string& productName,
         logger::warn("batchName parameter not supported anymore");
     }
 
-    // Bump version to V7
     eepromData.version = 7;
 }
 
@@ -1022,21 +948,18 @@ void CalibrationHandler::setBoardInfo(const std::string& deviceName,
         logger::warn("batchName parameter not supported anymore");
     }
 
-    // Bump version to V7
     eepromData.version = 7;
 }
 
 void CalibrationHandler::setDeviceName(const std::string& deviceName) {
     eepromData.deviceName = deviceName;
 
-    // Bump version to V7
     eepromData.version = 7;
 }
 
 void CalibrationHandler::setProductName(const std::string& productName) {
     eepromData.productName = productName;
 
-    // Bump version to V7
     eepromData.version = 7;
 }
 
@@ -1086,10 +1009,7 @@ void CalibrationHandler::setDistortionCoefficients(CameraBoardSocket cameraId, s
 
     if(num != 14) {
         while(distortionCoefficients.size() != num) {
-            // Pad to 14 parameters.
-            // On the device it's static PoD, we always want it to be 14 parameters - for Perspective camera model, we return all 14; for Fisheye camera model,
-            // we only return the first four.
-            distortionCoefficients.push_back(0.0f);
+            distortionCoefficients.push_back(0.0f);  // The device struct is a static PoD of 14 coefficients
         }
     }
 

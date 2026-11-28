@@ -8,10 +8,8 @@
 #include <array>
 #include <vector>
 
-// Libraries
 #include "hedley/hedley.h"
 
-// depthai/
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
@@ -50,7 +48,6 @@
 #include "depthai/common/WorldConstraints.hpp"
 #include "depthai/common/YoloDecodingFamily.hpp"
 
-// depthai
 #include "depthai/common/CameraExposureOffset.hpp"
 #include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/StereoPair.hpp"
@@ -136,19 +133,11 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<SpatialKeypoint> spatialKeypoint(m, "SpatialKeypoint", DOC(dai, SpatialKeypoint));
     py::class_<SpatialKeypointsList> spatialKeypointsList(m, "SpatialKeypointsList", DOC(dai, SpatialKeypointsList));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
     m.attr("ConnectionInterface") = connectionInterface;
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     keypoint.def(py::init<>())
         .def(py::init<Point3f, float, uint32_t, std::string>(),
@@ -466,9 +455,6 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("height", &Size2f::height)
         .def("isNormalized", &Size2f::isNormalized);
 
-    // CameraBoardSocket enum bindings
-
-    // Deprecated
     HEDLEY_DIAGNOSTIC_PUSH
     HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
     cameraBoardSocket.value("CAM_I", dai::CameraBoardSocket::CAM_I)
@@ -490,7 +476,6 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("RIGHT", CameraBoardSocket::RIGHT, "**Deprecated:** Use CAM_C or address camera by name instead")
         .value("CENTER", CameraBoardSocket::CENTER, "**Deprecated:** Use CAM_A or address camera by name instead")
 
-        // Deprecated overridden
         .def_property_readonly_static("RGB",
                                       [](py::object) {
                                           PyErr_WarnEx(PyExc_DeprecationWarning, "RGB is deprecated, use CAM_A or address camera by name instead.", 1);
@@ -512,7 +497,6 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         });
     HEDLEY_DIAGNOSTIC_POP
 
-    // HousingCoordinateSystem enum bindings
     housingCoordinateSystem.value("AUTO", dai::HousingCoordinateSystem::AUTO)
         .value("CAM_A", HousingCoordinateSystem::CAM_A)
         .value("CAM_B", HousingCoordinateSystem::CAM_B)
@@ -546,27 +530,22 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("VESA_J", HousingCoordinateSystem::VESA_J)
         .value("IMU", HousingCoordinateSystem::IMU);
 
-    // ExternalFrameSyncRole enum bindings
     externalFrameSyncRole.value("AUTO_DETECT", ExternalFrameSyncRole::AUTO_DETECT)
         .value("MASTER", ExternalFrameSyncRole::MASTER)
         .value("SLAVE", ExternalFrameSyncRole::SLAVE);
 
-    // CameraSensorType enum bindings
     cameraSensorType.value("AUTO", dai::CameraSensorType::AUTO)
         .value("COLOR", CameraSensorType::COLOR)
         .value("MONO", CameraSensorType::MONO)
         .value("TOF", CameraSensorType::TOF)
         .value("THERMAL", CameraSensorType::THERMAL);
-    // ConnectionInterface enum bindings
     connectionInterface.value("USB", ConnectionInterface::USB).value("ETHERNET", ConnectionInterface::ETHERNET).value("WIFI", ConnectionInterface::WIFI);
-    // CameraImageOrientation enum bindings
     cameraImageOrientation.value("AUTO", CameraImageOrientation::AUTO)
         .value("NORMAL", CameraImageOrientation::NORMAL)
         .value("HORIZONTAL_MIRROR", CameraImageOrientation::HORIZONTAL_MIRROR)
         .value("VERTICAL_FLIP", CameraImageOrientation::VERTICAL_FLIP)
         .value("ROTATE_180_DEG", CameraImageOrientation::ROTATE_180_DEG);
 
-    // CameraFeatures
     cameraFeatures.def(py::init<>())
         .def_readwrite("additionalNames", &dai::CameraFeatures::additionalNames, DOC(dai, CameraFeatures, additionalNames))
         .def_readwrite("socket", &CameraFeatures::socket)
@@ -587,7 +566,6 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         });
     ;
 
-    // CameraSensorConfig
     cameraSensorConfig.def(py::init<>())
         .def_readwrite("hdr", &dai::CameraSensorConfig::hdr, DOC(dai, CameraSensorConfig, hdr))
         .def_readwrite("hfr", &dai::CameraSensorConfig::hfr, DOC(dai, CameraSensorConfig, hfr))
@@ -603,13 +581,11 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
             return stream.str();
         });
 
-    // MemoryInfo
     memoryInfo.def(py::init<>())
         .def_readwrite("remaining", &MemoryInfo::remaining)
         .def_readwrite("used", &MemoryInfo::used)
         .def_readwrite("total", &MemoryInfo::total);
 
-    // ChipTemperature
     chipTemperature.def(py::init<>())
         .def_readwrite("css", &ChipTemperature::css)
         .def_readwrite("mss", &ChipTemperature::mss)
@@ -617,7 +593,6 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("dss", &ChipTemperature::dss)
         .def_readwrite("average", &ChipTemperature::average);
 
-    // ChipTemperatureRVC4
     chipTemperatureRVC4.def(py::init<>())
         .def_readwrite("cpuss", &ChipTemperatureRVC4::cpuss)
         .def_readwrite("gpuss", &ChipTemperatureRVC4::gpuss)
@@ -627,23 +602,19 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("camera", &ChipTemperatureRVC4::camera)
         .def_readwrite("average", &ChipTemperatureRVC4::average);
 
-    // CpuUsage
     cpuUsage.def(py::init<>()).def_readwrite("average", &CpuUsage::average).def_readwrite("msTime", &CpuUsage::msTime);
-    // CameraModel enum bindings
     cameraModel.value("Perspective", CameraModel::Perspective)
         .value("Fisheye", CameraModel::Fisheye)
         .value("Equirectangular", CameraModel::Equirectangular)
         .value("RadialDivision", CameraModel::RadialDivision)
         .value("Cylindrical", CameraModel::Cylindrical);
 
-    // StereoRectification
     stereoRectification.def(py::init<>())
         .def_readwrite("rectifiedRotationLeft", &StereoRectification::rectifiedRotationLeft)
         .def_readwrite("rectifiedRotationRight", &StereoRectification::rectifiedRotationRight)
         .def_readwrite("leftCameraSocket", &StereoRectification::leftCameraSocket)
         .def_readwrite("rightCameraSocket", &StereoRectification::rightCameraSocket);
 
-    // Extrinsics
     extrinsics.def(py::init<>())
         .def(py::init<std::vector<std::vector<float>>, Point3f, CameraBoardSocket, LengthUnit>(),
              py::arg("rotationMatrix"),
@@ -699,13 +670,11 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, Extrinsics, getExtrinsicsTransformationTo));
 
-    // MultiDeviceExtrinsics
     multiDeviceExtrinsics.def(py::init<>())
         .def_readwrite("fromDeviceId", &MultiDeviceExtrinsics::fromDeviceId)
         .def_readwrite("fromSocket", &MultiDeviceExtrinsics::fromSocket)
         .def_readwrite("extrinsics", &MultiDeviceExtrinsics::extrinsics);
 
-    // CameraInfo
     cameraInfo.def(py::init<>())
         .def_readwrite("lensPosition", &dai::CameraInfo::lensPosition, DOC(dai, CameraInfo, lensPosition))
         .def_readwrite("width", &CameraInfo::width)
@@ -716,43 +685,36 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("cameraType", &CameraInfo::cameraType)
         .def_readwrite("specHfovDeg", &CameraInfo::specHfovDeg);
 
-    // AccelAxisNoiseParams
     accelAxisNoiseParams.def(py::init<>())
         .def_readwrite("noiseDensity", &AccelAxisNoiseParams::noiseDensity)
         .def_readwrite("randomWalk", &AccelAxisNoiseParams::randomWalk)
         .def_readwrite("biasStability", &AccelAxisNoiseParams::biasStability);
 
-    // GyroAxisNoiseParams
     gyroAxisNoiseParams.def(py::init<>())
         .def_readwrite("noiseDensity", &GyroAxisNoiseParams::noiseDensity)
         .def_readwrite("randomWalk", &GyroAxisNoiseParams::randomWalk)
         .def_readwrite("biasStability", &GyroAxisNoiseParams::biasStability);
 
-    // AccelerometerNoiseParams
     accelerometerNoiseParams.def(py::init<>())
         .def_readwrite("x", &AccelerometerNoiseParams::x)
         .def_readwrite("y", &AccelerometerNoiseParams::y)
         .def_readwrite("z", &AccelerometerNoiseParams::z);
 
-    // GyroscopeNoiseParams
     gyroscopeNoiseParams.def(py::init<>())
         .def_readwrite("x", &GyroscopeNoiseParams::x)
         .def_readwrite("y", &GyroscopeNoiseParams::y)
         .def_readwrite("z", &GyroscopeNoiseParams::z);
 
-    // ImuNoiseParameters
     imuNoiseParameters.def(py::init<>())
         .def_readwrite("name", &ImuNoiseParameters::name)
         .def_readwrite("accelerometer", &ImuNoiseParameters::accelerometer)
         .def_readwrite("gyroscope", &ImuNoiseParameters::gyroscope);
 
-    // ImuCalibrationParams
     imuCalibrationParams.def(py::init<>())
         .def_readwrite("noise", &ImuCalibrationParams::noise)
         .def_readwrite("accelerometer", &ImuCalibrationParams::accelerometer)
         .def_readwrite("gyroscope", &ImuCalibrationParams::gyroscope);
 
-    // EepromData
     eepromData.def(py::init<>())
         .def_readwrite("version", &EepromData::version)
         .def_readwrite("boardCustom", &EepromData::boardCustom)
@@ -777,7 +739,6 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     m.attr("ImuParameters") = m.attr("ImuCalibrationParams");
     m.attr("ImuModelParams") = m.attr("ImuNoiseParameters");
-    // UsbSpeed
     usbSpeed.value("UNKNOWN", UsbSpeed::UNKNOWN)
         .value("LOW", UsbSpeed::LOW)
         .value("FULL", UsbSpeed::FULL)
@@ -785,7 +746,6 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("SUPER", UsbSpeed::SUPER)
         .value("SUPER_PLUS", UsbSpeed::SUPER_PLUS);
 
-    // ProcessorType
     processorType.value("LEON_CSS", ProcessorType::LEON_CSS)
         .value("LEON_MSS", ProcessorType::LEON_MSS)
         .value("CPU", ProcessorType::CPU)
@@ -834,28 +794,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("JET", Colormap::JET)
         .value("TURBO", Colormap::TURBO)
         .value("STEREO_JET", Colormap::STEREO_JET)
-        .value("STEREO_TURBO", Colormap::STEREO_TURBO)
-        // .value("AUTUMN", Colormap::AUTUMN)
-        // .value("BONE", Colormap::BONE)
-        // .value("WINTER", Colormap::WINTER)
-        // .value("RAINBOW", Colormap::RAINBOW)
-        // .value("OCEAN", Colormap::OCEAN)
-        // .value("SUMMER", Colormap::SUMMER)
-        // .value("SPRING", Colormap::SPRING)
-        // .value("COOL", Colormap::COOL)
-        // .value("HSV", Colormap::HSV)
-        // .value("PINK", Colormap::PINK)
-        // .value("HOT", Colormap::HOT)
-        // .value("PARULA", Colormap::PARULA)
-        // .value("MAGMA", Colormap::MAGMA)
-        // .value("INFERNO", Colormap::INFERNO)
-        // .value("PLASMA", Colormap::PLASMA)
-        // .value("VIRIDIS", Colormap::VIRIDIS)
-        // .value("CIVIDIS", Colormap::CIVIDIS)
-        // .value("TWILIGHT", Colormap::TWILIGHT)
-        // .value("TWILIGHT_SHIFTED", Colormap::TWILIGHT_SHIFTED)
-        // .value("DEEPGREEN", Colormap::DEEPGREEN)
-        ;
+        .value("STEREO_TURBO", Colormap::STEREO_TURBO);
 
     frameEvent.value("NONE", FrameEvent::NONE).value("READOUT_START", FrameEvent::READOUT_START).value("READOUT_END", FrameEvent::READOUT_END);
 
@@ -866,9 +805,6 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("BYPASS", Interpolation::BYPASS)
         .value("DEFAULT", Interpolation::DEFAULT)
         .value("DEFAULT_DISPARITY_DEPTH", Interpolation::DEFAULT_DISPARITY_DEPTH);
-
-    // backward compatibility
-    // m.attr("node").attr("Warp").attr("Properties").attr("Interpolation") = interpolation;
 
     profilingData.def_readwrite("numBytesWritten", &ProfilingData::numBytesWritten, DOC(dai, ProfilingData, numBytesWritten))
         .def_readwrite("numBytesRead", &ProfilingData::numBytesRead, DOC(dai, ProfilingData, numBytesRead));

@@ -2,11 +2,9 @@ import sys
 import os
 import re
 
-# Use absolute path for project_root
 project_root = os.path.abspath(os.path.dirname(__file__))
 version_depthai_core_path = os.path.join(project_root, "..", "..", "CMakeLists.txt")
 
-# Regex pattern to parse the version and pre-release details
 cmake_lists_txt_version_pattern = r'project\s*\(\s*[^)]*VERSION\s+"?([\d\.]+)"?\s*[^)]*\)'
 cmake_lists_txt_pre_release_pattern = r'set\s*\(\s*DEPTHAI_PRE_RELEASE_TYPE\s+"([^"]*)"\s*\)'
 cmake_lists_txt_pre_release_version_pattern = r'set\s*\(\s*DEPTHAI_PRE_RELEASE_VERSION\s+"([^"]*)"\s*\)'

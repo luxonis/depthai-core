@@ -11,13 +11,10 @@ void bind_beta_mlsdparser(pybind11::module& m, void* pCallstack) {
     py::class_<beta::MLSDParserProperties> properties(betaModule, "MLSDParserProperties");
     auto mlsdParser = ADD_BETA_NODE_DERIVED(MLSDParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     properties.def_readwrite("initialConfig", &beta::MLSDParserProperties::initialConfig)
         .def_readwrite("outputLayerTPMap", &beta::MLSDParserProperties::outputLayerTPMap)

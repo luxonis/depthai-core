@@ -26,9 +26,7 @@ std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMo
         auto boardName = device->readCalibration().getEepromData().boardName;
         throw std::runtime_error(fmt::format("Device {} ({}) does not have stereo pair available", deviceName, boardName));
     }
-    // Take the first stereo pair
     auto stereoPair = stereoPairs[0];
-    // Create the two cameras on the same device this node runs on
     auto pipeline = getParentPipeline();
     auto left = pipeline.create<dai::node::Camera>(device)->build(stereoPair.left);
     auto right = pipeline.create<dai::node::Camera>(device)->build(stereoPair.right);
@@ -111,8 +109,7 @@ void StereoDepth::setOutputKeepAspectRatio(bool keep) {
 
 void StereoDepth::setDepthAlign(Properties::DepthAlign align) {
     initialConfig->setDepthAlign(align);
-    // Unset 'depthAlignCamera', that would take precedence otherwise
-    properties.depthAlignCamera = CameraBoardSocket::AUTO;
+    properties.depthAlignCamera = CameraBoardSocket::AUTO;  // depthAlignCamera would take precedence otherwise
 }
 void StereoDepth::setDepthAlign(CameraBoardSocket camera) {
     properties.depthAlignCamera = camera;
@@ -190,7 +187,6 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     auto device = getDevice();
     DAI_CHECK_V(device, "Device is not set, cannot set default profile preset");
 
-    // Set profile settings for the current platform
     switch(device->getPlatform()) {
         case Platform::RVC2:
             setRvc2ProfilePreset(mode);

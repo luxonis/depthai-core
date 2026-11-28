@@ -5,12 +5,8 @@
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/Camera.hpp>
 #include <depthai/pipeline/node/ImageFilters.hpp>
-
-// standard
-#include <fstream>
-
-// shared
 #include <depthai/properties/ToFProperties.hpp>
+#include <fstream>
 
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 

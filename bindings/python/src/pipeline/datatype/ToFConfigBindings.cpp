@@ -4,14 +4,10 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_tofconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -19,20 +15,11 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
     py::class_<ToFConfig, Py<ToFConfig>, Buffer, py::smart_holder> toFConfig(m, "ToFConfig", DOC(dai, ToFConfig));
     py::enum_<ToFConfig::Profile> toFConfigProfile(toFConfig, "Profile", DOC(dai, ToFConfig, Profile));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Message
     toFConfigProfile.value("LOW_RANGE", ToFConfig::Profile::LOW_RANGE)
         .value("MID_RANGE", ToFConfig::Profile::MID_RANGE)
         .value("HIGH_RANGE", ToFConfig::Profile::HIGH_RANGE)
@@ -40,7 +27,6 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
 
     toFConfig.def(py::init<>())
         .def("__repr__", &ToFConfig::str)
-        // .def(py::init<std::shared_ptr<ToFConfig>>())
         .def_property(
             "profile",
             [](const ToFConfig& self) { return self.profile; },
@@ -62,10 +48,5 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
         .def("setMedianFilter", &ToFConfig::setMedianFilter, DOC(dai, ToFConfig, setMedianFilter))
         .def("setProfilePreset", &ToFConfig::setProfilePreset, DOC(dai, ToFConfig, setProfilePreset))
 
-        // .def("set", &ToFConfig::set, py::arg("config"), DOC(dai, ToFConfig, set))
-        // .def("get", &ToFConfig::get, DOC(dai, ToFConfig, get))
         ;
-
-    // add aliases
-    // m.attr("ToFConfig").attr("DepthParams") = m.attr("ToFConfig").attr("DepthParams");
 }

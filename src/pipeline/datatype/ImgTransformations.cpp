@@ -52,10 +52,7 @@ void validateRebaseExtrinsics(const Extrinsics& extrinsics, const char* name) {
 
 constexpr float ROUND_UP_EPS = 1e-3f;
 
-// The fitter wraps the angle to [0, 90) and swaps the sides when it wraps, so a box at -0.001 deg becomes
-// a box at 89.999 deg with swapped sides. Use the equal form (angle + k * 90 deg, sides swapped for odd k)
-// whose angle is nearest to the angle of the source rectangle.
-inline dai::RotatedRect keepSourceAngle(dai::RotatedRect fitted, float sourceAngle) {
+inline dai::RotatedRect keepSourceAngle(dai::RotatedRect fitted, float sourceAngle) {  // The fitter wraps angles to [0, 90) and swaps the sides when it wraps
     const long quarterTurns = std::lround((sourceAngle - fitted.angle) / 90.0f);
     fitted.angle += 90.0f * static_cast<float>(quarterTurns);
     if(quarterTurns % 2 != 0) {
@@ -64,7 +61,6 @@ inline dai::RotatedRect keepSourceAngle(dai::RotatedRect fitted, float sourceAng
     return fitted;
 }
 
-// Function to check if a point is inside a rotated rectangle
 inline bool isPointInRotatedRectangle(const dai::Point2f& p, const dai::RotatedRect& rect) {
     auto theta = -rect.angle * (float)M_PI / 180.0f;
     float hw = rect.size.width / 2.0f;
@@ -74,13 +70,11 @@ inline bool isPointInRotatedRectangle(const dai::Point2f& p, const dai::RotatedR
     float hvx = -std::sin(theta);
     float hvy = std::cos(theta);
 
-    // Translate point relative to the center of rectangle
     float ptx = p.x - rect.center.x;
     float pty = p.y - rect.center.y;
 
     std::array<std::array<float, 2>, 2> basis = {{{wvx, hvx}, {wvy, hvy}}};
 
-    // Rotate point to the rectangle's coordinate system
     auto transformed = impl::matvecmul(basis, {ptx, pty});
 
     return std::abs(transformed[0]) <= hw && std::abs(transformed[1]) <= hh;
@@ -123,8 +117,7 @@ void ImgTransformation::calcCrops() {
     if(cropsValid) return;
     const uint32_t inWidth = srcWidth;
     const uint32_t inHeight = srcHeight;
-    // The following is done in ImageManip to get the source region of interest that is transformed
-    size_t sourceMinX = 0;
+    size_t sourceMinX = 0;  // Same source region of interest as ImageManip computes
     size_t sourceMaxX = inWidth;
     size_t sourceMinY = 0;
     size_t sourceMaxY = inHeight;
@@ -144,7 +137,6 @@ void ImgTransformation::calcCrops() {
     srcCrop.center = {(float)(sourceMinX + sourceMaxX) / 2.0f, (float)(sourceMinY + sourceMaxY) / 2.0f};
     srcCrop.size = {(float)(sourceMaxX - sourceMinX), (float)(sourceMaxY - sourceMinY)};
     srcCrop.angle = 0.0f;
-    // Calculate the destination crop from the source region of interest
     dstCrop = transformRect(srcCrop);
     cropsValid = true;
 }
@@ -226,26 +218,20 @@ float ImgTransformation::getDFov(bool source) const {
     }
     float HFovDegrees = getHFov(source);
 
-    // Calculate the diagonal ratio (DR)
     float dr = std::sqrt(std::pow(fovWidth, 2) + std::pow(fovHeight, 2));
 
-    // Validate the horizontal FOV
     if(HFovDegrees <= 0 || HFovDegrees >= 180) {
         throw std::runtime_error(fmt::format("Horizontal FOV is invalid. Horizontal FOV: {}", HFovDegrees));
     }
 
     float HFovRadians = HFovDegrees * (static_cast<float>(M_PI) / 180.0f);
 
-    // Calculate the tangent of half of the HFOV
     float tanHFovHalf = std::tan(HFovRadians / 2);
 
-    // Calculate the tangent of half of the diagonal FOV
     float tanDiagonalFovHalf = (dr / fovWidth) * tanHFovHalf;
 
-    // Calculate the diagonal FOV in radians
     float diagonalFovRadians = 2 * std::atan(tanDiagonalFovHalf);
 
-    // Convert diagonal FOV to degrees
     float diagonalFovDegrees = diagonalFovRadians * (180.0f / static_cast<float>(M_PI));
     return diagonalFovDegrees;
 }
@@ -253,20 +239,16 @@ float ImgTransformation::getHFov(bool source) const {
     float fx = source ? getSourceIntrinsicMatrix()[0][0] : getIntrinsicMatrix()[0][0];
     float fovWidth = source ? srcWidth : width;
 
-    // Calculate horizontal FoV (in radians)
     float horizontalFoV = 2 * atan(fovWidth / (2.0f * fx));
 
-    // Convert radians to degrees
     return horizontalFoV * 180.0f / (float)M_PI;
 }
 float ImgTransformation::getVFov(bool source) const {
     float fy = source ? getSourceIntrinsicMatrix()[1][1] : getIntrinsicMatrix()[1][1];
     float fovHeight = source ? srcHeight : height;
 
-    // Calculate vertical FoV (in radians)
     float verticalFoV = 2 * atan(fovHeight / (2.0f * fy));
 
-    // Convert radians to degrees
     return verticalFoV * 180.0f / (float)M_PI;
 }
 CameraModel ImgTransformation::getDistortionModel() const {
@@ -474,15 +456,11 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
         copyPoint.normalized = false;
     }
 
-    // frame coordintates -> sensor coordinates
     auto sourcePointFrom = invTransformPoint(copyPoint);
 
-    // sensor coordinates -> undistorted source ray
     auto thisRay = pixelToRay(sourcePointFrom, *this);
 
-    // extrinsics transform
-    // center subtraction (-cx, -cy) and normalization by focal length (fx, fy) is already done in pixelToRay
-    auto xMm = thisRay[0] * depth;
+    auto xMm = thisRay[0] * depth;  // pixelToRay already subtracts (cx, cy) and divides by (fx, fy)
     auto yMm = thisRay[1] * depth;
     dai::Point3f source3dPoint = {xMm, yMm, depth};
 
@@ -497,10 +475,8 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
 
     std::array<float, 3> targetRay = {target3dPoint.x / target3dPoint.z, target3dPoint.y / target3dPoint.z, 1.0f};
 
-    // target ray -> target sensor coords
     const auto distortedTargetSourcePoint = rayToPixel(targetRay, to);
 
-    // target sensor coords -> target frame coordinates
     dai::Point2f targetPoint = to.transformPoint(distortedTargetSourcePoint);
     if(normalized) {
         targetPoint.x /= to.width;

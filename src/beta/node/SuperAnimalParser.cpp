@@ -31,7 +31,6 @@ SuperAnimalParser::Properties& SuperAnimalParser::getProperties() {
 }
 
 NNArchive SuperAnimalParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -110,8 +109,6 @@ void SuperAnimalParser::setConfig(const dai::nn_archive::v1::Head& head) {
     DAI_CHECK_V(numOutputs == 1, "Only one output layer supported for SuperAnimalParser, got {} layers.", numOutputs);
     setOutputLayerName(head.outputs->front());
 
-    // The keypoint-specific keys without typed metadata fields live in the head metadata extra
-    // parameters.
     const auto& extraParams = head.metadata.extraParams;
 
     if(const auto scaleFactor = utilities::KeypointsUtils::readFloatParam(extraParams, "scale_factor")) {
@@ -126,8 +123,6 @@ void SuperAnimalParser::setConfig(const dai::nn_archive::v1::Head& head) {
     if(const auto labelNames = utilities::KeypointsUtils::readKeypointLabelsParam(extraParams)) {
         setLabelNames(*labelNames);
     }
-    // An empty edge list does not overwrite explicitly configured edges, mirroring the source
-    // parser behavior.
     const auto edges = utilities::KeypointsUtils::readSkeletonEdgesParam(extraParams);
     if(!edges.empty()) {
         setEdges(edges);
@@ -199,11 +194,6 @@ void SuperAnimalParser::run() {
     DAI_CHECK(config.validate(), "SuperAnimalParser initial configuration is invalid.");
     const bool inputConfigSync = inputConfig.getWaitForMessage();
 
-    // Unlike KeypointParser, the number of keypoints is not required here: the decoding derives
-    // it from the heatmap tensor's last dimension, mirroring the source parser behavior.
-
-    // The resolved layer name persists across messages once auto-selected from a
-    // single-tensor NNData, mirroring the source parser behavior.
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
@@ -236,7 +226,6 @@ void SuperAnimalParser::run() {
         auto tGotInput = std::chrono::steady_clock::now();
         const SuperAnimalParserConfig configSnapshot = config;
 
-        // Extract
         const auto layerNames = nnData->getAllLayerNames();
         if(resolvedOutputLayerName.empty()) {
             DAI_CHECK_V(
@@ -244,16 +233,10 @@ void SuperAnimalParser::run() {
             resolvedOutputLayerName = layerNames.front();
         }
 
-        // The tensor is read in its stored order, matching the source parser's
-        // output.getTensor(name, dequantize=True) with the default storage order.
         auto heatmaps = utilities::ClassificationUtils::getShapedTensorData(*nnData, resolvedOutputLayerName);
 
-        // Compute. The number of keypoints and the heatmap size are derived from the tensor
-        // shape.
         auto superAnimalKeypoints = utilities::KeypointsUtils::computeSuperAnimalKeypoints(heatmaps.values, heatmaps.dims, properties.scaleFactor);
 
-        // Emit. Keypoints with a score below the score threshold are dropped and the edges are
-        // filtered and remapped to the kept keypoints.
         auto message = utilities::KeypointsUtils::createKeypointsMessage(
             superAnimalKeypoints.coordinates, std::move(superAnimalKeypoints.scores), configSnapshot.scoreThreshold, properties.labelNames, properties.edges);
         if(nnData->transformation.has_value()) {

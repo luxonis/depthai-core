@@ -42,8 +42,6 @@ struct EepromData {
     bool stereoUseSpecTranslation{true};
     bool stereoEnableDistortionCorrection{false};
     CameraBoardSocket verticalCameraSocket = dai::CameraBoardSocket::AUTO;
-    // IMU calibration payload serialized with EepromData via DEPTHAI_SERIALIZE_OPTIONAL_EXT;
-    // includes biases, scale/shear/rotation decomposition, and IMU noise parameters.
     ImuCalibrationParams imuCalibrationParams;
 };
 

@@ -9,27 +9,17 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Node and Properties declare upfront
     auto stereoDepth = ADD_NODE(StereoDepth);
     py::class_<StereoDepthProperties> stereoDepthProperties(m, "StereoDepthProperties", DOC(dai, StereoDepthProperties));
     py::class_<StereoDepthProperties::RectificationMesh> rectificationMesh(
         stereoDepthProperties, "RectificationMesh", DOC(dai, StereoDepthProperties, RectificationMesh));
     py::enum_<StereoDepth::PresetMode> stereoDepthPresetMode(stereoDepth, "PresetMode", DOC(dai, node, StereoDepth, PresetMode));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Properties
     rectificationMesh
         .def_readwrite("meshLeftUri", &StereoDepthProperties::RectificationMesh::meshLeftUri, DOC(dai, StereoDepthProperties, RectificationMesh, meshLeftUri))
         .def_readwrite(
@@ -85,7 +75,6 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
         .value("DENSITY", StereoDepth::PresetMode::DENSITY)
         .value("ACCURACY", StereoDepth::PresetMode::ACCURACY);
 
-    // Node
     stereoDepth
         .def(py::init([](Node::Output& left, Node::Output& right, StereoDepth::PresetMode presetMode) {
                  auto self = getImplicitPipeline()->create<StereoDepth>();
@@ -189,6 +178,5 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
              &StereoDepth::setDepthAlignmentUseSpecTranslation,
              DOC(dai, node, StereoDepth, setDepthAlignmentUseSpecTranslation))
         .def("setAlphaScaling", &StereoDepth::setAlphaScaling, DOC(dai, node, StereoDepth, setAlphaScaling));
-    // ALIAS
     daiNodeModule.attr("StereoDepth").attr("Properties") = stereoDepthProperties;
 }

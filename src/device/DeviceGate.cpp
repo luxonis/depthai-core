@@ -3,7 +3,6 @@
 #include <XLink/XLink.h>
 #include <XLink/XLinkPublicDefines.h>
 
-// std
 #include <algorithm>
 #include <fstream>
 #include <limits>
@@ -11,19 +10,16 @@
 #include <optional>
 #include <string>
 
-// project
 #include "build/version.hpp"
 #include "device/Device.hpp"
-#include "utility/Environment.hpp"
-#include "utility/PimplImpl.hpp"
-#include "utility/Platform.hpp"
-#include "utility/Resources.hpp"
-
-// libraries
 #include "httplib.h"
 #include "nlohmann/json.hpp"
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
+#include "utility/Environment.hpp"
+#include "utility/PimplImpl.hpp"
+#include "utility/Platform.hpp"
+#include "utility/Resources.hpp"
 
 namespace dai {
 
@@ -38,14 +34,9 @@ const std::string API_ROOT{"/api/v1"};
 const auto sessionsEndpoint = API_ROOT + "/sessions";
 const int DEFAULT_PORT{11492};
 const int gateTimeout = 2000;
-// The gate collects and compresses the crash dump before it answers GET_FILE, which can take longer than gateTimeout.
-// Same limit as the HTTP read timeout. A response that the host does not read stays queued on the gate and blocks the next requests.
-const int gateFileTimeout = 60000;
-// Linux limits the buffer memory of one USB transfer (usbfs_memory_mb, 16 MB by default) and a crash dump response is larger.
-// A multiple of every bulk max packet size, so the end of a chunk does not end a transfer early.
-const uint32_t gateReadChunkSize = 1024 * 1024;
-// Long enough for the gate to stop a firmware that does not respond. Without a limit, close() hangs while the gate reports the session as running.
-const auto gateSessionEndTimeout = std::chrono::seconds(30);
+const int gateFileTimeout = 60000;               // The gate compresses the crash dump before it answers GET_FILE; an unread response blocks the next requests
+const uint32_t gateReadChunkSize = 1024 * 1024;  // Below the Linux usbfs_memory_mb limit (16 MB); a multiple of every bulk max packet size
+const auto gateSessionEndTimeout = std::chrono::seconds(30);  // Lets the gate stop an unresponsive firmware; without a limit close() hangs
 
 enum USBRequestID_t {
     RESPONSE_OK,
@@ -71,7 +62,6 @@ class DeviceGate::HTTPImpl::Impl {
    public:
     Impl() = default;
 
-    // Default Gate connection
     std::unique_ptr<httplib::Client> cli;
 };
 DeviceGate::~DeviceGate() {}
@@ -101,14 +91,10 @@ DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
 }
 
 DeviceGate::HTTPImpl::HTTPImpl(DeviceInfo deviceInfo) {
-    // Discover and connect
     pimpl->cli = std::make_unique<httplib::Client>(deviceInfo.name, DEFAULT_PORT);
     pimpl->cli->set_read_timeout(60);  // 60 seconds timeout to allow for compressing the crash dumps without async
-    // pimpl->cli->set_connection_timeout(2);
 #ifdef SO_NOSIGPIPE
-    // cpp-httplib sends with flags 0. On macOS, a send on a gate connection that the peer reset raises SIGPIPE,
-    // which ends the process. With SO_NOSIGPIPE the send fails with EPIPE and the request gets no response.
-    pimpl->cli->set_socket_options([](socket_t sock) {
+    pimpl->cli->set_socket_options([](socket_t sock) {  // cpp-httplib sends with flags 0: on macOS a send on a reset connection raises SIGPIPE
         int enable = 1;
         setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable));
     });
@@ -213,17 +199,12 @@ bool DeviceGate::HTTPImpl::createSession(
     std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) {
     lastError.clear();
 
-    nlohmann::json createSessionBody = {{"name", "depthai_session"},
-                                        // {"fwp_checksum", fwpChecksum},
-                                        {"fwp_version", version},
-                                        {"library_version", build::VERSION},
-                                        {"protected", exclusive},
-                                        {"stop_qmmf_server", true}};
+    nlohmann::json createSessionBody = {
+        {"name", "depthai_session"}, {"fwp_version", version}, {"library_version", build::VERSION}, {"protected", exclusive}, {"stop_qmmf_server", true}};
 
     spdlog::debug("DeviceGate createSession: {}", createSessionBody.dump());
 
     if(auto res = pimpl->cli->Post(sessionsEndpoint.c_str(), createSessionBody.dump(), "application/json")) {
-        // Parse response
         if(res->status != 200) {
             lastError = fmt::format("DeviceGate createSession not successful - status: {}, error: {}", res->status, trimTrailing(res->body));
             spdlog::warn(lastError);
@@ -232,7 +213,6 @@ bool DeviceGate::HTTPImpl::createSession(
         auto resp = nlohmann::json::parse(res->body);
         spdlog::debug("DeviceGate createSession response: {}", resp.dump());
 
-        // Retrieve sessionId
         sessionId = resp["id"];
         bool fwpExists = resp["fwp_exists"].get<bool>();
 
@@ -284,11 +264,7 @@ bool DeviceGate::USBImpl::createSession(
     std::lock_guard<std::mutex> lock(mtx);
     lastError.clear();
 
-    nlohmann::json createSessionBody = {{"name", "depthai_session"},
-                                        // {"fwp_checksum", fwpChecksum},
-                                        {"fwp_version", version},
-                                        {"library_version", build::VERSION},
-                                        {"protected", exclusive}};
+    nlohmann::json createSessionBody = {{"name", "depthai_session"}, {"fwp_version", version}, {"library_version", build::VERSION}, {"protected", exclusive}};
 
     auto createSessionBodyStr = createSessionBody.dump();
     spdlog::debug("DeviceGate createSession: {}", createSessionBodyStr);
@@ -320,7 +296,6 @@ bool DeviceGate::USBImpl::createSession(
     auto resp = nlohmann::json::parse(respBuffer);
     spdlog::debug("DeviceGate createSession response: {}", resp.dump());
 
-    // Retrieve sessionId
     sessionId = resp["id"];
     bool fwpExists = resp["fwp_exists"].get<bool>();
 
@@ -576,11 +551,9 @@ std::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileU
 }
 
 std::optional<std::vector<uint8_t>> DeviceGate::HTTPImpl::getFile(const std::string& fileUrl, std::string& filename) {
-    // Send a GET request to the server
     if(auto res = pimpl->cli->Get(fileUrl.c_str())) {
         if(res->status == 200) {
             filename = res->get_header_value("X-Filename");
-            // Convert the response body to a vector of uint8_t
             std::vector<uint8_t> fileData(res->body.begin(), res->body.end());
 
             spdlog::debug("File download successful. Filename: {}", filename);

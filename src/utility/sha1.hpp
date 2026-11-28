@@ -1,23 +1,4 @@
-/*
-    From: https://github.com/vog/sha1/blob/3f8a4aa032d144309d00dbfe972906a49b3631b9/sha1.hpp
-    sha1.hpp - source code of
-    ============
-    SHA-1 in C++
-    ============
-    100% Public Domain.
-    Original C Code
-        -- Steve Reid <steve@edmweb.com>
-    Small changes to fit into bglibs
-        -- Bruce Guenter <bruce@untroubled.org>
-    Translation to simpler C++ Code
-        -- Volker Diels-Grabsch <v@njh.eu>
-    Safety fixes
-        -- Eugene Hopkinson <slowriot at voxelstorm dot com>
-    Header-only library
-        -- Zlatko Michailov <zlatko@michailov.org>
-*/
-
-#ifndef SHA1_HPP
+#ifndef SHA1_HPP  // From https://github.com/vog/sha1/blob/3f8a4aa032d144309d00dbfe972906a49b3631b9/sha1.hpp (public domain)
 #define SHA1_HPP
 
 #include <cstdint>
@@ -45,14 +26,12 @@ static const size_t BLOCK_INTS = 16; /* number of 32bit integers per SHA1 block 
 static const size_t BLOCK_BYTES = BLOCK_INTS * 4;
 
 inline static void reset(uint32_t digest[], std::string& buffer, uint64_t& transforms) {
-    /* SHA1 initialization constants */
     digest[0] = 0x67452301;
     digest[1] = 0xefcdab89;
     digest[2] = 0x98badcfe;
     digest[3] = 0x10325476;
     digest[4] = 0xc3d2e1f0;
 
-    /* Reset counters */
     buffer = "";
     transforms = 0;
 }
@@ -64,10 +43,6 @@ inline static uint32_t rol(const uint32_t value, const size_t bits) {
 inline static uint32_t blk(const uint32_t block[BLOCK_INTS], const size_t i) {
     return rol(block[(i + 13) & 15] ^ block[(i + 8) & 15] ^ block[(i + 2) & 15] ^ block[i], 1);
 }
-
-/*
- * (R0+R1), R2, R3, R4 are the different operations used in SHA1
- */
 
 inline static void R0(const uint32_t block[BLOCK_INTS], const uint32_t v, uint32_t& w, const uint32_t x, const uint32_t y, uint32_t& z, const size_t i) {
     z += ((w & (x ^ y)) ^ y) + block[i] + 0x5a827999 + rol(v, 5);
@@ -98,19 +73,13 @@ inline static void R4(uint32_t block[BLOCK_INTS], const uint32_t v, uint32_t& w,
     w = rol(w, 30);
 }
 
-/*
- * Hash a single 512-bit block. This is the core of the algorithm.
- */
-
 inline static void transform(uint32_t digest[], uint32_t block[BLOCK_INTS], uint64_t& transforms) {
-    /* Copy digest[] to working vars */
     uint32_t a = digest[0];
     uint32_t b = digest[1];
     uint32_t c = digest[2];
     uint32_t d = digest[3];
     uint32_t e = digest[4];
 
-    /* 4 rounds of 20 operations each. Loop unrolled. */
     R0(block, a, b, c, d, e, 0);
     R0(block, e, a, b, c, d, 1);
     R0(block, d, e, a, b, c, 2);
@@ -192,19 +161,16 @@ inline static void transform(uint32_t digest[], uint32_t block[BLOCK_INTS], uint
     R4(block, c, d, e, a, b, 14);
     R4(block, b, c, d, e, a, 15);
 
-    /* Add the working vars back into digest[] */
     digest[0] += a;
     digest[1] += b;
     digest[2] += c;
     digest[3] += d;
     digest[4] += e;
 
-    /* Count the number of transformations */
     transforms++;
 }
 
 inline static void buffer_to_block(const std::string& buffer, uint32_t block[BLOCK_INTS]) {
-    /* Convert the std::string (byte buffer) to a uint32_t array (MSB) */
     for(size_t i = 0; i < BLOCK_INTS; i++) {
         block[i] = (buffer[4 * i + 3] & 0xff) | (buffer[4 * i + 2] & 0xff) << 8 | (buffer[4 * i + 1] & 0xff) << 16 | (buffer[4 * i + 0] & 0xff) << 24;
     }
@@ -234,15 +200,9 @@ inline void SHA1::update(std::istream& is) {
     }
 }
 
-/*
- * Add padding and return the message digest.
- */
-
 inline std::string SHA1::final() {
-    /* Total number of hashed bits */
     uint64_t total_bits = (transforms * BLOCK_BYTES + buffer.size()) * 8;
 
-    /* Padding */
     buffer += (char)0x80;
     size_t orig_size = buffer.size();
     while(buffer.size() < BLOCK_BYTES) {
@@ -259,19 +219,16 @@ inline std::string SHA1::final() {
         }
     }
 
-    /* Append total_bits, split this uint64_t into two uint32_t */
     block[BLOCK_INTS - 1] = (uint32_t)total_bits;
     block[BLOCK_INTS - 2] = (uint32_t)(total_bits >> 32);
     transform(digest, block, transforms);
 
-    /* Hex std::string */
     std::ostringstream result;
     for(size_t i = 0; i < sizeof(digest) / sizeof(digest[0]); i++) {
         result << std::hex << std::setfill('0') << std::setw(8);
         result << digest[i];
     }
 
-    /* Reset for next run */
     reset(digest, buffer, transforms);
 
     return result.str();

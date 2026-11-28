@@ -16,7 +16,6 @@ NeuralAssistedStereo::NeuralAssistedStereo(const std::shared_ptr<Device>& device
 NeuralAssistedStereo::~NeuralAssistedStereo() = default;
 
 void NeuralAssistedStereo::setInitialValues() {
-    // vpp parameters
     vpp->initialConfig->blending = 0.3;
     vpp->initialConfig->maxPatchSize = 4;
     vpp->initialConfig->uniformPatch = false;
@@ -27,7 +26,6 @@ void NeuralAssistedStereo::setInitialValues() {
 
     neuralDepth->initialConfig->setConfidenceThreshold(static_cast<int>(0.14 * 255));
 
-    // // Stereo node (fixed config for now)
     stereoDepth->setRectification(false);
     stereoDepth->setExtendedDisparity(true);
     stereoDepth->setLeftRightCheck(true);

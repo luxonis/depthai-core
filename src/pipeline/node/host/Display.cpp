@@ -9,7 +9,6 @@
 namespace dai {
 namespace node {
 
-// Create a window of 30 frames and calculate the FPS
 class FPSCounter {
    public:
     void update() {
@@ -54,7 +53,6 @@ void Display::run() {
             cv::imshow(name, frame);
             auto key = cv::waitKey(1);
             if(key == 'q') {
-                // Get the parent pipeline and stop it
                 stopPipeline();
                 break;
             }

@@ -1,6 +1,4 @@
-// needed here
 #include "depthai/utility/Serialization.hpp"
-// needed here
 
 #include <assert.h>
 #include <math.h>
@@ -16,9 +14,7 @@
 #include "hexagon_protos.h"
 #include "HAP_vtcm_mgr.h"
 
-
 int StereoDepthDsp_open(const char* uri, remote_handle64* handle) {
-    // Keep the context here. Now it's just a magic number
     *handle = 0x00DEAD00;
 
     FARF(ALWAYS, "SpatialLocationCalculator open session\n");
@@ -26,10 +22,6 @@ int StereoDepthDsp_open(const char* uri, remote_handle64* handle) {
     return 0;
 }
 
-/**
- * @param handle, the value returned by open
- * @retval, 0 for success, should always succeed
- */
 int StereoDepthDsp_close(remote_handle64 handle) {
     FARF(ALWAYS, "SpatialLocationCalculator close session\n");
 
@@ -180,8 +172,7 @@ int StereoDepthDsp_confidenceInvalidation(remote_handle64 h,
         const uint8_t* __restrict__ inConf = reinterpret_cast<const uint8_t*>(inConfidenceFrame) + row * width;
         uint16_t* __restrict__ outDisp = reinterpret_cast<uint16_t*>(outDisparityFrame) + row * width;
 
-        // Optional: Prefetch the next row if available
-        if (row < height - 1) {
+        if(row < height - 1) {
             Q6_l2fetch_AR((void*)(inDisp + width), width*2 << 16 | width*2 << 8 | 1 << 0);
             Q6_l2fetch_AR((void*)(inConf + width), width << 16 | width << 8 | 1 << 0);
         }
@@ -232,7 +223,6 @@ int StereoDepthDsp_combineDisparityMaps(remote_handle64 h,
     const uint16_t* __restrict__ downScaled = reinterpret_cast<const uint16_t*>(inDisparityDsFrame);
     uint16_t* __restrict__ output = reinterpret_cast<uint16_t*>(outDisparityFrame);
 
-    // Combine levels foreach disparity reference line
     uint16_t downscaleFactor = config.downscaleFactor;
     numDisparities -= 1;
     uint16_t half_disp = numDisparities * 16;
@@ -240,9 +230,7 @@ int StereoDepthDsp_combineDisparityMaps(remote_handle64 h,
     alignas(128) uint16_t downScaledExpanded[width];
 
     for(int row = 0; row < height; row++) {
-
-        // Optional: Prefetch the next row if available
-        if (row < height - 1) {
+        if(row < height - 1) {
             Q6_l2fetch_AR((void*)(reference + width), width*2 << 16 | width*2 << 8 | 1 << 0);
             if(row % 2) {
                 Q6_l2fetch_AR((void*)(downScaled + width / 2), width / 2 << 16 | width / 2 << 8 | 1 << 0);

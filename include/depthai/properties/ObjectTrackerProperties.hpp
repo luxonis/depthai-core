@@ -1,9 +1,7 @@
 #pragma once
 
-// std
 #include <vector>
 
-// project
 #include "depthai/common/optional.hpp"
 #include "depthai/properties/Properties.hpp"
 

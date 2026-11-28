@@ -1,14 +1,12 @@
 #include "depthai/pipeline/node/internal/XLinkOutHost.hpp"
 
+#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/StreamMessageParser.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkConstants.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 #include "spdlog/fmt/bin_to_hex.h"
 #include "spdlog/fmt/chrono.h"
-
-// libraries
-#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "utility/Logging.hpp"
 #include "utility/SharedMemory.hpp"
 
@@ -17,9 +15,7 @@ namespace node {
 namespace internal {
 
 namespace {
-// A stream failure on a connection that nobody closes within this period is not a device
-// loss (the device monitor closes the connection a couple of watchdog periods after one)
-constexpr auto CONNECTION_LOSS_GRACE = std::chrono::seconds(10);
+constexpr auto CONNECTION_LOSS_GRACE = std::chrono::seconds(10);  // Open after this = not a device loss: the monitor closes lost ones in ~2 watchdog periods
 constexpr auto PARK_POLL_INTERVAL = std::chrono::milliseconds(100);
 }  // namespace
 
@@ -51,14 +47,11 @@ bool XLinkOutHost::parkUntilReconnect(const std::shared_ptr<XLinkConnection>& lo
     while(isRunning() && !isDisconnected && !connectionRefreshed) {
         const bool connectionAlive = lostConn != nullptr && !lostConn->isClosed();
         if(connectionAlive && steady_clock::now() - parkStart > CONNECTION_LOSS_GRACE) {
-            // Not a device loss: the connection is healthy but the stream failed (e.g. the
-            // device refused to open it). Surface the error instead of idling forever.
             throw std::runtime_error(fmt::format(
                 "XLinkOutHost '{}': stream {} although the device connection is healthy", streamName, streamOpenFailed ? "could not be opened" : "failed"));
         }
         isWaitingForReconnect.wait_for(lck, PARK_POLL_INTERVAL);
-        // Discard whatever the producers sent meanwhile so they never block on this dead stream
-        lck.unlock();
+        lck.unlock();  // Discard queued input so producers never block on the dead stream
         in.tryGetAll();
         lck.lock();
     }
@@ -67,9 +60,7 @@ bool XLinkOutHost::parkUntilReconnect(const std::shared_ptr<XLinkConnection>& lo
     }
     if(isDisconnected) {
         lck.unlock();
-        // Device is gone for good - keep the input flowing (and discarded) so the producers
-        // linked to it keep serving their other consumers, until the node is stopped
-        logger::warn("XLinkOutHost '{}' idling - device connection was lost", streamName);
+        logger::warn("XLinkOutHost '{}' idling - device connection was lost", streamName);  // Drain so linked producers keep serving other consumers
         drainUntilStopped();
         return false;
     }
@@ -82,7 +73,6 @@ void XLinkOutHost::drainUntilStopped() {
         try {
             in.get();
         } catch(const MessageQueue::QueueException&) {
-            // stop() closed the input
             break;
         }
     }
@@ -90,8 +80,7 @@ void XLinkOutHost::drainUntilStopped() {
 
 void XLinkOutHost::run() {
     {
-        // Consume a connection refresh recorded before the node started (build time)
-        std::lock_guard<std::mutex> lock(mtx);
+        std::lock_guard<std::mutex> lock(mtx);  // Drop a refresh recorded at build time, before the node started
         connectionRefreshed = false;
     }
     // // Create a stream for the connection
@@ -100,8 +89,7 @@ void XLinkOutHost::run() {
     while(reconnect) {
         reconnect = false;
         auto currentMaxSize = device::XLINK_USB_BUFFER_MAX_SIZE + device::XLINK_MESSAGE_METADATA_MAX_SIZE;
-        // Copy under the lock - setConnection can rebind concurrently
-        std::shared_ptr<XLinkConnection> currentConn;
+        std::shared_ptr<XLinkConnection> currentConn;  // Copy under the lock: setConnection can rebind concurrently
         {
             std::lock_guard<std::mutex> lock(mtx);
             currentConn = conn;
@@ -110,8 +98,6 @@ void XLinkOutHost::run() {
         try {
             streamPtr = std::make_unique<XLinkStream>(currentConn, streamName, currentMaxSize);
         } catch(const std::exception& ex) {
-            // Connection unusable (e.g. closed while waking up) - park until it is
-            // refreshed or the device is declared gone
             logger::error("Cannot open stream '{}': {}", streamName, ex.what());
             if(!parkUntilReconnect(currentConn, true)) {
                 return;
@@ -120,9 +106,7 @@ void XLinkOutHost::run() {
             continue;
         }
         XLinkStream& stream = *streamPtr;
-        // File descriptors are only valid across a local shared-memory transport;
-        // any other destination gets the mapped bytes instead (one copy)
-        const bool destinationIsLocalShdmem = currentConn != nullptr && currentConn->getDeviceInfo().protocol == X_LINK_LOCAL_SHDMEM;
+        const bool destinationIsLocalShdmem = currentConn != nullptr && currentConn->getDeviceInfo().protocol == X_LINK_LOCAL_SHDMEM;  // FDs need local shdmem
         auto increaseBufferSize = [&stream, &currentMaxSize, &currentConn, this](const std::size_t& maxSize) {
             if(!this->allowResize) {
                 logger::error("Data size exceeds the maximum buffer size - please increase the buffer size");
@@ -141,7 +125,6 @@ void XLinkOutHost::run() {
                 auto metadata = StreamMessageParser::serializeMetadata(outgoing);
 
                 using namespace std::chrono;
-                // Blocking
                 auto t1 = steady_clock::now();
                 auto outgoingDataSize = outgoing->data->getSize();
                 if(outgoingDataSize > currentMaxSize - metadata.size()) {
@@ -158,7 +141,6 @@ void XLinkOutHost::run() {
                     stream.write(metadata);
                 }
                 auto t2 = steady_clock::now();
-                // Log
                 if(spdlog::get_level() == spdlog::level::trace) {
                     logger::trace("Sent message to device ({}) - data size: {}, metadata: {}, sending time: {}",
                                   stream.getStreamName(),
@@ -167,7 +149,6 @@ void XLinkOutHost::run() {
                                   duration_cast<microseconds>(t2 - t1));
                 }
 
-                // Attempt dynamic cast to MessageGroup
                 if(auto msgGroupPtr = std::dynamic_pointer_cast<MessageGroup>(outgoing)) {
                     logger::trace("Sending group message to device with {} messages", msgGroupPtr->group.size());
                     for(auto& msg : msgGroupPtr->group) {
@@ -188,7 +169,6 @@ void XLinkOutHost::run() {
                 if(isRunning()) {
                     logger::error("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
                     logger::info("Waiting for reconnect (XLINKOUTHOST)\n");
-                    // Device gone for good: the stream stays idle instead of tearing down the pipeline
                     if(!parkUntilReconnect(currentConn, false)) {
                         return;
                     }
@@ -196,7 +176,6 @@ void XLinkOutHost::run() {
                     reconnect = true;
                     break;
                 } else {
-                    // If the node is not running, we can safely ignore the exception, since it's expected
                     logger::info("XLinkOutHost node stopped - exception: {}", ex.what());
                     break;
                 }

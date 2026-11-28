@@ -67,7 +67,6 @@ void ImageManip::run() {
             dstFrame.fb.p3Offset = dstSpecs.p3Offset;
             dstFrame.setType(outType);
 
-            // Transformations
             dstFrame.transformation = srcFrame.transformation;
             if(manip.undistortEnabled()) {
                 dstFrame.transformation.setDistortionCoefficients({});
@@ -108,9 +107,6 @@ ImageManip& ImageManip::setPerformanceMode(ImageManip::PerformanceMode performan
     return *this;
 }
 
-/**
- * Check if the node is set to run on host
- */
 bool ImageManip::runOnHost() const {
     return runOnHostVar;
 }

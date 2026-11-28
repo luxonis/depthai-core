@@ -11,8 +11,7 @@
 
 class LuxonisSidechannel {
    public:
-    // This can be NULL on old sidechannel version so always check and handle correctly before calling!!!
-    struct operations {
+    struct operations {  // Members can be NULL on old sidechannel versions: check before calling
         lux_sc_camera_mode_set_cb_t camera_mode_set;
         lux_sc_camera_sockets_config_cb_t camera_sockets_config;
         lux_sc_camera_lens_pos_set_cb_t camera_lens_pos_set;
@@ -27,18 +26,12 @@ class LuxonisSidechannel {
 
     operations ops{};
 
-    // Must be called exactly once before initialize().
-    // Must be called before HAL dlopen()'s the camx *.so file
-    // not thread safe
-    static void earlyInit();
+    static void earlyInit();  // Call exactly once, before initialize() and before dlopen() of the camera HAL; not thread safe
 
-    // Should be called exactly once before calling getInstance().
-    // not thread safe
-    static void initialize(void* camxDlopenHandle);
+    static void initialize(void* camxDlopenHandle);  // Call exactly once before getInstance(); not thread safe
 
     static LuxonisSidechannel& getInstance() {
-        // this line is necessary to create the below instance
-        (void)CameraSingleton::getInstance();
+        (void)CameraSingleton::getInstance();  // Creates the sidechannel instance as a side effect
         DAI_CHECK_IN(instance);
         return *instance;
     }

@@ -1,14 +1,11 @@
 #include "depthai/pipeline/DeviceNode.hpp"
 
-#include <ratio>
-
-// std
 #include <spdlog/async_logger.h>
 
-#include "spdlog/fmt/fmt.h"
+#include <ratio>
 
-// project
 #include "depthai/pipeline/Pipeline.hpp"
+#include "spdlog/fmt/fmt.h"
 
 namespace dai {
 
@@ -33,33 +30,7 @@ Properties& DeviceNode::getProperties() {
     return *propertiesHolder;
 }
 
-void DeviceNode::run() {
-    // auto pipeline = getParentPipeline();
-    // if(pipeline.getDefaultDevice() != nullptr) {
-    //     auto dev = pipeline.getDefaultDevice();
-
-    //     auto outputQueueNames = dev->getOutputQueueNames();
-    //     auto inputQueueNames = dev->getInputQueueNames();
-
-    //     for(auto output : getOutputRefs()) {
-    //         auto xlinkName = fmt::format("__x_{}_{}", output->getParent().id, output->toString());
-    //         printf("checking output: %s\n", xlinkName.c_str());
-
-    //         if(std::find(outputQueueNames.begin(), outputQueueNames.end(), xlinkName) != outputQueueNames.end()) {
-    //             auto thisNode = pipeline.getNode(id);
-
-    //             dev->getOutputQueue(xlinkName)->addCallback([thisNode, output](std::string, std::shared_ptr<ADatatype> msg) { output->send(msg); });
-    //         }
-    //     }
-    //     for(auto input : getInputRefs()) {
-    //         auto xlinkName = fmt::format("__x_{}_{}", input->getParent().id, input->toString());
-    //         printf("checking input: %s\n", xlinkName.c_str());
-    //         if(std::find(inputQueueNames.begin(), inputQueueNames.end(), xlinkName) != inputQueueNames.end()) {
-    //             input->queue->addCallback([dev, xlinkName](std::string, std::shared_ptr<ADatatype> msg) { dev->getInputQueue(xlinkName)->send(msg); });
-    //         }
-    //     }
-    // }
-}
+void DeviceNode::run() {}
 
 void DeviceNode::setLogLevel(dai::LogLevel level) {
     const bool isHostNode = runOnHost();

@@ -9,13 +9,10 @@ void bind_beta_imageoutputparser(pybind11::module& m, void* pCallstack) {
 
     auto imageOutputParser = ADD_BETA_NODE_DERIVED(ImageOutputParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     imageOutputParser.def_readonly("input", &ImageOutputParser::input, DOC(dai, beta, node, ImageOutputParser, input))
         .def_readonly("out", &ImageOutputParser::out, DOC(dai, beta, node, ImageOutputParser, out))

@@ -135,7 +135,6 @@ def collect_packages(args: argparse.Namespace) -> dict[str, Any]:
         cmd += ["--private-module-root", str(args.private_module_root)]
     try:
         result = run(cmd, cwd=args.repo_root)
-        # The collector reports where it found (or did not find) the private module
         if result.stderr:
             sys.stderr.write(result.stderr)
         return json.loads(output_path.read_text(encoding="utf-8"))
@@ -199,7 +198,6 @@ class VcpkgPorts:
         }
         self.repo_root = repo_root
         self.vcpkg_root = vcpkg_root
-        # The firmware sources are device/rvc4 of the depthai-core repository: links to overlay ports use that layout
         core_root = repo_root.parents[1]
         self.core_root = core_root if (core_root / "device" / "rvc4").resolve() == repo_root.resolve() else None
 
@@ -266,8 +264,7 @@ def generate_license_bundle(
     vcpkg_ports: VcpkgPorts | None = None,
 ) -> str:
     packages = sorted_packages(payload)
-    if vendor_license_text:
-        # The license text of the vendor module lists its third-party components itself
+    if vendor_license_text:  # The vendor license text lists its own third-party components
         packages = [package for package in packages if package.get("source_root") != PRIVATE_MODULE_NAME]
     lines = [
         license_text.rstrip(),

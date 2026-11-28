@@ -11,13 +11,10 @@ void bind_beta_scrfdparser(pybind11::module& m, void* pCallstack) {
     py::class_<beta::SCRFDParserProperties> scrfdParserProperties(betaModule, "SCRFDParserProperties");
     auto scrfdParser = ADD_BETA_NODE_DERIVED(SCRFDParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     scrfdParserProperties.def_readwrite("initialConfig", &beta::SCRFDParserProperties::initialConfig)
         .def_readwrite("outputLayerNames", &beta::SCRFDParserProperties::outputLayerNames)

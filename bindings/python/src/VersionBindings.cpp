@@ -1,26 +1,17 @@
 #include "VersionBindings.hpp"
 
-// depthai
 #include "depthai/device/Version.hpp"
 
 void VersionBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // Type definitions
     py::class_<Version> version(m, "Version", DOC(dai, Version));
     py::enum_<Version::PreReleaseType> preReleaseType(version, "PreReleaseType", DOC(dai, Version, PreReleaseType));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     preReleaseType.value("ALPHA", Version::PreReleaseType::ALPHA)
         .value("BETA", Version::PreReleaseType::BETA)

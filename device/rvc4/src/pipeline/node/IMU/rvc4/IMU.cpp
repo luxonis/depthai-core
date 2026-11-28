@@ -1,6 +1,5 @@
 #include "IMU.hpp"
 
-// std
 #include <unistd.h>
 
 #include <array>
@@ -15,7 +14,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-// project
 #include "Timesync.hpp"
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -26,7 +24,6 @@
 #include "utilities/ClockOffset.hpp"
 #include "utilities/MatrixUtils.hpp"
 
-// libraries
 #include <hardware/sensors.h>
 
 #include "utilities/IMUDiscovery.hpp"
@@ -34,7 +31,6 @@
 namespace dai {
 namespace gate {
 
-// A STRUCTURED_MUX channel carries one Android sensors_event_t record (104 bytes) per sample.
 static_assert(sizeof(sensors_event_t) == 104, "sensors_event_t layout differs from the sensor hub record layout");
 static_assert(offsetof(sensors_event_t, timestamp) == 16 && offsetof(sensors_event_t, flags) == 88,
               "sensors_event_t layout differs from the sensor hub record layout");
@@ -55,10 +51,7 @@ uint64_t producedGeneration = 0;
 uint64_t consumedGeneration = 0;
 bool readerStopped = false;
 std::condition_variable cv;
-// File-scope IMU state below relies on the single-instance invariant enforced by
-// IMU::instanceCount in IMU::run(). If multi-instance support is added, move this
-// state onto IMU instances and revisit synchronization.
-static dai::IMUPacket packet;
+static dai::IMUPacket packet;  // File-scope state below is safe only with the single instance that IMU::instanceCount enforces in run()
 static dai::ImuCalibrationParams imuCalibrationParams = {};
 static std::vector<std::vector<float>> imuRotationMatrix = dai::kIdentityRotationMatrix;
 static bool rotateAccelerometerUncalibrated = false;
@@ -68,7 +61,6 @@ static bool applyAccelerometerCalibration = false;
 static bool applyGyroscopeCalibration = false;
 
 static void applyImuRotation(float& x, float& y, float& z) {
-    // Keep data unchanged when calibration contains an invalid rotation matrix.
     if(!dai::is3x3Matrix(imuRotationMatrix) || dai::isZeroRotationMatrix(imuRotationMatrix)) {
         return;
     }
@@ -197,12 +189,6 @@ static void setTimestampFromPackets(std::shared_ptr<dai::IMUData>& imuData) {
     imuData->tsDevice = deviceTs;
     imuData->tsSystem = systemTs;
 }
-/*
- * Read sample transmited in generic protobuf format. Used for rotv and game_rv samples.
- *
- * Producer populates IMUPacket instance with the samples received in the circular buffer from shared memory ptr between DSP and APP.
- * If the samples are not present, sleep for expected timeout based on sampleRateHz
- */
 void IMU::readGenericDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, uint32_t sampleRateHz, bool shouldSignal) {
     if(nullptr == shared_buff_ptr) {
         return;
@@ -211,11 +197,9 @@ void IMU::readGenericDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, 
     SensorEventReader reader(shared_buff_ptr, sharedBuffSize);
     SensorSample sample;
 
-    /* isRunning is atomic */
     while(isRunning()) {
         const SensorEventReader::Status status = reader.next(sample);
 
-        /* No events. Sleep until new events (data) come. */
         if(status == SensorEventReader::Status::NO_EVENT) {
             usleep(1000000 / sampleRateHz);
             continue;
@@ -246,7 +230,6 @@ void IMU::readGenericDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, 
         }
     }
 
-    /* If runs stop, notify all */
     {
         std::lock_guard<std::mutex> dataLock(imuMtx);
         readerStopped = true;
@@ -254,12 +237,6 @@ void IMU::readGenericDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, 
     cv.notify_all();
 }
 
-/*
- * Read sample transmited in muxed protobuf format. Used for accel, gyro and mag samples.
- *
- * Producer populates IMUPacket instance with the samples received in the circular buffer from shared memory ptr between DSP and APP.
- * If the samples are not present, sleep for expected timeout based on sampleRateHz
- */
 void IMU::readMuxedDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, uint32_t sampleRateHz, bool shouldSignal) {
     if(nullptr == shared_buff_ptr) return;
 
@@ -267,11 +244,9 @@ void IMU::readMuxedDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, ui
     char* temp = shared_buff_ptr;
     char* end_ptr = shared_buff_ptr + sharedBuffSize;
 
-    /* isRunning is atomic */
     while(isRunning()) {
         sensors_event_t data = *reinterpret_cast<const sensors_event_t*>(temp);
 
-        /* No events. Sleep until new events (data) come. */
         if(previous_counter >= data.reserved0) {
             usleep(1000000 / sampleRateHz);
             continue;
@@ -281,8 +256,7 @@ void IMU::readMuxedDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, ui
         {
             std::lock_guard<std::mutex> dataLock(imuMtx);
             switch(data.type) {
-                // Never called since we are now configurating the calibration on Luxonis side instead of consuming calibrated data from Qualcomm. Keeping the case for future if we want to support consuming calibrated data from Qualcomm.
-                case SENSOR_TYPE_ACCELEROMETER: {
+                case SENSOR_TYPE_ACCELEROMETER: {  // Not used: calibration is applied on the Luxonis side, not taken from Qualcomm
                     float x = data.acceleration.x;
                     float y = data.acceleration.y;
                     float z = data.acceleration.z;
@@ -301,8 +275,7 @@ void IMU::readMuxedDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, ui
 
                     break;
                 }
-                // Never called since we are now configurating the calibration on Luxonis side instead of consuming calibrated data from Qualcomm. Keeping the case for future if we want to support consuming calibrated data from Qualcomm.
-                case SENSOR_TYPE_MAGNETIC_FIELD:
+                case SENSOR_TYPE_MAGNETIC_FIELD:  // Not used: calibration is applied on the Luxonis side, not taken from Qualcomm
                     packet.magneticField.x = data.magnetic.x;
                     packet.magneticField.y = data.magnetic.y;
                     packet.magneticField.z = data.magnetic.z;
@@ -315,8 +288,7 @@ void IMU::readMuxedDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, ui
                     packet.magneticField.sequence = data.reserved0;
 
                     break;
-                // Never called since we are now configurating the calibration on Luxonis side instead of consuming calibrated data from Qualcomm. Keeping the case for future if we want to support consuming calibrated data from Qualcomm.
-                case SENSOR_TYPE_GYROSCOPE: {
+                case SENSOR_TYPE_GYROSCOPE: {  // Not used: calibration is applied on the Luxonis side, not taken from Qualcomm
                     float x = data.gyro.x;
                     float y = data.gyro.y;
                     float z = data.gyro.z;
@@ -390,7 +362,6 @@ void IMU::readMuxedDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, ui
                     break;
                 }
                 default:
-                    /* unrecognised sensor type */
                     newPacket = false;
                     break;
             }
@@ -405,13 +376,11 @@ void IMU::readMuxedDataProducer(char* shared_buff_ptr, size_t sharedBuffSize, ui
         previous_counter = data.reserved0;
         temp = temp + sizeof(sensors_event_t);
 
-        /* End of the circular buffer. Loop to the beginning of the buffer. */
         if(temp >= end_ptr) {
             temp = shared_buff_ptr;
         }
     }
 
-    /* If runs stop, notify all */
     {
         std::lock_guard<std::mutex> dataLock(imuMtx);
         readerStopped = true;
@@ -436,8 +405,7 @@ void IMU::overrideConnectedIMU(const std::string& imu) {
     detectedImu = imu;
 }
 
-// Always now use the UNCALIBRATED version of the sensors from Qualcomm and apply Luxonis calibration and rotation on our side. This is to ensure the consistency of the data we consume from Qualcomm and avoid potential issue of consuming calibrated data from Qualcomm which might have gone through some unexpected transformation in Qualcomm's pipeline. The cases for calibrated sensors are kept in the code for future use if we want to support consuming calibrated data from Qualcomm.
-bool IMU::daiToSensorConfig(const dai::IMUSensorConfig& src, ImuSensorConfig& dst) {
+bool IMU::daiToSensorConfig(const dai::IMUSensorConfig& src, ImuSensorConfig& dst) {  // UNCALIBRATED only: Qualcomm calibration can add unexpected transforms
     switch(src.sensorId) {
         case dai::IMUSensor::ACCELEROMETER_RAW:
         case dai::IMUSensor::ACCELEROMETER_UNCALIBRATED:
@@ -460,8 +428,7 @@ bool IMU::daiToSensorConfig(const dai::IMUSensorConfig& src, ImuSensorConfig& ds
         case dai::IMUSensor::LINEAR_ACCELERATION:
         case dai::IMUSensor::GRAVITY:
             DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
-            // The device does not supply these deprecated sensors. The labels stay, so that -Wswitch finds new sensors.
-            return false;
+            return false;  // The device does not supply these deprecated sensors; the labels stay so that -Wswitch finds new sensors
         case dai::IMUSensor::GYROSCOPE_RAW:
             dst.sensorType = SENSOR_TYPE_GYROSCOPE_UNCALIBRATED;
             dst.streamConfig.sensorDataType = "gyro";
@@ -531,7 +498,6 @@ bool IMU::daiToSensorConfig(const dai::IMUSensorConfig& src, ImuSensorConfig& ds
         case dai::IMUSensor::ARVR_STABILIZED_GAME_ROTATION_VECTOR:
             return false;
         default:
-            /* Sensor is not supported */
             return false;
     }
 
@@ -671,7 +637,6 @@ void IMU::run() {
 
         unsigned int sensorIDWithMinSampleRateHz = 0;
 
-        /* Configure requested sensors */
         for(auto i = 0; i < initialReports.size(); i++) {
             int ret = initialReports.at(i).sensorDirectChannel.queryAttributes(initialReports.at(i).streamConfig);
             if(ret) {
@@ -693,11 +658,9 @@ void IMU::run() {
             }
         }
 
-        /* Start streaming */
         for(auto i = 0; i < initialReports.size(); i++) {
             char* shared_buff_ptr;
             shared_buff_ptr = initialReports.at(i).sensorDirectChannel.startStreaming(initialReports.at(i).streamConfig);
-            /* Consider to report as a hard error and stop the execution */
             if(NULL == shared_buff_ptr) {
                 logger->warn("Failed to start sensor {} streaming", initialReports.at(i).streamConfig.sensorDataType);
                 continue;
@@ -705,15 +668,9 @@ void IMU::run() {
 
             bool shouldSignal = (i == sensorIDWithMinSampleRateHz) ? true : false;
 
-            /* Clear communication buffer mem channel before reading */
             const size_t sharedBufferSize = SensorDirectChannel::sharedBufferSize();
             memset(shared_buff_ptr, 0, sharedBufferSize);
 
-            /*
-             * Start stream reader thread based on data format.
-             *  - accel, gyro and mag streams are in muxed format
-             *  - rotv stream is in generic data format
-             */
             std::thread producerThread =
                 (initialReports.at(i).streamConfig.channelType == SensorChannelType::GENERIC)
                     ? std::thread(
@@ -748,16 +705,7 @@ void IMU::run() {
             auto tAbsoluteEnd = steady_clock::now();
             dai::gate::logTiming(logger, this->getName(), tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
         } else {
-            /*
-             * IMU consumer thread.
-             * The only one IMU instance is present, all samples have to be populated in the same packet.
-             * The consumer takes populated packet from configured sensor producers.
-             *
-             * Since sensors can stream at different speeds, sync condition between producer(s) is only required with the slowest sensor.
-             * Packet will be emitted with each newly arrived sample from the slowest active sensor, keeping the latest known sample from faster sensors.
-             */
-
-            {
+            {  // Emits a packet for each new sample of the slowest sensor, with the latest samples of the faster ones
                 std::unique_lock<std::mutex> dataLock(imuMtx);
                 cv.wait(dataLock, []() { return readerStopped || consumedGeneration != producedGeneration; });
                 consumedGeneration = producedGeneration;
@@ -778,10 +726,6 @@ void IMU::run() {
             }
             auto tGotInput = steady_clock::now();
             if(sampleCnt >= maxBatchReports) {
-                /*
-                 * Closed connection scenario.
-                 * Connection may terminate during wait.
-                 */
                 if(!isRunning()) {
                     break;
                 }
@@ -797,10 +741,6 @@ void IMU::run() {
                 imuDataOut = std::make_shared<dai::IMUData>();
                 sampleCnt = 0;
             } else if(sampleCnt >= batchReportThreshold) {
-                /*
-                 * Closed connection scenario.
-                 * Connection may terminate during wait.
-                 */
                 if(!isRunning()) {
                     break;
                 }
@@ -825,7 +765,6 @@ void IMU::run() {
     }
 
     if(!mockInEnabled) {
-        /* Stop producer threads and clear sensor communication channels */
         for(auto i = 0; i < initialReports.size(); i++) {
             activeProducerThreads.at(i).join();
             initialReports.at(i).sensorDirectChannel.stopStreaming(initialReports.at(i).streamConfig.calibrated, initialReports.at(i).streamConfig.resampled);

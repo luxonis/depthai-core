@@ -27,7 +27,6 @@ inline std::string toString(CameraSensorType type) {
 
 }  // namespace dai
 
-// Global namespace
 inline std::ostream& operator<<(std::ostream& out, const dai::CameraSensorType& type) {
     return out << dai::toString(type);
 }

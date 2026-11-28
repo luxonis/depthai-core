@@ -1,7 +1,6 @@
 // IWYU pragma: private, include "depthai/depthai.hpp"
 #pragma once
 
-// std
 #include <filesystem>
 #include <functional>
 #include <string>
@@ -10,39 +9,33 @@
 #include <type_traits>
 #include <vector>
 
-// project
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/Version.hpp"
 #ifndef DEPTHAI_DEVICE_MANAGER_ONLY
     #include "depthai/pipeline/Pipeline.hpp"
 #endif  // DEPTHAI_DEVICE_MANAGER_ONLY
-#include "depthai/xlink/XLinkConnection.hpp"
-#include "depthai/xlink/XLinkStream.hpp"
-
-// shared
 #include "depthai-bootloader-shared/Config.hpp"
 #include "depthai-bootloader-shared/Memory.hpp"
 #include "depthai-bootloader-shared/Section.hpp"
 #include "depthai-bootloader-shared/Type.hpp"
+#include "depthai/xlink/XLinkConnection.hpp"
+#include "depthai/xlink/XLinkStream.hpp"
 
 namespace dai {
 
 namespace fs = std::filesystem;
-// DeviceBootloader (RAII), connects to device and maintains watchdog ...
 
 /**
  * Represents the DepthAI bootloader with the methods to interact with it.
  */
 class DeviceBootloader {
    public:
-    // Alias
     using Type = dai::bootloader::Type;
     using Memory = dai::bootloader::Memory;
     using Section = dai::bootloader::Section;
     using UsbConfig = dai::bootloader::UsbConfig;
     using NetworkConfig = dai::bootloader::NetworkConfig;
 
-    // Derive and extend bootloader::Config for easier usage
     struct Config : public bootloader::Config {
         /// Setting a static IPv4 won't start DHCP client
         void setStaticIPv4(const std::string& ip, const std::string& mask, const std::string& gateway);
@@ -93,7 +86,6 @@ class DeviceBootloader {
         nlohmann::json data;
     };
 
-    // Add an alias to Version
     using Version = dai::Version;
 
     struct ApplicationInfo {
@@ -109,12 +101,9 @@ class DeviceBootloader {
         std::string info;
     };
 
-    // constants
-
     /// Default Bootloader type
     static constexpr const Type DEFAULT_TYPE{Type::USB};
 
-    // Static API
     /**
      * Searches for connected devices in either UNBOOTED or BOOTLOADER states and returns first available.
      * @returns Tuple of boolean and DeviceInfo. If found boolean is true and DeviceInfo describes the device. Otherwise false
@@ -406,9 +395,6 @@ class DeviceBootloader {
     bool isClosed() const;
 
    private:
-    // private static
-
-    // private methods
     void init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std::optional<bootloader::Type> type, bool allowBlFlash);
     template <typename T>
     bool sendRequest(const T& request);
@@ -430,38 +416,30 @@ class DeviceBootloader {
     void createWatchdog();
     void destroyWatchdog();
 
-    // private variables
     std::shared_ptr<XLinkConnection> connection;
     DeviceInfo deviceInfo = {};
 
     bool isEmbedded = false;
     Type bootloaderType;
 
-    // closed
     std::atomic<bool> closed{false};
 
-    // Watchdog thread
     std::thread watchdogThread;
     std::atomic<bool> watchdogRunning{true};
 
-    // Monitor thread
     std::thread monitorThread;
     std::mutex lastWatchdogPingTimeMtx;
     std::chrono::steady_clock::time_point lastWatchdogPingTime;
 
-    // bootloader stream
     std::unique_ptr<XLinkStream> stream;
 
-    // Allow flashing bootloader flag
     bool allowFlashingBootloader = false;
 
-    // Current connected bootloader version
     Version version{0, 0, 2};
 };
 
 }  // namespace dai
 
-// Global namespace
 inline std::ostream& operator<<(std::ostream& out, const dai::DeviceBootloader::Type& type) {
     switch(type) {
         case dai::DeviceBootloader::Type::AUTO:

@@ -11,14 +11,12 @@
 namespace dai {
 namespace node {
 namespace {
-// Inputs latched between rounds: the runtime config, the reference transformation and the source mask of each key.
 struct Latched {
     ImgDetectionsFilterConfig config;
     std::optional<ImgTransformation> reference;
     std::vector<std::shared_ptr<ImgFrame>> sourceMasks;
     bool referenceReceived = false;
 
-    // Apply the last queued valid config. Its reference applies until the first reference frame arrives.
     void updateConfig(Node::Input& input, spdlog::logger& logger) {
         std::shared_ptr<ImgDetectionsFilterConfig> next;
         while(auto queued = input.tryGet<ImgDetectionsFilterConfig>()) next = std::move(queued);
@@ -30,7 +28,6 @@ struct Latched {
         config = *next;
         if(!referenceReceived && config.reference) reference = config.reference;
     }
-    // Latch the newest valid reference frame. It supersedes the config reference permanently.
     void updateReference(Node::Input& input, spdlog::logger& logger) {
         while(auto frame = input.tryGet<ImgFrame>()) {
             const auto& next = frame->getTransformation();
@@ -42,7 +39,6 @@ struct Latched {
             if(!reference || !reference->isEqualTransformation(next)) reference = next;
         }
     }
-    // Latch the newest mask of each linked key. Return whether every linked mask matches the output transformation.
     bool updateMasks(const std::vector<Node::Input*>& inputs, const std::optional<ImgTransformation>& target) {
         bool ready = true;
         for(std::size_t key = 0; key < inputs.size(); ++key) {
@@ -96,11 +92,9 @@ void ImgDetectionsFilter::buildStage1() {
 }
 void ImgDetectionsFilter::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    // Read the member, not getProperties(): that writes the properties, which Pipeline::start() serializes concurrently for telemetry.
-    Latched latched{*initialConfig, initialConfig->reference, std::vector<std::shared_ptr<ImgFrame>>(linkedInputs.size())};
+    Latched latched{*initialConfig, initialConfig->reference, std::vector<std::shared_ptr<ImgFrame>>(linkedInputs.size())};  // getProperties() races start()
     std::vector<impl::MaskRemapCache> maskRemaps(linkedInputs.size());
     bool dropping = false, droppingMasks = false;
-    // Warn once for each episode of dropped rounds.
     const auto drop = [&logger](bool& episode, const char* reason) {
         if(!episode) logger->warn(reason);
         episode = true;

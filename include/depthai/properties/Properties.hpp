@@ -16,9 +16,7 @@ struct PropertiesSerializable : Base {
     virtual void serialize(std::vector<std::uint8_t>& data, SerializationType type = SerializationType::LIBNOP) const override;
 };
 
-// Not inline, so that the extern template declarations in the properties headers stop every
-// unit from instantiating the serializers. Explicit instantiations: src/utility/serialization/.
-template <typename Base, typename Derived>
+template <typename Base, typename Derived>  // Not inline: extern templates stop per-unit instantiation; see src/utility/serialization/
 void PropertiesSerializable<Base, Derived>::serialize(std::vector<std::uint8_t>& data, SerializationType type) const {
     utility::serialize(static_cast<const Derived&>(*this), data, type);
 }

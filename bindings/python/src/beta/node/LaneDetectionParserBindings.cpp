@@ -9,13 +9,10 @@ void bind_beta_lanedetectionparser(pybind11::module& m, void* pCallstack) {
 
     auto laneDetectionParser = ADD_BETA_NODE_DERIVED(LaneDetectionParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     laneDetectionParser.def_readonly("input", &LaneDetectionParser::input, DOC(dai, beta, node, LaneDetectionParser, input))
         .def_readonly("out", &LaneDetectionParser::out, DOC(dai, beta, node, LaneDetectionParser, out))

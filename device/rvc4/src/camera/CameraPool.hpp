@@ -7,17 +7,14 @@
 #include <optional>
 #include <vector>
 
-// Taken from qmmf-sdk:
-// common/memory/qmmf_memory_interface.h
-#define GRALLOC_USAGE_SW_READ_OFTEN 0x00000003
+#define GRALLOC_USAGE_SW_READ_OFTEN 0x00000003  // From qmmf-sdk common/memory/qmmf_memory_interface.h
 #define GRALLOC_USAGE_SW_WRITE_OFTEN 0x00000030
 #define GRALLOC_USAGE_HW_FB 0x00001000
 #define GRALLOC_USAGE_HW_VIDEO_ENCODER 0x00010000
 
 class CameraPool {
    public:
-    // Attention. Keep this class in sync with the qualcomm HAL implementation (CamX/chi-cdk)
-    struct private_handle_t : public native_handle {
+    struct private_handle_t : public native_handle {  // Must match the camera HAL of the device OS
         enum { PRIV_FLAGS_FRAMEBUFFER = 0x00000001, PRIV_FLAGS_VIDEO_ENCODER = 0x00010000 };
 
         int fd;
@@ -65,20 +62,14 @@ class CameraPool {
         struct gbm_bo* bo;
         std::chrono::time_point<std::chrono::steady_clock> lastUsed;
         bool inHal{false};  // probably better to do this without the wrap with the fences in camera3_stream_buffer_t
-                            // check if they get correctly changed when sent to HAL and then back or do we need to wait
-                            // on the file descriptor we get as documented ...
-                            // cameraadaptor doesn't wait on no fd's
     };
 
     std::mutex bufferPoolLock;
     std::vector<BufferWrap> bufferPool;
-    // Below the min of the 2 is taken to be the actual limit of the pool per stream
-    // int maxSize{100 * 1024 * 1024};  // Default to 100MB per stream max
     size_t maxSize{10ul * 1024 * 1024 * 1024};  // Default to 10GB per stream max
     int maxFrames{7};                           // Default to lucky 7 frames max
     std::condition_variable freeBufferWait;
 
     static buffer_handle_t* allocateBuffer(int32_t buf_width, int32_t buf_height, int format, BufferWrap& buf);
-    // This has to be called inside a scope that has bufferPoolLock held!!!
-    void getUsedResources(camera3_stream_t* stream, int& curFrames, size_t& curSize, size_t& oneSize);
+    void getUsedResources(camera3_stream_t* stream, int& curFrames, size_t& curSize, size_t& oneSize);  // Caller must hold bufferPoolLock
 };

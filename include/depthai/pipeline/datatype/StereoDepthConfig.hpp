@@ -101,21 +101,7 @@ class StereoDepthConfig : public Buffer {
          */
         std::int32_t disparityShift = 0;
 
-        /*
-         * Used only for debug purposes. centerAlignmentShiftFactor is set automatically in firmware,
-         * from camera extrinsics when depth alignment to camera is enabled.
-         * Center alignment is achieved by shifting the obtained disparity map by a scale factor.
-         * It's used to align to a different camera that is on the same horizontal baseline as the two stereo cameras.
-         * E.g. if we have a device with 10 cm stereo baseline, and we have another camera in between,
-         * 9cm from the LEFT camera and 1 cm from the RIGHT camera we can align the obtained disparity map using a scale factor of 0.9.
-         * Note that aligning disparity map to a different camera involves 2 steps:
-         * 1. Shifting obtained disparity map.
-         * 2. Warping the image to counter rotate and scaling to match the FOV.
-         * Center alignment factor 1 is equivalent to RECTIFIED_RIGHT
-         * Center alignment factor 0 is equivalent to RECTIFIED_LEFT
-         * RVC2 only.
-         */
-        std::optional<float> centerAlignmentShiftFactor;
+        std::optional<float> centerAlignmentShiftFactor;  // Debug only, RVC2 only; firmware sets it. 1 = RECTIFIED_RIGHT, 0 = RECTIFIED_LEFT
 
         /**
          * Invalidate X amount of pixels at the edge of disparity frame.

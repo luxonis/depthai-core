@@ -1,16 +1,12 @@
 #include "depthai/xlink/XLinkStream.hpp"
 
-// libraries
 #include "XLink/XLink.h"
-#include "spdlog/fmt/fmt.h"
-
-// project
 #include "depthai/utility/SharedMemory.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
+#include "spdlog/fmt/fmt.h"
 
 namespace dai {
 
-// static
 constexpr std::chrono::milliseconds XLinkStream::WAIT_FOR_STREAM_RETRY;
 constexpr int XLinkStream::STREAM_OPEN_RETRIES;
 
@@ -23,7 +19,6 @@ XLinkStream::XLinkStream(const std::shared_ptr<XLinkConnection>& conn, const std
     for(int retryCount = 0; retryCount < STREAM_OPEN_RETRIES; retryCount++) {
         streamId = XLinkOpenStream(connection->getLinkId(), streamName.c_str(), static_cast<int>(maxWriteSize));
         if(streamId == INVALID_STREAM_ID) {
-            // Give some time before continuing
             std::this_thread::sleep_for(WAIT_FOR_STREAM_RETRY);
         } else {
             break;
@@ -33,11 +28,8 @@ XLinkStream::XLinkStream(const std::shared_ptr<XLinkConnection>& conn, const std
     if(streamId == INVALID_STREAM_ID) throw std::runtime_error("Couldn't open stream");
 }
 
-// Move constructor
 XLinkStream::XLinkStream(XLinkStream&& other)
-    : connection(std::move(other.connection)), streamName(std::exchange(other.streamName, {})), streamId(std::exchange(other.streamId, INVALID_STREAM_ID)) {
-    // Set other's streamId to INVALID_STREAM_ID to prevent closing
-}
+    : connection(std::move(other.connection)), streamName(std::exchange(other.streamName, {})), streamId(std::exchange(other.streamId, INVALID_STREAM_ID)) {}
 
 XLinkStream& XLinkStream::operator=(XLinkStream&& other) {
     if(this != &other) {
@@ -49,7 +41,6 @@ XLinkStream& XLinkStream::operator=(XLinkStream&& other) {
 }
 
 XLinkStream::~XLinkStream() {
-    // If streamId != invalid (eg. wasn't moved to another XLinkStream)
     if(streamId != INVALID_STREAM_ID) {
         XLinkCloseStream(streamId);
     }
@@ -98,10 +89,6 @@ void StreamPacketMemory::setSize(size_t size) {
     }
     this->size = size;
 }
-
-////////////////////
-// BLOCKING VERSIONS
-////////////////////
 
 void XLinkStream::write(span<const uint8_t> data, span<const uint8_t> data2) const {
     auto status = XLinkWriteData2(streamId, data.data(), static_cast<int>(data.size()), data2.data(), data2.size());
@@ -190,7 +177,6 @@ StreamPacketDesc XLinkStream::readMove() const {
     return packet;
 }
 
-// SPLIT HELPER
 void XLinkStream::writeSplit(const void* d, std::size_t size, std::size_t split) const {
     const uint8_t* data = (const uint8_t*)d;
     std::size_t currentOffset = 0;
@@ -207,10 +193,6 @@ void XLinkStream::writeSplit(const void* d, std::size_t size, std::size_t split)
         remaining = size - currentOffset;
     }
 }
-
-///////////////////////
-// Timeout versions //
-//////////////////////
 
 bool XLinkStream::write(const std::uint8_t* data, std::size_t size, std::chrono::milliseconds timeout) const {
     auto status = XLinkWriteDataWithTimeout(streamId, data, static_cast<int>(size), static_cast<unsigned int>(timeout.count()));

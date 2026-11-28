@@ -4,10 +4,8 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/SegmentationParserConfig.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
@@ -17,20 +15,11 @@ void bind_segmentationparserconfig(pybind11::module& m, void* pCallstack) {
     py::class_<SegmentationParserConfig, Py<SegmentationParserConfig>, Buffer, py::smart_holder> segmentationParserConfig(
         m, "SegmentationParserConfig", DOC(dai, SegmentationParserConfig));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Message
     segmentationParserConfig.def(py::init<>())
         .def("__repr__", &SegmentationParserConfig::str)
         .def_readwrite("confidenceThreshold", &SegmentationParserConfig::confidenceThreshold, DOC(dai, SegmentationParserConfig, confidenceThreshold))

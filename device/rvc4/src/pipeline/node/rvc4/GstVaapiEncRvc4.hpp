@@ -1,18 +1,15 @@
 #pragma once
 
-// std
 #include <cstdint>
 #include <functional>
 #include <string>
 #include <tuple>
 
-// project
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/utility/Memory.hpp"
 #include "utilities/GstBufferMemory.hpp"
 
-// libraries
 #include <gstreamer-1.0/gst/app/gstappsink.h>
 #include <gstreamer-1.0/gst/app/gstappsrc.h>
 #include <gstreamer-1.0/gst/gst.h>
@@ -36,7 +33,6 @@ class GstVaapiEnc {
 
     const char* get_encoder_name_by_video_prop(dai::VideoEncoderProperties::Profile profile);
 
-    // std::function<void(std::shared_ptr<dai::Memory> data, const int size)> handle_buffer;
     std::function<void(const uint8_t* buffer, const int size, const int width, const int height)> handle_buffer;
 
     std::atomic<bool> error{false};

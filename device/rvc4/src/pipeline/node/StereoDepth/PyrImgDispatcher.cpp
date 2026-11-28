@@ -17,8 +17,7 @@ uint32_t toDeviceScaledownInterpolation(dai::gate::ScaledownInterpolation interp
         case dai::gate::ScaledownInterpolation::BICUBIC:
             return DAI_INTERPOLATION_BICUBIC;
     }
-    // Not a known value: the vendor module rejects it ("Unsupported scaledown interpolation type")
-    return static_cast<uint32_t>(interpolation);
+    return static_cast<uint32_t>(interpolation);  // Unknown value: the vendor module rejects it
 }
 
 }  // namespace
@@ -33,9 +32,7 @@ PyrImgDispatcher::PyrImgDispatcher() : handle(nullptr, &dai_device_pyrimg_destro
 PyrImgDispatcher::~PyrImgDispatcher() = default;
 
 void PyrImgDispatcher::RunAsync(const std::shared_ptr<const dai::ImgFrame>& inFrame, std::vector<std::shared_ptr<dai::ImgFrame>> outFrames) {
-    // The outputs first, then the input, as before the C interface. The buffers are not assigned to the frames.
-    // A level without a frame gets an image without memory: the unit does not write that level.
-    std::vector<std::shared_ptr<dai::AcceleratorMemory>> outImgs;
+    std::vector<std::shared_ptr<dai::AcceleratorMemory>> outImgs;  // A level without a frame gets an image without memory: the unit skips it
     outImgs.reserve(outFrames.size());
     std::vector<dai_device_image> outs(outFrames.size());
     for(size_t n = 0; n < outFrames.size(); n++) {
@@ -66,13 +63,10 @@ int PyrImgDispatcher::Wait() {
     const dai_status status = dai_device_pyrimg_wait(handle.get());
     inMem.reset();
     outMems.clear();
-    // The C call gives the accelerator driver status of the work (0 = OK); this method returns it negated, as before
-    return -dai::device::returnDriverStatus(status, UNIT, "dai_device_pyrimg_wait");
+    return -dai::device::returnDriverStatus(status, UNIT, "dai_device_pyrimg_wait");  // Returns the negated accelerator driver status (0 = OK)
 }
 
-// Open, Init, Config and Close return 0 or throw, as before the C interface: the nodes ignore the return value of
-// Config, so an error (also a driver status) must throw.
-uint32_t PyrImgDispatcher::Open() {
+uint32_t PyrImgDispatcher::Open() {  // Open, Init, Config and Close return 0 or throw: the nodes ignore the return value of Config
     DAI_CHECK_DEVICE(UNIT, dai_device_pyrimg_open(handle.get()));
     return 0;
 }

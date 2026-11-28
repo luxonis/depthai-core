@@ -5,15 +5,11 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl_bind.h>
-
-// #include "spdlog/spdlog.h"
 
 PYBIND11_MAKE_OPAQUE(std::vector<dai::Color>);
 PYBIND11_MAKE_OPAQUE(std::vector<dai::CircleAnnotation>);
@@ -45,20 +41,11 @@ void bind_imageannotations(pybind11::module& m, void* pCallstack) {
     py::bind_vector<std::vector<dai::ImgAnnotation>>(m, "VectorImgAnnotation");
     py::implicitly_convertible<py::list, std::vector<dai::ImgAnnotation>>();
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Metadata / raw
     circleAnnotation.def(py::init<>())
         .def_readwrite("position", &CircleAnnotation::position)
         .def_readwrite("diameter", &CircleAnnotation::diameter)
@@ -92,7 +79,6 @@ void bind_imageannotations(pybind11::module& m, void* pCallstack) {
         .def_readwrite("points", &ImgAnnotation::points)
         .def_readwrite("texts", &ImgAnnotation::texts);
 
-    // Message
     imageAnnotations.def(py::init<>(), DOC(dai, ImgAnnotations, ImgAnnotations))
         .def(py::init<const std::vector<ImgAnnotation>&>(), DOC(dai, ImgAnnotations, ImgAnnotations, 2))
         .def_readwrite("annotations", &ImgAnnotations::annotations)

@@ -1,6 +1,5 @@
 #pragma once
 
-// libraries
 #include <array>
 #include <cstdint>
 #include <memory>
@@ -27,9 +26,7 @@ class Align : public ::dai::node::Align {
     constexpr static const char* NAME = node::Align::NAME;
     Align() : Align(std::make_unique<dai::node::Align::Properties>()) {}
     Align(std::unique_ptr<Properties> props) : dai::node::Align(std::move(props)) {
-        // Preserve deserialized settings when SDK getProperties() serializes
-        // initialConfig again during device-side pipeline construction.
-        initialConfig = std::make_shared<AlignConfig>(properties.initialConfig);
+        initialConfig = std::make_shared<AlignConfig>(properties.initialConfig);  // Keeps deserialized settings: getProperties() serializes initialConfig again
     }
     bool runOnHost() const override {
         return true;

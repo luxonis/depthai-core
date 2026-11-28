@@ -58,9 +58,7 @@ inline std::map<std::string, MultiDeviceTransform> makeReferenceRelativeTransfor
         });
         if(disconnected == pairwiseTransforms.end()) break;
 
-        // Initial guesses are seeds, not constraints. Give each disconnected
-        // guess component an arbitrary gauge so all of its relative poses are retained.
-        referenceToDevice.emplace(disconnected->fromDeviceId, identityTransform());
+        referenceToDevice.emplace(disconnected->fromDeviceId, identityTransform());  // Seeds, not constraints: an arbitrary gauge keeps the relative poses
     }
     return referenceToDevice;
 }

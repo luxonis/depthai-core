@@ -392,7 +392,6 @@ void Align::extractCalibrationData(const dai::ImgTransformation& inputTransforma
     cv_newR.copyTo(cv_combinedExtrinsics(cv::Rect(0, 0, 3, 3)));
     cv_newT.copyTo(cv_combinedExtrinsics(cv::Rect(3, 0, 1, 3)));
 
-    // Rotate the depth to the RGB frame
     cv::Mat cv_R_back;
     if(rotationOnlyDegenerateTransform) {
         cv_R_back = cv_R.clone();
@@ -411,11 +410,8 @@ void Align::extractCalibrationData(const dai::ImgTransformation& inputTransforma
     auto cv_targetCamMatrix = cv_M1.clone();
     cv_targetCamMatrix.at<float>(0, 2) -= bounds.x;
     cv_targetCamMatrix.at<float>(1, 2) -= bounds.y;
-    // Shift the rectified projection, not the source-image coordinates in
-    // map_x_1. Rectified X/Y can correspond to both source axes after rotation.
-    auto shiftedProjection = cv_targetCamMatrix.clone();
-    if(staticDepthPlane != 0) {
-        // Preserve subpixel translation; rounding here is magnified at the output resolution.
+    auto shiftedProjection = cv_targetCamMatrix.clone();  // Shift the projection, not map_x_1: after rotation rectified X/Y can map to both source axes
+    if(staticDepthPlane != 0) {                           // No rounding: it is magnified at the output resolution
         shiftedProjection.at<float>(0, 2) += depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0] / staticDepthPlane;
         shiftedProjection.at<float>(1, 2) += depthToAlignExtrinsics[1][3] * depthSourceIntrinsics[1][1] / staticDepthPlane;
     }
@@ -441,24 +437,12 @@ void Align::extractCalibrationData(const dai::ImgTransformation& inputTransforma
 }
 
 void Align::buildStage1() {
-    // This warms up the dsp so it works afterwards when called.
-    // Without this it fails in some cases with:
-    // Remote_session_control failed
-    // as it has some race conditions with some unknown stuff.
-    // Main suspects are the hardware accelerator and fastCV. fastCV and the accelerator already had a race condition,
-    // where fastCV had to be configured before the accelerator or the accelerator init would fail.
-    //
-    // THEORY:
-    // As the accelerator init also uses CDSP this is probably the same s**t.
-    // fastCV maybe reconfigures / overrides some global CDSP state
-    // and that doesn't play nice with other CDSP stuff.
-    dai::device::openDspSession(dai_device_dsp_open_align, "dai_device_dsp_open_align");
+    dai::device::openDspSession(dai_device_dsp_open_align, "dai_device_dsp_open_align");  // Warms up the DSP; else Remote_session_control can fail later
 }
 
 std::shared_ptr<ImgFrame> Align::alignImgFrame(std::shared_ptr<ImgFrame> inputImg, const cv::Scalar borderColor, const cv::InterpolationFlags interpolation) {
     using namespace std::chrono;
 
-    // check maps are not empty
     if(map_x_1.empty() || map_y_1.empty()) {
         throw std::runtime_error("Maps for remap are empty, cannot align image!");
     }
@@ -573,8 +557,6 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(std::shared_ptr<ImgFrame> inputIm
         t1 = steady_clock::now();
     }
 
-    // Warp 2
-
     if(PRINT_DEBUG) {
         t2 = steady_clock::now();
         auto elapsed = duration_cast<microseconds>(t2 - t1).count() / 1000.f;
@@ -584,18 +566,15 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(std::shared_ptr<ImgFrame> inputIm
 
     auto alignedImg = up_plgWarpPool2->get();
 
-    // Copy timing and identity fields.
     alignedImg->setBufferMetadataFrom(inputImg);
     alignedImg->setInstanceNum(inputImg->getInstanceNum());
 
-    // Set the new frame layout explicitly
     const auto [alignedWidth, alignedHeight] = alignOutputSize();
     alignedImg->setWidth(alignedWidth);
     alignedImg->setHeight(alignedHeight);
     alignedImg->setType(frameType);
     alignedImg->fb.stride = alignedImg->getWidth() * alignedImg->getBytesPerPixel();
 
-    // Reset/recompute plane offsets for the new layout
     alignedImg->fb.p1Offset = 0;
     alignedImg->fb.p2Offset = alignedImg->fb.stride * alignedImg->getHeight();
     alignedImg->fb.p3Offset = inputIsPlanarRgb ? 2 * alignedImg->fb.p2Offset : alignedImg->fb.p2Offset;
@@ -603,10 +582,7 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(std::shared_ptr<ImgFrame> inputIm
         alignedImg->fb.p3Offset += (alignedImg->getStride() / 2) * (alignedImg->getHeight() / 2);
     }
 
-    // Geometry belongs to the target coordinate system; capture identity above
-    // remains with the source. setSourceSize resets the transformation, so set
-    // it before restoring the target calibration and output geometry.
-    const auto [targetSourceWidth, targetSourceHeight] = currentAlignToTransformation.getSourceSize();
+    const auto [targetSourceWidth, targetSourceHeight] = currentAlignToTransformation.getSourceSize();  // setSourceSize resets the transformation: set it first
     alignedImg->setSourceSize(targetSourceWidth, targetSourceHeight);
     alignedImg->setTransformation(this->currentAlignToTransformation);
     alignedImg->transformation.setSize(alignedWidth, alignedHeight);
@@ -712,8 +688,7 @@ std::shared_ptr<Buffer> Align::alignInputMsg(const std::shared_ptr<Buffer>& inpu
                 default:
                     throw std::invalid_argument("Unsupported Align interpolation");
             }
-            // Do not mix depth values across discontinuities.
-            if(imgFrameInput->getType() == ImgFrame::Type::RAW16) interpolation = cv::INTER_NEAREST;
+            if(imgFrameInput->getType() == ImgFrame::Type::RAW16) interpolation = cv::INTER_NEAREST;  // Do not mix depth values across discontinuities
             auto alignedImg = alignImgFrame(imgFrameInput, cv::Scalar(0, 0, 0), interpolation);
             alignedImg->setBufferMetadataFrom(imgFrameInput);
             alignedImg->setInstanceNum(imgFrameInput->getInstanceNum());
@@ -723,9 +698,8 @@ std::shared_ptr<Buffer> Align::alignInputMsg(const std::shared_ptr<Buffer>& inpu
         }
         case DatatypeEnum::ImgDetections: {
             std::shared_ptr<ImgDetections> imgDetectionsInput = std::dynamic_pointer_cast<ImgDetections>(inputMsg);
-            std::optional<ImgFrame> segMask = imgDetectionsInput->getSegmentationMask();
+            std::optional<ImgFrame> segMask = imgDetectionsInput->getSegmentationMask();  // With a mask, detections must use the mask's undistorted frame
 
-            // With a mask the detections have to share the undistorted frame of the mask pixels, otherwise the two would not overlap.
             const ImgTransformation& detectionsTransform = segMask ? undistortedTransform : this->currentAlignToTransformation;
             auto alignedImg = std::make_shared<ImgDetections>(imgDetectionsInput->transformTo(detectionsTransform));
 

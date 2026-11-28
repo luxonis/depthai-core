@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include <vector>
 
-// shared
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraFeatures.hpp"
 #include "utilities/FsyncController.hpp"
@@ -26,7 +25,6 @@ struct CameraDescription {
 };
 
 class CameraDiscovery {
-    // private constructor
     CameraDiscovery();
     ~CameraDiscovery() = default;
 
@@ -47,18 +45,12 @@ class CameraDiscovery {
     std::vector<dai::CameraFeatures> getConnectedCameraFeatures() const;
     std::unordered_map<dai::CameraBoardSocket, std::string> getConnectedCameraSensorNames() const;
 
-    /// Returns corresponding socket or AUTO if not available
-    dai::CameraBoardSocket getCameraByName(std::string) const;
-    /// Returns corresponding id or -1 if not available
-    int getCameraId(std::string name) const;
-    /// Returns corresponding id or -1 if not available
-    int getCameraId(dai::CameraBoardSocket socket) const;
-    /// Returns corresponding camera id or -1 if not available, by checking name or socket
-    int getCameraId(std::string name, dai::CameraBoardSocket socket) const;
-    /// Returns corresponding camera features or boardSocket = AUTO, by checking name or socket
-    dai::CameraFeatures getCameraFeatures(std::string name, dai::CameraBoardSocket socket) const;
-    /// Returns corresponding camera description or id = -1, by checking name or socket
-    CameraDescription getCameraDescription(std::string name, dai::CameraBoardSocket socket) const;
+    dai::CameraBoardSocket getCameraByName(std::string) const;                                      // AUTO if not available
+    int getCameraId(std::string name) const;                                                        // -1 if not available
+    int getCameraId(dai::CameraBoardSocket socket) const;                                           // -1 if not available
+    int getCameraId(std::string name, dai::CameraBoardSocket socket) const;                         // -1 if not available; matches name or socket
+    dai::CameraFeatures getCameraFeatures(std::string name, dai::CameraBoardSocket socket) const;   // socket = AUTO if not available; matches name or socket
+    CameraDescription getCameraDescription(std::string name, dai::CameraBoardSocket socket) const;  // id = -1 if not available; matches name or socket
     std::vector<std::pair<uint32_t, uint32_t>> getAvailableISPScalers(dai::CameraBoardSocket socket) const;
     void forceCameraDiscovery();
 

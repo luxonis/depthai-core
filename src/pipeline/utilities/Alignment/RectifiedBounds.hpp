@@ -11,8 +11,7 @@
 namespace dai {
 namespace detail {
 
-// Limit the four float rectification maps to 256 MiB, before frame pools.
-constexpr int MAX_RECTIFIED_DIMENSION = 16384;
+constexpr int MAX_RECTIFIED_DIMENSION = 16384;  // Keeps the four float rectification maps <= 256 MiB, before frame pools
 constexpr int MAX_RECTIFIED_PIXELS = 16 * 1024 * 1024;
 
 inline bool isRectifiedSizeSupported(int width, int height) {
@@ -20,12 +19,7 @@ inline bool isRectifiedSizeSupported(int width, int height) {
            && static_cast<std::int64_t>(width) * height <= MAX_RECTIFIED_PIXELS;
 }
 
-// Keep both viewing cones in the intermediate image before applying the depth-dependent shift.
-// When the geometry gives no usable bounds (a border ray behind the rectified camera or too far out, or a canvas past the size
-// limits), return the source image: the canvas from before the bounds were expanded. The aligned image can then lose coverage
-// near its edges, but alignment keeps running. The size check includes the padding to even sizes for chroma-subsampled formats.
-// When a logger is given, the fallback is logged at debug level.
-inline cv::Rect rectifiedBounds(cv::Size sourceSize,
+inline cv::Rect rectifiedBounds(cv::Size sourceSize,  // Falls back to the source image when the geometry gives no usable bounds (logged at debug)
                                 const cv::Mat& sourceK,
                                 const cv::Mat& sourceDistortion,
                                 const cv::Mat& sourceRotation,

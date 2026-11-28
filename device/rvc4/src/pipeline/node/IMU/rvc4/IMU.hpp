@@ -1,10 +1,8 @@
 #pragma once
 
-// std
 #include <cstddef>
 #include <unordered_set>
 
-// project
 #include "SensorDirectChannel.hpp"
 #include "depthai/pipeline/node/IMU.hpp"
 #include "depthai/properties/IMUProperties.hpp"
@@ -14,11 +12,8 @@ namespace dai {
 namespace gate {
 
 struct ImuSensorConfig {
-    /* Android sensor type */
     uint32_t sensorType = 0;
-    /* Requested sensor stream */
     SensorStreamConfig streamConfig;
-    /* Direct communication channel for sensor instance */
     SensorDirectChannel sensorDirectChannel;
 };
 
@@ -28,9 +23,7 @@ class IMU : public dai::node::IMU {
 
     constexpr static const char* NAME = node::IMU::NAME;
     IMU() : IMU(std::make_unique<IMU::Properties>()) {}
-    IMU(std::unique_ptr<Properties> props) : node::IMU(std::move(props)) {
-        // override that this is a host node
-    }
+    IMU(std::unique_ptr<Properties> props) : node::IMU(std::move(props)) {}
     bool runOnHost() const override {
         return true;
     }

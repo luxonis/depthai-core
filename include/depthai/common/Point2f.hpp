@@ -1,9 +1,7 @@
 #pragma once
 
-// std
 #include <cstdint>
 
-// project
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {
@@ -34,8 +32,7 @@ struct Point2f {
         if(hasNormalized) {
             return normalized;
         }
-        // When ambiguous, default to denormalized
-        if((x == 0 || x == 1) && (y == 0 || y == 1)) return false;
+        if((x == 0 || x == 1) && (y == 0 || y == 1)) return false;  // Ambiguous 0/1 coordinates count as denormalized
         return x >= 0 && x <= 1 && y >= 0 && y <= 1;
     }
 };

@@ -1,16 +1,13 @@
 #pragma once
 
-// standard
 #include <cstdint>
 #include <exception>
 #include <unordered_map>
 
-// project
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {
 
-// This class represent a single asset
 struct AssetView {
     std::uint8_t* data;
     std::uint32_t size;
@@ -18,7 +15,6 @@ struct AssetView {
     AssetView(std::uint8_t* d, std::uint32_t s, std::uint32_t a = 1) : data(d), size(s), alignment(a) {}
 };
 
-// This is a serializable class, which acts as readonly access to assets
 class Assets {
    protected:
     std::uint8_t* pStorageStart = nullptr;
@@ -28,7 +24,6 @@ class Assets {
         DEPTHAI_SERIALIZE(AssetInternal, offset, size, alignment);
     };
 
-    // maps string to Asset
     std::unordered_map<std::string, AssetInternal> map;
 
    public:

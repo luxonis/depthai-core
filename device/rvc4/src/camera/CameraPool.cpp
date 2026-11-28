@@ -24,7 +24,6 @@ using namespace android;
 using CameraMetadata = android::hardware::camera::common::V1_0::helper::CameraMetadata;
 using VendorTagDescriptor = android::hardware::camera::common::V1_0::helper::VendorTagDescriptor;
 
-// #define ENABLE_DEBUG
 #ifdef ENALBE_DEBUG
     #define DEBUG(...) fprintf(stderr, ##__VA_ARGS__)
 #else
@@ -49,25 +48,6 @@ buffer_handle_t* repackToGralloc(struct gbm_bo* bo, int format) {
     DAI_CHECK_IN(priv_hnd != NULL);
     buffer_handle_t* grallocHandle = new buffer_handle_t();
     *grallocHandle = static_cast<buffer_handle_t>(priv_hnd);
-    /*
-    fprintf(stderr,
-            "returning bo: %p, wrapped with private handle: %p, wrapped in grallocHandle: %p, with:\nfd: %d,\n"
-            "flags: %d,\nsize: %u,\noffset: %u,\nbufferType: %d,\nformat: %d,\n"
-            "width: %d,\nheight: %d,\nunaligned_width: %d,\nunaligned_height: %d\n",
-            bo,
-            priv_hnd,
-            grallocHandle,
-            priv_hnd->fd,
-            priv_hnd->flags,
-            priv_hnd->size,
-            priv_hnd->offset,
-            priv_hnd->bufferType,
-            priv_hnd->format,
-            priv_hnd->width,
-            priv_hnd->height,
-            priv_hnd->unaligned_width,
-            priv_hnd->unaligned_height);
-            */
     return grallocHandle;
 }
 
@@ -83,20 +63,16 @@ struct gbm_bo* allocBuffer(int32_t width, int32_t height, int format) {
     };
     const auto realFormat = formatMap.find(format);
     DAI_CHECK_IN(realFormat != formatMap.end());
-    // RAW formats don't need video encoder usage — use camera write + CPU access instead
-    // to avoid metadata plane allocation failures (DRM_IOCTL_PRIME_FD_TO_HANDLE errors)
-    uint32_t gbmUsage = (format == HAL_PIXEL_FORMAT_RAW16 || format == HAL_PIXEL_FORMAT_RAW10)
-        ? (GBM_BO_USAGE_CAMERA_WRITE_QTI | GBM_BO_USAGE_CPU_READ_QTI | GBM_BO_USAGE_CPU_WRITE_QTI)
-        : (0 | GBM_BO_USAGE_VIDEO_ENCODER_QTI);
+    uint32_t gbmUsage = (format == HAL_PIXEL_FORMAT_RAW16 || format == HAL_PIXEL_FORMAT_RAW10)  // Avoids RAW metadata plane DRM_IOCTL_PRIME_FD_TO_HANDLE errors
+                            ? (GBM_BO_USAGE_CAMERA_WRITE_QTI | GBM_BO_USAGE_CPU_READ_QTI | GBM_BO_USAGE_CPU_WRITE_QTI)
+                            : (0 | GBM_BO_USAGE_VIDEO_ENCODER_QTI);
     struct gbm_bo* bo = gbm_bo_create(gbm_device, (uint32_t)width, (uint32_t)height, realFormat->second, gbmUsage);
     if(!bo) {
         DAI_ERROR("Couldn't allocate memory on " MEMORY_PATH " for new image buffer.");
         return nullptr;
     }
 
-    // Skip color metadata operations for RAW formats — they don't support
-    // the metadata plane and gbm_perform will fail with DRM_IOCTL_PRIME_FD_TO_HANDLE errors
-    if(format != HAL_PIXEL_FORMAT_RAW16 && format != HAL_PIXEL_FORMAT_RAW10) {
+    if(format != HAL_PIXEL_FORMAT_RAW16 && format != HAL_PIXEL_FORMAT_RAW10) {  // RAW has no metadata plane: gbm_perform fails (DRM_IOCTL_PRIME_FD_TO_HANDLE)
         char prop[PROPERTY_VALUE_MAX];
         property_get("persist.qmmf.mem.color.space", prop, "ITU_R_601");
         std::string colorspace(prop);
@@ -222,7 +198,6 @@ CameraPool::CameraPool(std::optional<int> numFramesPoolOutputs, std::optional<in
     }
 }
 
-// This has to be called inside a scope that has bufferPoolLock held!!!
 void CameraPool::getUsedResources(camera3_stream_t* stream, int& curFrames, size_t& curSize, size_t& oneSize) {
     curFrames = 0;
     curSize = 0;
@@ -258,7 +233,6 @@ camera3_stream_buffer_t CameraPool::getFreeBuffer(camera3_stream_t* stream) {
             buf.inHal = true;
             buf.lastUsed = std::chrono::steady_clock::now();
             auto buffer = camera3_stream_buffer_t();
-            // buffer.stream = mixedStreams[0];
             buffer.stream = stream;
             buffer.buffer = allocateBuffer(stream->width, stream->height, stream->format, buf);
             if(!buffer.buffer) {
@@ -345,27 +319,4 @@ void CameraPool::printBufferStats() {
                     buf.inHal);
         }
     }
-    /*
-    // Enable this to delete buffers not used for the last 10 seconds
-    // Might lead to some perpetual fluctuation around the limit when enabled
-    bufferPool.erase(std::remove_if(bufferPool.begin(),
-                                    bufferPool.end(),
-                                    [](const auto& buf) {
-                                        const std::chrono::duration<double> diff = std::chrono::steady_clock::now() - buf.lastUsed;
-                                        if(!buf.inHal && diff.count() > 10.0) {
-                                            fprintf(stderr,
-                                                    "DELETING BUF: %dx%d, %p - %p: last_used: %.6fs, inHAL: %d\n",
-                                                    buf.buffer.stream->width,
-                                                    buf.buffer.stream->height,
-                                                    buf.buffer.stream,
-                                                    buf.buffer.buffer,
-                                                    diff.count(),
-                                                    buf.inHal);
-                                            return true;
-                                        } else {
-                                            return false;
-                                        }
-                                    }),
-                     bufferPool.end());
-                     */
 }

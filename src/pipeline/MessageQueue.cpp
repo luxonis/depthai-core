@@ -1,20 +1,14 @@
 #include "depthai/pipeline/MessageQueue.hpp"
 
-// std
 #include <chrono>
 #include <functional>
 #include <iostream>
 
-// project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "pipeline/datatype/StreamMessageParser.hpp"
-
-// libraries
-#include "spdlog/spdlog.h"
-
-// Additions
 #include "spdlog/fmt/bin_to_hex.h"
 #include "spdlog/fmt/chrono.h"
+#include "spdlog/spdlog.h"
 #include "utility/PipelineEventDispatcherInterface.hpp"
 
 namespace dai {
@@ -29,17 +23,14 @@ bool MessageQueue::isClosed() const {
 }
 
 void MessageQueue::close() {
-    // Destroy queue
     queue.destruct();
 
     notifyListeners();
 
-    // Log if name not empty
     if(!name.empty()) spdlog::debug("MessageQueue ({}) closed", name);
 }
 
 MessageQueue::~MessageQueue() {
-    // Close the queue first
     close();
 }
 
@@ -76,63 +67,47 @@ unsigned int MessageQueue::isFull() const {
 }
 
 int MessageQueue::addCallback(std::function<void(std::string, std::shared_ptr<ADatatype>)> callback) {
-    // Lock first
     std::unique_lock<std::mutex> lock(callbacksMtx);
 
-    // Get unique id
     int uniqueId = uniqueCallbackId++;
 
-    // assign callback
     callbacks[uniqueId] = std::move(callback);
 
-    // return id assigned to the callback
     return uniqueId;
 }
 
 int MessageQueue::addCallback(const std::function<void(std::shared_ptr<ADatatype>)>& callback) {
-    // Create a wrapper
     return addCallback([callback](const std::string&, std::shared_ptr<ADatatype> message) { callback(std::move(message)); });
 }
 
 int MessageQueue::addCallback(const std::function<void()>& callback) {
-    // Create a wrapper
     return addCallback([callback](const std::string&, std::shared_ptr<ADatatype>) { callback(); });
 }
 
 int MessageQueue::addNotifier(std::shared_ptr<utility::WaitAnyNotifier> notifier) {
-    // Lock first
     std::unique_lock<std::mutex> lock(notifierMtx);
 
-    // Get unique id
     int uniqueId = uniqueNotifierId++;
 
-    // assign callback
     notifiers[uniqueId] = std::move(notifier);
 
-    // return id assigned to the callback
     return uniqueId;
 }
 
 bool MessageQueue::removeCallback(int callbackId) {
-    // Lock first
     std::unique_lock<std::mutex> lock(callbacksMtx);
 
-    // If callback with id 'callbackId' doesn't exist, return false
     if(callbacks.count(callbackId) == 0) return false;
 
-    // Otherwise erase and return true
     callbacks.erase(callbackId);
     return true;
 }
 
 bool MessageQueue::removeNotifier(int notifierId) {
-    // Lock first
     std::unique_lock<std::mutex> lock(notifierMtx);
 
-    // If callback with id 'notifierId' doesn't exist, return false
     if(notifiers.count(notifierId) == 0) return false;
 
-    // Otherwise erase and return true
     notifiers.erase(notifierId);
     return true;
 }
@@ -196,20 +171,16 @@ bool MessageQueue::trySend(const std::shared_ptr<ADatatype>& msg) {
 }
 
 void MessageQueue::callCallbacks(const std::shared_ptr<ADatatype>& message) {
-    // Lock first
     std::lock_guard<std::mutex> lock(callbacksMtx);
 
-    // Call all callbacks
     for(auto& keyValue : callbacks) {
         keyValue.second(name, message);
     }
 }
 
 void MessageQueue::notifyListeners() {
-    // Lock first
     std::lock_guard<std::mutex> lock(notifierMtx);
 
-    // Notify all listeners
     for(auto& keyValue : notifiers) {
         keyValue.second->notifyOne();
     }
@@ -236,7 +207,6 @@ bool MessageQueue::waitAny(const std::vector<std::reference_wrapper<MessageQueue
         try {
             return checkAllClosed() || checkForMessages();
         } catch(QueueException&) {
-            // Unblock on queue exception
             return true;
         }
     };
@@ -244,12 +214,10 @@ bool MessageQueue::waitAny(const std::vector<std::reference_wrapper<MessageQueue
     std::shared_ptr<utility::WaitAnyNotifier> notifier = std::make_shared<utility::WaitAnyNotifier>();
     bool gotMessage = true;
     try {
-        // Add notifier to all queues, if any message arrives from this point, wait should return
-        for(auto input : queues) {
+        for(auto input : queues) {  // Register first, so that a message that arrives after this point ends the wait
             auto notifierId = input.get().addNotifier(notifier);
             notifierIds.emplace_back(input, notifierId);
         }
-        // Check if any messages already present
         if(!checkAllClosed() && !checkForMessages()) {
             if(timeout.has_value()) {
                 notifier->waitFor(pred, timeout.value());

@@ -1,6 +1,5 @@
 #pragma once
 
-// std
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -16,40 +15,36 @@
 #include <unordered_map>
 #include <vector>
 
-// project
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraFeatures.hpp"
+#include "depthai/common/ChipTemperature.hpp"
+#include "depthai/common/ConnectionInterface.hpp"
+#include "depthai/common/CpuUsage.hpp"
+#include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
 #include "depthai/common/Extrinsics.hpp"
+#include "depthai/common/MemoryInfo.hpp"
+#include "depthai/common/StereoPair.hpp"
 #include "depthai/common/UsbSpeed.hpp"
+#include "depthai/device/BoardConfig.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/device/CrashDump.hpp"
 #include "depthai/device/DeviceGate.hpp"
 #include "depthai/device/DeviceState.hpp"
 #include "depthai/device/HealthCheck.hpp"
 #include "depthai/device/Version.hpp"
+#include "depthai/log/LogLevel.hpp"
+#include "depthai/log/LogMessage.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
+#include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/utility/ProfilingData.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
-// shared
-#include "depthai/common/ChipTemperature.hpp"
-#include "depthai/common/ConnectionInterface.hpp"
-#include "depthai/common/CpuUsage.hpp"
-#include "depthai/common/DeviceModelZoo.hpp"
-#include "depthai/common/MemoryInfo.hpp"
-#include "depthai/common/StereoPair.hpp"
-#include "depthai/device/BoardConfig.hpp"
-#include "depthai/device/CrashDump.hpp"
-#include "depthai/log/LogLevel.hpp"
-#include "depthai/log/LogMessage.hpp"
-#include "depthai/properties/GlobalProperties.hpp"
-
 namespace dai {
 
-// Forward declarations
 class Pipeline;
 class PipelineImpl;
 class CrashDumpManager;
@@ -61,8 +56,6 @@ class DeviceBase {
     friend class CrashDumpManager;  // Needed for gate access during crash dump collection
 
    public:
-    // constants
-
     /// Default search time for constructors which discover devices
     static constexpr std::chrono::seconds DEFAULT_SEARCH_TIME{10};
     /// Default rate at which system information is logged
@@ -75,8 +68,6 @@ class DeviceBase {
     static constexpr int DEFAULT_TIMESYNC_NUM_SAMPLES{10};
     /// Default Timesync packet interval randomness
     static constexpr bool DEFAULT_TIMESYNC_RANDOM{true};
-
-    // Structures
 
     /**
      * Device specific configuration
@@ -96,8 +87,6 @@ class DeviceBase {
          */
         bool dangerousIrPowerOverride = false;
     };
-
-    // static API
 
     /**
      * @brief Get the Default Search Time for finding devices
@@ -1315,7 +1304,6 @@ class DeviceBase {
     virtual void closeImpl();
 
    protected:
-    // protected functions
     void init();
     void init(const std::filesystem::path& pathToCmd);
     void init(UsbSpeed maxUsbSpeed);
@@ -1335,7 +1323,6 @@ class DeviceBase {
     void init(const Config& config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd);
 
    private:
-    // private functions
     void init2(Config cfg, const std::filesystem::path& pathToMvcmd, bool hasPipeline, bool reconnect = false);
     void tryGetDevice();
     void startTelemetryLifecycle(bool reconnect);
@@ -1352,66 +1339,51 @@ class DeviceBase {
     void waitForRebootAndCollectCrashDump();
     void waitForGateAndCollectCrashDump();
     CrashDumpRVC2::CrashReportCollection getCrashReportCollectionRVC2(bool clear = true);
-    // Written by the constructing thread (search/boot) and by the monitor thread on
-    // reconnection, read by any thread through getDeviceInfo()
-    mutable std::mutex deviceInfoMtx;
+    mutable std::mutex deviceInfoMtx;  // Guards deviceInfo: written by the constructor and the monitor thread, read by any thread
     DeviceInfo deviceInfo;
     std::optional<Version> bootloaderVersion;
 
-    // Log callback
     int uniqueCallbackId = 0;
     std::mutex logCallbackMapMtx;
     std::unordered_map<int, std::function<void(LogMessage)>> logCallbackMap;
 
-    // Crash dump callback
     std::mutex crashdumpCallbackMtx;
     std::function<void(std::shared_ptr<CrashDump>)> crashdumpCallback;
 
-    // Watchdog thread
     std::thread watchdogThread;
     std::atomic<bool> watchdogRunning{true};
     std::atomic<bool> crashed{false};
     std::condition_variable watchdogCondVar;
     std::mutex watchdogMtx;
 
-    // Timesync thread
     std::thread timesyncThread;
     std::atomic<bool> timesyncRunning{true};
 
-    // Logging thread
     std::thread loggingThread;
     std::atomic<bool> loggingRunning{true};
 
-    // Profiling thread
     std::thread profilingThread;
     std::atomic<bool> profilingRunning{true};
 
-    // Monitor thread
     std::thread monitorThread;
     std::mutex lastWatchdogPingTimeMtx;
     std::chrono::steady_clock::time_point lastWatchdogPingTime;
 
-    // RPC stream
     std::unique_ptr<XLinkStream> rpcStream;
 
-    // DeviceGate connection
     std::unique_ptr<DeviceGate> gate;
 
-    // closed
     mutable std::mutex closedMtx;
     bool closed{false};
 
-    // pimpl
     class Impl;
     Pimpl<Impl> pimpl;
 
-    // Device config
     Config config;
 
     std::filesystem::path firmwarePath;
     bool dumpOnly = false;
 
-    // Telemetry
     std::thread telemetryEventThread;
     std::atomic<bool> telemetryEventRunning{false};
     std::mutex telemetryEventStreamMtx;
@@ -1420,24 +1392,18 @@ class DeviceBase {
     std::chrono::steady_clock::time_point telemetryCreatedAt;
     bool telemetryLifecycleStarted = false;
 
-    // Started pipeline
     std::optional<PipelineSchema> pipelineSchema;
 
-    // Reconnection attempts and pointer to reset connections
     int maxReconnectionAttempts = 1;
     std::weak_ptr<PipelineImpl> pipelinePtr;
-    // Keeps a copy of the telemetry ID of the started pipeline, for getActiveTelemetryPipelineId()
     void setActiveTelemetryPipelineId(std::string telemetryPipelineId);
-    // Last state reported to the pipeline (RUNNING while connected)
     std::atomic<DeviceState> pipelineDeviceState{DeviceState::RUNNING};
     std::atomic<bool> crashDumpHandled{false};
     std::atomic<bool> isClosing{false};  // if true, don't attempt to reconnect
     std::function<void(ReconnectionStatus)> reconnectionCallback = nullptr;
 
-    // Report this device's pipeline-level state to the pipeline (no-op without a pipeline)
     void notifyPipelineDeviceState(DeviceState state);
 
-    // Mock features
     bool hasMockedFeatures = false;
 };
 }  // namespace dai

@@ -15,21 +15,12 @@ namespace beta {
 
 namespace {
 
-/// A plasma colormap color as 8-bit (blue, green, red), matching the OpenCV BGR lookup table.
 struct PlasmaBgr {
     std::uint8_t b, g, r;
 };
 
-// Plasma colormap lookup table, taken from OpenCV's COLORMAP_PLASMA
-// (opencv/modules/imgproc/src/colormap.cpp, Apache License 2.0), which itself embeds the
-// "plasma" colormap created by Stéfan van der Walt and Nathaniel Smith for matplotlib
-// (released under the CC0 license). OpenCV stores 256 float samples per channel and converts
-// them to the 8-bit BGR lookup table with convertTo(CV_8U, 255.0); the resulting 256 8-bit
-// BGR entries are reproduced here verbatim and verified bit-equal against
-// cv2.applyColorMap(..., cv2.COLORMAP_PLASMA), which the source implementation in
-// depthai-nodes uses for the Map2D visualization.
 // clang-format off
-constexpr std::array<PlasmaBgr, 256> PLASMA_LUT = {{
+constexpr std::array<PlasmaBgr, 256> PLASMA_LUT = {{  // From OpenCV COLORMAP_PLASMA (Apache-2.0; matplotlib plasma, CC0), bit-equal to cv2
     {135, 8, 13}, {136, 7, 16}, {137, 7, 19}, {138, 7, 22}, {140, 6, 25}, {141, 6, 27}, {142, 6, 29}, {143, 6, 32},
     {144, 6, 34}, {145, 6, 36}, {145, 5, 38}, {146, 5, 40}, {147, 5, 42}, {148, 5, 44}, {149, 5, 46}, {150, 5, 47},
     {151, 5, 49}, {151, 5, 51}, {152, 4, 53}, {153, 4, 55}, {154, 4, 56}, {154, 4, 58}, {155, 4, 60}, {156, 4, 62},
@@ -65,12 +56,7 @@ constexpr std::array<PlasmaBgr, 256> PLASMA_LUT = {{
 }};
 // clang-format on
 
-/// Truncate a float map value to an 8-bit colormap index exactly like NumPy's astype(np.uint8):
-/// a C-style cast that truncates toward zero to a 32-bit signed integer and reduces the result
-/// modulo 256. Values that do not fit the intermediate 32-bit integer, including NaN, convert
-/// to 0, matching the x86 float-to-integer conversion NumPy compiles to.
-std::uint8_t toColormapIndex(float value) {
-    // Both bounds are exactly representable as float; 2^31 itself is already out of range.
+std::uint8_t toColormapIndex(float value) {  // Like NumPy astype(np.uint8) on x86: out-of-int32 and NaN give 0
     constexpr float LOWEST = static_cast<float>(std::numeric_limits<std::int32_t>::min());
     constexpr float HIGHEST = 2147483648.0f;
     if(!(value >= LOWEST && value < HIGHEST)) {
@@ -147,11 +133,7 @@ dai::VisualizeType Map2D::getVisualizationMessage() const {
 
     const auto map = getMap();
 
-    // When any map value is below 1 the whole map is scaled by 255, replicating the source
-    // implementation's np.any(mask < 1) check. A map with mixed ranges, e.g. values both below 1
-    // and far above it, is therefore scaled as a whole and large values wrap around during the
-    // 8-bit truncation, exactly like the source astype(np.uint8) conversion.
-    bool scale = false;
+    bool scale = false;  // Like depthai-nodes np.any(mask < 1): mixed ranges wrap around on purpose
     for(const float value : map) {
         if(value < 1.0f) {
             scale = true;
@@ -159,8 +141,6 @@ dai::VisualizeType Map2D::getVisualizationMessage() const {
         }
     }
 
-    // Interleaved BGR packing of the colormapped values, matching the source
-    // cv2.applyColorMap(mask, cv2.COLORMAP_PLASMA) output packed by setCvFrame(..., BGR888i).
     std::vector<std::uint8_t> pixels(map.size() * 3);
     for(size_t i = 0; i < map.size(); i++) {
         const float value = scale ? map[i] * 255.0f : map[i];

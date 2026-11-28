@@ -12,7 +12,6 @@ namespace dai {
 Tracklets::~Tracklets() = default;
 
 SpatialImgDetection createSpatialDetection(const ImgDetection& detection, const Point3f spatialCoordinates) {
-    // local function because it also sets spatial coordinates to keypoints.
     SpatialImgDetection spatialDetection(detection.getBoundingBox(), spatialCoordinates, detection.labelName, detection.confidence, detection.label);
 
     std::vector<Keypoint> keypoints = detection.getKeypoints();
@@ -53,7 +52,6 @@ void Tracklet::transform(const ImgTransformation& source, const ImgTransformatio
     } else {
         transformedRoi = source.remapRectTo(target, rotatedRoi);
     }
-    // The ROI encloses the minimum outer rotated rectangle of the mapped corners, calculated in pixels of the target frame.
     const auto size = target.getSize();
     const auto [minx, miny, maxx, maxy] = transformedRoi.getOuterRectInFrame(static_cast<unsigned int>(size.first), static_cast<unsigned int>(size.second));
     roi = Rect(minx, miny, maxx - minx, maxy - miny);

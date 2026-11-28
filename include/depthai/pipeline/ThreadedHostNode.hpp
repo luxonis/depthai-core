@@ -12,7 +12,6 @@ class ThreadedHostNode : public ThreadedNode {
     ~ThreadedHostNode() override;
 
     bool runOnHost() const final {
-        // Host node don't contain the necessary information to be serialized and sent to the device
         return true;
     }
 };

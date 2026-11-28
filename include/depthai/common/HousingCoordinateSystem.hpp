@@ -133,7 +133,6 @@ static inline const std::unordered_map<std::string, std::unordered_map<dai::Hous
 
 }  // namespace dai
 
-// Global namespace
 inline std::ostream& operator<<(std::ostream& out, const dai::HousingCoordinateSystem& housing) {
     return out << dai::toString(housing);
 }

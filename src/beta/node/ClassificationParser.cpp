@@ -19,7 +19,6 @@ namespace beta {
 namespace node {
 
 NNArchive ClassificationParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -146,8 +145,6 @@ void ClassificationParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
-    // The resolved layer name persists across messages once auto-selected from a
-    // single-tensor NNData, mirroring the source parser behavior.
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
@@ -162,7 +159,6 @@ void ClassificationParser::run() {
         }
         auto tGotInput = std::chrono::steady_clock::now();
 
-        // Extract
         const auto layerNames = nnData->getAllLayerNames();
         if(resolvedOutputLayerName.empty()) {
             DAI_CHECK_V(layerNames.size() == 1,
@@ -177,10 +173,8 @@ void ClassificationParser::run() {
                     properties.nClasses,
                     scores.size());
 
-        // Compute
         scores = utilities::ClassificationUtils::computeClassificationScores(std::move(scores), properties.isSoftmax);
 
-        // Emit
         auto message = utilities::ClassificationUtils::createClassificationMessage(properties.classes, scores);
         if(nnData->transformation.has_value()) {
             message->setTransformation(*nnData->transformation);

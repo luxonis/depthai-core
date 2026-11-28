@@ -21,8 +21,7 @@ uint32_t toDeviceSearchDir(dai::gate::StereoSearchDir dir) {
         case dai::gate::StereoSearchDir::R2L:
             return DAI_STEREO_SEARCH_R2L;
     }
-    // Not a direction: the vendor module rejects it with this value in the text
-    return static_cast<uint32_t>(dir);
+    return static_cast<uint32_t>(dir);  // Unknown value: the vendor module rejects it
 }
 
 }  // namespace
@@ -41,7 +40,6 @@ void StereoDepthDispatcher::RunAsync(const std::shared_ptr<const dai::ImgFrame>&
                                      std::shared_ptr<dai::ImgFrame> outDispFrame,
                                      std::shared_ptr<dai::ImgFrame> outConfFrame,
                                      std::shared_ptr<dai::ImgFrame> outSLIC) {
-    // The accelerator buffers, in the order of the former vendor code. The outputs get their buffer as frame data.
     RunBuffers buffers;
     buffers.disparity = dai::AcceleratorMemory::convert(outDispFrame->data);
     outDispFrame->data = buffers.disparity;
@@ -81,8 +79,7 @@ void StereoDepthDispatcher::Run(const std::shared_ptr<const dai::ImgFrame>& inLe
 int StereoDepthDispatcher::Wait() {
     const dai_status status = dai_device_stereo_wait(handle.get());
     running = RunBuffers{};
-    // As before the C interface: the negated accelerator driver status of the work (0: done)
-    return -dai::device::returnDriverStatus(status, UNIT, "dai_device_stereo_wait");
+    return -dai::device::returnDriverStatus(status, UNIT, "dai_device_stereo_wait");  // Returns the negated accelerator driver status (0 = done)
 }
 
 uint32_t StereoDepthDispatcher::Open() {

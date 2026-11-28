@@ -7,17 +7,6 @@
 
 namespace dai {
 
-// class Mutex : public std::mutex {
-//    public:
-//     using std::mutex::mutex;
-//     Mutex() = default;
-//     ~Mutex() = default;
-//     Mutex(const Mutex&) : Mutex() {}
-//     Mutex& operator=(const Mutex&) = delete;
-//     Mutex(Mutex&&) : Mutex() {}
-//     Mutex& operator=(Mutex&&) = delete;
-// };
-
 enum class LockingQueueState { SUCCESS, BLOCKED, CANCELLED };
 
 template <typename T>
@@ -46,37 +35,31 @@ class LockingQueue {
     }
 
     void setMaxSize(unsigned sz) {
-        // Lock first
         std::unique_lock<std::mutex> lock(guard);
         maxSize = sz;
     }
 
     void setBlocking(bool bl) {
-        // Lock first
         std::unique_lock<std::mutex> lock(guard);
         blocking = bl;
     }
 
     unsigned getMaxSize() const {
-        // Lock first
         std::unique_lock<std::mutex> lock(guard);
         return maxSize;
     }
 
     unsigned getSize() const {
-        // Lock first
         std::unique_lock<std::mutex> lock(guard);
         return queue.size();
     }
 
     unsigned isFull() const {
-        // Lock first
         std::unique_lock<std::mutex> lock(guard);
         return queue.size() >= maxSize;
     }
 
     bool getBlocking() const {
-        // Lock first
         std::unique_lock<std::mutex> lock(guard);
         return blocking;
     }
@@ -102,12 +85,10 @@ class LockingQueue {
         {
             std::unique_lock<std::mutex> lock(guard);
 
-            // First checks predicate, then waits
             bool pred = signalPush.wait_for(lock, timeout, [this]() { return !queue.empty() || destructed; });
             if(!pred) return false;
             if(destructed) return false;
 
-            // Continue here if and only if queue has any elements
             while(!queue.empty()) {
                 callback(queue.front());
                 queue.pop();
@@ -156,16 +137,13 @@ class LockingQueue {
         {
             std::unique_lock<std::mutex> lock(guard);
             if(maxSize == 0) {
-                // necessary if maxSize was changed
-                while(!queue.empty()) {
+                while(!queue.empty()) {  // maxSize can change after elements were queued
                     queue.pop();
                 }
                 return true;
             }
             if(!blocking) {
-                // if non blocking, remove as many oldest elements as necessary, so next one will fit
-                // necessary if maxSize was changed
-                while(queue.size() >= maxSize) {
+                while(queue.size() >= maxSize) {  // Drop the oldest until the next one fits; maxSize can shrink
                     queue.pop();
                 }
             } else {
@@ -188,16 +166,13 @@ class LockingQueue {
         {
             std::unique_lock<std::mutex> lock(guard);
             if(maxSize == 0) {
-                // necessary if maxSize was changed
-                while(!queue.empty()) {
+                while(!queue.empty()) {  // maxSize can change after elements were queued
                     queue.pop();
                 }
                 return true;
             }
             if(!blocking) {
-                // if non blocking, remove as many oldest elements as necessary, so next one will fit
-                // necessary if maxSize was changed
-                while(queue.size() >= maxSize) {
+                while(queue.size() >= maxSize) {  // Drop the oldest until the next one fits; maxSize can shrink
                     queue.pop();
                 }
             } else {
@@ -222,23 +197,19 @@ class LockingQueue {
         {
             std::unique_lock<std::mutex> lock(guard);
             if(maxSize == 0) {
-                // necessary if maxSize was changed
-                while(!queue.empty()) {
+                while(!queue.empty()) {  // maxSize can change after elements were queued
                     queue.pop();
                 }
                 return true;
             }
             if(!blocking) {
-                // if non blocking, remove as many oldest elements as necessary, so next one will fit
-                // necessary if maxSize was changed
-                while(queue.size() >= maxSize) {
+                while(queue.size() >= maxSize) {  // Drop the oldest until the next one fits; maxSize can shrink
                     queue.pop();
                 }
             } else {
                 if(queue.size() >= maxSize) {
                     callback(LockingQueueState::BLOCKED, queue.size());
                 }
-                // First checks predicate, then waits
                 bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed; });
                 if(!pred) {
                     callback(LockingQueueState::CANCELLED, queue.size());
@@ -261,20 +232,16 @@ class LockingQueue {
         {
             std::unique_lock<std::mutex> lock(guard);
             if(maxSize == 0) {
-                // necessary if maxSize was changed
-                while(!queue.empty()) {
+                while(!queue.empty()) {  // maxSize can change after elements were queued
                     queue.pop();
                 }
                 return true;
             }
             if(!blocking) {
-                // if non blocking, remove as many oldest elements as necessary, so next one will fit
-                // necessary if maxSize was changed
-                while(queue.size() >= maxSize) {
+                while(queue.size() >= maxSize) {  // Drop the oldest until the next one fits; maxSize can shrink
                     queue.pop();
                 }
             } else {
-                // First checks predicate, then waits
                 if(queue.size() >= maxSize) {
                     callback(LockingQueueState::BLOCKED, queue.size());
                 }
@@ -343,7 +310,6 @@ class LockingQueue {
         {
             std::unique_lock<std::mutex> lock(guard);
 
-            // First checks predicate, then waits
             bool pred = signalPush.wait_for(lock, timeout, [this]() { return !queue.empty() || destructed; });
             if(!pred) return false;
             if(destructed) return false;

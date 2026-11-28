@@ -16,13 +16,7 @@ namespace {
 
 constexpr float CLUSTER_THICKNESS = 2.0f;
 
-// Rainbow colormap base samples, taken from OpenCV's COLORMAP_RAINBOW
-// (opencv/modules/imgproc/src/colormap.cpp, Apache License 2.0), which itself equals the GNU
-// Octave colormap "rainbow". The 64 base samples are linearly interpolated to a 256-entry
-// 8-bit lookup table exactly like OpenCV's ColorMap::linear_colormap, so the visualization
-// colors match the source implementation in depthai-nodes, which uses
-// cv2.applyColorMap(..., cv2.COLORMAP_RAINBOW).
-constexpr std::size_t RAINBOW_BASE_SAMPLES = 64;
+constexpr std::size_t RAINBOW_BASE_SAMPLES = 64;  // From OpenCV COLORMAP_RAINBOW (colormap.cpp, Apache-2.0), interpolated like linear_colormap
 // clang-format off
 constexpr std::array<float, RAINBOW_BASE_SAMPLES> RAINBOW_R = {
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.9365079365079367f, 0.8571428571428572f,
@@ -48,14 +42,11 @@ constexpr std::array<float, RAINBOW_BASE_SAMPLES> RAINBOW_B = {
     0.8095238095238093f, 0.8888888888888884f, 0.9682539682539679f, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 // clang-format on
 
-/// A rainbow colormap color as 8-bit (blue, green, red), matching the OpenCV BGR lookup table.
 struct RainbowBgr {
     std::uint8_t b, g, r;
 };
 
-/// Linear interpolation of the 64 base samples at xi, replicating OpenCV's interp1 in
-/// single-precision arithmetic.
-float interpolateRainbowChannel(const std::array<float, RAINBOW_BASE_SAMPLES>& samples, float xi) {
+float interpolateRainbowChannel(const std::array<float, RAINBOW_BASE_SAMPLES>& samples, float xi) {  // Replicates OpenCV interp1 in single precision
     constexpr float step = 1.0f / static_cast<float>(RAINBOW_BASE_SAMPLES - 1);
     std::size_t low = 0;
     std::size_t high = RAINBOW_BASE_SAMPLES - 1;
@@ -78,9 +69,7 @@ float interpolateRainbowChannel(const std::array<float, RAINBOW_BASE_SAMPLES>& s
     return samples[low] + (xi - xLow) * (samples[high] - samples[low]) / (xHigh - xLow);
 }
 
-/// Convert a [0, 1] float channel value to 8-bit exactly like OpenCV's convertTo(CV_8U, 255.0):
-/// scale in single precision and round to nearest, ties to even.
-std::uint8_t toLutEntry(float value) {
+std::uint8_t toLutEntry(float value) {  // Like OpenCV convertTo(CV_8U, 255.0)
     const float scaled = value * 255.0f;
     long rounded = std::lrintf(scaled);  // Default FE_TONEAREST rounding: half to even.
     if(rounded < 0) rounded = 0;
@@ -88,7 +77,6 @@ std::uint8_t toLutEntry(float value) {
     return static_cast<std::uint8_t>(rounded);
 }
 
-/// 256-entry rainbow BGR lookup table, computed once.
 const std::array<RainbowBgr, 256>& getRainbowLut() {
     static const std::array<RainbowBgr, 256> lut = [] {
         std::array<RainbowBgr, 256> table{};
@@ -133,12 +121,7 @@ Clusters Clusters::transformTo(const ImgTransformation& target) const {
 dai::VisualizeType Clusters::getVisualizationMessage() const {
     ImgAnnotation annotation;
 
-    // Each cluster is drawn as one POINTS annotation. Cluster i samples the rainbow lookup
-    // table at index i * (255 / numClusters), replicating the source implementation's
-    // np.array(range(0, 255, 255 // num_clusters)) color mask. The source assigns the BGR
-    // colormap triple directly to the (r, g, b) color channels; that assignment is reproduced
-    // here to keep the emitted colors identical.
-    const std::size_t numClusters = clusters.size();
+    const std::size_t numClusters = clusters.size();  // BGR triple goes to (r, g, b) on purpose: same colors as depthai-nodes
     if(numClusters > 0) {
         const std::size_t step = 255 / numClusters;
         if(step == 0) {

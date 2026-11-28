@@ -92,7 +92,6 @@ struct CameraFeatures {
 
 }  // namespace dai
 
-// Global namespace
 inline std::ostream& operator<<(std::ostream& out, const dai::CameraFeatures& camera) {
     out << "{socket: " << camera.socket << ", ";
     out << "sensorName: " << camera.sensorName << ", ";

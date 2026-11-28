@@ -9,7 +9,6 @@
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 
-// v1 nn_archive bindings
 #include "depthai/nn_archive/v1/Config.hpp"
 #include "depthai/nn_archive/v1/DataType.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
@@ -25,20 +24,16 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::nn_archive;
 
-    // NNArchive
     py::class_<NNArchive> nnArchive(m, "NNArchive", DOC(dai, NNArchive));
     py::class_<NNArchiveOptions> nnArchiveOptions(m, "NNArchiveOptions", DOC(dai, NNArchiveOptions));
 
-    // NNArchiveVersionedConfig
     py::class_<NNArchiveVersionedConfig> nnArchiveVersionedConfig(m, "NNArchiveVersionedConfig", DOC(dai, NNArchiveVersionedConfig));
     py::enum_<NNArchiveConfigVersion> nnArchiveConfigVersion(m, "NNArchiveConfigVersion", DOC(dai, NNArchiveConfigVersion));
 
-    // NNArchiveEntry
     py::class_<NNArchiveEntry> nnArchiveEntry(m, "NNArchiveEntry", DOC(dai, NNArchiveEntry));
     py::enum_<NNArchiveEntry::Compression> archiveEntryCompression(nnArchiveEntry, "Compression");
     py::enum_<NNArchiveEntry::Seek> archiveEntrySeek(nnArchiveEntry, "Seek");
 
-    // NNArchive v1
     auto v1m = m.def_submodule("nn_archive").def_submodule("v1");
     py::class_<v1::Config> v1config(v1m, "Config", DOC(dai, nn_archive, v1, Config));
     py::class_<v1::Model> v1model(v1m, "Model", DOC(dai, nn_archive, v1, Model));
@@ -51,20 +46,11 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<v1::Output> v1output(v1m, "Output", DOC(dai, nn_archive, v1, Output));
     py::class_<v1::PreprocessingBlock> v1preprocessingBlock(v1m, "PreprocessingBlock", DOC(dai, nn_archive, v1, PreprocessingBlock));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Bind NNArchive
     nnArchive.def(py::init([](const std::filesystem::path& archivePath, NNArchiveEntry::Compression compression) {
                       NNArchiveOptions options;
                       options.compression(compression);
@@ -100,14 +86,12 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     nnArchive.def("getHeadConfig", &NNArchive::getHeadConfig, py::arg("index") = 0, DOC(dai, NNArchive, getHeadConfig));
     nnArchive.def("getSupportedPlatforms", &NNArchive::getSupportedPlatforms, DOC(dai, NNArchive, getSupportedPlatforms));
 
-    // Bind NNArchive options
     nnArchiveOptions.def(py::init<>());
     nnArchiveOptions.def_property(
         "compression",
         [](const NNArchiveOptions& opt) { return opt.compression(); },
         [](NNArchiveOptions& opt, NNArchiveEntry::Compression compression) { opt.compression(compression); });
 
-    // Bind NNArchiveVersionedConfig
     nnArchiveVersionedConfig.def(py::init<const std::filesystem::path&, NNArchiveEntry::Compression>(),
                                  py::arg("path"),
                                  py::arg("compression") = NNArchiveEntry::Compression::AUTO,
@@ -126,12 +110,10 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
         return NNArchiveVersionedConfig(openCallback, readCallbackWrapper, seekCallback, skipCallback, closeCallback, compression);
     }));
 
-    // Bind NNArchiveVersionedConfig.
     nnArchiveVersionedConfig.def("getConfig", &NNArchiveVersionedConfig::getConfig<NNArchiveConfig>, DOC(dai, NNArchiveVersionedConfig, getConfig));
     nnArchiveVersionedConfig.def("getConfigV1", &NNArchiveVersionedConfig::getConfig<v1::Config>, DOC(dai, NNArchiveVersionedConfig, getConfig));
     nnArchiveVersionedConfig.def("getVersion", &NNArchiveVersionedConfig::getVersion, DOC(dai, NNArchiveVersionedConfig, getVersion));
 
-    // Bind NNArchiveConfigVersion
     nnArchiveConfigVersion.value("V1", NNArchiveConfigVersion::V1);
 
     archiveEntryCompression.value("AUTO", NNArchiveEntry::Compression::AUTO);

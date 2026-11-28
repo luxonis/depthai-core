@@ -2,11 +2,9 @@
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 
-    // project
-    #include "depthai/pipeline/datatype/ImgFrame.hpp"
-
-    // opencv
     #include <opencv2/opencv.hpp>
+
+    #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 namespace dai {
 namespace utility {

@@ -23,9 +23,6 @@ struct StereoInit {
     dai::ImgFrame::Type colorFormat = dai::ImgFrame::Type::GRAY8;
 };
 
-/// Per-frame configuration of the hardware stereo matcher: the depthai configuration
-/// (hole filling, adaptive median filter, cost aggregation, census transform and confidence
-/// metrics are used) plus the search direction.
 struct StereoConfig {
     explicit StereoConfig(const dai::StereoDepthConfig& cfg) : cfg(cfg) {}
 
@@ -57,18 +54,15 @@ class StereoDepthDispatcher {
     uint32_t Config(StereoConfig& c);
     uint32_t Close();
 
-    // Minimum sizes in bytes of the output frame buffers; valid after Init
-    uint32_t getMinDisparityImgSize() const;
+    uint32_t getMinDisparityImgSize() const;  // Valid only after Init
     uint32_t getMinConfImgSize() const;
     uint32_t getMinSlicImgSize() const;
 
    private:
-    /// The accelerator buffers of the last RunAsync: they stay valid until Wait
-    struct RunBuffers {
+    struct RunBuffers {  // Kept alive: the hardware uses them from RunAsync until Wait
         std::shared_ptr<dai::AcceleratorMemory> left, right, disparity, confidence, slic;
     };
     RunBuffers running;
 
-    /// The stereo unit of the vendor module. Declared last, so it is destroyed (and closed) before the buffers.
-    std::unique_ptr<dai_device_stereo, void (*)(dai_device_stereo*)> handle;
+    std::unique_ptr<dai_device_stereo, void (*)(dai_device_stereo*)> handle;  // Declared last: closed before the buffers above are released
 };

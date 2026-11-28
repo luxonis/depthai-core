@@ -9,9 +9,8 @@
 namespace dai {
 namespace utility {
 
-// The caller must keep the frame buffer alive and use the returned pixels read-only.
-inline cv::Mat getCvFrameView(const ImgFrame& frame) {
-    ImgFrame view = frame;  // OpenCV accessors are logically const but have no const overload.
+inline cv::Mat getCvFrameView(const ImgFrame& frame) {  // Caller keeps the frame buffer alive; the pixels are read-only
+    ImgFrame view = frame;                              // OpenCV accessors are logically const but have no const overload.
     const auto type = frame.getType();
     if(type == ImgFrame::Type::BGR888i || type == ImgFrame::Type::BGRF16F16F16i || type == ImgFrame::Type::RGB161616 || type == ImgFrame::Type::RAW8
        || type == ImgFrame::Type::RAW10 || type == ImgFrame::Type::RAW12 || type == ImgFrame::Type::RAW14 || type == ImgFrame::Type::RAW16

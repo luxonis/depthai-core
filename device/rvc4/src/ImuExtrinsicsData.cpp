@@ -13,10 +13,7 @@ Extrinsics makeCamAExtrinsics(Point3f specTranslation) {
     return extrinsics;
 }
 
-// These FW IMU specTranslation overrides come from the HW design / depthai_boards
-// defaults and are used when local FW needs to patch missing board-config values.
-// Both values are to CAM_A; rotation is left empty so the patcher can supply identity.
-const Extrinsics kOak4DImuExtrinsicsOverride = makeCamAExtrinsics({-4.4032f, -0.2697f, -0.2f});
+const Extrinsics kOak4DImuExtrinsicsOverride = makeCamAExtrinsics({-4.4032f, -0.2697f, -0.2f});  // From HW design / depthai_boards; empty rotation = identity
 const Extrinsics kOak4SImuExtrinsicsOverride = makeCamAExtrinsics({1.2263f, 1.9577f, -0.2f});
 const Extrinsics kOak4LiteImuExtrinsicsOverride = makeCamAExtrinsics({-5.3f, 0.7792f, 0.0f});
 

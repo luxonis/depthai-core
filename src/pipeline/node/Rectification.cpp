@@ -88,7 +88,6 @@ std::vector<std::vector<float> > applyRectificationMatrix(const dai::Extrinsics&
     std::array<std::array<float, 3>, 3> arrayR1Inv = dai::matrix::cvMatToMatrix3x3(rectificationMatrixInv);
     std::array<std::array<float, 3>, 3> inputRotationMatrix = dai::matrix::vectorMatrixToMatrix3x3(extrinsics.getRotationMatrix());
 
-    // inputRotationMatrix points to toCameraSocket, rectificationMatrix points to rectified frame, so multiply by inverse from the right
     return dai::matrix::matrix3x3ToVectorMatrix(dai::matrix::matMul(inputRotationMatrix, arrayR1Inv));
 }
 
@@ -97,8 +96,7 @@ dai::ImgTransformation createRectifiedImgTransformation(const dai::Extrinsics& e
                                                         uint32_t outputWidth,
                                                         uint32_t outputHeight) {
     dai::ImgTransformation outputImgTransformation;
-    // Rectified frame is treated as a brand new camera, so source size is set to output size
-    outputImgTransformation.setSourceSize(outputWidth, outputHeight);
+    outputImgTransformation.setSourceSize(outputWidth, outputHeight);  // Rectified frame is a new camera: source size equals output size
     outputImgTransformation.setSize(outputWidth, outputHeight);
     outputImgTransformation.setIntrinsicMatrix(dai::matrix::cvMatToMatrix3x3(cvIntrinsicMatrix));
     outputImgTransformation.setExtrinsics(extrinsics);
@@ -111,7 +109,6 @@ void Rectification::run() {
     using namespace std::chrono;
     logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     if(runOnHost()) {
-        // Check the platform of the device this node runs on (falls back to the pipeline default device when the node has none)
         auto platformDevice = device ? device : getParentPipeline().getDefaultDevice();
         if(platformDevice && platformDevice->getPlatform() != Platform::RVC4) {
             throw std::runtime_error("Rectification node is only supported on RVC4 platform");
@@ -300,7 +297,6 @@ void Rectification::run() {
             output1.send(rectifiedFrame1);
             output2.send(rectifiedFrame2);
 
-            // Passthrough the message
             passthrough1.send(input1Frame);
             passthrough2.send(input2Frame);
         }

@@ -1,12 +1,10 @@
 #include "DeviceBootloaderBindings.hpp"
 
-// depthai
 #include "depthai/device/DeviceBootloader.hpp"
 
 void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // Type definitions
     py::class_<DeviceBootloader> deviceBootloader(m, "DeviceBootloader", DOC(dai, DeviceBootloader));
     py::enum_<DeviceBootloader::Type> deviceBootloaderType(deviceBootloader, "Type");
     py::enum_<DeviceBootloader::Memory> deviceBootloaderMemory(deviceBootloader, "Memory");
@@ -17,19 +15,11 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<DeviceBootloader::ApplicationInfo> deviceBootloderApplicationInfo(deviceBootloader, "ApplicationInfo");
     py::class_<DeviceBootloader::MemoryInfo> deviceBootloderMemoryInfo(deviceBootloader, "MemoryInfo");
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Bind DeviceBootloader
     deviceBootloaderType.value("AUTO", DeviceBootloader::Type::AUTO)
         .value("USB", DeviceBootloader::Type::USB)
         .value("NETWORK", DeviceBootloader::Type::NETWORK);
@@ -114,9 +104,7 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, DeviceBootloader, DeviceBootloader, 6))
         .def("isClosed", &dai::DeviceBootloader::isClosed, DOC(dai, DeviceBootloader, isClosed));
 
-    deviceBootloader
-        // Python only methods
-        .def("__enter__", [](DeviceBootloader& d) -> DeviceBootloader& { return d; })
+    deviceBootloader.def("__enter__", [](DeviceBootloader& d) -> DeviceBootloader& { return d; })
         .def("__exit__", [](DeviceBootloader& bl, py::object type, py::object value, py::object traceback) { bl.close(); })
         .def("close",
              &DeviceBootloader::close,
@@ -268,8 +256,6 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBootloader, bootUsbRomBootloader))
 
-        //.def("flashCustom", &DeviceBootloader::flashCustom, py::arg("memory"), py::arg("offset"), py::arg("progressCallback"), py::arg("data"), DOC(dai,
-        // DeviceBootloader, flashCustom))
         .def(
             "getVersion",
             [](DeviceBootloader& db) {

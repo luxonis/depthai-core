@@ -1,16 +1,13 @@
 #pragma once
 
-// std
 #include <XLink/XLinkPublicDefines.h>
 
 #include <cstdint>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <type_traits>
-
-// project
-#include <optional>
 
 #include "depthai/device/Version.hpp"
 #include "depthai/utility/Pimpl.hpp"
@@ -42,8 +39,7 @@ class DeviceGate {
 
     std::string getLastError() const;
 
-    // Waits for the gate session to end, at most 30 s
-    void waitForSessionEnd();
+    void waitForSessionEnd();  // At most 30 s
 
     std::optional<CrashDump> getCrashDump();
 
@@ -54,7 +50,6 @@ class DeviceGate {
     VersionInfo getAllVersion();
 
    private:
-    // private
     class GateImpl {
        public:
         virtual ~GateImpl();
@@ -83,8 +78,7 @@ class DeviceGate {
        private:
         DeviceInfo deviceInfo;
         int timeout;
-        // One request and its response use the same USB endpoints; keep exchanges from different threads apart
-        std::mutex mtx;
+        std::mutex mtx;  // A request and its response share the USB endpoints: serialize exchanges across threads
     };
 
     class HTTPImpl : public GateImpl {
@@ -100,7 +94,6 @@ class DeviceGate {
         std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename) override;
 
        private:
-        // pimpl
         class Impl;
         Pimpl<Impl> pimpl;
     };
@@ -111,7 +104,6 @@ class DeviceGate {
 
     std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename);
 
-    // state of the session
     std::atomic_bool sessionCreated{false};
 
     XLinkPlatform_t platform;

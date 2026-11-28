@@ -35,7 +35,6 @@ class SegmentationMask : public Buffer, public ProtoSerializable, public Transfo
      */
     void transformToInternal(const ImgTransformation& target) override;
 
-    // Optimization option: if network is bottleneck, implement RLE compression for the mask data
    private:
     size_t width = 0;
     size_t height = 0;

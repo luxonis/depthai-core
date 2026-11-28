@@ -50,8 +50,7 @@ class CameraSensor : public camera3_callback_ops_t {
     using FrameCallback = std::function<void(FrameCallbackArgs)>;
     using SensorErrorStateCallback = std::function<void(int)>;
 
-    // If FSYNC_MODE == SLAVE then the fps has to be exactly something that the stm can output!!! Especially on ov9282!!!
-    CameraSensor(const CameraDescription cam,
+    CameraSensor(const CameraDescription cam,  // With FSYNC_MODE SLAVE the fps must be exactly a rate that the STM can output, especially on ov9282
                  const size_t sensorModeIndex,
                  float wantedFps,
                  lux_sc_camera_fsync_t fsyncMode,
@@ -63,26 +62,17 @@ class CameraSensor : public camera3_callback_ops_t {
 
     ~CameraSensor();
 
-    // Has to be called before build()
-    void setupDynamicOutputs(std::vector<std::tuple<uint32_t, uint32_t, float, size_t>>& specs);
+    void setupDynamicOutputs(std::vector<std::tuple<uint32_t, uint32_t, float, size_t>>& specs);  // Must be called before build()
 
-    // Has to be called before build()
-    void setupRawOutput();
+    void setupRawOutput();  // Must be called before build()
 
-    // Sets a custom camera tuning file to be applied instead of the default one.
-    // Has to be called before build()
-    void setTuningOverride(const std::string& tuningPath);
+    void setTuningOverride(const std::string& tuningPath);  // Replaces the default tuning file; must be called before build()
 
-    // Has to be called before run()
-    void build(dai::CameraSensorType sensorType);
+    void build(dai::CameraSensorType sensorType);  // Must be called before run()
 
-    // This blocks the calling thread until stop() is called.
-    void run();
+    void run();  // Blocks the calling thread until stop() is called
 
-    // Stops all streams and tears down the resources.
-    // Can only be called once.
-    // This makes the run() function return / unblocks the calling thread.
-    void stop();
+    void stop();  // Can only be called once; makes run() return
 
     void applyCameraControl(dai::CameraControl control);
     void* sensorErrorCbAdd(SensorErrorStateCallback cb);
@@ -105,15 +95,14 @@ class CameraSensor : public camera3_callback_ops_t {
         bool hasSettings{false};  // Exposure, ISO, lens position and colour temperature are known.
     };
 
-    // Create a mutex to serialize start commands
     static std::mutex buildMtx;
     static void processCaptureResultCb(const struct camera3_callback_ops* ops, const camera3_capture_result_t* result);
     static void notifyCb(const struct camera3_callback_ops* ops, const camera3_notify_msg_t* msg);
     static camera3_buffer_request_status_t requestStreamBuffersCb(const struct camera3_callback_ops* ops,
                                                                   uint32_t num_buffer_reqs,
                                                                   const camera3_buffer_request_t* buffer_reqs,
-                                                                  /*out*/ uint32_t* num_returned_buf_reqs,
-                                                                  /*out*/ camera3_stream_buffer_ret_t* returned_buf_reqs);
+                                                                  uint32_t* num_returned_buf_reqs,
+                                                                  camera3_stream_buffer_ret_t* returned_buf_reqs);
     static void returnStreamBuffersCb(const struct camera3_callback_ops* ops, uint32_t num_buffers, const camera3_stream_buffer_t* const* buffers);
 
     bool onlyOnce{true};
@@ -122,7 +111,6 @@ class CameraSensor : public camera3_callback_ops_t {
     bool isToFSensor{false};
     std::shared_ptr<spdlog::async_logger> logger;
     size_t sensorMode;
-    // AF and AE regions are clamped to the active array, read once the camera is opened.
     std::optional<std::pair<int32_t, int32_t>> activeArraySize;
     mutable bool warnedRegionClamped{false};
     std::optional<std::pair<int32_t, int32_t>> readActiveArraySize() const;
@@ -134,8 +122,7 @@ class CameraSensor : public camera3_callback_ops_t {
     std::mutex metaCacheMutex;
     std::deque<MetaCacheItem> metaCache;
     std::map<std::string, uint64_t> metaCacheLast;
-    // Frames per CamX batch in a high-frame-rate session, 1 otherwise. Only the batch's last frame carries the settings.
-    uint32_t hfrBatchSize{1};
+    uint32_t hfrBatchSize{1};  // Frames per HAL batch in a high-frame-rate session, 1 otherwise; only the last frame has the settings
     uint32_t readHfrBatchSize(uint32_t width, uint32_t height) const;
     std::vector<std::unique_ptr<CallbackArgs>> callbackArgs;
     dai::CameraControl initialControl;

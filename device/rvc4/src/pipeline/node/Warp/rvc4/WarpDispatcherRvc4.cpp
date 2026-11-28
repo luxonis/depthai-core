@@ -26,13 +26,10 @@ void WarpDispatcher::Run(const std::shared_ptr<const dai::ImgFrame>& inputFrame,
 }
 
 void WarpDispatcher::RunAsync(const std::shared_ptr<const dai::ImgFrame>& inputFrame, std::shared_ptr<dai::ImgFrame> outputFrame, size_t inputIndex) {
-    // The output must be large enough before the conversion, as in the former vendor code
     if(!(outputFrame->data->getData().size() >= getMinOutImgSize())) {
         throw std::runtime_error("WRAP: Assert (outputFrame->data->getData().size() >= getMinOutImgSize())");
     }
 
-    // The accelerator buffers, in the order of the former vendor code. The output gets its buffer as frame data; a
-    // copy of the input gets the input size of the hardware.
     std::shared_ptr<dai::AcceleratorMemory> output = dai::AcceleratorMemory::convert(outputFrame->data);
     outputFrame->data = output;
     std::shared_ptr<dai::AcceleratorMemory> input = dai::AcceleratorMemory::convert(inputFrame->data, dai_device_warp_min_in_bytes(handle.get()));
@@ -48,8 +45,7 @@ int WarpDispatcher::Wait() {
     const dai_status status = dai_device_warp_wait(handle.get());
     runningInput.reset();
     runningOutput.reset();
-    // As before the C interface: the negated accelerator driver status of the work (0: done)
-    return -dai::device::returnDriverStatus(status, UNIT, "dai_device_warp_wait");
+    return -dai::device::returnDriverStatus(status, UNIT, "dai_device_warp_wait");  // Negated accelerator driver status of the work (0: done)
 }
 
 uint32_t WarpDispatcher::Open() {
@@ -62,7 +58,6 @@ uint32_t WarpDispatcher::Init(dai::WarpProperties config, uint32_t inWidth, uint
     params.output_height = config.outputHeight;
     params.mesh_width = config.meshWidth;
     params.mesh_height = config.meshHeight;
-    // Throws "Unsupported interpolation type: <n>" for the interpolations that the hardware does not have
     params.interpolation = dai::device::toDeviceInterpolation(config.interpolation);
     params.in_width = inWidth;
     params.in_height = inHeight;
@@ -108,18 +103,15 @@ void WarpDispatcher::SetWarpMesh(cv::Mat mesh_x, cv::Mat mesh_y, size_t inputInd
 }
 
 void WarpDispatcher::ParseMeshResourceData(std::vector<uint8_t>& data, int width, int height, std::vector<double>& rawGridX, std::vector<double>& rawGridY) {
-    // Align stride to 16B
     constexpr auto ALIGNMENT = 16;
     size_t meshStride = ((size_t)((sizeof(float) * 2 * width)) + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1);
 
     for(int i = 0; i < height; i++) {
         for(int j = 0; j < width; j++) {
-            // get output offset
             size_t outputMeshOffset = (meshStride * i) + (j * sizeof(float) * 2);
             auto& point = reinterpret_cast<std::pair<float, float>&>(data.data()[outputMeshOffset]);
 
-            // these are reversed
-            rawGridX.push_back(point.second);
+            rawGridX.push_back(point.second);  // The mesh points are reversed: (y, x)
             rawGridY.push_back(point.first);
         }
     }

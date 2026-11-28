@@ -133,7 +133,6 @@ class Tracklets : public Buffer, public TransformableCRTP<Tracklets> {
 
 }  // namespace dai
 
-// Global namespace
 inline std::ostream& operator<<(std::ostream& out, const dai::Tracklet::TrackingStatus& status) {
     switch(status) {
         case dai::Tracklet::TrackingStatus::NEW:

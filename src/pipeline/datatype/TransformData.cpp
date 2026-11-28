@@ -12,7 +12,6 @@ TransformData::TransformData() {}
 TransformData::TransformData(const Transform& transform) : transform(transform) {}
 TransformData::TransformData(const std::array<std::array<double, 4>, 4>& data) : transform({data}) {}
 TransformData::TransformData(double x, double y, double z, double qx, double qy, double qz, double qw) {
-    // x,y,z,qx,qy,qz,qw to homography matrix
     double n = 1.0 / sqrt(qx * qx + qy * qy + qz * qz + qw * qw);
     qx *= n;
     qy *= n;
@@ -24,7 +23,6 @@ TransformData::TransformData(double x, double y, double z, double qx, double qy,
                          {0.0, 0.0, 0.0, 1.0}}};
 }
 TransformData::TransformData(double x, double y, double z, double roll, double pitch, double yaw) {
-    // x,y,z,r,p,yw to homography matrix
     double cr = cos(roll), sr = sin(roll);
     double cp = cos(pitch), sp = sin(pitch);
     double cy = cos(yaw), sy = sin(yaw);

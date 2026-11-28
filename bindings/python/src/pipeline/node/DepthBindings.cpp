@@ -26,8 +26,7 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
             config);
     };
 
-    // Run nested binders first so Depth::Algorithm is registered before any method uses it as a default type.
-    Callstack* callstack = (Callstack*)pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;  // Nested binders first: Depth::Algorithm must be registered before a method uses it as a default
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);

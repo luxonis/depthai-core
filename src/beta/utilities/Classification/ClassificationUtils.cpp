@@ -21,27 +21,21 @@ namespace ClassificationUtils {
 
 namespace {
 
-// Tolerance matching np.isclose(sum, 1.0, atol=1e-1) with the default rtol of 1e-5.
-constexpr double SCORE_SUM_ATOL = 1e-1;
+constexpr double SCORE_SUM_ATOL = 1e-1;  // As np.isclose(sum, 1.0, atol=1e-1) with its default rtol of 1e-5
 constexpr double SCORE_SUM_RTOL = 1e-5;
 
-// Tolerance matching np.isclose(rowSum, 1.0, atol=1e-2) with the default rtol of 1e-5.
-constexpr double SEQUENCE_ROW_SUM_ATOL = 1e-2;
+constexpr double SEQUENCE_ROW_SUM_ATOL = 1e-2;  // As np.isclose(rowSum, 1.0, atol=1e-2) with its default rtol of 1e-5
 constexpr double SEQUENCE_ROW_SUM_RTOL = 1e-5;
 
-// A single UTF-8 code point split into its byte sequence.
 struct Utf8CodePoint {
     std::string bytes;
     bool isWhitespace = false;
 };
 
-// Whitespace set matching Python str.split() for ASCII whitespace characters.
 bool isAsciiWhitespace(char character) {
     return character == ' ' || character == '\t' || character == '\n' || character == '\r' || character == '\v' || character == '\f';
 }
 
-// Split a UTF-8 string into code points. Continuation bytes (0b10xxxxxx) are grouped with their
-// leading byte; invalid continuation bytes are treated as standalone code points.
 std::vector<Utf8CodePoint> splitUtf8CodePoints(const std::string& text) {
     std::vector<Utf8CodePoint> codePoints;
     for(const char character : text) {
@@ -59,7 +53,6 @@ std::vector<Utf8CodePoint> splitUtf8CodePoints(const std::string& text) {
     return codePoints;
 }
 
-// Number of UTF-8 code points in the string, matching Python len() for valid UTF-8.
 std::size_t utf8Length(const std::string& text) {
     std::size_t length = 0;
     for(const char character : text) {
@@ -70,14 +63,11 @@ std::size_t utf8Length(const std::string& text) {
     return length;
 }
 
-// A word extracted from the joined class sequence together with its length in code points.
 struct SequenceWord {
     std::string text;
     std::size_t codePointLength = 0;
 };
 
-// Split the joined class string on whitespace runs, matching Python str.split() with no
-// arguments; leading, trailing and repeated whitespace produce no empty words.
 std::vector<SequenceWord> splitOnWhitespace(const std::string& text) {
     std::vector<SequenceWord> words;
     SequenceWord current;
@@ -98,8 +88,7 @@ std::vector<SequenceWord> splitOnWhitespace(const std::string& text) {
     return words;
 }
 
-// Mean of scores[begin, end), matching np.mean: an empty slice yields NaN.
-float sliceMean(const std::vector<float>& scores, std::size_t begin, std::size_t end) {
+float sliceMean(const std::vector<float>& scores, std::size_t begin, std::size_t end) {  // An empty slice yields NaN, as np.mean
     begin = std::min(begin, scores.size());
     end = std::min(end, scores.size());
     if(begin >= end) {
@@ -151,7 +140,6 @@ std::shared_ptr<Classifications> createClassificationMessage(const std::vector<s
 
     DAI_CHECK_V(scores.size() == classes.size(), "Number of labels and scores mismatch. Provided {} scores and {} class names.", scores.size(), classes.size());
 
-    // Stable descending sort by score, matching np.argsort(-scores, kind="stable").
     std::vector<std::size_t> indices(scores.size());
     std::iota(indices.begin(), indices.end(), 0);
     std::stable_sort(indices.begin(), indices.end(), [&scores](std::size_t lhs, std::size_t rhs) { return scores[lhs] > scores[rhs]; });
@@ -172,10 +160,8 @@ SequenceScores computeClassificationSequenceScores(ShapedTensorData tensor, bool
 
     if(dims.size() == 3) {
         if(dims[0] == 1) {
-            // (1, sequence_length, n_classes) -> squeeze the batch dimension.
             dims.erase(dims.begin());
         } else if(dims[2] == 1) {
-            // (sequence_length, n_classes, 1) -> squeeze the last dimension.
             dims.pop_back();
         } else {
             DAI_CHECK(false, "Scores should be a 3D array of shape (1, sequence_length, n_classes) or (sequence_length, n_classes, 1).");
@@ -188,7 +174,6 @@ SequenceScores computeClassificationSequenceScores(ShapedTensorData tensor, bool
     result.values = std::move(tensor.values);
 
     if(!isSoftmax) {
-        // Softmax along axis 1 (per sequence step).
         std::vector<float> row(result.nClasses);
         for(std::size_t step = 0; step < result.sequenceLength; ++step) {
             const auto begin = result.values.begin() + static_cast<std::ptrdiff_t>(step * result.nClasses);
@@ -230,7 +215,6 @@ std::shared_ptr<Classifications> createClassificationSequenceMessage(const std::
                   "Ignored indexes should be integers in the range [0, num_classes -1].");
     }
 
-    // Per-step argmax (first occurrence on ties) and row maximum.
     std::vector<std::size_t> indexes(sequenceLength, 0);
     std::vector<float> rowMax(sequenceLength, 0.0f);
     for(std::size_t step = 0; step < sequenceLength; ++step) {
@@ -253,7 +237,6 @@ std::shared_ptr<Classifications> createClassificationSequenceMessage(const std::
         }
     }
 
-    // Selected classes and scores in sequence order (never sorted).
     std::vector<std::string> classList;
     std::vector<float> scoreList;
     for(std::size_t step = 0; step < sequenceLength; ++step) {
@@ -266,9 +249,6 @@ std::shared_ptr<Classifications> createClassificationSequenceMessage(const std::
     if(concatenateClasses && classList.size() > 1) {
         const bool allSingleCharacter = std::all_of(classList.begin(), classList.end(), [](const std::string& word) { return utf8Length(word) <= 1; });
         if(allSingleCharacter) {
-            // Join the single-character classes and split into words on whitespace. The score of
-            // each word is the mean of the scores of its characters, offset by the number of
-            // preceding whitespace separators.
             std::string joined;
             for(const auto& character : classList) {
                 joined += character;
@@ -290,8 +270,6 @@ std::shared_ptr<Classifications> createClassificationSequenceMessage(const std::
             classList = std::move(concatenatedWords);
             scoreList = std::move(concatenatedScores);
         } else {
-            // At least one class name is longer than one character: join everything into a single
-            // string with a " " separator and one mean score.
             std::string joined;
             for(std::size_t i = 0; i < classList.size(); ++i) {
                 if(i > 0) {

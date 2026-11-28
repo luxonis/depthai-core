@@ -17,17 +17,14 @@ namespace detail {
 
 using StereoDepthAlign = StereoDepthConfig::AlgorithmControl::DepthAlign;
 
-// Mirror the RVC4 firmware's CAM_A proximity policy for calibration anchoring.
-// Keep AUTO unchanged on the wire: the firmware owns stereo output alignment.
 inline StereoDepthAlign defaultStereoDepthAlignment(const StereoPair& pair, const CalibrationHandler& calibration, Platform platform) {
-    if(platform == Platform::RVC4) {
+    if(platform == Platform::RVC4) {  // Same CAM_A proximity rule as the RVC4 firmware: keep both in sync
         try {
             const auto left = calibration.getCameraTranslationVector(pair.left, CameraBoardSocket::CAM_A, false);
             const auto right = calibration.getCameraTranslationVector(pair.right, CameraBoardSocket::CAM_A, false);
             const auto distance = [](const std::vector<float>& t) { return std::sqrt(t.at(0) * t.at(0) + t.at(1) * t.at(1) + t.at(2) * t.at(2)) / 100.f; };
             if(distance(right) < distance(left) * 0.8f) return StereoDepthAlign::RECTIFIED_RIGHT;
-        } catch(const std::exception&) {
-            // Firmware also falls back to rectified-left when CAM_A extrinsics are unavailable.
+        } catch(const std::exception&) {  // Firmware also falls back to rectified-left without CAM_A extrinsics
         }
     }
     return StereoDepthAlign::RECTIFIED_LEFT;
@@ -52,10 +49,7 @@ inline CameraBoardSocket stereoDepthReferenceCamera(const StereoPair& pair,
     throw std::invalid_argument("Invalid stereo depth alignment.");
 }
 
-// All input poses transform the common base (housing, when available) into a camera.
-// Every unobserved camera follows an anchor camera through its factory transform. The anchor is the default depth
-// reference camera of the first stereo pair (in device order) whose reference camera is a calibration input.
-inline CalibrationHandler assembleDynamicCalibration(const CalibrationHandler& current,
+inline CalibrationHandler assembleDynamicCalibration(const CalibrationHandler& current,  // Unobserved cameras follow the anchor camera via factory extrinsics
                                                      const CalibrationHandler& factory,
                                                      const std::vector<CameraBoardSocket>& sockets,
                                                      const std::map<CameraBoardSocket, std::vector<std::vector<float>>>& calibratedPoses,
@@ -83,7 +77,6 @@ inline CalibrationHandler assembleDynamicCalibration(const CalibrationHandler& c
                     "DynamicCalibration requires a stereo pair whose default depth reference camera is a calibration input to anchor unobserved cameras to "
                     "factory extrinsics.");
             }
-            // Use measured factory translations, in the same units as DCL (meters).
             poses[socket] = matrix::matMul(factory.getCameraExtrinsics(*anchor, socket, false, LengthUnit::METER), calibratedPoses.at(*anchor));
         }
     }
@@ -101,8 +94,7 @@ inline CalibrationHandler assembleDynamicCalibration(const CalibrationHandler& c
     if(housingBase) {
         const auto& housingToOrigin = poses.at(current.getEepromData().housingExtrinsics.toCameraSocket);
         auto eeprom = result.getEepromData();
-        eeprom.housingExtrinsics.rotationMatrix = matrix::extractRotationMatrix(housingToOrigin);
-        // EEPROM extrinsics use centimeters; the DCL poses above use meters.
+        eeprom.housingExtrinsics.rotationMatrix = matrix::extractRotationMatrix(housingToOrigin);  // EEPROM uses centimeters, DCL poses use meters
         eeprom.housingExtrinsics.translation = {100.0f * housingToOrigin[0][3], 100.0f * housingToOrigin[1][3], 100.0f * housingToOrigin[2][3]};
         result = CalibrationHandler(eeprom);
     }

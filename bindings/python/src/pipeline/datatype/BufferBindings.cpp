@@ -4,76 +4,28 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_buffer(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // py::class_<RawBuffer, std::shared_ptr<RawBuffer>> rawBuffer(m, "RawBuffer", DOC(dai, RawBuffer));
     py::class_<Buffer, Py<Buffer>, ADatatype, py::smart_holder> buffer(m, "Buffer", DOC(dai, Buffer));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // // Metadata / raw
-    // rawBuffer
-    //     .def(py::init<>())
-    //     // .def_property("data", [](py::object &obj){
-    //     //     dai::RawBuffer &a = obj.cast<dai::RawBuffer&>();
-    //     //     return py::array_t<uint8_t>(a.data.size(), a.data.data(), obj);
-    //     // }, [](py::object &obj, py::array_t<std::uint8_t, py::array::c_style> array){
-    //     //     dai::RawBuffer &a = obj.cast<dai::RawBuffer&>();
-    //     //     a.data = {array.data(), array.data() + array.size()};
-    //     // })
-    //     .def_property("ts",
-    //         [](const RawBuffer& o){
-    //             double ts = o.ts.sec + o.ts.nsec / 1000000000.0;
-    //             return ts;
-    //         },
-    //         [](RawBuffer& o, double ts){
-    //             o.ts.sec = ts;
-    //             o.ts.nsec = (ts - o.ts.sec) * 1000000000.0;
-    //         }
-    //     )
-    //     .def_property("tsDevice",
-    //         [](const RawBuffer& o){
-    //             double ts = o.tsDevice.sec + o.tsDevice.nsec / 1000000000.0;
-    //             return ts;
-    //         },
-    //         [](RawBuffer& o, double ts){
-    //             o.tsDevice.sec = ts;
-    //             o.tsDevice.nsec = (ts - o.tsDevice.sec) * 1000000000.0;
-    //         }
-    //     )
-    //     .def_readwrite("sequenceNum", &RawBuffer::sequenceNum)
-    //     ;
-
-    // Message
     buffer.def(py::init<>(), DOC(dai, Buffer, Buffer))
         .def(py::init<size_t>(), DOC(dai, Buffer, Buffer, 2))
         .def("__repr__", &Buffer::str)
         .def(
             "getData",
             [](Buffer& buffer) {
-                // Keep the allocation alive even when setData replaces the buffer's storage.
-                auto memory = std::make_unique<std::shared_ptr<Memory>>(buffer.data);
+                auto memory = std::make_unique<std::shared_ptr<Memory>>(buffer.data);  // Keeps the allocation alive when setData replaces the buffer storage
                 const auto data = (*memory)->getData();
                 py::capsule owner(memory.get(), [](void* ptr) { delete static_cast<std::shared_ptr<Memory>*>(ptr); });
                 memory.release();

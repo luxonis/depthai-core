@@ -16,8 +16,7 @@ class Stitching : public ::dai::node::Stitching {
     Stitching(std::unique_ptr<Properties> props) : ::dai::node::Stitching(std::move(props)) {}
 
     bool runOnHost() const override {
-        // Run as a firmware thread on the RVC4 ARM CPU.
-        return true;
+        return true;  // Runs as a firmware thread (ARM CPU)
     }
 };
 

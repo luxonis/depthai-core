@@ -1,14 +1,10 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
-
-#include "depthai/openvino/OpenVINO.hpp"
-
-// standard
+#include <depthai/properties/ScriptProperties.hpp>
 #include <fstream>
 
-// shared
-#include <depthai/properties/ScriptProperties.hpp>
+#include "depthai/openvino/OpenVINO.hpp"
 
 namespace dai {
 namespace node {

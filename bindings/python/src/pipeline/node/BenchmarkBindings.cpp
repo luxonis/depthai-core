@@ -9,24 +9,14 @@ void bind_benchmark(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Declare node upfront
     auto benchmarkOut = ADD_NODE(BenchmarkOut);
     auto benchmarkIn = ADD_NODE(BenchmarkIn);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Nodes
     benchmarkOut.def_readonly("out", &BenchmarkOut::out, DOC(dai, node, BenchmarkOut, out))
         .def_readonly("input", &BenchmarkOut::input, DOC(dai, node, BenchmarkOut, input))
         .def("setNumMessagesToSend", &BenchmarkOut::setNumMessagesToSend, py::arg("num"), DOC(dai, node, BenchmarkOut, setNumMessagesToSend))

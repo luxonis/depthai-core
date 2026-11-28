@@ -4,7 +4,6 @@
 #include <memory>
 #include <thread>
 
-// libraries
 #include "PointCloudGpu.hpp"
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 #include "depthai/pipeline/node/PointCloud.hpp"
@@ -22,12 +21,10 @@ class PointCloud : public ::dai::node::PointCloud {
     PointCloud(std::unique_ptr<PointCloudProperties> props) : dai::node::PointCloud(std::move(props)) {}
 
     bool runOnHost() const override {
-        // Run as a firmware thread (ARM CPU)
-        return true;
+        return true;  // Runs as a firmware thread (ARM CPU)
     }
 
-   protected:
-    // OpenCL deprojection for useGPU(); null (and a warning) when the device has no usable GPU, the node then computes on the CPU
+   protected:  // createGpuBackend: null when there is no usable GPU; the node then computes on the CPU
     std::shared_ptr<node::internal::PointCloudGpuBackend> createGpuBackend(uint32_t gpuDevice, std::shared_ptr<spdlog::logger> logger) override {
         return createOpenClPointCloudBackend(gpuDevice, logger);
     }

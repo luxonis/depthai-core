@@ -56,11 +56,7 @@ bool isUndistorted(const ImgTransformation& transformation) {
     });
 }
 
-/**
- * Rotate the registered cameras so that the panorama Y axis is the mean camera Y axis.
- * @return The rotation applied to every camera, i.e. from the frame the cameras were expressed in to the panorama frame
- */
-cv::Matx33d alignCamerasToMeanYAxis(std::vector<cv::detail::CameraParams>& cameras) {
+cv::Matx33d alignCamerasToMeanYAxis(std::vector<cv::detail::CameraParams>& cameras) {  // Returns the rotation from the input camera frame to the panorama frame
     constexpr double AXIS_EPSILON = 1e-6;
     DAI_CHECK_V(!cameras.empty(), "Calibrated panorama needs at least one camera to determine its mean Y axis");
 
@@ -99,8 +95,7 @@ cv::Matx33d alignCamerasToMeanYAxis(std::vector<cv::detail::CameraParams>& camer
     return applied;
 }
 
-/// 4x4 pose of a camera in a reference frame: `rotation` maps camera directions to reference directions, `center` is the camera position.
-std::array<std::array<float, 4>, 4> toPose(const cv::Matx33d& rotation, const cv::Vec3d& center) {
+std::array<std::array<float, 4>, 4> toPose(const cv::Matx33d& rotation, const cv::Vec3d& center) {  // rotation: camera to reference directions
     const cv::Matx33f rotation32 = rotation;
     const Point3f translation(static_cast<float>(center[0]), static_cast<float>(center[1]), static_cast<float>(center[2]));
     return matrix::createTransformationMatrix(matrix::cvMatToMatrix3x3(cv::Mat(rotation32)), translation);
@@ -112,10 +107,6 @@ Extrinsics toExtrinsics(const std::array<std::array<float, 4>, 4>& pose, CameraB
     return extrinsics;
 }
 
-/**
- * Extrinsics of the virtual camera of a panorama composed from the input calibration. The panorama frame is the destination frame of the inputs rotated
- * by `alignment`, and since the composition ignores the input translations, the camera is placed at the mean of the input camera centers.
- */
 Extrinsics calibratedPanoramaExtrinsics(const std::vector<ImgTransformation>& transformations, const cv::Matx33d& alignment) {
     cv::Vec3d center(0.0, 0.0, 0.0);
     for(const auto& transformation : transformations) {
@@ -128,11 +119,6 @@ Extrinsics calibratedPanoramaExtrinsics(const std::vector<ImgTransformation>& tr
     return toExtrinsics(toPose(alignment.t(), center), destination.toCameraSocket, destination.toDeviceId);
 }
 
-/**
- * Extrinsics of the virtual camera of a visually registered panorama. The registration only relates the panorama to its inputs, so the panorama is
- * expressed through the reference input: in the destination frame of its extrinsics when it carries some, relative to its camera otherwise.
- * @param referenceCamera Registered camera of the reference input; its rotation maps the input's directions to the panorama frame
- */
 Extrinsics estimatedPanoramaExtrinsics(const cv::detail::CameraParams& referenceCamera, const ImgTransformation& referenceInput) {
     cv::Mat rotation;
     referenceCamera.R.convertTo(rotation, CV_64F);
@@ -147,14 +133,8 @@ Extrinsics estimatedPanoramaExtrinsics(const cv::detail::CameraParams& reference
     return toExtrinsics(matrix::matMul(cameraToDestination, panoramaToCamera), inputExtrinsics.toCameraSocket, inputExtrinsics.toDeviceId);
 }
 
-/**
- * Metadata of a panorama rendered by an OpenCV rotation warper. The pixel (0, 0) of the panorama is the top-left corner of `canvas` in the warper's
- * coordinate system, and the warper projects the way the corresponding dai::CameraModel does, up to a constant offset.
- * @param scale Scale of the warper, the radius of the projection surface in pixels
- */
 ImgTransformation panoramaTransformation(const cv::Rect& canvas, double scale, CameraModel model, const Extrinsics& extrinsics) {
-    // OpenCV's spherical warper measures the polar angle from the -Y axis, the equirectangular latitude is measured from the XZ plane
-    const double offsetY = model == CameraModel::Equirectangular ? scale * CV_PI / 2.0 : 0.0;
+    const double offsetY = model == CameraModel::Equirectangular ? scale * CV_PI / 2.0 : 0.0;  // OpenCV spherical: polar angle from -Y; equirect: from XZ plane
     const auto focal = static_cast<float>(scale);
     const auto cx = static_cast<float>(-canvas.x);
     const auto cy = static_cast<float>(offsetY - canvas.y);
@@ -173,7 +153,6 @@ void appendMatrix(std::vector<double>& values, const cv::Mat& matrix) {
 
 class Stitching::Impl {
    public:
-    /** Decorates OpenCV's matcher and scores a candidate by confidence weighted by geometrically consistent inliers. */
     class ScoringFeaturesMatcher : public cv::detail::FeaturesMatcher {
        public:
         explicit ScoringFeaturesMatcher(cv::Ptr<cv::detail::FeaturesMatcher> matcher)
@@ -222,8 +201,7 @@ class Stitching::Impl {
 
         double score;
         std::vector<cv::detail::CameraParams> cameras;
-        /// Deterministically selects one geometry when matching quality is exactly tied.
-        std::vector<double> geometryKey;
+        std::vector<double> geometryKey;  // Tie-breaker: picks one geometry deterministically when scores are equal
     };
 
     cv::Ptr<cv::Stitcher> stitcher;
@@ -234,15 +212,12 @@ class Stitching::Impl {
     bool transformFixed = false;
     FixedPanoramaCompositor fixedPanorama;
     std::vector<ImgTransformation> fixedPanoramaTransformations;
-    /// Metadata of the panoramas `fixedPanorama` composes, describing their virtual camera. Set when the composition is prepared.
-    ImgTransformation fixedPanoramaView;
+    ImgTransformation fixedPanoramaView;  // Virtual camera of the fixedPanorama output; set when the composition is prepared
     PlanarStitcher planar;
 
     struct PanoramaGeometry {
-        /// Region of the warper's coordinate system the panorama covers; its top-left corner is the panorama's pixel (0, 0)
-        cv::Rect canvas;
-        /// Scale of the warper, the radius of the projection surface in pixels
-        double scale = 0.0;
+        cv::Rect canvas;     // In warper coordinates; its top-left is panorama pixel (0, 0)
+        double scale = 0.0;  // Radius of the projection surface in pixels
     };
 
     void invalidate() {
@@ -257,7 +232,6 @@ class Stitching::Impl {
         planar.reset();
     }
 
-    /// Push the planar projection settings into the implementation, dropping what was built from the old ones.
     void configurePlanar(const StitchingProperties& properties) {
         PlanarStitcher::Config config;
         config.plane = properties.plane;
@@ -270,7 +244,6 @@ class Stitching::Impl {
         planar.setConfig(config);
     }
 
-    /// Metadata describing the rendered image: a pinhole camera placed in the common origin frame of the inputs.
     ImgTransformation viewTransformation() const {
         const auto& resolved = planar.getResolvedView();
         Extrinsics extrinsics;
@@ -279,10 +252,6 @@ class Stitching::Impl {
         return {resolved.width, resolved.height, resolved.intrinsics, dai::CameraModel::Perspective, {}, extrinsics};
     }
 
-    /**
-     * (Re)create the stitcher. panoSizeHint is used to scale the blending width the way
-     * OpenCV's stitching_detailed sample does.
-     */
     void createPanoramaStitcher(const cv::Size& panoSizeHint, const StitchingProperties& properties) {
         stitcher = cv::Stitcher::create(cv::Stitcher::PANORAMA);
 
@@ -384,9 +353,6 @@ class Stitching::Impl {
         }
     }
 
-    /**
-     * @param extrinsics Extrinsics of the virtual camera of the composed panoramas
-     */
     void prepareFixedPanorama(const std::vector<cv::Mat>& images,
                               const std::vector<cv::detail::CameraParams>& cameras,
                               double registrationScale,
@@ -404,9 +370,6 @@ class Stitching::Impl {
         fixedPanoramaView = panoramaTransformation(fixedPanorama.getCanvas(), fixedPanorama.getWarperScale(), properties.cameraModel, extrinsics);
     }
 
-    /**
-     * @param referenceInput Transformation of the first input, the panorama is expressed through it
-     */
     void prepareEstimatedPanorama(const std::vector<cv::Mat>& images, const StitchingProperties& properties, const ImgTransformation& referenceInput) {
         const auto& cameras = stitcher->cameras();
         prepareFixedPanorama(images,
@@ -417,8 +380,7 @@ class Stitching::Impl {
                              estimatedPanoramaExtrinsics(cameras.front(), referenceInput));
     }
 
-    /// Geometry the panorama is composed with from the registered cameras, the way cv::Stitcher and FixedPanoramaCompositor derive it.
-    PanoramaGeometry panoramaGeometry(const std::vector<cv::Mat>& images,
+    PanoramaGeometry panoramaGeometry(const std::vector<cv::Mat>& images,  // Derived as cv::Stitcher and FixedPanoramaCompositor do
                                       const std::vector<cv::detail::CameraParams>& cameras,
                                       double registrationScale,
                                       const StitchingProperties& properties) const {
@@ -542,8 +504,7 @@ void Stitching::run() {
         if(currentProperties.mode == Mode::PLANAR_PROJECTION) {
             cv::Mat projected;
             if(!impl->planar.isPrepared()) {
-                // Configuration failures are fatal; only failures caused by the current input group are recoverable.
-                impl->configurePlanar(currentProperties);
+                impl->configurePlanar(currentProperties);  // Outside the try: configuration failures are fatal
             }
             try {
                 if(!impl->planar.isPrepared()) {
@@ -656,7 +617,6 @@ void Stitching::run() {
                     reason);
             }
         };
-        // referenceInput is the index of the input the panorama is expressed through, the first contributing one
         const auto composePanorama = [&](const std::vector<cv::Mat>& contributing, size_t referenceInput) -> std::optional<cv::Stitcher::Status> {
             const auto geometry = impl->estimatedPanoramaGeometry(contributing, currentProperties);
             if(!impl->panoramaFits(geometry.canvas.size(), currentProperties)) {
@@ -669,8 +629,7 @@ void Stitching::run() {
                 }
                 return std::nullopt;
             }
-            // Described from the registered cameras before composing, which cv::Stitcher may rescale to the compositing resolution
-            view = panoramaTransformation(geometry.canvas,
+            view = panoramaTransformation(geometry.canvas,  // Before composePanorama: cv::Stitcher may rescale cameras to compositing resolution
                                           geometry.scale,
                                           currentProperties.cameraModel,
                                           estimatedPanoramaExtrinsics(impl->stitcher->cameras().front(), transformations[referenceInput]));

@@ -1,10 +1,8 @@
 #pragma once
 
-// shared
 #include <XLink/XLinkPublicDefines.h>
 #include <spdlog/async_logger.h>
 
-// project
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"

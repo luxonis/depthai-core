@@ -168,7 +168,6 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     void buildInternal() override;
 
    private:
-    // pimpl
     class Impl;
     Pimpl<Impl> pimplRtabmap;
     void run() override;

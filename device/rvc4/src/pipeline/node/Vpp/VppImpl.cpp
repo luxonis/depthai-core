@@ -44,10 +44,8 @@ uint8_t VppImpl::getPatchColor(const cv::Mat& img, const UniformPatch& patch, Vp
             if(endY < 0 || endX < 0) {
                 return 0;
             }
-            // ROI inside the image
             cv::Mat patchROI = img(cv::Range(startY, endY), cv::Range(startX, endX));
 
-            // Find a gray level farthest from the most common color
             color = findFarthestColor(patchROI, hist);
             break;
         }
@@ -62,23 +60,19 @@ uint8_t VppImpl::getPatchColor(const cv::Mat& img, const UniformPatch& patch, Vp
 }
 
 bool VppImpl::markOccupied(cv::Mat& occupancyMask, int startX, int startY, int width, int height, float dispDiff) {
-    // Handle subpixel shift — if dispDiff > 0, patch extends by 1 pixel in width
     if(dispDiff > 0.0f) width += 1;
 
-    // Compute bounds safely
     int endX = std::min(startX + width, occupancyMask.cols);
     int endY = std::min(startY + height, occupancyMask.rows);
     startX = std::max(startX, 0);
     startY = std::max(startY, 0);
 
-    // If the region is completely outside, consider it occupied (invalid placement)
     if(endX <= 0 || endY <= 0 || startX >= occupancyMask.cols || startY >= occupancyMask.rows) return true;
 
     if(endX <= startX || endY <= startY) return true;
     auto region = occupancyMask(cv::Rect(startX, startY, endX - startX, endY - startY));
     if(cv::countNonZero(region) != 0) return true;
 
-    // Rejected patches must not reserve pixels and block subsequent patches.
     region.setTo(255);
     return false;
 }
@@ -88,22 +82,18 @@ uint8_t VppImpl::findFarthestColor(const cv::Mat& img, cv::Mat& hist, float sigm
 
     hist.setTo(0);
 
-    // Manual histogram (faster than calcHist on small ROIs)
-    uint16_t bins[256] = {};
+    uint16_t bins[256] = {};  // Manual histogram: faster than calcHist on small ROIs
     for(int y = 0; y < img.rows; ++y) {
         const uint8_t* row = img.ptr<uint8_t>(y);
         for(int x = 0; x < img.cols; ++x) ++bins[row[x]];
     }
-    // copy & normalize
     const float invN = 1.0f / static_cast<float>(img.total());
     float* h = hist.ptr<float>(0);
     for(int i = 0; i < 256; ++i) h[i] = bins[i] * invN;
 
-    // 1D blur only
     const int kernelSize = (int(6 * sigma + 1) | 1);
     cv::GaussianBlur(hist, hist, cv::Size(kernelSize, 1), sigma, 0, cv::BORDER_REPLICATE);
 
-    // dominant → farthest (naive) — keep your logic or min-bin logic
     double maxVal;
     int maxIdx[2];
     float dominant;
@@ -158,7 +148,6 @@ cv::Mat VppImpl::getDisparityMask(const cv::Mat& disparity, const cv::Mat& img, 
 }
 
 cv::Mat VppImpl::getEnergyMap(const cv::Mat& img) {
-    // Compute Sobel gradients
     cv::Mat sobelx, sobely, energyMap;
     cv::Sobel(img, sobelx, CV_32F, 1, 0, parameters.injectionParameters.kernelSize);
     cv::Sobel(img, sobely, CV_32F, 0, 1, parameters.injectionParameters.kernelSize);
@@ -166,7 +155,6 @@ cv::Mat VppImpl::getEnergyMap(const cv::Mat& img) {
     return energyMap;
 }
 
-// --- Draw Patch ---
 void VppImpl::drawPatch(cv::Mat& img, const UniformPatch& patch) {
     int startXnonzero = std::max(patch.startX, 0);
     int endX = std::min(patch.startX + patch.width, img.cols);
@@ -176,8 +164,6 @@ void VppImpl::drawPatch(cv::Mat& img, const UniformPatch& patch) {
 
     cv::Rect roi(startXnonzero, patch.startY, width, static_cast<int>(patch.height));
     cv::Mat imgROI = img(roi);
-    // cv::Mat patchMat(imgROI.size(), CV_8UC1, cv::Scalar(patch.color));
-    // cv::addWeighted(patchMat, blending, imgROI, 1.0 - blending, 0, imgROI);
     imgROI.convertTo(imgROI, -1, 1.0 - parameters.blending, parameters.blending * patch.color);
 }
 
@@ -189,7 +175,6 @@ void VppImpl::drawPatch(cv::Mat& img, const UniformPatch& patch, float subpixelS
     const int imgCols = img.cols;
     const int patchRows = patch.height;
     const int patchCols = patch.width;
-    // precompute weights
     const float blendWeightA = parameters.blending;
     const float blendWeightB = (1. - parameters.blending);
     const float subpixelWeightA = subpixelShift;
@@ -200,7 +185,6 @@ void VppImpl::drawPatch(cv::Mat& img, const UniformPatch& patch, float subpixelS
         if(iy < 0 || iy >= imgRows) continue;
 
         uint8_t* imgRow = img.ptr<uint8_t>(iy);
-        // first pixel
         int ix = patch.startX;
         if((ix >= 0 && ix < imgCols)) {
             uint8_t& imgPixel = imgRow[ix];
@@ -214,7 +198,6 @@ void VppImpl::drawPatch(cv::Mat& img, const UniformPatch& patch, float subpixelS
             uint8_t& imgPixel = imgRow[ix];
             imgRow[ix] = static_cast<uint8_t>(std::round(static_cast<float>(patch.color) * blendWeightA + blendWeightB * static_cast<float>(imgPixel)));
         }
-        // last pixel
         ix = patch.startX + patchCols;
         if((ix >= 0 && ix < imgCols)) {
             uint8_t& imgPixel = imgRow[ix];
@@ -232,7 +215,6 @@ void VppImpl::drawPatch(cv::Mat& img, const NonuniformPatch& patch, float subpix
     const int imgCols = img.cols;
     const int patchRows = patch.colors.rows;
     const int patchCols = patch.colors.cols;
-    // precompute weights
     const float blendWeightA = parameters.blending;
     const float blendWeightB = (1. - parameters.blending);
     const float subpixelWeightA = subpixelShift;
@@ -244,7 +226,6 @@ void VppImpl::drawPatch(cv::Mat& img, const NonuniformPatch& patch, float subpix
 
         uint8_t* imgRow = img.ptr<uint8_t>(iy);
         const uint8_t* patchRow = patch.colors.ptr<uint8_t>(y);
-        // first pixel
         int ix = patch.startX;
         if((ix >= 0 && ix < imgCols)) {
             uint8_t& imgPixel = imgRow[ix];
@@ -259,7 +240,6 @@ void VppImpl::drawPatch(cv::Mat& img, const NonuniformPatch& patch, float subpix
             float patchColor = subpixelWeightA * static_cast<float>(patchRow[x - 1]) + subpixelWeightB * static_cast<float>(patchRow[x]);
             imgRow[ix] = static_cast<uint8_t>(std::round(static_cast<float>(patchColor) * blendWeightA + blendWeightB * static_cast<float>(imgPixel)));
         }
-        // last pixel
         ix = patch.startX + patchCols;
         if((ix >= 0 && ix < imgCols)) {
             uint8_t& imgPixel = imgRow[ix];
@@ -298,8 +278,7 @@ void VppImpl::drawPatch(cv::Mat& img, const NonuniformPatch& patch) {
     }
 }
 
-// Preserve markOccupied's original fractional footprint, including clipping at x = -1.
-bool VppImpl::markSinglePixelOccupied(uint8_t* occupied, int width, int startX, float subpixelShift) {
+bool VppImpl::markSinglePixelOccupied(uint8_t* occupied, int width, int startX, float subpixelShift) {  // Same footprint as markOccupied, incl. clip at x = -1
     const int first = std::max(0, startX);
     const int end = std::min(width, startX + (subpixelShift > 0.0f ? 2 : 1));
     if(end <= first) return true;
@@ -310,8 +289,7 @@ bool VppImpl::markSinglePixelOccupied(uint8_t* occupied, int width, int startX, 
 }
 
 void VppImpl::drawSinglePixel(uint8_t& left, uint8_t* right, int width, int startX, float subpixelShift, uint8_t color) {
-    // Keep the same operation order and rounding as the nonuniform drawPatch overloads.
-    const float blendWeightA = parameters.blending;
+    const float blendWeightA = parameters.blending;  // Same operation order and rounding as the nonuniform drawPatch overloads
     const float blendWeightB = 1.0f - parameters.blending;
     left = static_cast<uint8_t>(std::round(color * blendWeightA + left * blendWeightB));
     if(startX >= 0 && startX < width) {
@@ -349,13 +327,11 @@ void VppImpl::processSinglePixel(cv::Mat& imgLeft, cv::Mat& imgRight, const cv::
     });
 }
 
-// --- Process disparity map ---
 void VppImpl::process(cv::Mat& imgLeft, cv::Mat& imgRight, const cv::Mat& disparity, const cv::Mat& confidence) {
     if(imgLeft.empty() || imgRight.empty() || disparity.empty()) {
         throw std::runtime_error("VPP node: Error: One or more input matrices are empty.\n");
     }
 
-    // Ensure all are 1-channel grayscale
     CV_Assert(imgLeft.channels() == 1);
     CV_Assert(imgRight.channels() == 1);
     CV_Assert(disparity.channels() == 1);
@@ -379,16 +355,13 @@ void VppImpl::process(cv::Mat& imgLeft, cv::Mat& imgRight, const cv::Mat& dispar
     const auto mask = getDisparityMask(disparity, imgLeft, confidence);
 
     tbb::global_control c(tbb::global_control::max_allowed_parallelism, parameters.maxNumThreads);
-    // Full-resolution, nonuniform priors produce 1x1 patches. Avoid an OpenCV ROI
-    // and generic patch machinery for every candidate; keep the same mask and scan order.
     if(disparity.size() == imgLeft.size() && imgLeft.size() == imgRight.size() && parameters.maxPatchSize > 0 && !parameters.uniformPatch) {
-        processSinglePixel(imgLeft, imgRight, disparity, mask);
+        processSinglePixel(imgLeft, imgRight, disparity, mask);  // Full-res nonuniform priors give 1x1 patches: no ROI, same mask and scan order
         return;
     }
 
     cv::Mat usedRight = cv::Mat::zeros(imgRight.size(), CV_8UC1);
     cv::parallel_for_(cv::Range(0, disparity.rows), [&](const cv::Range& range) {
-        // {
         UniformPatch uniformPatch;
         cv::Mat hist = cv::Mat::zeros(256, 1, CV_32F);
         std::vector<NonuniformPatch> patches;
@@ -407,7 +380,6 @@ void VppImpl::process(cv::Mat& imgLeft, cv::Mat& imgRight, const cv::Mat& dispar
             const int endDisparityPixelY = int((y + 1) * ratioY);
             for(int x = 0; x < disparity.cols; ++x) {
                 const float disp = dispRow[x];
-                // skip zero disparity
                 if(disp <= 0.0f || maskRow[x] == 0) {
                     continue;
                 }
@@ -430,7 +402,6 @@ void VppImpl::process(cv::Mat& imgLeft, cv::Mat& imgRight, const cv::Mat& dispar
                     continue;
                 }
                 if(markOccupied(usedRight, startX - dispRounded, startY, patchWidthX, patchWidthY, dispDiff)) {
-                    // if the imgRightution is already occupied continue
                     continue;
                 }
                 if(parameters.uniformPatch) {

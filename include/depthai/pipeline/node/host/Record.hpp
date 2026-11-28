@@ -1,12 +1,8 @@
 #pragma once
 
 #include <depthai/pipeline/ThreadedNode.hpp>
-
-// shared
-#include <depthai/properties/internal/XLinkOutProperties.hpp>
-
-// project
 #include <depthai/pipeline/datatype/Buffer.hpp>
+#include <depthai/properties/internal/XLinkOutProperties.hpp>
 #include <depthai/utility/RecordReplay.hpp>
 
 #include "depthai/pipeline/ThreadedHostNode.hpp"

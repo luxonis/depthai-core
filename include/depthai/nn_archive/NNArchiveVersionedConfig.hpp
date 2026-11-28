@@ -1,9 +1,6 @@
 #pragma once
 
-// C std
 #include <cstdint>
-
-// C++ std
 #include <filesystem>
 #include <functional>
 #include <nlohmann/json.hpp>
@@ -11,12 +8,9 @@
 #include <variant>
 #include <vector>
 
-// libraries
-#include "depthai/utility/spimpl.h"
-
-// internal
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
 #include "depthai/nn_archive/v1/Config.hpp"
+#include "depthai/utility/spimpl.h"
 
 namespace dai {
 
@@ -26,8 +20,7 @@ enum class NNArchiveConfigVersion {
 
 using NNArchiveConfig = std::variant<dai::nn_archive::v1::Config>;
 
-// This assumes that the config is always stored in the same order as the enum
-inline NNArchiveConfigVersion getNNArchiveConfigVersion(const NNArchiveConfig& config) {
+inline NNArchiveConfigVersion getNNArchiveConfigVersion(const NNArchiveConfig& config) {  // Variant order must match the NNArchiveConfigVersion enum
     return static_cast<NNArchiveConfigVersion>(config.index());
 }
 

@@ -34,21 +34,15 @@ class CameraSingleton {
 
     void registerSensorConfig(dai::CameraBoardSocket socket, dai::CameraControl::FrameSyncMode frameSyncMode, const SensorConfigInfo& sensorConfig);
     bool isFsyncEnabled(dai::CameraBoardSocket socket);
-    // Camera board assembly (CBA) calibration EEPROM I2C addresses. The sensor's RESET line drives the EEPROM's A0 pin:
-    // 0x56 while RESET is low or floating, 0x57 while it is high
-    static constexpr std::array<uint16_t, 2> CBA_EEPROM_ADDRESSES{0x56, 0x57};
+    static constexpr std::array<uint16_t, 2> CBA_EEPROM_ADDRESSES{0x56, 0x57};  // Sensor RESET drives EEPROM A0: 0x56 if low or floating, 0x57 if high
     struct CbaEeprom {
         int bus = -1;
         uint16_t address = 0;
     };
-    // I2C bus and address of the socket's CBA EEPROM, if one was detected at startup
     std::optional<CbaEeprom> getCbaEeprom(dai::CameraBoardSocket socket);
 
-    // Camera-module (CCM) EEPROM I2C address
     static constexpr uint16_t CCM_EEPROM_ADDRESS = 0x50;
-    // I2C bus of the socket's CCM EEPROM. Throws with the reason (e.g. I2C bus shared with other sockets) when it can't be accessed
-    int getCcmEepromBus(dai::CameraBoardSocket socket);
-    // A camera is active from when the pipeline creates its sensor until the sensor is stopped
+    int getCcmEepromBus(dai::CameraBoardSocket socket);  // Throws with the reason (e.g. I2C bus shared with other sockets) when it can't be accessed
     void setCameraActive(dai::CameraBoardSocket socket, bool active);
 
    private:

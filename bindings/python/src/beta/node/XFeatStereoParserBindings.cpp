@@ -11,13 +11,10 @@ void bind_beta_xfeatstereoparser(pybind11::module& m, void* pCallstack) {
     py::class_<beta::XFeatStereoParserProperties> properties(betaModule, "XFeatStereoParserProperties");
     auto xfeatStereoParser = ADD_BETA_NODE_DERIVED(XFeatStereoParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     properties.def_readwrite("initialConfig", &beta::XFeatStereoParserProperties::initialConfig)
         .def_readwrite("outputLayerFeats", &beta::XFeatStereoParserProperties::outputLayerFeats)

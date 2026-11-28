@@ -1,6 +1,5 @@
 #pragma once
 
-// C std
 #include <cstdint>
 
 namespace dai {

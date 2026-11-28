@@ -1,9 +1,7 @@
 #include "XLinkOut.hpp"
 
-// shared
 #include "depthai/xlink/XLinkConstants.hpp"
 
-// project
 #include <depthai/pipeline/datatype/MessageGroup.hpp>
 #include <depthai/pipeline/datatype/StreamMessageParser.hpp>
 #include <depthai/utility/Memory.hpp>
@@ -12,7 +10,6 @@
 #include <memory>
 
 #include "pipeline/datatype/PacketizedData.hpp"
-// libraries
 #include <XLink/XLink.h>
 
 #include "spdlog/fmt/bin_to_hex.h"
@@ -62,14 +59,10 @@ XLinkError_t XLinkOut::sendPacketizedFrame(streamId_t streamId, dai::span<const 
         size_t thisPacketSize = std::min<size_t>(packetSize, combinedSize - sentBytes);
 
         if(sentBytes + thisPacketSize <= dataSize) {
-            // Case A: Entire packet is within the 'data' span
             status = writeData(streamId, data.data() + sentBytes, thisPacketSize);
         } else if(sentBytes >= dataSize) {
-            // Case B: Entire packet is within the 'metadata' span
             status = writeData(streamId, metadata.data() + (sentBytes - dataSize), thisPacketSize);
         } else {
-            // Case C: Packet straddles the boundary (part data, part metadata)
-            // Only here do we use a tiny temporary buffer for a single packet
             size_t fromData = dataSize - sentBytes;
             size_t fromMeta = thisPacketSize - fromData;
             std::vector<uint8_t> splitBuffer;
@@ -82,7 +75,6 @@ XLinkError_t XLinkOut::sendPacketizedFrame(streamId_t streamId, dai::span<const 
         if(status != X_LINK_SUCCESS) return status;
         sentBytes += thisPacketSize;
 
-        // Rate limit sleep
         if(secondsPerPacket > 0) {
             auto timeSpent = std::chrono::steady_clock::now() - loopStart;
             auto willSleepFor = std::chrono::duration<float>(secondsPerPacket) - timeSpent;
@@ -104,7 +96,6 @@ bool XLinkOut::shouldSkipFrame(double maxFps,
     using namespace std::chrono;
     auto currentTime = steady_clock::now();
 
-    // Reset counter every second
     if(currentTime - tPrevSecond > 1s) {
         packetCounter = 0;
         tPrevSecond = currentTime;
@@ -126,7 +117,6 @@ XLinkError_t XLinkOut::transmitMessage(streamId_t& streamId,
 
     ensureStreamSize(streamId, currentStreamSize, message->data->getSize(), streamName);
 
-    // Handle MessageGroup
     if(auto msgGroupPtr = std::dynamic_pointer_cast<dai::MessageGroup>(message)) {
         XLinkError_t status = writeData(streamId, metadata);
         for(auto& pair : msgGroupPtr->group) {
@@ -136,7 +126,6 @@ XLinkError_t XLinkOut::transmitMessage(streamId_t& streamId,
         return status;
     }
 
-    // Handle standard message
     if(dataSize == 0 || properties.metadataOnly) {
         return writeData(streamId, metadata);
     }
@@ -159,7 +148,6 @@ void XLinkOut::run() {
     using namespace std::chrono_literals;
     logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
 
-    // 1. Setup initial state
     std::string streamName = properties.streamName;
     auto tPrevPacket = steady_clock::now();
     auto tPrevSecond = steady_clock::now();
@@ -167,7 +155,6 @@ void XLinkOut::run() {
 
     printf("Opening stream: %s\n", streamName.c_str());
 
-    // 2. Open XLink stream
     size_t currentStreamSize = dai::device::XLINK_USB_BUFFER_MAX_SIZE;
     streamId_t streamId = XLinkOpenStream(0, streamName.c_str(), currentStreamSize);
 
@@ -178,12 +165,10 @@ void XLinkOut::run() {
 
     std::this_thread::sleep_for(DELAY_AFTER_XLINK_CONNECTION);
 
-    // 3. Main Processing Loop
     while(mainLoop()) {
         auto tAbsoluteBeginning = steady_clock::now();
         std::shared_ptr<ADatatype> message;
 
-        // Retrieve message from input
         {
             auto blockEvent = this->inputBlockEvent();
             message = input.get<dai::ADatatype>();
@@ -192,7 +177,6 @@ void XLinkOut::run() {
         if(!message) continue;
         auto tAfterMessageBeginning = steady_clock::now();
 
-        // Check FPS limit using helper
         if(shouldSkipFrame(properties.maxFpsLimit, tPrevPacket, tPrevSecond, packetCounter)) {
             continue;
         }
@@ -201,14 +185,10 @@ void XLinkOut::run() {
             continue;
         }
 
-        // Ensure stream is large enough using helper
-
-        // Perform Transmission using recursive/packetized helper
         auto tBeforeSend = steady_clock::now();
         XLinkError_t status = transmitMessage(streamId, message, currentStreamSize, streamName);
         auto tAbsoluteEnd = steady_clock::now();
 
-        // 4. Bookkeeping & Error Handling
         if(status == X_LINK_SUCCESS) {
             packetCounter++;
             tPrevPacket = steady_clock::now();
@@ -221,7 +201,6 @@ void XLinkOut::run() {
             std::this_thread::sleep_for(10ms);
         }
 
-        // 5. Performance Logging
         dai::gate::logTiming(logger, this->getName(), tAbsoluteBeginning, tAfterMessageBeginning, tBeforeSend, tAbsoluteEnd);
     }
 }

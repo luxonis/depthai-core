@@ -1,6 +1,5 @@
 #include "ArchiveUtil.hpp"
 
-// c std
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -201,38 +200,28 @@ void ArchiveUtil::readEntry(struct archive_entry* entry, std::vector<uint8_t>& o
     DAI_CHECK_IN(aPtr);
     out.clear();
 
-    // Read size, 16KiB
     auto readSize = static_cast<int64_t>(16 * 1024);
     if(archive_entry_size_is_set(entry) != 0) {
-        // if size is specified, use that for read size
         readSize = archive_entry_size(entry);
     }
 
-    // Record number of bytes actually read
     int64_t finalSize = 0;
 
     while(true) {
-        // Current size, as a offset to write next data to
         auto currentSize = out.size();
 
-        // Resize to accommodate extra data
         out.resize(currentSize + readSize);
-        // data() instead of &out[currentSize]: the vector is empty for an empty entry (readSize 0)
-        int64_t size = archive_read_data(aPtr, out.data() + currentSize, readSize);
+        int64_t size = archive_read_data(aPtr, out.data() + currentSize, readSize);  // data(), not &out[currentSize]: out is empty for an empty entry
 
-        // Check that no errors occurred
         DAI_CHECK(size >= 0, fmt::format("Errors occurred when reading from archive using libarchive. Error - {}", size));
 
-        // Append number of bytes actually read to finalSize
         finalSize += size;
 
-        // All bytes were read
         if(size == 0) {
             break;
         }
     }
 
-    // Resize vector to actual read size
     out.resize(finalSize);
 }
 

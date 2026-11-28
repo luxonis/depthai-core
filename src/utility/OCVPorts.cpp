@@ -71,7 +71,6 @@ struct PointPort {
 template <typename _Tp, typename _DotTp>
 static int SklanskyPort(PointPort<_Tp>** array, int start, int end, int* stack, int nsign, int sign2) {
     int incr = end > start ? 1 : -1;
-    // prepare first triangle
     int pprev = start, pcur = pprev + incr, pnext = pcur + incr;
     int stacksize = 3;
 
@@ -87,7 +86,6 @@ static int SklanskyPort(PointPort<_Tp>** array, int start, int end, int* stack, 
     end += incr;  // make end = afterend
 
     while(pnext != end) {
-        // check the angle p1,p2,p3
         _Tp cury = array[pcur]->y;
         _Tp nexty = array[pnext]->y;
         _Tp by = nexty - cury;
@@ -146,7 +144,6 @@ void convexHullPort(std::vector<PointPort<float>>& points, std::vector<PointPort
 
     for(i = 0; i < total; i++) pointer[i] = &data0[i];
 
-    // sort the point set by x-coordinate, find min and max y
     if(!is_float) {
         std::sort(pointer, pointer + total, [](const PointPort<int>* p1, const PointPort<int>* p2) {
             if(p1->x != p2->x) return p1->x < p2->x;
@@ -174,7 +171,6 @@ void convexHullPort(std::vector<PointPort<float>>& points, std::vector<PointPort
     if(pointer[0]->x == pointer[total - 1]->x && pointer[0]->y == pointer[total - 1]->y) {
         hullbuf[nout++] = 0;
     } else {
-        // upper half
         int* tl_stack = stack;
         int tl_count =
             !is_float ? SklanskyPort<int, int64_t>(pointer, 0, maxy_ind, tl_stack, -1, 1) : SklanskyPort<float, double>(pointerf, 0, maxy_ind, tl_stack, -1, 1);
@@ -182,7 +178,6 @@ void convexHullPort(std::vector<PointPort<float>>& points, std::vector<PointPort
         int tr_count = !is_float ? SklanskyPort<int, int64_t>(pointer, total - 1, maxy_ind, tr_stack, -1, -1)
                                  : SklanskyPort<float, double>(pointerf, total - 1, maxy_ind, tr_stack, -1, -1);
 
-        // gather upper part of convex hull to output
         if(!clockwise) {
             std::swap(tl_stack, tr_stack);
             std::swap(tl_count, tr_count);
@@ -192,7 +187,6 @@ void convexHullPort(std::vector<PointPort<float>>& points, std::vector<PointPort
         for(i = tr_count - 1; i > 0; i--) hullbuf[nout++] = int(pointer[tr_stack[i]] - data0);
         int stop_idx = tr_count > 2 ? tr_stack[1] : tl_count > 2 ? tl_stack[tl_count - 2] : -1;
 
-        // lower half
         int* bl_stack = stack;
         int bl_count =
             !is_float ? SklanskyPort<int, int64_t>(pointer, 0, miny_ind, bl_stack, 1, -1) : SklanskyPort<float, double>(pointerf, 0, miny_ind, bl_stack, 1, -1);
@@ -208,10 +202,7 @@ void convexHullPort(std::vector<PointPort<float>>& points, std::vector<PointPort
         if(stop_idx >= 0) {
             int check_idx = bl_count > 2 ? bl_stack[1] : bl_count + br_count > 2 ? br_stack[2 - bl_count] : -1;
             if(check_idx == stop_idx || (check_idx >= 0 && pointer[check_idx]->x == pointer[stop_idx]->x && pointer[check_idx]->y == pointer[stop_idx]->y)) {
-                // if all the points lie on the same line, then
-                // the bottom part of the convex hull is the mirrored top part
-                // (except the extreme points).
-                bl_count = std::min(bl_count, 2);
+                bl_count = std::min(bl_count, 2);  // Collinear points: the lower hull mirrors the upper one
                 br_count = std::min(br_count, 2);
             }
         }
@@ -219,9 +210,6 @@ void convexHullPort(std::vector<PointPort<float>>& points, std::vector<PointPort
         for(i = 0; i < bl_count - 1; i++) hullbuf[nout++] = int(pointer[bl_stack[i]] - data0);
         for(i = br_count - 1; i > 0; i--) hullbuf[nout++] = int(pointer[br_stack[i]] - data0);
 
-        // try to make the convex hull indices form
-        // an ascending or descending sequence by the cyclic
-        // shift of the output sequence.
         if(nout >= 3) {
             int min_idx = 0, max_idx = 0, lt = 0;
             for(i = 1; i < nout; i++) {
@@ -287,10 +275,6 @@ static void rotatingCalipersPort(const PointPort<float>* points, int n, int mode
     int seq[4] = {-1, -1, -1, -1};
     PointPort<float> rot_vect[4];
 
-    /* rotating calipers sides will always have coordinates
-     (a,b) (-b,a) (-a,-b) (b, -a)
-     */
-    /* this is a first base vector (a,b) initialized by (1,0) */
     float orientation = 0;
     float base_a;
     float base_b = 0;
@@ -324,7 +308,6 @@ static void rotatingCalipersPort(const PointPort<float>* points, int n, int mode
         pt0 = pt;
     }
 
-    // find convex hull orientation
     {
         double ax = (double)vect[n - 1].x;
         double ay = (double)vect[n - 1].y;
@@ -346,22 +329,14 @@ static void rotatingCalipersPort(const PointPort<float>* points, int n, int mode
     }
     base_a = orientation;
 
-    /*****************************************************************************************/
-    /*                         init calipers position */
     seq[0] = bottom;
     seq[1] = right;
     seq[2] = top;
     seq[3] = left;
-    /*****************************************************************************************/
-    /*                         Main loop - evaluate angles and rotate calipers */
 
-    /* all of edges will be checked while rotating calipers by 90 degrees */
     for(k = 0; k < n; k++) {
-        /* number of calipers edges, that has minimal angle with edge */
         int main_element = 0;
 
-        /* choose minimum angle between calipers side and polygon edge by dot
-         * product sign */
         rot_vect[0] = vect[seq[0]];
         rotate90CWPort(vect[seq[1]], rot_vect[1]);
         rotate180Port(vect[seq[2]], rot_vect[2]);
@@ -370,9 +345,7 @@ static void rotatingCalipersPort(const PointPort<float>* points, int n, int mode
             if(firstVecIsRightPort(rot_vect[i], rot_vect[main_element])) main_element = i;
         }
 
-        /*rotate calipers*/
         {
-            // get next base
             int pindex = seq[main_element];
             float lead_x = vect[pindex].x * inv_vect_length[pindex];
             float lead_y = vect[pindex].y * inv_vect_length[pindex];
@@ -397,16 +370,11 @@ static void rotatingCalipersPort(const PointPort<float>* points, int n, int mode
                     throw std::runtime_error("main_element should be 0, 1, 2 or 3");
             }
         }
-        /* change base point of main edge */
         seq[main_element] += 1;
         seq[main_element] = (seq[main_element] == n) ? 0 : seq[main_element];
 
         switch(mode) {
             case CALIPERS_MAXHEIGHT: {
-                /* now main element lies on edge aligned to calipers side */
-
-                /* find opposite element i.e. transform  */
-                /* 0->2, 1->3, 2->0, 3->1                */
                 int opposite_el = main_element ^ 2;
 
                 float dx = points[seq[opposite_el]].x - points[seq[main_element]].x;
@@ -420,43 +388,34 @@ static void rotatingCalipersPort(const PointPort<float>* points, int n, int mode
 
                 if(dist > max_dist) max_dist = dist;
             } break;
-            case CALIPERS_MINAREARECT:
-                /* find area of rectangle */
-                {
-                    float height;
-                    float area;
+            case CALIPERS_MINAREARECT: {
+                float height;
+                float area;
 
-                    /* find vector left-right */
-                    float dx = points[seq[1]].x - points[seq[3]].x;
-                    float dy = points[seq[1]].y - points[seq[3]].y;
+                float dx = points[seq[1]].x - points[seq[3]].x;
+                float dy = points[seq[1]].y - points[seq[3]].y;
 
-                    /* dotproduct */
-                    float width = dx * base_a + dy * base_b;
+                float width = dx * base_a + dy * base_b;
 
-                    /* find vector left-right */
-                    dx = points[seq[2]].x - points[seq[0]].x;
-                    dy = points[seq[2]].y - points[seq[0]].y;
+                dx = points[seq[2]].x - points[seq[0]].x;
+                dy = points[seq[2]].y - points[seq[0]].y;
 
-                    /* dotproduct */
-                    height = -dx * base_b + dy * base_a;
+                height = -dx * base_b + dy * base_a;
 
-                    area = width * height;
-                    if(area <= minarea) {
-                        float* buf = (float*)buffer;
+                area = width * height;
+                if(area <= minarea) {
+                    float* buf = (float*)buffer;
 
-                        minarea = area;
-                        /* leftist point */
-                        ((int*)buf)[0] = seq[3];
-                        buf[1] = base_a;
-                        buf[2] = width;
-                        buf[3] = base_b;
-                        buf[4] = height;
-                        /* bottom point */
-                        ((int*)buf)[5] = seq[0];
-                        buf[6] = area;
-                    }
+                    minarea = area;
+                    ((int*)buf)[0] = seq[3];
+                    buf[1] = base_a;
+                    buf[2] = width;
+                    buf[3] = base_b;
+                    buf[4] = height;
+                    ((int*)buf)[5] = seq[0];
+                    buf[6] = area;
                 }
-                break;
+            } break;
         } /*switch */
     } /* for */
 

@@ -1,12 +1,10 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
+#include <depthai/properties/RectificationProperties.hpp>
 
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
-
-// shared
-#include <depthai/properties/RectificationProperties.hpp>
 
 namespace dai {
 namespace node {

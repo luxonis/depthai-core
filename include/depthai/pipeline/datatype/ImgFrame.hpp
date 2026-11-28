@@ -4,19 +4,15 @@
 #include <unordered_map>
 #include <vector>
 
-// project
 #include "depthai/common/CameraExposureOffset.hpp"
-#include "depthai/common/optional.hpp"
-#include "depthai/config/config.hpp"
-#include "depthai/pipeline/datatype/Buffer.hpp"
-
-// shared
 #include "depthai/common/FrameEvent.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Rect.hpp"
+#include "depthai/common/optional.hpp"
+#include "depthai/config/config.hpp"
+#include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 
-// optional
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/core/mat.hpp>
     #include <opencv2/opencv.hpp>
@@ -108,7 +104,6 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    // getters
     /**
      * Retrieves image timestamp (at the specified offset of exposure) related to dai::Clock::now()
      */
@@ -424,7 +419,6 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      */
     static Rect remapRectBetweenFrames(const Rect& originRect, const ImgFrame& originFrame, const ImgFrame& destFrame);
 
-// Optional - OpenCV support
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
      * @note This API only available if OpenCV support is enabled

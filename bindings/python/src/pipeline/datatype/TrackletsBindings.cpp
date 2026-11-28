@@ -6,37 +6,23 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_tracklets(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // py::class_<RawTracklets, RawBuffer, std::shared_ptr<RawTracklets>> rawTacklets(m, "RawTracklets", DOC(dai, RawTracklets));
     py::class_<Tracklet> tracklet(m, "Tracklet", DOC(dai, Tracklet));
     py::enum_<Tracklet::TrackingStatus> trackletTrackingStatus(tracklet, "TrackingStatus", DOC(dai, Tracklet, TrackingStatus));
     py::class_<Tracklets, Py<Tracklets>, Buffer, Transformable, py::smart_holder> tracklets(m, "Tracklets", DOC(dai, Tracklets));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Metadata / raw
     tracklet.def(py::init<>())
         .def("transform",
              &dai::Tracklet::transform,
@@ -61,12 +47,6 @@ void bind_tracklets(pybind11::module& m, void* pCallstack) {
         .value("LOST", Tracklet::TrackingStatus::LOST)
         .value("REMOVED", Tracklet::TrackingStatus::REMOVED);
 
-    // rawTacklets
-    //     .def(py::init<>())
-    //     .def_readwrite("tracklets", &RawTracklets::tracklets)
-    //     ;
-
-    // Message
     tracklets.def(py::init<>())
         .def("__repr__", &Tracklets::str)
         .def_readwrite("unit", &Tracklets::unit, DOC(dai, Tracklets, unit))

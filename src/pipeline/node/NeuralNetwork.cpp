@@ -98,7 +98,6 @@ ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive,
     DAI_CHECK_V(platformSupported, "Platform not supported by the neural network model");
 
     const auto& configV1 = nnArchiveCfg.getConfig<nn_archive::v1::Config>();
-    // Check if the model has multiple inputs
     DAI_CHECK_V(configV1.model.inputs.size() == 1, "Model has multiple inputs, it has to be linked manually");
 
     auto inputHeight = nnArchive.getInputHeight();
@@ -134,7 +133,6 @@ ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive,
 }
 
 NNArchive NeuralNetwork::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         DAI_CHECK(getDevice() != nullptr, "Device is not set.");
         modelDesc.platform = getDevice()->getPlatformAsString();
@@ -190,7 +188,6 @@ void NeuralNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
 }
 
 void NeuralNetwork::setFromModelZoo(NNModelDescription description, bool useCached) {
-    // Set platform if not set
     if(description.platform.empty()) {
         DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
         description.platform = getDevice()->getPlatformAsString();
@@ -217,7 +214,6 @@ void NeuralNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
     setOtherModelFormat(std::move(nnArchive.getOtherModelFormat().value()));
 }
 
-// Specify local filesystem path to load the blob (which gets loaded at loadAssets)
 void NeuralNetwork::setBlobPath(const std::filesystem::path& path) {
     setBlob(OpenVINO::Blob(path));
 }

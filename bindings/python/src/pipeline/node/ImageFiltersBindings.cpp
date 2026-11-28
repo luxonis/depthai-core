@@ -6,14 +6,11 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
     using namespace dai;
     using namespace node;
 
-    // bind properties
     py::class_<ImageFiltersProperties> imageFiltersProperties(m, "ImageFiltersProperties", DOC(dai, ImageFiltersProperties));
     py::class_<ToFDepthConfidenceFilterProperties> depthConfidenceFilterProperties(
         m, "ToFDepthConfidenceFilterProperties", DOC(dai, ToFDepthConfidenceFilterProperties));
 
-    // bind config
-    py::class_<ImageFiltersConfig, Py<ImageFiltersConfig>, Buffer, py::smart_holder> imageFiltersConfig(
-        m, "ImageFiltersConfig", DOC(dai, ImageFiltersConfig));
+    py::class_<ImageFiltersConfig, Py<ImageFiltersConfig>, Buffer, py::smart_holder> imageFiltersConfig(m, "ImageFiltersConfig", DOC(dai, ImageFiltersConfig));
     imageFiltersConfig.def(py::init<>());
     imageFiltersConfig.def_readwrite("filterIndices", &ImageFiltersConfig::filterIndices, DOC(dai, ImageFiltersConfig, filterIndices));
     imageFiltersConfig.def_readwrite("filterParams", &ImageFiltersConfig::filterParams, DOC(dai, ImageFiltersConfig, filterParams));
@@ -34,14 +31,9 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
             "confidenceThreshold", &ToFDepthConfidenceFilterConfig::confidenceThreshold, DOC(dai, ToFDepthConfidenceFilterConfig, confidenceThreshold))
         .def("setProfilePreset", &ToFDepthConfidenceFilterConfig::setProfilePreset, DOC(dai, ToFDepthConfidenceFilterConfig, setProfilePreset));
 
-    // Add node bindings
     auto imageFilters = ADD_NODE(ImageFilters);
     auto depthConfidenceFilter = ADD_NODE(ToFDepthConfidenceFilter);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
@@ -55,18 +47,11 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
 
     imageFiltersProperties.def_readwrite("initialConfig", &dai::ImageFiltersProperties::initialConfig, DOC(dai, ImageFiltersProperties, initialConfig));
 
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-
-    // Add enum for preset mode
     py::enum_<ImageFiltersPresetMode>(m, "ImageFiltersPresetMode")
         .value("TOF_LOW_RANGE", ImageFiltersPresetMode::TOF_LOW_RANGE)
         .value("TOF_MID_RANGE", ImageFiltersPresetMode::TOF_MID_RANGE)
         .value("TOF_HIGH_RANGE", ImageFiltersPresetMode::TOF_HIGH_RANGE);
 
-    // StereoDepthFilterPipeline bindings
     imageFilters.def(
         "setDefaultProfilePreset", &dai::node::ImageFilters::setDefaultProfilePreset, py::arg("mode"), DOC(dai, node, ImageFilters, setDefaultProfilePreset));
 
@@ -86,13 +71,11 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
              py::arg("presetMode") = ImageFiltersPresetMode::TOF_MID_RANGE,
              DOC(dai, node, ImageFilters, build));
 
-    // Just an alias for the filter stereo depth config parameters
     imageFilters.attr("MedianFilterParams") = m.attr("StereoDepthConfig").attr("MedianFilter");
     imageFilters.attr("SpatialFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("SpatialFilter");
     imageFilters.attr("SpeckleFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("SpeckleFilter");
     imageFilters.attr("TemporalFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("TemporalFilter");
 
-    // DepthConfidenceFilter bindings
     depthConfidenceFilter.def_readonly("depth", &ToFDepthConfidenceFilter::depth, DOC(dai, node, ToFDepthConfidenceFilter, depth))
         .def_readonly("amplitude", &ToFDepthConfidenceFilter::amplitude, DOC(dai, node, ToFDepthConfidenceFilter, amplitude))
         .def_readonly("filteredDepth", &ToFDepthConfidenceFilter::filteredDepth, DOC(dai, node, ToFDepthConfidenceFilter, filteredDepth))

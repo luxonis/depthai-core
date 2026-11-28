@@ -32,7 +32,6 @@ PPTextDetectionParser::Properties& PPTextDetectionParser::getProperties() {
 }
 
 NNArchive PPTextDetectionParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -114,19 +113,13 @@ void PPTextDetectionParser::setConfig(const dai::nn_archive::v1::Head& head) {
         setMaxDetections(static_cast<int>(*head.metadata.maxDet));
     }
 
-    // The mask threshold has no typed metadata field and lives in the head metadata extra
-    // parameters.
     const auto& extraParams = head.metadata.extraParams;
     if(extraParams.is_object() && extraParams.contains("mask_threshold") && !extraParams.at("mask_threshold").is_null()) {
         const auto& maskThresholdJson = extraParams.at("mask_threshold");
         DAI_CHECK(maskThresholdJson.is_number(), "Mask threshold must be a float.");
         setMaskThreshold(maskThresholdJson.get<float>());
     }
-
-    // The head's declared output names are intentionally not consumed: the source parser
-    // resolves the output layer from the runtime NN results, which keeps archives whose head
-    // output name differs from the model's declared output name working.
-}
+}  // Head output names are not used, as in the source: the layer comes from the runtime NN results
 
 void PPTextDetectionParser::setOutputLayerName(const std::string& outputLayerName) {
     properties.outputLayerName = outputLayerName;
@@ -176,8 +169,6 @@ void PPTextDetectionParser::run() {
     DAI_CHECK(activeConfig.validate(), "PPTextDetectionParser initial configuration is invalid.");
     const bool inputConfigSync = inputConfig.getWaitForMessage();
 
-    // The resolved layer name persists across messages once auto-selected from a
-    // single-tensor NNData, mirroring the source parser behavior.
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
@@ -211,7 +202,6 @@ void PPTextDetectionParser::run() {
 
         const PPTextDetectionParserConfig config = activeConfig;
 
-        // Extract
         const auto layerNames = nnData->getAllLayerNames();
         if(resolvedOutputLayerName.empty()) {
             DAI_CHECK_V(layerNames.size() == 1, "Expected 1 output layer, got {} layers. Please provide the output_layer_name.", layerNames.size());
@@ -219,12 +209,9 @@ void PPTextDetectionParser::run() {
         }
         auto predictions = utilities::ClassificationUtils::getNchwTensorData(*nnData, resolvedOutputLayerName);
 
-        // Compute. The probability map height/width are derived from the tensor shape.
         const auto detections = utilities::PPTextUtils::parsePaddleDetectionOutputs(
             predictions.values, predictions.dims, config.maskThreshold, config.confidenceThreshold, config.maxDetections);
 
-        // Emit. The detections carry no labels, mirroring the source
-        // create_detection_message(bboxes, scores, angles=angles) call.
         auto message = utilities::DetectionUtils::createDetectionMessage(detections.bboxes, detections.scores, detections.angles);
         if(nnData->transformation.has_value()) {
             utilities::DetectionUtils::setTransformationAndBounds(*message, *nnData->transformation);

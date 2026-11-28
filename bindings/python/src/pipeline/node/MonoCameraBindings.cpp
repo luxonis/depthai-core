@@ -10,26 +10,16 @@ void bind_monocamera(pybind11::module& m, void* pCallstack) {
     using namespace dai::node;
 
     DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
-    // Node and Properties declare upfront
     py::class_<MonoCameraProperties> monoCameraProperties(m, "MonoCameraProperties", DOC(dai, MonoCameraProperties));
     py::enum_<MonoCameraProperties::SensorResolution> monoCameraPropertiesSensorResolution(
         monoCameraProperties, "SensorResolution", DOC(dai, MonoCameraProperties, SensorResolution));
     auto monoCamera = ADD_NODE(MonoCamera);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Properties
     monoCameraPropertiesSensorResolution.value("THE_720_P", MonoCameraProperties::SensorResolution::THE_720_P)
         .value("THE_800_P", MonoCameraProperties::SensorResolution::THE_800_P)
         .value("THE_400_P", MonoCameraProperties::SensorResolution::THE_400_P)
@@ -47,7 +37,6 @@ void bind_monocamera(pybind11::module& m, void* pCallstack) {
         .def_readwrite("numFramesPoolRaw", &MonoCameraProperties::numFramesPoolRaw)
         .def_readwrite("eventFilter", &MonoCameraProperties::eventFilter);
 
-    // Node
     monoCamera.def_readonly("inputControl", &MonoCamera::inputControl, DOC(dai, node, MonoCamera, inputControl))
         .def_readonly("out", &MonoCamera::out, DOC(dai, node, MonoCamera, out))
         .def_readonly("raw", &MonoCamera::raw, DOC(dai, node, MonoCamera, raw))
@@ -55,7 +44,6 @@ void bind_monocamera(pybind11::module& m, void* pCallstack) {
         .def_readonly("initialControl", &MonoCamera::initialControl, DOC(dai, node, MonoCamera, initialControl))
         .def("setCamId",
              [](MonoCamera& c, int64_t id) {
-                 // Issue an deprecation warning
                  PyErr_WarnEx(PyExc_DeprecationWarning, "setCamId() is deprecated, use setBoardSocket() instead.", 1);
                  HEDLEY_DIAGNOSTIC_PUSH
                  HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
@@ -64,7 +52,6 @@ void bind_monocamera(pybind11::module& m, void* pCallstack) {
              })
         .def("getCamId",
              [](MonoCamera& c) {
-                 // Issue an deprecation warning
                  PyErr_WarnEx(PyExc_DeprecationWarning, "getCamId() is deprecated, use getBoardSocket() instead.", 1);
                  HEDLEY_DIAGNOSTIC_PUSH
                  HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
@@ -93,7 +80,6 @@ void bind_monocamera(pybind11::module& m, void* pCallstack) {
         .def("getCamera", &MonoCamera::getCamera, DOC(dai, node, MonoCamera, getCamera))
 
         .def("setRawOutputPacked", &MonoCamera::setRawOutputPacked, py::arg("packed"), DOC(dai, node, MonoCamera, setRawOutputPacked));
-    // ALIAS
     daiNodeModule.attr("MonoCamera").attr("Properties") = monoCameraProperties;
     DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 }

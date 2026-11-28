@@ -1,20 +1,13 @@
 #include "CrashDumpBindings.hpp"
 
-// depthai
 #include "depthai/device/CrashDump.hpp"
 #include "depthai/device/DeviceBase.hpp"
 
-// pybind11_json
 #include "pybind11_json/pybind11_json.hpp"
 
-// std
 #include <filesystem>
 
-// Helpers to allow users to work with the `extra` attribute as if it was a regular python dict
-// The gist of this is to use an extra python dictionary that gets synced with the C++ extra json
-// dict whenever it's needed. This is needed as otherwise the `extra` json dict generally is returned
-// as a copy (and not a reference)
-static void syncExtraToNative(py::handle self, dai::CrashDump& dump) {
+static void syncExtraToNative(py::handle self, dai::CrashDump& dump) {  // Python dict kept in sync with extra: a plain getter returns a copy, not a reference
     if(py::hasattr(self, "_extra_dict")) {
         dump.extra = pyjson::to_json(self.attr("_extra_dict"));
     }
@@ -36,11 +29,8 @@ static std::vector<uint8_t> bytesToVector(const py::bytes& bytes) {
 void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // Type definitions
-    // Base CrashDump class
     py::class_<CrashDump, std::shared_ptr<CrashDump>> crashDump(m, "CrashDump", DOC(dai, CrashDump), py::dynamic_attr());
 
-    // CrashDumpRVC2 and its nested types
     py::class_<CrashDumpRVC2, CrashDump, std::shared_ptr<CrashDumpRVC2>> crashDumpRVC2(m, "CrashDumpRVC2", DOC(dai, CrashDumpRVC2));
     py::class_<CrashDumpRVC2::CrashReportCollection> crashReportCollection(
         crashDumpRVC2, "CrashReportCollection", DOC(dai, CrashDumpRVC2, CrashReportCollection));
@@ -56,22 +46,13 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<CrashDumpRVC2::CrashReport::ThreadCallstack::CallstackContext> callstackContext(
         threadCallstack, "CallstackContext", DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack, CallstackContext));
 
-    // CrashDumpRVC4
     py::class_<CrashDumpRVC4, CrashDump, std::shared_ptr<CrashDumpRVC4>> crashDumpRVC4(m, "CrashDumpRVC4", DOC(dai, CrashDumpRVC4));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Bind CrashDump (base class - abstract)
     crashDump.def("getPlatform", &CrashDump::getPlatform, DOC(dai, CrashDump, getPlatform))
         .def("getCrashDumpVersion", &CrashDump::getCrashDumpVersion, DOC(dai, CrashDump, getCrashDumpVersion))
         .def(
@@ -88,7 +69,6 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
             [](py::object self, const std::filesystem::path& tarPath) {
                 auto& dump = self.cast<CrashDump&>();
                 dump.fromTar(tarPath);
-                // Invalidate cached dict so it gets lazily re-synced from C++ on next access
                 if(py::hasattr(self, "_extra_dict")) py::delattr(self, "_extra_dict");
             },
             py::arg("tarPath"),
@@ -151,7 +131,6 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
                 auto& dump = self.cast<CrashDump&>();
                 syncExtraToNative(self, dump);
             })
-        // Public members
         .def_readwrite("depthaiVersion", &CrashDump::depthaiVersion)
         .def_readwrite("depthaiVersionMajor", &CrashDump::depthaiVersionMajor)
         .def_readwrite("depthaiVersionMinor", &CrashDump::depthaiVersionMinor)
@@ -170,19 +149,16 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("deviceId", &CrashDump::deviceId)
         .def_readwrite("osPlatform", &CrashDump::osPlatform);
 
-    // Bind CrashDumpRVC2
     crashDumpRVC2.def(py::init<>())
         .def(py::init<const std::filesystem::path&>(), py::arg("tarFile"))
         .def_readwrite("crashReports", &CrashDumpRVC2::crashReports);
 
-    // Bind CrashDumpRVC2::CrashReportCollection
     crashReportCollection.def(py::init<>())
         .def_readwrite("crashReports", &CrashDumpRVC2::CrashReportCollection::crashReports, DOC(dai, CrashDumpRVC2, CrashReportCollection, crashReports))
         .def_readwrite(
             "depthaiCommitHash", &CrashDumpRVC2::CrashReportCollection::depthaiCommitHash, DOC(dai, CrashDumpRVC2, CrashReportCollection, depthaiCommitHash))
         .def_readwrite("deviceId", &CrashDumpRVC2::CrashReportCollection::deviceId, DOC(dai, CrashDumpRVC2, CrashReportCollection, deviceId));
 
-    // Bind CrashDumpRVC2::CrashReport
     crashReport.def(py::init<>())
         .def_readwrite("processor", &CrashDumpRVC2::CrashReport::processor, DOC(dai, CrashDumpRVC2, CrashReport, processor))
         .def_readwrite("errorSource", &CrashDumpRVC2::CrashReport::errorSource, DOC(dai, CrashDumpRVC2, CrashReport, errorSource))
@@ -253,7 +229,6 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
                        &CrashDumpRVC2::CrashReport::ThreadCallstack::CallstackContext::context,
                        DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack, CallstackContext, context));
 
-    // Bind CrashDumpRVC4
     crashDumpRVC4.def(py::init<>())
         .def(py::init<const std::filesystem::path&>(), py::arg("tarFile"))
         .def_property(

@@ -27,7 +27,6 @@ struct H265Parser : H26xParser<H265Parser> {
     unsigned int nalUnitType = 0;                        // In NAL header
     unsigned int dependentSliceSegmentsEnabledFlag = 0;  // In picture parameter set
     unsigned int numExtraSliceHeaderBits = 0;            // In picture parameter set
-    // Getting the length of slice_segment address
     unsigned int picWidthInLumaSamples = 0;              // In sequence parameter set
     unsigned int picHeightInLumaSamples = 0;             // In sequence parameter set
     unsigned int chromaFormatIdc = 0;                    // In sequence parameter set
@@ -194,8 +193,7 @@ void H264Parser::parseNal(buf& bs, uint start, std::vector<SliceType>& out) {
 void H265Parser::parseNal(buf& bs, uint start, std::vector<SliceType>& out) {
     nalUnitType = (bs[start] & 126) >> 1;
     uint pos = start + 2;
-    if(nalUnitType == 33) {
-        // Sequence parameter set
+    if(nalUnitType == 33) {  // 33 = sequence parameter set (SPS)
         uint spsMaxSubLayersMinus1 = (bs[pos] & 14) >> 1;
         ++pos;
         const auto bpos1 = std::get<1>(readGE(bs, pos * 8));  // We don't need this value
@@ -215,7 +213,6 @@ void H265Parser::parseNal(buf& bs, uint start, std::vector<SliceType>& out) {
         uint conformanceWindowFlag = readUint(bs, bpos4, bpos4 + 1);
         ulong bpos8 = ++bpos4;
         if(conformanceWindowFlag) {
-            // We don't care about any of these values
             auto bpos5 = std::get<1>(readGE(bs, bpos4));
             auto bpos6 = std::get<1>(readGE(bs, bpos5));
             auto bpos7 = std::get<1>(readGE(bs, bpos6));
@@ -240,8 +237,7 @@ void H265Parser::parseNal(buf& bs, uint start, std::vector<SliceType>& out) {
         log2MinLumaCodingBlockSizeMinus3 = lm;
         log2DiffMaxMinLumaCodingBlockSize = ldm;
         pos = (uint)(bpos14 / 8) + (bpos14 % 8 > 0);  // Update byte position with newest bit position
-    } else if(nalUnitType == 34) {
-        // Picture parameter set
+    } else if(nalUnitType == 34) {                    // 34 = picture parameter set (PPS)
         auto bpos1 = std::get<1>(readGE(bs, pos * 8));
         auto bpos2 = std::get<1>(readGE(bs, bpos1));
         dependentSliceSegmentsEnabledFlag = readUint(bs, bpos2, bpos2 + 1);
@@ -250,7 +246,6 @@ void H265Parser::parseNal(buf& bs, uint start, std::vector<SliceType>& out) {
         bpos2 += 3;
         pos = (uint)(bpos2 / 8) + (bpos2 % 8 > 0);
     } else if(nalUnitType <= 9 || (16 <= nalUnitType && nalUnitType <= 21)) {
-        // Coded slice segment
         ulong bpos1 = pos * 8;
         uint firstSliceSegmentInPicFlag = readUint(bs, bpos1, bpos1 + 1);
         ++bpos1;

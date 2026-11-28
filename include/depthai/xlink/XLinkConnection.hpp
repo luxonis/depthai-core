@@ -1,6 +1,7 @@
 #pragma once
 
-// Std
+#include <XLink/XLinkPublicDefines.h>
+
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -13,11 +14,7 @@
 #include <unordered_map>
 #include <vector>
 
-// project
 #include "depthai/utility/ProfilingData.hpp"
-
-// Libraries
-#include <XLink/XLinkPublicDefines.h>
 
 namespace dai {
 
@@ -61,8 +58,6 @@ struct DeviceInfo {
  */
 class XLinkConnection {
    public:
-    // static API
-
     /**
      * Returns information of all connected devices with given state
      *
@@ -162,7 +157,6 @@ class XLinkConnection {
    private:
     friend struct XLinkReadError;
     friend struct XLinkWriteError;
-    // static
     static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, const std::filesystem::path& pathToMvcmd);
     static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t>& mvcmd);
     static std::string convertErrorCodeToString(XLinkError_t errorCode);
@@ -180,7 +174,6 @@ class XLinkConnection {
 
     DeviceInfo deviceInfo;
 
-    // closed
     mutable std::mutex closedMtx;
     bool closed{false};
 

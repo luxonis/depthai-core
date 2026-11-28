@@ -22,9 +22,7 @@ import shlex
 import subprocess
 import sys
 
-# A header of a Qualcomm SDK, by its path. The words also match files of this repository that wrap these SDKs: a source
-# that includes such a file is not published either.
-QUALCOMM_HEADER = re.compile(r"qairt|aistack|snpe|fastcv|/opt/qcom/", re.IGNORECASE)
+QUALCOMM_HEADER = re.compile(r"qairt|aistack|snpe|fastcv|/opt/qcom/", re.IGNORECASE)  # Also matches repo SDK wrappers
 
 
 def parse(entry):
@@ -55,7 +53,6 @@ def headers_of(compile_command):
 def list_objects(build, config, jobs):
     with open(os.path.join(build, "compile_commands.json")) as source:
         commands = [parse(entry) for entry in json.load(source)]
-    # The compile commands of the config, for the object files that are not built
     commands = [c for c in commands if c[0] and f"/{config}/" in c[0] and not os.path.exists(os.path.join(c[1], c[0]))]
     with concurrent.futures.ThreadPoolExecutor(jobs) as pool:
         for (output, directory, _), headers in zip(commands, pool.map(headers_of, commands)):

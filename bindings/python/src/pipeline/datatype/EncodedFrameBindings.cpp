@@ -5,10 +5,8 @@
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
@@ -20,49 +18,10 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
     py::enum_<EncodedFrame::Profile> encodedFrameProfile(encodedFrame, "Profile");
     py::enum_<EncodedFrame::FrameType> encodedFrameType(encodedFrame, "FrameType", DOC(dai, EncodedFrame, FrameType));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-
-    // Metadata / raw
-
-    //   rawEncodedFrame.def(py::init<>())
-    //       .def_readwrite("quality", &RawEncodedFrame::quality)
-    //       .def_readwrite("bitrate", &RawEncodedFrame::bitrate)
-    //       .def_readwrite("profile", &RawEncodedFrame::profile)
-    //       .def_readwrite("lossless", &RawEncodedFrame::lossless)
-    //       .def_readwrite("type", &RawEncodedFrame::type)
-    //       .def_readwrite("instanceNum", &RawEncodedFrame::instanceNum)
-    //       .def_readwrite("sequenceNum", &RawEncodedFrame::sequenceNum)
-    //       .def_property(
-    //           "ts",
-    //           [](const RawEncodedFrame &o) {
-    //             double ts = o.ts.sec + o.ts.nsec / 1000000000.0;
-    //             return ts;
-    //           },
-    //           [](RawEncodedFrame &o, double ts) {
-    //             o.ts.sec = ts;
-    //             o.ts.nsec = (ts - o.ts.sec) * 1000000000.0;
-    //           })
-    //       .def_property(
-    //           "tsDevice",
-    //           [](const RawEncodedFrame &o) {
-    //             double ts = o.tsDevice.sec + o.tsDevice.nsec / 1000000000.0;
-    //             return ts;
-    //           },
-    //           [](RawEncodedFrame &o, double ts) {
-    //             o.tsDevice.sec = ts;
-    //             o.tsDevice.nsec = (ts - o.tsDevice.sec) * 1000000000.0;
-    //           });
 
     encodedFrameProfile.value("JPEG", EncodedFrame::Profile::JPEG).value("AVC", EncodedFrame::Profile::AVC).value("HEVC", EncodedFrame::Profile::HEVC);
 
@@ -71,7 +30,6 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
         .value("B", EncodedFrame::FrameType::B)
         .value("Unknown", EncodedFrame::FrameType::Unknown);
 
-    // Message
     encodedFrame.def(py::init<>())
         .def_readwrite("cam", &dai::EncodedFrame::cam, DOC(dai, EncodedFrame, cam))
         .def_readwrite("frameOffset", &dai::EncodedFrame::frameOffset, DOC(dai, EncodedFrame, frameOffset))
@@ -92,9 +50,7 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
              DOC(dai, EncodedFrame, setInstanceNum))
         .def("getImgFrameMeta", &dai::EncodedFrame::getImgFrameMeta, DOC(dai, EncodedFrame, getImgFrameMeta));
 
-    encodedFrame
-        .def("__repr__", &EncodedFrame::str)
-        // getters
+    encodedFrame.def("__repr__", &EncodedFrame::str)
         .def("getInstanceNum", &EncodedFrame::getInstanceNum, DOC(dai, EncodedFrame, getInstanceNum))
         .def("getWidth", &EncodedFrame::getWidth, DOC(dai, EncodedFrame, getWidth))
         .def("getHeight", &EncodedFrame::getHeight, DOC(dai, EncodedFrame, getHeight))
@@ -130,9 +86,4 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
         .def("setLossless", &EncodedFrame::setLossless, py::arg("lossless"), DOC(dai, EncodedFrame, setLossless))
         .def("setProfile", &EncodedFrame::setProfile, py::arg("profile"), DOC(dai, EncodedFrame, setProfile))
         .def("setTransformation", [](EncodedFrame& msg, const ImgTransformation& transformation) { msg.transformation = transformation; });
-    //   // add aliases dai.ImgFrame.Type and dai.ImgFrame.Specs
-    //   m.attr("EncodedFrame").attr("FrameType") =
-    //       m.attr("RawEncodedFrame").attr("FrameType");
-    //   m.attr("EncodedFrame").attr("Profile") =
-    //       m.attr("RawEncodedFrame").attr("Profile");
 }

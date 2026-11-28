@@ -246,7 +246,7 @@ struct ManipOp {
 
 class ImageManipOpsEnums {
    public:
-    enum class Background : uint8_t { COLOR /* , REPLICATE, MIRROR */ };  // TODO(asahtik): replicate impl
+    enum class Background : uint8_t { COLOR };  // TODO(asahtik): replicate impl
     enum class ResizeMode : uint8_t { NONE, STRETCH, LETTERBOX, CENTER_CROP };
 };
 
@@ -404,12 +404,6 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
         return *this;
     }
 
-    // ImageManipOpsBase& setBackgroundReplicate() {
-    //     throw std::runtime_error("Not implemented");
-    //     background = Background::REPLICATE;
-    //     return *this;
-    // }
-
     ImageManipOpsBase& setColormap(Colormap clr) {
         colormap = clr;
         return *this;
@@ -457,16 +451,12 @@ class ImageManipConfig : public Buffer {
 
     using ResizeMode = ImageManipOpsBase<Container>::ResizeMode;
 
-    // New config
     ImageManipOpsBase<Container> base;
     ImgFrame::Type outputFrameType = ImgFrame::Type::NONE;
 
-    // Usable with runtime config only,
-    // when ImageManipProperties.inputConfig.setWaitForMessage(true) is set
-    bool reusePreviousImage = false;
+    bool reusePreviousImage = false;  // Only for runtime configs with inputConfig.setWaitForMessage(true)
     bool skipCurrentImage = false;
 
-    // New API
     /**
      * Removes all operations from the list (does not affect output configuration)
      */

@@ -39,8 +39,7 @@ void SegmentationMask::setSize(size_t width, size_t height) {
     this->height = height;
 }
 
-void SegmentationMask::transformToInternal(const ImgTransformation&) {
-    // Transform the segmentation mask by using Align for faster processing.
+void SegmentationMask::transformToInternal(const ImgTransformation&) {  // No-op: use Align to transform segmentation masks, it is faster
 }
 
 std::size_t SegmentationMask::getWidth() const {

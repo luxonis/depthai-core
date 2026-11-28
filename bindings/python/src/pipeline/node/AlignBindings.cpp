@@ -9,29 +9,18 @@ void bind_align(pybind11::module& m, void* pCallstack) {
     using namespace dai::node;
     using namespace pybind11::literals;
 
-    // Node and Properties declare upfront
     py::class_<AlignProperties> alignProperties(m, "AlignProperties", DOC(dai, AlignProperties));
     auto align = ADD_NODE(Align);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Properties
     alignProperties.def_readwrite("initialConfig", &AlignProperties::initialConfig, DOC(dai, AlignProperties, initialConfig))
         .def_readwrite("numFramesPool", &AlignProperties::numFramesPool, DOC(dai, AlignProperties, numFramesPool))
         .def_readwrite("interpolation", &AlignProperties::interpolation, DOC(dai, AlignProperties, interpolation));
 
-    // Node
     align.def_readonly("initialConfig", &Align::initialConfig, DOC(dai, node, Align, initialConfig))
         .def_readonly("inputConfig", &Align::inputConfig, DOC(dai, node, Align, inputConfig))
         .def_readonly("input", &Align::input, DOC(dai, node, Align, input))
@@ -43,6 +32,5 @@ void bind_align(pybind11::module& m, void* pCallstack) {
         .def("setRunOnHost", &Align::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, Align, setRunOnHost))
         .def("runOnHost", &Align::runOnHost, DOC(dai, node, Align, runOnHost));
 
-    // ALIAS
     daiNodeModule.attr("Align").attr("Properties") = alignProperties;
 }

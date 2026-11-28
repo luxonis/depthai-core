@@ -1,6 +1,4 @@
-// Implementation adapted from https://github.com/Postroggy/OC_SORT_CPP/tree/master
-
-#include "ObjectTrackerImpl.hpp"
+#include "ObjectTrackerImpl.hpp"  // Adapted from https://github.com/Postroggy/OC_SORT_CPP
 
 #include <fmt/base.h>
 
@@ -58,14 +56,7 @@ std::tuple<std::vector<Eigen::Matrix<int, 1, 2>>, std::vector<int>, std::vector<
                                                                                                 float spatial_weight,
                                                                                                 float spatial_distance_threshold,
                                                                                                 float spatial_depth_aware_scale);
-/**
- * Takes a bounding box in the form [x1,y1,x2,y2] and returns z in the form
-[x,y,s,r] where x,y is the centre of the box and s is the scale/area and r is
-the aspect ratio
- * @param bbox
- * @return z
- */
-Eigen::VectorXf convert_bbox_to_z(Eigen::VectorXf bbox);
+Eigen::VectorXf convert_bbox_to_z(Eigen::VectorXf bbox);  // [x1,y1,x2,y2] to [x,y,s,r]: center, scale (area), aspect ratio
 Eigen::VectorXf speed_direction(Eigen::VectorXf bbox1, Eigen::VectorXf bbox2);
 Eigen::VectorXf convert_x_to_bbox(Eigen::VectorXf x);
 Eigen::VectorXf k_previous_obs(const std::map<int, Eigen::VectorXf>& observations, int cur_age, int k);
@@ -124,49 +115,26 @@ class OCSTracker::State {
         int dim_x;
         int dim_u;
         FilterType filterType;
-        // state: This is the Kalman state variable. [7,1] for Box, [6,1] for Spatial.
-        Eigen::VectorXf x;
-        // P: Covariance matrix. Initially declared as an identity matrix. Data type is float. [7,7] for Box, [6,6] for Spatial.
+        Eigen::VectorXf x;  // Kalman state: [7,1] for Box, [6,1] for Spatial
         Eigen::MatrixXf P;
-        // Q: Process noise covariance matrix. [7,7] for Box, [6,6] for Spatial.
         Eigen::MatrixXf Q;
-        // B: Control matrix. Not used in target tracking. [n,n].
         Eigen::MatrixXf B;
-        // F: Prediction matrix / state transition matrix. [7,7] for Box, [6,6] for Spatial.
         Eigen::MatrixXf F;
-        // H: Observation model / matrix. [4,7] for Box, [3,6] for Spatial
         Eigen::MatrixXf H;
-        // R: Observation noise covariance matrix. [4,4] for Box, [3,3] for Spatial
         Eigen::MatrixXf R;
-        // _alpha_sq: Fading memory control, controlling the update weight. Float.
         float _alpha_sq = 1.0;
-        // M: Measurement matrix, converting state vector x to measurement vector z. [7,4] for Box, [6,3] for Spatial. It has the opposite effect of matrix H.
         Eigen::MatrixXf M;
-        // z: Measurement vector. [4,1] for Box, [3,1] for Spatial.
         Eigen::VectorXf z;
-        /* The following variables are intermediate variables used in calculations */
-        // K: Kalman gain. [7,4] for Box, [6,3] for Spatial
         Eigen::MatrixXf K;
-        // y: Measurement residual. [4,1] for Box, [3,1] for Spatial
         Eigen::MatrixXf y;
-        // S: Measurement residual covariance.
         Eigen::MatrixXf S;
-        // SI: Transpose of measurement residual covariance (simplified for subsequent calculations).
         Eigen::MatrixXf SI;
-        // Identity matrix of size [dim_x,dim_x], used for convenient calculations.
         Eigen::MatrixXf I;
-        // There will always be a copy of x, P after predict() is called.
-        // If there is a need to assign values between two Eigen matrices, the precondition is that they should be initialized properly, as this ensures that
-        // the number of columns and rows are compatible.
         Eigen::VectorXf x_prior;
         Eigen::MatrixXf P_prior;
-        // there will always be a copy of x,P after update() is called
         Eigen::VectorXf x_post;
         Eigen::MatrixXf P_post;
-        // keeps all observations. When there is a 'z', it is directly pushed back.
         std::vector<Eigen::VectorXf> history_obs;
-        // The following is newly added by ocsort.
-        // Used to mark the tracking state (whether there is still a target matching this trajectory), default value is false.
         bool observed = false;
         std::vector<Eigen::VectorXf> new_history;  // Used to create a virtual trajectory.
 
@@ -191,8 +159,7 @@ class OCSTracker::State {
             Eigen::MatrixXf P_post;
             std::vector<Eigen::VectorXf> history_obs;
             bool observed = false;
-            // The following is to determine whether the data has been saved due to freezing.
-            bool IsInitialized = false;
+            bool IsInitialized = false;  // True when the data was saved due to freezing
         };
         struct Data attr_saved;
     };
@@ -562,7 +529,6 @@ OCSTracker::State::ClassState::ClassState(State* parent_,
                                           const std::string& asso_func_,
                                           float inertia_,
                                           bool use_byte_) {
-    /*Sets key parameters for SORT*/
     parent = parent_;
     max_age = max_age_;
     min_hits = min_hits_;
@@ -581,16 +547,7 @@ OCSTracker::State::ClassState::ClassState(State* parent_,
 std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std::vector<TrackerDetection>& detections,
                                                                       const std::vector<Point3f>& spatialData,
                                                                       bool trackOnly) {
-    /*
-     * dets: (n,7): [[x1,y1,x2,y2,confidence_score, class, idx],...[...]]
-     * Params:
-    dets - a numpy array of detections in the format [[x1,y1,x2,y2,score],[x1,y1,x2,y2,score],...]
-    Requires: this method must be called once for each frame even with empty detections (use np.empty((0, 5)) for frames without detections).
-    Returns the a similar array, where the last column is the object ID.
-    NOTE: The number of objects returned may differ from the number of detections provided.
-     */
-
-    if(detections.size() != spatialData.size()) {
+    if(detections.size() != spatialData.size()) {  // Call once per frame, also with no detections; the output count can differ
         throw std::runtime_error("Number of detections and spatial data points must match");
     }
 
@@ -643,7 +600,6 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
             dets_first_spatial.row(dets_first_spatial.rows() - 1) = dets_spatial.row(i);
         }
     }
-    /*get predicted locations from existing trackers.*/
     Eigen::MatrixXf trks = Eigen::MatrixXf::Zero(trackers.size(), 5);
     Eigen::MatrixXf trks_spatial = Eigen::MatrixXf::Zero(trackers.size(), 4);
     std::vector<Eigen::RowVectorXf> ret;
@@ -661,9 +617,6 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
         last_boxes.row(i) = trackers[i].last_observation;
         k_observations.row(i) = k_previous_obs(trackers[i].observations, trackers[i].age, delta_t);
     }
-    /////////////////////////
-    ///  Step1 First round of association
-    ////////////////////////
     std::vector<Eigen::Matrix<int, 1, 2>> matched;
     std::vector<int> unmatched_dets;
     std::vector<int> unmatched_trks;
@@ -702,8 +655,7 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
                                        && detection_spatial.cols() >= 4 && tracker_spatial.cols() >= 4;
         if(!spatial_available) return;
 
-        // Keep fallback rounds IoU-dominant to preserve recovery recall.
-        const float beta = std::clamp(parent->spatial_association_weight, 0.0f, 0.25f);
+        const float beta = std::clamp(parent->spatial_association_weight, 0.0f, 0.25f);  // Max 0.25: fallback rounds stay IoU-dominant to keep recovery recall
         if(beta <= 0.0f) return;
         if(scores.cols() < 2) return;
         constexpr float kFallbackSpatialTieEpsilon = 0.02f;
@@ -744,9 +696,6 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
         }
     };
 
-    ///////////////////////
-    /// Step2 Second round of associaton by OCR to find lost tracks back
-    //////////////////////
     if(true == use_byte && dets_second.rows() > 0 && unmatched_trks.size() > 0) {
         Eigen::MatrixXf u_trks(unmatched_trks.size(), trks.cols());
         Eigen::MatrixXf u_trks_spatial(unmatched_trks.size(), trks_spatial.cols());
@@ -760,11 +709,6 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
         Eigen::MatrixXf rematch_scores = iou_left;
         apply_soft_spatial_rematch_score(rematch_scores, dets_second_spatial, u_trks_spatial);
         if(iou_left.maxCoeff() > iou_threshold) {
-            /**
-                NOTE: by using a lower threshold, e.g., self.iou_threshold - 0.1, you may
-                get a higher performance especially on MOT17/MOT20 datasets. But we keep it
-                uniform here for simplicity
-             * */
             std::vector<std::vector<float>> iou_matrix(iou_left.rows(), std::vector<float>(iou_left.cols()));
             for(int i = 0; i < iou_left.rows(); i++) {
                 for(int j = 0; j < iou_left.cols(); j++) {
@@ -831,11 +775,6 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
         Eigen::MatrixXf rematch_scores = iou_left;
         apply_soft_spatial_rematch_score(rematch_scores, left_dets_spatial, left_trks_spatial);
         if(iou_left.maxCoeff() > iou_threshold) {
-            /**
-                NOTE: by using a lower threshold, e.g., self.iou_threshold - 0.1, you may
-                get a higher performance especially on MOT17/MOT20 datasets. But we keep it
-                uniform here for simplicity
-             * */
             std::vector<std::vector<float>> iou_matrix(iou_left.rows(), std::vector<float>(iou_left.cols()));
             for(int i = 0; i < iou_left.rows(); i++) {
                 for(int j = 0; j < iou_left.cols(); j++) {
@@ -858,9 +797,6 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
                 if(iou_left(i.at(0), i.at(1)) < iou_threshold) {
                     continue;
                 }
-                ////////////////////////////////
-                ///  Step3  update status of second matched tracks
-                ///////////////////////////////
                 Eigen::Matrix<float, 5, 1> tmp_bbox;
                 tmp_bbox = dets_first.block<1, 5>(det_ind, 0);
                 uint32_t index = dets_first(det_ind, 6);
@@ -904,10 +840,6 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
             }
         }
     }
-    ///////////////////////////////
-    /// Step4 Initialize new tracks and remove expired tracks
-    ///////////////////////////////
-    /*create and initialise new trackers for unmatched detections*/
     for(int i : unmatched_dets) {
         if(parent->num_trackers < parent->max_trackers) {
             Eigen::RowVectorXf tmp_bbox = dets_first.block(i, 0, 1, 5);
@@ -935,19 +867,13 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
         if(last_observation_sum < 0) {
             d = trackers.at(i).get_state();
         } else {
-            /**
-                this is optional to use the recent observation or the kalman filter prediction,
-                we didn't notice significant difference here
-             * */
             d = trackers.at(i).last_observation.block(0, 0, 1, 4);
         }
         if(trackers.at(i).time_since_update < 1 && ((trackers.at(i).hit_streak >= min_hits) | (frame_count <= min_hits))) {
-            // +1 as MOT benchmark requires positive
             Eigen::RowVectorXf tracking_res(6);
             tracking_res << d(0), d(1), d(2), d(3), trackers.at(i).cls, trackers.at(i).conf;
             ret.push_back(tracking_res);
         }
-        // remove dead tracklets
         if(trackers.at(i).time_since_update > max_age) {
             remove_tracker(i);
         }
@@ -1047,15 +973,9 @@ Eigen::MatrixXf iou_batch(const Eigen::MatrixXf& bboxes1, const Eigen::MatrixXf&
     Eigen::MatrixXf Sum = part1_ + part2_ - wh;
     return wh.cwiseQuotient(Sum);
 }
-/**
- *
- * @param bboxes1 (n1,7)
- * @param bboxes2 (n2,5)
- * @return (n1,n2)
- */
-Eigen::MatrixXf giou_batch(const Eigen::MatrixXf& bboxes1, const Eigen::MatrixXf& bboxes2) {
-    Eigen::Matrix<float, Eigen::Dynamic, 1> a = bboxes1.col(0);  // bboxes1[..., 0] (n1,1)
-    Eigen::Matrix<float, 1, Eigen::Dynamic> b = bboxes2.col(0);  // bboxes2[..., 0] (1,n2)
+Eigen::MatrixXf giou_batch(const Eigen::MatrixXf& bboxes1, const Eigen::MatrixXf& bboxes2) {  // Shapes: bboxes1 (n1,7), bboxes2 (n2,5), result (n1,n2)
+    Eigen::Matrix<float, Eigen::Dynamic, 1> a = bboxes1.col(0);                               // bboxes1[..., 0] (n1,1)
+    Eigen::Matrix<float, 1, Eigen::Dynamic> b = bboxes2.col(0);                               // bboxes2[..., 0] (1,n2)
     Eigen::MatrixXf xx1 = (a.replicate(1, b.cols())).cwiseMax(b.replicate(a.rows(), 1));
     a = bboxes1.col(1);  // bboxes1[..., 1]
     b = bboxes2.col(1);  // bboxes2[..., 1]
@@ -1286,11 +1206,6 @@ OCSTracker::State::KalmanFilterNew::KalmanFilterNew(int dim_x_, int dim_z_, Filt
     R = Eigen::MatrixXf::Identity(dim_z_, dim_z_);
     M = Eigen::MatrixXf::Zero(dim_x_, dim_z_);
     z = Eigen::VectorXf::Zero(dim_z_, 1);
-    /*
-        gain and residual are computed during the innovation step. We
-        save them so that in case you want to inspect them for various
-        purposes
-    * */
     K = Eigen::MatrixXf::Zero(dim_x_, dim_z_);
     y = Eigen::VectorXf::Zero(dim_z_, 1);
     S = Eigen::MatrixXf::Zero(dim_z_, dim_z_);
@@ -1302,48 +1217,12 @@ OCSTracker::State::KalmanFilterNew::KalmanFilterNew(int dim_x_, int dim_z_, Filt
     P_post = P;
 };
 void OCSTracker::State::KalmanFilterNew::predict() {
-    /**Predict next state (prior) using the Kalman filter state propagation
-equations.
-Parameters
-----------
-u : np.array, default 0
-    Optional control vector.
-B : np.array(dim_x, dim_u), or None
-    Optional control transition matrix; a value of None
-    will cause the filter to use `self.B`.
-F : np.array(dim_x, dim_x), or None
-    Optional state transition matrix; a value of None
-    will cause the filter to use `self.F`.
-Q : np.array(dim_x, dim_x), scalar, or None
-    Optional process noise matrix; a value of None will cause the
-    filter to use `self.Q`.
-    */
-    // x = Fx+Bu
     x = F * x;
-    // P = FPF' + Q
     P.noalias() = _alpha_sq * ((F * P) * F.transpose()) + Q;
     x_prior = x;
     P_prior = P;
 }
 void OCSTracker::State::KalmanFilterNew::update(const Eigen::VectorXf& z_) {
-    /*
-    Add a new measurement (z) to the Kalman filter.
-    If z is None, nothing is computed. However, x_post and P_post are
-    updated with the prior (x_prior, P_prior), and self.z is set to None.
-    Parameters
-    ----------
-    z : (dim_z, 1): array_like
-        measurement for this update. z can be a scalar if dim_z is 1,
-        otherwise it must be convertible to a column vector.
-        If you pass in a value of H, z must be a column vector the
-        of the correct size.
-    R : np.array, scalar, or None
-        Optionally provide R to override the measurement noise for this
-        one call, otherwise  self.R will be used.
-    H : np.array, or None
-        Optionally provide H to override the measurement function for this
-        one call, otherwise self.H will be used.
-     * */
     if(filterType == FilterType::boxFilter) {
         history_obs.push_back(z_);
     }
@@ -1361,26 +1240,20 @@ void OCSTracker::State::KalmanFilterNew::update(const Eigen::VectorXf& z_) {
     if(false == observed) unfreeze();
     observed = true;
 
-    // y = z - Hx
     y.noalias() = z_ - H * x;
 
     Eigen::MatrixXf PHT;
     PHT.noalias() = P * H.transpose();
-    // S = HPH' + R
     S.noalias() = H * PHT + R;
 
     SI = S.inverse();
-    // K = PH'SI
     K.noalias() = PHT * SI;
     x.noalias() = x + K * y;
-    /*This is more numerically stable and works for non-optimal K vs the
-     * equation P = (I-KH)P usually seen in the literature.*/
-    Eigen::MatrixXf I_KH;
+    Eigen::MatrixXf I_KH;  // Joseph form: more stable than P = (I-KH)P, works for non-optimal K
     I_KH.noalias() = I - K * H;
     Eigen::MatrixXf P_INT;
     P_INT.noalias() = (I_KH * P);
     P.noalias() = (P_INT * I_KH.transpose()) + ((K * R) * K.transpose());
-    // save the measurement and posterior state
     z = z_;
     x_post = x;
     P_post = P;
@@ -1437,11 +1310,9 @@ void OCSTracker::State::KalmanFilterNew::unfreeze() {
         for(int i = new_history.size() - 1; i >= 0; i--) {
             if(new_history[i].size() > 0) {
                 if(lastNotNullIndex == -1) {
-                    // The current element is the last non -NULLPTR element
                     lastNotNullIndex = i;
                     box2 = new_history.at(lastNotNullIndex);
                 } else if(secondLastNotNullIndex == -1) {
-                    // The current element is the last second non -NULLPTR element
                     secondLastNotNullIndex = i;
                     box1 = new_history.at(secondLastNotNullIndex);
                     break;
@@ -1463,18 +1334,12 @@ void OCSTracker::State::KalmanFilterNew::unfreeze() {
         double w2 = (double)std::sqrt(box2[2] * box2[3]);
         double h2 = (double)std::sqrt(box2[2] / box2[3]);
 
-        // Ensure we have two valid history entries and avoid division by zero
         double dx = (x2 - x1) / time_gap;
         double dy = (y1 - y2) / time_gap;
         double dw = (w2 - w1) / time_gap;
         double dh = (h2 - h1) / time_gap;
 
         for(int i = 0; i < time_gap; i++) {
-            /*
-                The default virtual trajectory generation is by linear
-                motion (constant speed hypothesis), you could modify this
-                part to implement your own.
-             */
             double x = x1 + (i + 1) * dx;
             double y = y1 + (i + 1) * dy;
             double w = w1 + (i + 1) * dw;
@@ -1483,35 +1348,23 @@ void OCSTracker::State::KalmanFilterNew::unfreeze() {
             double r = w / (h * 1.0);
             Eigen::VectorXf new_box(4, 1);
             new_box << x, y, s, r;
-            /*
-                I still use predict-update loop here to refresh the parameters,
-                but this can be faster by directly modifying the internal parameters
-                as suggested in the paper. I keep this naive but slow way for
-                easy read and understanding
-             */
 
-            // y = z - Hx
             this->y.noalias() = new_box - this->H * this->x;
 
             Eigen::MatrixXf PHT;
             PHT.noalias() = this->P * this->H.transpose();
-            // S = HPH' + R
             this->S.noalias() = this->H * PHT + this->R;
 
             this->SI = (this->S).inverse();
-            // K = PH'SI
             this->K.noalias() = PHT * this->SI;
 
             this->x.noalias() = this->x + this->K * this->y;
 
-            /*This is more numerically stable and works for non-optimal K vs the
-             * equation P = (I-KH)P usually seen in the literature.*/
-            Eigen::MatrixXf I_KH;
+            Eigen::MatrixXf I_KH;  // Joseph form: more stable than P = (I-KH)P, works for non-optimal K
             I_KH.noalias() = this->I - this->K * this->H;
             Eigen::MatrixXf P_INT;
             P_INT.noalias() = (I_KH * this->P);
             this->P.noalias() = (P_INT * I_KH.transpose()) + ((this->K * this->R) * (this->K).transpose());
-            // save the measurement and posterior state
             this->z = new_box;
             this->x_post = this->x;
             this->P_post = this->P;
@@ -1560,8 +1413,6 @@ Eigen::VectorXf k_previous_obs(const std::map<int, Eigen::VectorXf>& observation
     return max_iter->second;
 }
 
-/** Column-reduction and reduction transfer for a dense cost matrix.
- */
 int_t _ccrrt_dense(const uint_t n, cost_t* cost[], int_t* free_rows, int_t* x, int_t* y, cost_t* v) {
     int_t n_free_rows;
     boolean* unique;
@@ -1623,8 +1474,6 @@ int_t _ccrrt_dense(const uint_t n, cost_t* cost[], int_t* free_rows, int_t* x, i
     return n_free_rows;
 }
 
-/** Augmenting row reduction for a dense cost matrix.
- */
 int_t _carr_dense(const uint_t n, cost_t* cost[], const uint_t n_free_rows, int_t* free_rows, int_t* x, int_t* y, cost_t* v) {
     uint_t current = 0;
     int_t new_free_rows = 0;
@@ -1691,8 +1540,6 @@ int_t _carr_dense(const uint_t n, cost_t* cost[], const uint_t n_free_rows, int_
     return new_free_rows;
 }
 
-/** Find columns with minimum d[j] and put them on the SCAN list.
- */
 uint_t _find_dense(const uint_t n, uint_t lo, cost_t* d, int_t* cols) {
     uint_t hi = lo + 1;
     cost_t mind = d[cols[lo]];
@@ -1745,13 +1592,7 @@ int_t _scan_dense(const uint_t n, cost_t* cost[], uint_t* plo, uint_t* phi, cost
     return -1;
 }
 
-/** Single iteration of modified Dijkstra shortest path algorithm as explained in the JV paper.
- *
- * This is a dense matrix version.
- *
- * \return The closest free column index.
- */
-int_t find_path_dense(const uint_t n, cost_t* cost[], const int_t start_i, int_t* y, cost_t* v, int_t* pred) {
+int_t find_path_dense(const uint_t n, cost_t* cost[], const int_t start_i, int_t* y, cost_t* v, int_t* pred) {  // Returns the closest free column index
     uint_t lo = 0, hi = 0;
     int_t final_j = -1;
     uint_t n_ready = 0;
@@ -1768,7 +1609,6 @@ int_t find_path_dense(const uint_t n, cost_t* cost[], const int_t start_i, int_t
     }
     PRINT_COST_ARRAY(d, n);
     while(final_j == -1) {
-        // No columns left on the SCAN list.
         if(lo == hi) {
             PRINTF("%d..%d -> find\n", lo, hi);
             n_ready = lo;
@@ -1807,8 +1647,6 @@ int_t find_path_dense(const uint_t n, cost_t* cost[], const int_t start_i, int_t
     return final_j;
 }
 
-/** Augment for a dense cost matrix.
- */
 int_t _ca_dense(const uint_t n, cost_t* cost[], const uint_t n_free_rows, int_t* free_rows, int_t* x, int_t* y, cost_t* v) {
     int_t* pred;
 
@@ -1840,9 +1678,6 @@ int_t _ca_dense(const uint_t n, cost_t* cost[], const uint_t n_free_rows, int_t*
     return 0;
 }
 
-/**
- * Solve dense sparse LAP.
- */
 int lapjv_internal(const uint_t n, cost_t* cost[], int_t* x, int_t* y) {
     int ret;
     int_t* free_rows;

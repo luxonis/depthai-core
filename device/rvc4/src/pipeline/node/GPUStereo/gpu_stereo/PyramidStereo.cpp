@@ -305,7 +305,6 @@ struct PyramidStereo::Impl {
         int n = config.num_pyramid_levels;
         int max_d = config.max_disparity;
 
-        // 1. Upload (buffer_to_image for left and right)
         TIMING_START(upload);
         err = clSetKernelArg(k_buffer_to_image, 0, sizeof(cl_mem), &left_buf);
         err = clSetKernelArg(k_buffer_to_image, 1, sizeof(cl_mem), &left_images[0]);
@@ -319,7 +318,6 @@ struct PyramidStereo::Impl {
         TIMING_CHECKPOINT(queue);
         TIMING_END(upload, "upload");
 
-        // 2. Pyramid build (fused buffer downsample for level 1, image downsample for 2+)
         TIMING_START(pyramid_build);
         for (int l = 1; l < n; l++) {
             int lw = w >> l, lh = h >> l;
@@ -348,13 +346,7 @@ struct PyramidStereo::Impl {
         TIMING_CHECKPOINT(queue);
         TIMING_END(pyramid_build, "pyramid_build");
 
-        // 3. Prefilter (gaussian3 on each level).
-        // Note: We "ping-pong" the image handles instead of copying tmp -> left/right via clEnqueueCopyImage.
-        // After this loop, left_images[l] / right_images[l] always refer to the filtered images for level l.
-        //
-        // This is safe as long as no other code caches cl_mem handles from left_images/right_images across execute()
-        // calls or assumes prefilter_tmp_* are always scratch-only (in this file they are only used for prefilter).
-        TIMING_START(prefilter);
+        TIMING_START(prefilter);  // Handles are swapped, not copied: no code may cache left_images/right_images cl_mem across execute()
         for (int l = 0; l < n; l++) {
             int lw = w >> l, lh = h >> l;
             if (lw < 1 || lh < 1) break;
@@ -374,7 +366,6 @@ struct PyramidStereo::Impl {
         TIMING_CHECKPOINT(queue);
         TIMING_END(prefilter, "prefilter");
 
-        // 4. Coarse match (block_match_zncc at coarsest level)
         TIMING_START(coarse_match);
         int coarse_l = n - 1;
         int cw = w >> coarse_l, ch = h >> coarse_l;
@@ -395,13 +386,11 @@ struct PyramidStereo::Impl {
         TIMING_CHECKPOINT(queue);
         TIMING_END(coarse_match, "coarse_match");
 
-        // 5. Pyramid refinement loop (upsample + block_match_refine_zncc, store winner cost at level 0)
         TIMING_START(pyramid_refine);
         for(int l = coarse_l - 1; l >= 0; l--) {
             int lw = w >> l, lh = h >> l;
             int pw = w >> (l + 1), ph = h >> (l + 1);
 
-            // upsample_disp_2x(in, out, w_in, h_in, w_out, h_out)
             err = clSetKernelArg(k_upsample_disp_2x, 0, sizeof(cl_mem), &disp_buffers[l + 1]);
             if(err != CL_SUCCESS) throw std::runtime_error("clSetKernelArg upsample_disp_2x(0) failed, err=" + std::to_string(err));
             err = clSetKernelArg(k_upsample_disp_2x, 1, sizeof(cl_mem), &disp_buffers[l]);
@@ -416,7 +405,6 @@ struct PyramidStereo::Impl {
             if(err != CL_SUCCESS) throw std::runtime_error("clSetKernelArg upsample_disp_2x(5) failed, err=" + std::to_string(err));
             enqueue_2d(queue, k_upsample_disp_2x, (size_t)lw, (size_t)lh);
 
-            // block_match_refine_zncc(..., winner_cost_out, store_winner_cost, epipolar_v_half, max_d)
             int r = (l == 0) ? config.refinement_radius_full : config.refinement_radius;
             size_t grw = (size_t)lw, grh = (size_t)lh;
             err = clSetKernelArg(k_block_match_refine_zncc, 0, sizeof(cl_mem), &left_images[l]);
@@ -455,12 +443,9 @@ struct PyramidStereo::Impl {
         cl_mem scratch_disp = disp_scratch_u16_buf_;
         if(!scratch_disp) throw std::runtime_error("disp scratch buffer not allocated");
 
-        // Optional confidence output: convert stored winner cost to an 8-bit confidence map.
-        // Intentionally done before LR-check/median filter to match StereoDepth confidence map semantics.
-        if(confidence_buf) {
+        if(confidence_buf) {  // Before LR-check/median filter on purpose: matches the StereoDepth confidence map semantics
             if(!confidence_winner_cost_buf_) throw std::runtime_error("confidence output requested but winner cost buffer is not allocated");
-            // Winner cost is (1 - ZNCC_rho) and is typically in [0, 2].
-            float cost_max = 2.0f;
+            float cost_max = 2.0f;  // Winner cost is (1 - ZNCC_rho), typically in [0, 2]
 
             err = clSetKernelArg(k_winner_cost_to_confidence, 0, sizeof(cl_mem), &confidence_winner_cost_buf_);
             err = clSetKernelArg(k_winner_cost_to_confidence, 1, sizeof(cl_mem), &confidence_buf);
@@ -470,15 +455,9 @@ struct PyramidStereo::Impl {
             enqueue_2d(queue, k_winner_cost_to_confidence, (size_t)w, (size_t)h);
         }
 
-        // 6. Confidence filter (if threshold > 0, using stored ZNCC winner cost)
-        if (config.confidence_threshold > 0) {
+        if(config.confidence_threshold > 0) {
             TIMING_START(confidence_filter);
-            // Winner cost is (1 - ZNCC_rho) and is typically in [0, 2], where 0 means best match.
-            // Map 8-bit confidence threshold into an intuitive cost cutoff:
-            //   0   -> filter disabled (handled by outer if)
-            //   low -> lenient (higher cost_threshold)
-            //   high-> strict  (lower cost_threshold)
-            const float cost_max = 2.0f;
+            const float cost_max = 2.0f;  // Winner cost is (1 - ZNCC_rho), typically in [0, 2]; 0 is the best match
             float cost_threshold = (1.0f - (float)config.confidence_threshold / 255.0f) * cost_max;
             int cost_mode_conf = 1;  // ZNCC mode
             cl_mem desc_l = nullptr, desc_r = nullptr;
@@ -507,7 +486,6 @@ struct PyramidStereo::Impl {
             TIMING_END(confidence_filter, "confidence_filter");
         }
 
-        // 7. Subpixel refinement (ZNCC, always on with 4 bits)
         {
             TIMING_START(subpixel_refine);
             gwx = (size_t)w;
@@ -524,7 +502,6 @@ struct PyramidStereo::Impl {
             TIMING_END(subpixel_refine, "subpixel_refine");
         }
 
-        // 8. Fast LR check (right disparity from left + lr_check)
         {
             TIMING_START(lr_check);
             gwx = (size_t)w;
@@ -560,7 +537,6 @@ struct PyramidStereo::Impl {
             TIMING_END(lr_check, "lr_check");
         }
 
-        // 9. Median 3x3 (write directly to output)
         {
             TIMING_START(median_filter);
             gwx = (size_t)w;

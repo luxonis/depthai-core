@@ -11,13 +11,10 @@ void bind_beta_rfdetrparser(pybind11::module& m, void* pCallstack) {
     py::class_<beta::RFDETRParserProperties> rfdetrParserProperties(betaModule, "RFDETRParserProperties");
     auto rfdetrParser = ADD_BETA_NODE_DERIVED(RFDETRParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     rfdetrParserProperties.def_readwrite("initialConfig", &beta::RFDETRParserProperties::initialConfig)
         .def_readwrite("labelNames", &beta::RFDETRParserProperties::labelNames)

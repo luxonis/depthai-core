@@ -19,11 +19,9 @@ uint32_t toDeviceScaledownInterpolation(dai::gate::ScaledownInterpolation interp
         case dai::gate::ScaledownInterpolation::BICUBIC:
             return DAI_INTERPOLATION_BICUBIC;
     }
-    // Not a known value: the vendor module rejects it ("Unsupported scaledown interpolation type")
-    return static_cast<uint32_t>(interpolation);
+    return static_cast<uint32_t>(interpolation);  // Unknown value: the vendor module rejects it
 }
 
-// A minimum buffer size of the vendor module: 0 when the query failed. The former methods threw in that case.
 uint32_t checkBytes(uint32_t bytes, const char* call) {
     if(bytes == 0) {
         throw std::runtime_error(std::string(UNIT) + ": " + call + " failed: " + dai_device_last_error());
@@ -47,12 +45,10 @@ void DsImgDispatcher::startSession() {
 }
 
 void DsImgDispatcher::RunAsync(std::shared_ptr<dai::ImgFrame> inFrame, std::shared_ptr<dai::ImgFrame> outFrame, bool useMetadata) {
-    // Input: the frame data in an accelerator buffer of at least the minimum input size. The frame keeps the buffer.
     const uint32_t inMinBytes = GetInMinDsImgBytes(inFrame->getWidth(), inFrame->getHeight());
     std::shared_ptr<dai::AcceleratorMemory> inImg = dai::AcceleratorMemory::convert(inFrame->data, inMinBytes);
     inFrame->data = inImg;
 
-    // Output: the frame data must be large enough before the conversion. The buffer is not assigned to the frame.
     const uint32_t outMinBytes = GetOutMinDsImgBytes(outFrame->getWidth(), outFrame->getHeight());
     if(!(outFrame->data->getData().size() >= outMinBytes)) {
         throw std::runtime_error("DS: Assert (outFrame->data->getData().size() >= minMemSize)");
@@ -72,7 +68,6 @@ void DsImgDispatcher::RunAsync(std::shared_ptr<dai::ImgFrame> inFrame, std::shar
     }
 
     if(!useMetadata) {
-        // The unit computed the layout of the output
         outFrame->setType(inFrame->getType());
         outFrame->fb.p1Offset = out.p1_offset;
         outFrame->fb.p2Offset = out.p2_offset;
@@ -89,8 +84,7 @@ int DsImgDispatcher::Wait() {
     const dai_status status = dai_device_dsimg_wait(handle.get());
     inMem.reset();
     outMem.reset();
-    // The C call gives the accelerator driver status of the work (0 = OK); this method returns it negated, as before
-    return -dai::device::returnDriverStatus(status, UNIT, "dai_device_dsimg_wait");
+    return -dai::device::returnDriverStatus(status, UNIT, "dai_device_dsimg_wait");  // Returns the negated accelerator driver status (0 = OK)
 }
 
 void DsImgDispatcher::registerNode() {
@@ -101,9 +95,7 @@ void DsImgDispatcher::firstFrameOver() {
     DAI_CHECK_DEVICE(UNIT, dai_device_dsimg_first_frame_over(handle.get()));
 }
 
-// Open, Init, Config and Close return 0 or throw, as before the C interface: the nodes ignore the return value of
-// Config, so an error (also a driver status) must throw.
-uint32_t DsImgDispatcher::Open() {
+uint32_t DsImgDispatcher::Open() {  // Open, Init, Config and Close return 0 or throw: the nodes ignore the return value of Config
     DAI_CHECK_DEVICE(UNIT, dai_device_dsimg_open(handle.get()));
     return 0;
 }

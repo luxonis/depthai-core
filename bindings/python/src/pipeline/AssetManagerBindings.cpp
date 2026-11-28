@@ -1,29 +1,18 @@
 #include "AssetManagerBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/AssetManager.hpp"
 
 void AssetManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // Type definitions
     py::class_<Asset, std::shared_ptr<Asset>> asset(m, "Asset", DOC(dai, Asset));
     py::class_<AssetManager> assetManager(m, "AssetManager", DOC(dai, AssetManager));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Bind Asset
     asset.def(py::init<>()).def(py::init<std::string>()).def("getData", [](Asset& self) { return self.getData(); }, DOC(dai, Asset, getData));
 
     asset.def("setData", &dai::Asset::setData, py::arg("data"), DOC(dai, Asset, setData))
@@ -31,10 +20,8 @@ void AssetManagerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getRelativeUri", &dai::Asset::getRelativeUri, DOC(dai, Asset, getRelativeUri))
         .def("setFile", &dai::Asset::setFile, py::arg("path"), py::arg("size"), DOC(dai, Asset, setFile));
 
-    asset
-        .def_readonly("key", &Asset::key)
-        // Mutable view; replacing the asset storage invalidates existing views.
-        .def_property(
+    asset.def_readonly("key", &Asset::key)
+        .def_property(  // Mutable view; replacing the asset storage invalidates existing views
             "data",
             [](py::object& obj) {
                 dai::Asset& a = obj.cast<dai::Asset&>();
@@ -48,7 +35,6 @@ void AssetManagerBindings::bind(pybind11::module& m, void* pCallstack) {
             "Mutable view of asset data. Replacing the storage invalidates existing views; use getData() for an owned copy.")
         .def_readwrite("alignment", &Asset::alignment);
 
-    // Bind AssetManager
     assetManager.def(py::init<>())
         .def(py::init<std::string>())
         .def("setLazy", &AssetManager::setLazy, py::arg("key"), py::arg("path"), py::arg("alignment") = 64, DOC(dai, AssetManager, setLazy))

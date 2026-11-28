@@ -1,16 +1,13 @@
 #include "VideoEncoder.hpp"
 
-// std
 #include <chrono>
 #include <memory>
 
-// shared
 #include <gst/gstpoll.h>
 #include <gst/memory/gstmempool.h>
 #include <gst/video/gstimagepool.h>
 #include <gst/video/video-info.h>
 
-// libraries
 #include "camera/CameraSingleton.hpp"
 #include "camera/HalBufferMemory.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
@@ -18,7 +15,6 @@
 #include "pipeline/NodeTiming.hpp"
 #include "utilities/ErrorMacros.hpp"
 
-// #define DEBUG_ON
 #undef DEBUG
 #ifdef DEBUG_ON
     #define DEBUG(A) fprintf(stderr, "VideoEncoder: " A "\n")
@@ -28,7 +24,6 @@
     #define DEBUG_V(...)
 #endif
 
-// #define TIME_DEBUG_ON
 #undef DAI_PRINTF_TIME
 #ifdef TIME_DEBUG_ON
     #define DAI_PRINTF_TIME(...) printf(__VA_ARGS__)
@@ -53,7 +48,6 @@ static GstBufferPool* createPool(GstCaps* caps) {
 
     pool = gst_image_buffer_pool_new(GST_IMAGE_BUFFER_POOL_TYPE_ION);
 
-    // Align size to 64 lines
     gint alignedw = (GST_VIDEO_INFO_WIDTH(&info) + 64 - 1) & ~(64 - 1);
     gint alignedh = (GST_VIDEO_INFO_HEIGHT(&info) + 64 - 1) & ~(64 - 1);
     gsize aligned_size = alignedw * alignedh * 4;
@@ -171,14 +165,6 @@ std::tuple<bool, std::string> VideoEncoder::copyFrame(std::shared_ptr<dai::ImgFr
 //     }
 //     bitstream_frame->setSequenceNum(sequenceNumber);
 
-//     // memcpy(bitstream_frame->getData().data(), buffer, buffer_size);
-//     // zerocopy
-//     bitstream_frame->data = data;
-
-//     bitstream.send(bitstream_frame);
-//     printf("sent bitstream_frame...\n");
-// }
-
 // TODO Move to zero copy version (commented out above)
 void VideoEncoder::send_buffer(const uint8_t* buffer, const int buffer_size, const int width, const int height) {
     // TODO Pass user data with gstreamer
@@ -206,7 +192,6 @@ void VideoEncoder::sendBuffer(const PassthroughMessage& passthroughMessage, cons
             auto blockEvent = this->outputBlockEvent();
             bitstream.send(bitstream_frame);
         }
-        // printf("sent bitstream_frame...\n");
     }
     if(!out.getConnections().empty()) {
         auto bitstream_frame = std::make_shared<dai::EncodedFrame>();
@@ -247,16 +232,10 @@ void VideoEncoder::sendBuffer(const PassthroughMessage& passthroughMessage, cons
         memcpy(bitstream_frame->data->getData().data(), buffer, buffer_size);
         DAI_LOG_TIME_END(sendBufferMEMCPY);
 
-        /*
-        DAI_LOG_TIME_START(sendBufferSEND);
-        out.send(bitstream_frame);
-        DAI_LOG_TIME_END(sendBufferSEND);
-        */
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(bitstream_frame);
         }
-        // printf("sent out...\n");
     }
     this->pipelineEventDispatcher->endTrackedEvent(PipelineEvent::Type::LOOP, "_mainLoop", passthroughMessage.frame.getSequenceNum());
     DAI_LOG_TIME_END(sendBuffer);
@@ -274,7 +253,6 @@ void VideoEncoder::notifyJpegData(JpegJob* job, uint32_t encodedSize) {
         return;
     }
     const auto& frame = job->msg.frame;
-    // Resize the buffer to the encoded size
     GstMemory* memory = gst_buffer_peek_memory(buffer, 0);
     gsize maxsize = 0;
     gst_memory_get_sizes(memory, 0, &maxsize);
@@ -300,34 +278,21 @@ void VideoEncoder::notifyJpegData(JpegJob* job, uint32_t encodedSize) {
 void VideoEncoder::initialize(const int width, const int height, const int fps, dai::ImgFrame::Type type) {
     GstCaps* outcaps = NULL;
 
-    // Set output caps
     outcaps = gst_caps_new_simple("image/jpeg", "width", G_TYPE_INT, width, "height", G_TYPE_INT, height, NULL);
     outpool = createPool(outcaps);
     DAI_CHECK_IN(outpool);
 
-    // Activate the pool
     if(!gst_buffer_pool_is_active(outpool)) {
         auto res = gst_buffer_pool_set_active(outpool, TRUE);
         DAI_CHECK_IN(res);
     }
 
-    /*
-    camera_module_t* camera_module_;
-    printf("opening cam module START\n");
-    // This is required for proper working of the jpeg lib
-    auto ret = hw_get_module(CAMERA_HARDWARE_MODULE_ID, (const hw_module_t**)&camera_module_);
-    printf("opening cam module END\n");
-    DAI_CHECK_IN(ret == 0 && camera_module_);
-    (void)CameraSingleton::getInstance();
-    does the above
-    */
     (void)CameraSingleton::getInstance();
     DAI_CHECK_IN(jpegEncoder.initialize(width, height));
 }
 
 void VideoEncoder::run() {
     logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
-    // Some sanity checking
     if(properties.bitrate && properties.maxBitrate && properties.rateCtrlMode == dai::VideoEncoderProperties::RateControlMode::VBR) {
         logger->warn("Both bitrate and maxBitrate are set, bitrate will be ignored.");
         properties.bitrate = properties.maxBitrate;
@@ -350,7 +315,6 @@ void VideoEncoder::run() {
         auto passthroughMessage = PassthroughMessage();
         auto tProcessed = std::chrono::steady_clock::now();
         if(useGstreamer) {
-            // Need first frame to set the video caps
             if(!first_frame) {
                 first_frame = true;
                 encodePipeline->set_appsrc_caps(inputFrame->getWidth(), inputFrame->getHeight(), properties.frameRate, inputFrame->getType());
@@ -376,18 +340,14 @@ void VideoEncoder::run() {
             GstBuffer* outputBuffer;
             auto rc = gst_buffer_pool_acquire_buffer(outpool, &outputBuffer, NULL);
             DAI_CHECK_IN(rc == GST_FLOW_OK);
-            // Copy the flags and timestamps from the input buffer.
-            // gst_buffer_copy_into(frame->output_buffer, frame->input_buffer, GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS, 0, -1);
 
             const native_handle_t* inputHandle = nullptr;
             int inputFd = -1;
             auto inData = std::dynamic_pointer_cast<HalBufferMemory>(inputFrame->data);
             if(inData) {
-                // keep inData alive until passthroughMessage is destructed after postproc finishes
-                passthroughMessage.inputData = inData;
+                passthroughMessage.inputData = inData;  // Keeps inData alive until passthroughMessage is destroyed after postproc
                 inputHandle = inData->privHnd;
             } else {
-                // Copy frame to new gst buffer as we don't know what format it is in
                 GstBuffer* inputBuffer{nullptr};
                 bool error;
                 std::string errorMsg;
@@ -397,7 +357,6 @@ void VideoEncoder::run() {
                 }
                 GstMemory* inmemory = gst_buffer_peek_memory(inputBuffer, 0);
                 inputFd = gst_fd_memory_get_fd(inmemory);
-                // keep inputBuffer alive until passthroughMessage is destructed after postproc finishes
                 passthroughMessage.fdMemoryPool = fdMemoryPool;
                 passthroughMessage.inputGst = inputBuffer;
             }
@@ -408,8 +367,7 @@ void VideoEncoder::run() {
             DEBUG("Before encode()");
             job->outputBuffer = outputBuffer;
             job->msg = passthroughMessage;
-            // From here on the encoder owns the job and hands it back through notifyJpegData().
-            JpegJob* jobTag = job.release();
+            JpegJob* jobTag = job.release();  // From here the encoder owns the job and hands it back through notifyJpegData()
             DAI_LOG_TIME_START(getFrameJpegEncode);
             const bool encoded = (inputHandle != nullptr) ? jpegEncoder.encode(inputHandle, outputFd, inputFrame->getSequenceNum(), quality, jobTag)
                                                           : jpegEncoder.encode(inputFd, outputFd, inputFrame->getSequenceNum(), quality, jobTag);

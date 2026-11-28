@@ -30,8 +30,6 @@ std::map<std::string, std::shared_ptr<ADatatype>>::iterator MessageGroup::end() 
 }
 
 int64_t MessageGroup::getIntervalNs() const {
-    // Measure with the timestamp source the group was synced with; entries that are
-    // not Buffers or lack the requested timestamp are skipped
     using Source = SyncProperties::TimestampSource;
     bool first = true;
     std::chrono::nanoseconds oldest{};

@@ -8,22 +8,19 @@
 #include <mutex>
 #include <thread>
 
-// Periodically measures the difference between std::chrono::steady_clock and a
-// provided reference clock reader, keeping a running median for jitter tolerance.
 template <class Clock = std::chrono::steady_clock>
 class ClockOffsetSynchronizer {
-public:
+   public:
     std::chrono::nanoseconds offset();
 
     void shutdown();
 
     virtual ~ClockOffsetSynchronizer();
 
-private:
-    // Callback returning the current tick of the reference clock expressed as a steady_clock time_point.
+   private:
     using ReferenceClockReader = std::function<typename Clock::time_point()>;
 
-protected:
+   protected:
     explicit ClockOffsetSynchronizer(ReferenceClockReader reader);
     ClockOffsetSynchronizer(const ClockOffsetSynchronizer&) = delete;
     ClockOffsetSynchronizer& operator=(const ClockOffsetSynchronizer&) = delete;
@@ -47,18 +44,16 @@ protected:
 template class ClockOffsetSynchronizer<std::chrono::steady_clock>;
 template class ClockOffsetSynchronizer<std::chrono::system_clock>;
 
-// Singleton that keeps the offset between steady clock and CLOCK_MONOTONIC_RAW.
 class SteadyToRawOffset final : public ClockOffsetSynchronizer<std::chrono::steady_clock> {
-public:
+   public:
     static SteadyToRawOffset& instance();
 
 private:
     SteadyToRawOffset();
 };
 
-// Singleton that keeps the offset between steady clock and the HW QTimer counter.
 class SteadyToQTimerOffset final : public ClockOffsetSynchronizer<std::chrono::steady_clock> {
-public:
+   public:
     static SteadyToQTimerOffset& instance();
 
 private:

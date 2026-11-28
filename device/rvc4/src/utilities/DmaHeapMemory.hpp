@@ -124,7 +124,6 @@ class DmaHeapMemory : public OffsetMemory {
         return allocation->dmaBufFd;
     }
 
-    /** Returns an ownership token shared by all views of this DMA allocation. */
     std::shared_ptr<void> getAllocationOwner() const {
         return allocation;
     }

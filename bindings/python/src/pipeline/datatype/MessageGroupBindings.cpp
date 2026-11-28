@@ -5,41 +5,22 @@
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 
-// pybind
 #include <pybind11/cast.h>
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_message_group(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     py::class_<MessageGroup, Py<MessageGroup>, Buffer, py::smart_holder> messageGroup(m, "MessageGroup", DOC(dai, MessageGroup));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // // Metadata / raw
-    // rawMessageGroup
-    //     .def(py::init<>())
-    //     .def_readwrite("group", &RawMessageGroup::group)
-    //     ;
-
-    // Message
     messageGroup.def(py::init<>())
         .def("__repr__", &MessageGroup::str)
         .def("__getitem__", [](MessageGroup& msg, const std::string& name) { return msg[name]; })
@@ -47,7 +28,7 @@ void bind_message_group(pybind11::module& m, void* pCallstack) {
         .def(
             "__iter__",
             [](MessageGroup& msg) { return py::make_iterator(msg.begin(), msg.end()); },
-            py::keep_alive<0, 1>() /* Essential: keep object alive while iterator exists */)
+            py::keep_alive<0, 1>())  // Keep the group alive while the iterator exists
         .def("isSynced", &MessageGroup::isSynced, py::arg("thresholdNs"), DOC(dai, MessageGroup, isSynced))
         .def("getIntervalNs", &MessageGroup::getIntervalNs, DOC(dai, MessageGroup, getIntervalNs))
         .def("getTimestampSource", &MessageGroup::getTimestampSource, DOC(dai, MessageGroup, getTimestampSource))

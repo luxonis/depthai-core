@@ -10,8 +10,6 @@
 namespace dai {
 
 namespace {
-// A rectangle in a frame as a region in pixels of the frame's source: mapped through the frame's transformation, widened
-// to whole pixels and clamped to the source.
 CameraControl::RegionParams sourceRegion(const Rect& rect, const ImgTransformation& transformation) {
     if(rect.empty()) {
         throw std::invalid_argument("Cannot map an empty region");
@@ -21,11 +19,9 @@ CameraControl::RegionParams sourceRegion(const Rect& rect, const ImgTransformati
     if(width == 0 || height == 0 || sourceWidth == 0 || sourceHeight == 0) {
         throw std::invalid_argument("Cannot map a region through a transformation without a frame and source size");
     }
-    // Normalized coordinates stay fractional in frame pixels; only the source region is rounded.
     const RotatedRect inFrame = RotatedRect(rect).denormalize(static_cast<unsigned int>(width), static_cast<unsigned int>(height));
     const auto [minX, minY, maxX, maxY] = transformation.invTransformRect(inFrame).getOuterRect();
-    // Mapped corners land a rounding error off whole pixels; that should not widen the region by a pixel.
-    constexpr float slack = 1e-3f;
+    constexpr float slack = 1e-3f;  // Mapped corners land a rounding error off whole pixels; do not widen the region for it
     const auto clampTo = [](float value, size_t size) {
         return std::clamp(value, 0.0f, static_cast<float>(std::min<size_t>(size, std::numeric_limits<uint16_t>::max())));
     };
@@ -45,9 +41,7 @@ CameraControl::RegionParams sourceRegion(const Rect& rect, const ImgTransformati
 }
 }  // namespace
 
-// Functions to set properties
 CameraControl& CameraControl::setCaptureStill(bool capture) {
-    // Enable capture
     setCommand(Command::STILL_CAPTURE, capture);
     return *this;
 }
@@ -95,7 +89,6 @@ CameraControl& CameraControl::setStrobeDisable() {
     return *this;
 }
 
-// Focus
 CameraControl& CameraControl::setAutoFocusMode(AutoFocusMode mode) {
     setCommand(Command::AF_MODE);
     autoFocusMode = mode;
@@ -137,7 +130,6 @@ CameraControl& CameraControl::setManualFocusRaw(float lensPositionRaw) {
     return *this;
 }
 
-// Exposure
 CameraControl& CameraControl::setAutoExposureEnable() {
     setCommand(Command::AE_AUTO);
     return *this;
@@ -195,7 +187,6 @@ CameraControl& CameraControl::setManualExposure(std::chrono::microseconds exposu
     return setManualExposure(exposureTime.count(), sensitivityIso);
 }
 
-// White Balance
 CameraControl& CameraControl::setAutoWhiteBalanceMode(AutoWhiteBalanceMode mode) {
     setCommand(Command::AWB_MODE);
     awbMode = mode;
@@ -212,7 +203,6 @@ CameraControl& CameraControl::setManualWhiteBalance(int colorTemperatureK) {
     return *this;
 }
 
-// Other image controls
 CameraControl& CameraControl::setBrightness(int value) {
     setCommand(Command::BRIGHTNESS);
     brightness = value;

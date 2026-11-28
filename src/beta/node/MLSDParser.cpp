@@ -33,7 +33,6 @@ MLSDParser::Properties& MLSDParser::getProperties() {
 }
 
 NNArchive MLSDParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -104,10 +103,6 @@ void MLSDParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
 
     setConfig(mlsdHead);
 
-    // The input size is derived from the model input's declared shape and layout. A head carries
-    // no model input metadata, so this is only possible on the full-archive path; the source
-    // parser instead hard-codes the 512x512 input size of all known M-LSD models, which is kept
-    // as the default.
     DAI_CHECK_V(configV1.model.inputs.size() == 1, "Only one input supported for MLSDParser, got {} inputs.", configV1.model.inputs.size());
     const auto& modelInput = configV1.model.inputs.front();
     const std::string layout = modelInput.layout.value_or("");
@@ -128,9 +123,6 @@ void MLSDParser::setConfig(const dai::nn_archive::v1::Head& head) {
 
     const std::size_t numOutputs = head.outputs.has_value() ? head.outputs->size() : 0;
     DAI_CHECK_V(numOutputs == 2, "Only two output layers are supported for MLSDParser, got {} layers.", numOutputs);
-    // The layers are assigned by substring: a layer whose name contains "tpMap" is the tpMap
-    // layer and a layer whose name contains "heat" is the heat layer, mirroring the source
-    // parser. A layer matching neither leaves the corresponding name unconfigured.
     for(const auto& layer : *head.outputs) {
         if(layer.find("tpMap") != std::string::npos) {
             setOutputLayerTPMap(layer);
@@ -139,9 +131,6 @@ void MLSDParser::setConfig(const dai::nn_archive::v1::Head& head) {
         }
     }
 
-    // The M-LSD-specific keys without typed metadata fields live in the head metadata extra
-    // parameters. Missing keys keep the already configured values, mirroring the source parser
-    // behavior.
     const auto& extraParams = head.metadata.extraParams;
 
     if(extraParams.is_object() && extraParams.contains("topk_n") && !extraParams.at("topk_n").is_null()) {
@@ -260,12 +249,9 @@ void MLSDParser::run() {
         auto tGotInput = std::chrono::steady_clock::now();
         const MLSDParserConfig configSnapshot = config;
 
-        // Extract. The tpMap tensor is permuted to NCHW orientation; the heat tensor is read in
-        // its stored order and flattened.
         auto tpMap = utilities::ClassificationUtils::getNchwTensorData(*nnData, properties.outputLayerTPMap);
         auto heat = utilities::ClassificationUtils::getFlattenedTensorData(*nnData, properties.outputLayerHeat);
 
-        // Compute. The heat map grid size is derived from the tpMap tensor shape.
         auto decoded = utilities::MLSDUtils::computeMlsdLines(tpMap.values,
                                                               tpMap.dims,
                                                               heat,
@@ -275,8 +261,7 @@ void MLSDParser::run() {
                                                               properties.inputSize.first,
                                                               properties.inputSize.second);
 
-        // Emit. Lines are ordered by descending confidence score.
-        auto message = utilities::MLSDUtils::createLinesMessage(decoded);
+        auto message = utilities::MLSDUtils::createLinesMessage(decoded);  // Lines are ordered by descending confidence score
         if(nnData->transformation.has_value()) {
             message->setTransformation(*nnData->transformation);
         }

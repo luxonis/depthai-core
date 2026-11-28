@@ -1,18 +1,14 @@
 #pragma once
 
-// std
 #include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <vector>
 
-// project
 #include "depthai/common/ProcessorType.hpp"
 #include "depthai/device/Platform.hpp"
 #include "depthai/utility/Serialization.hpp"
-
-// third party
-#include <nlohmann/json.hpp>
 
 namespace dai {
 
@@ -87,7 +83,6 @@ class CrashDump {
      */
     static std::unique_ptr<CrashDump> load(const std::filesystem::path& tarPath);
 
-    /* Common metadata - from version.hpp */
     std::string depthaiVersion;
     std::string depthaiVersionMajor;
     std::string depthaiVersionMinor;
@@ -104,18 +99,14 @@ class CrashDump {
     std::string depthaiDeviceRVC4Version;
     std::string osPlatform;
 
-    /* Device ID and timestamp of crashdump creation */
     std::string crashdumpTimestamp;
     std::string deviceId;
 
-    /* Extra information - user-specified additional information */
     nlohmann::json extra = nlohmann::json::object();
 
    protected:
-    // Writers
     void writeMetadata(nlohmann::json& json) const;
 
-    // Readers
     void readMetadata(const nlohmann::json& json);
 };
 

@@ -91,7 +91,6 @@ span<const std::uint8_t> AcceleratorMemory::getOffsetData() const {
 std::shared_ptr<OffsetMemory> AcceleratorMemory::offset(std::size_t offset) {
     dai_device_mem* clone = nullptr;
     DAI_CHECK_DEVICE(UNIT, dai_device_mem_clone(mem, &clone));
-    // The view keeps this buffer alive: it uses the same memory
     auto view = std::make_shared<AcceleratorMemory>(Private{}, clone, logicalSize, shared_from_this());
     view->setOffset(offset);
     return view;
@@ -107,8 +106,6 @@ std::shared_ptr<AcceleratorMemory> AcceleratorMemory::convertZeroCopy(std::share
     if(auto accelBuf = std::dynamic_pointer_cast<AcceleratorMemory>(data); accelBuf != nullptr) {
         return accelBuf;
     }
-    // DMA-BUF memory of the firmware (camera HAL, DMA heap, GStreamer fd memory): register its fd. The buffer keeps
-    // `data` alive while the accelerator uses it.
     int fd = -1;
     if(auto hal = std::dynamic_pointer_cast<dai::gate::HalBufferMemory>(data); hal != nullptr) {
         fd = hal->privHnd->fd;
@@ -127,7 +124,6 @@ std::shared_ptr<AcceleratorMemory> AcceleratorMemory::convertZeroCopy(std::share
 std::shared_ptr<AcceleratorMemory> AcceleratorMemory::convert(std::shared_ptr<Memory> data, std::size_t size) {
     std::shared_ptr<AcceleratorMemory> accelBuf = convertZeroCopy(data);
     if(accelBuf == nullptr) {
-        // Not DMA-BUF memory: copy it into a new accelerator buffer
         size = size ? size : data->getData().size();
         accelBuf = create(size);
         memcpy(accelBuf->getData().data(), data->getData().data(), std::min(size, data->getData().size()));

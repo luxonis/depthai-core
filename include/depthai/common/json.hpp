@@ -6,13 +6,12 @@
 
 namespace nop {
 
-// Store arbitrary JSON as a MessagePack binary payload inside libnop structures.
 template <>
 struct Encoding<nlohmann::json> : EncodingIO<nlohmann::json> {
     using Type = nlohmann::json;
     using Bytes = std::vector<std::uint8_t>;
 
-    static constexpr EncodingByte Prefix(const Type& /*value*/) {
+    static constexpr EncodingByte Prefix(const Type&) {
         return EncodingByte::Binary;
     }
 

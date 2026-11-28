@@ -19,7 +19,6 @@ namespace dai::gate {
 
 namespace {
 
-// Largest all-valid, axis-aligned rectangle, using a histogram per row: O(width * height).
 cv::Rect largestOverlapRectangle(const cv::Mat& mask) {
     std::vector<int> heights(mask.cols + 1, 0), stack;
     cv::Rect best;
@@ -207,15 +206,11 @@ void ToFStereoFusion::alignNeural(const ImgFrame& tofImage, const ImgFrame& dept
         cv::initUndistortRectifyMap(
             neuralK, tofDist, r2.t(), tofK, {static_cast<int>(tofWidth), static_cast<int>(tofHeight)}, CV_32FC1, tofRectificationMapX, tofRectificationMapY);
         if(initialConfig->cropToOverlap) {
-            // Remap image support, not depth validity. Omitting the depth-dependent
-            // translation gives the common viewing directions (projection at infinity).
             cv::Mat support(neuralSize, CV_8UC1, cv::Scalar(255)), rectifiedSupport, overlap;
             cv::remap(support, rectifiedSupport, neuralRectificationMapX, neuralRectificationMapY, cv::INTER_NEAREST, cv::BORDER_CONSTANT, 0);
             cv::remap(rectifiedSupport, overlap, tofRectificationMapX, tofRectificationMapY, cv::INTER_NEAREST, cv::BORDER_CONSTANT, 0);
             overlapCrop = largestOverlapRectangle(overlap);
             if(overlapCrop.empty()) throw std::runtime_error("ToFStereoFusion: ToF and NeuralDepth images have no geometric overlap");
-            // Cropping changes pixel coordinates, not the camera coordinate system:
-            // K' = cropTranslation * K; source intrinsics, distortion and extrinsics stay intact.
             croppedTransformation = tofTransform;
             croppedTransformation.addCrop(overlapCrop.x, overlapCrop.y, overlapCrop.width, overlapCrop.height);
         }

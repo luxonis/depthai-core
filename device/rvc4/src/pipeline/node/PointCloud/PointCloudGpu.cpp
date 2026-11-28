@@ -31,8 +31,6 @@ namespace gate {
 
 namespace {
 
-// One pass per pixel: z = depth * scale, (x, y) from the undistorted ray table, optional rigid transform of valid points.
-// Point3f is 3 floats (12 bytes), Point3fRGBA is 3 floats + 4 bytes RGBA (16 bytes), both written as in the CPU path.
 constexpr const char* kKernelSource = R"CLC(
 __kernel void depth_to_points(__global const ushort* depth,
                               const int depthOffset,
@@ -103,7 +101,6 @@ __kernel void depth_to_points_colored(__global const ushort* depth,
     #define POINTCLOUD_GPU_ZERO_COPY 0
 #endif
 
-/// OpenCL platform, device, context and program shared by all backend instances (one per depth stream)
 struct SharedContext {
     cl_platform_id platform = nullptr;
     cl_device_id device = nullptr;
@@ -143,14 +140,12 @@ struct SharedContext {
         }
     }
 
-    // Lives for the whole process: nodes come and go, the compiled program stays. A failed construction is retried on the next call.
-    static std::shared_ptr<SharedContext> get() {
+    static std::shared_ptr<SharedContext> get() {  // Process lifetime: the program outlives the nodes; a throwing construction is retried on the next call
         static const std::shared_ptr<SharedContext> shared = std::make_shared<SharedContext>();
         return shared;
     }
 };
 
-/// An OpenCL buffer that is re-created only when its requirements change
 struct ReusableBuffer {
     cl_mem buffer = nullptr;
     std::size_t sizeBytes = 0;
@@ -177,7 +172,6 @@ struct ReusableBuffer {
     }
 };
 
-/// Input image bound either as a zero-copy import of the frame's dma-buf (element offset into it) or as a staged copy
 struct InputBinding {
     cl_mem buffer = nullptr;
     cl_int offsetBytes = 0;
@@ -188,7 +182,6 @@ class OpenClPointCloudBackend : public node::internal::PointCloudGpuBackend {
     OpenClPointCloudBackend(std::uint32_t gpuDevice, std::shared_ptr<spdlog::logger> log) : shared(SharedContext::get()), logger(std::move(log)) {
         (void)gpuDevice;  // the RVC4 has a single GPU
         cl_int status = CL_SUCCESS;
-        // Profiling events feed the periodic debug log of upload / kernel / map times
 #if CL_TARGET_OPENCL_VERSION >= 200
         const cl_queue_properties queueProperties[] = {CL_QUEUE_PROPERTIES, CL_QUEUE_PROFILING_ENABLE, 0};
         queue = clCreateCommandQueueWithProperties(shared->context, shared->device, queueProperties, &status);
@@ -280,10 +273,8 @@ class OpenClPointCloudBackend : public node::internal::PointCloudGpuBackend {
         utility::checkStatus(clSetKernelArg(k, index, sizeof(T), &value), "clSetKernelArg");
     }
 
-    /// Ray table and transform live on the GPU and are refreshed only when they change
     void prepareConstants(const Geometry& geometry, std::size_t count) {
-        // Point2f carries more than two floats, so the table is packed into float2 pairs for the kernel
-        const std::size_t rayBytes = count * 2 * sizeof(float);
+        const std::size_t rayBytes = count * 2 * sizeof(float);  // Point2f is more than two floats: the table is packed into float2 pairs
         if(!rays.matches(rayBytes, CL_MEM_READ_ONLY, nullptr) || raysVersion != geometry.raysVersion) {
             if(!rays.matches(rayBytes, CL_MEM_READ_ONLY, nullptr)) {
                 rays.release();
@@ -327,10 +318,7 @@ class OpenClPointCloudBackend : public node::internal::PointCloudGpuBackend {
         }
     }
 
-    /// The kernel writes into a dma-buf allocated here with a cached CPU mapping and imported zero-copy, so that the
-    /// caller reads the points at full CPU speed (a CL_MEM_ALLOC_HOST_PTR buffer maps uncached for the CPU on this
-    /// platform, which made reading 12 MB of points slower than computing them). Falls back to CL_MEM_ALLOC_HOST_PTR.
-    void ensureOutput(std::size_t bytes) {
+    void ensureOutput(std::size_t bytes) {  // Own cached dma-buf: CL_MEM_ALLOC_HOST_PTR maps uncached here, too slow to read 12 MB
         if(output.buffer != nullptr && output.sizeBytes == bytes) return;
         unmapOutput();
         output.release();
@@ -342,9 +330,7 @@ class OpenClPointCloudBackend : public node::internal::PointCloudGpuBackend {
             try {
                 auto memory = std::make_shared<DmaHeapMemory>(bytes);
                 if(auto info = utility::getExternalMemoryInfo(memory)) {
-                    // IO-coherent: the GPU writes snoop the CPU cache, so neither the map nor the CPU read needs cache
-                    // maintenance over the 12 MB; plain write-back needs an invalidate pass per frame instead
-                    info->hostCachePolicy = CL_MEM_HOST_WRITEBACK_QCOM;
+                    info->hostCachePolicy = CL_MEM_HOST_WRITEBACK_QCOM;  // IO-coherent avoids a cache invalidate pass over 12 MB per frame
     #if defined(CL_MEM_HOST_IOCOHERENT_QCOM)
                     if(shared->ioCoherentHostPtr) info->hostCachePolicy = CL_MEM_HOST_IOCOHERENT_QCOM;
     #endif
@@ -377,7 +363,6 @@ class OpenClPointCloudBackend : public node::internal::PointCloudGpuBackend {
         output.flags = CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR;
     }
 
-    /// Zero-copy import of the frame memory when the driver supports it and the frame lives in a dma-buf, staged copy otherwise
     InputBinding bindInput(const std::uint8_t* data, const std::shared_ptr<Memory>& memory, std::size_t requiredBytes, ReusableBuffer& staged) {
 #if POINTCLOUD_GPU_ZERO_COPY
         if(memory && (shared->dmabufHostPtr || shared->ionHostPtr)) {
@@ -411,7 +396,6 @@ class OpenClPointCloudBackend : public node::internal::PointCloudGpuBackend {
     }
 
 #if POINTCLOUD_GPU_ZERO_COPY
-    /// Imports a dma-buf / ION allocation as an OpenCL buffer (no copy); returns null and sets `status` on failure
     cl_mem createImportedBuffer(cl_mem_flags flags, const utility::ExternalMemoryInfo& info, std::size_t totalBytes, cl_int& status) {
         status = CL_SUCCESS;
         cl_mem buffer = nullptr;
@@ -448,8 +432,7 @@ class OpenClPointCloudBackend : public node::internal::PointCloudGpuBackend {
         for(auto& cached : zeroCopyInputs) {
             if(cached->matches(totalBytes, flags, info.hostPtr) && cached->dmaBufFd == info.dmaBufFd) return cached.get();
         }
-        // Frame pools rotate over a handful of buffers; keep the cache small
-        if(zeroCopyInputs.size() >= 16) zeroCopyInputs.clear();
+        if(zeroCopyInputs.size() >= 16) zeroCopyInputs.clear();  // Frame pools rotate over a handful of buffers
     #if defined(CL_MEM_HOST_IOCOHERENT_QCOM)
         if(shared->ioCoherentHostPtr) info.hostCachePolicy = CL_MEM_HOST_IOCOHERENT_QCOM;
     #endif
@@ -473,8 +456,6 @@ class OpenClPointCloudBackend : public node::internal::PointCloudGpuBackend {
     }
 #endif
 
-    /// Runs the kernel and maps the output for the caller. The map of a CL_MEM_ALLOC_HOST_PTR buffer is a zero-copy
-    /// operation on the RVC4 (unified memory); the caller reads the points once while gathering them.
     const void* run(cl_kernel k, std::size_t count, std::size_t bytes) {
         const std::size_t global = count;
         cl_event kernelEvent = nullptr;
@@ -484,7 +465,6 @@ class OpenClPointCloudBackend : public node::internal::PointCloudGpuBackend {
         mappedOutput = clEnqueueMapBuffer(queue, output.buffer, CL_TRUE, CL_MAP_READ, 0, bytes, 0, nullptr, &mapEvent, &status);
         utility::checkStatus(status, "clEnqueueMapBuffer(points)");
         if(outputMemory) {
-            // Our own cached mapping of the dma-buf. Without IO coherence the CPU cache has to be invalidated before reading.
             if(!outputIoCoherent) {
                 outputMemory->syncStartCpuAccess(DmaHeapMemory::CpuSyncAccess::Read);
                 cpuAccessActive = true;
@@ -501,8 +481,7 @@ class OpenClPointCloudBackend : public node::internal::PointCloudGpuBackend {
         }
         cpuAccessActive = false;
         if(mappedOutput != nullptr && output.buffer != nullptr) {
-            // The map returned the host pointer of the import for dma-buf outputs, which is what has to be unmapped
-            void* mapped = outputMemory ? static_cast<void*>(outputMemory->getData().data()) : mappedOutput;
+            void* mapped = outputMemory ? static_cast<void*>(outputMemory->getData().data()) : mappedOutput;  // The map returned the import's host pointer
             clEnqueueUnmapMemObject(queue, output.buffer, mapped, 0, nullptr, nullptr);
         }
         mappedOutput = nullptr;
@@ -515,7 +494,6 @@ class OpenClPointCloudBackend : public node::internal::PointCloudGpuBackend {
         return static_cast<double>(end - start) * 1e-6;
     }
 
-    /// Accumulates upload / kernel / map times and logs them every PROFILE_INTERVAL frames at debug level
     void recordProfile(cl_event kernelEvent, cl_event mapEvent, std::size_t count) {
         for(cl_event upload : pendingUploads) {
             profileUploadMs += eventMilliseconds(upload);
@@ -543,7 +521,6 @@ class OpenClPointCloudBackend : public node::internal::PointCloudGpuBackend {
         }
     }
 
-    /// Tiny frame through both kernels, checked against the CPU formula, so that a broken driver is caught at start and not in the output
     void selfTest() {
         constexpr unsigned W = 4, H = 2;
         std::array<std::uint16_t, W * H> depth = {0, 1000, 2000, 3000, 500, 0, 1500, 2500};
@@ -582,8 +559,7 @@ class OpenClPointCloudBackend : public node::internal::PointCloudGpuBackend {
                             && colored[i].g == color[3 * i + 1] && colored[i].b == color[3 * i + 2] && colored[i].a == 255;
             if(!ok) throw utility::ClExecutionError("PointCloud GPU backend: startup self-test produced wrong points");
         }
-        // The self-test geometry must not be mistaken for the first real frame
-        raysVersion = 0;
+        raysVersion = 0;  // So that the self-test geometry is not taken for the first real frame
         rays.release();
         profileFrames = 0;
         profileZeroCopyFrames = 0;

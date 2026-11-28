@@ -1,6 +1,5 @@
 #include "FsyncController.hpp"
 
-// std
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -21,11 +20,9 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-// libraries
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
-// project
 #include <fsync-stm/fsync-stm.h>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -69,8 +66,7 @@ FsyncControllerLed::FsyncControllerLed(const char* ledName, const char* label, s
     auto err = errno;
 
     if(fd == -1) {
-        if (err == ENOENT) {
-            // If device file not found, no need to log, since the device model does not support this led.
+        if(err == ENOENT) {
             DAI_INFO("Failed to open fsync_stm led: {}{}. Device probably doesn't have IR leds.", FSYNC_STM_LED_NAME, ledName);
         } else {
             DAI_ERROR("Failed to open fsync_stm led: {}{}. Reason: {} (code: {})", FSYNC_STM_LED_NAME, ledName, strerror(err), err);
@@ -140,26 +136,16 @@ FsyncController::FsyncController()
     DeviceModel::Model deviceModel = DeviceModel::get();
     std::optional<std::uint32_t> deviceRevision = DeviceModel::getRevision();
 
-    if ((deviceModel == DeviceModel::Model::OAK4_S && deviceRevision.has_value() && deviceRevision.value() == 1)
-        || (deviceModel == DeviceModel::Model::FAST_STATION_CAMERA)
-    )
-    {
-        // OAK4-S R3 is presented as OAK4-S R1.
-        // OAK4-S R3 does not have fsync lines connected to the CCM.
-        // We therefore disable fsync controller for OAK4-S R1 and R3 devices.
+    if((deviceModel == DeviceModel::Model::OAK4_S && deviceRevision.has_value() && deviceRevision.value() == 1)
+       || (deviceModel == DeviceModel::Model::FAST_STATION_CAMERA)) {
+        m_disabled = true;  // OAK4-S R3 reports as R1 and has no fsync lines to the CCM; FAST STATION CAMERA has no fsync stm
 
-        // FAST STATION CAMERA fsync stm was not brought up, since they use only one camera and no external fsync.
-        // We therefore disable fsync controller for FAST STATION CAMERA devices.
-        m_disabled = true;
-
-        // Set role so we don't leak AUTO_DETECT
-        m_role = dai::ExternalFrameSyncRole::MASTER;
+        m_role = dai::ExternalFrameSyncRole::MASTER;  // Set a role so that AUTO_DETECT does not leak
         DAI_INFO("FSYNC controller is not supported on OAK4-S R1 and R3 devices.");
         return;
     }
 
-    // Hog the file descriptor, because shutdown hook will be executed when file is closed
-    stmFd = open("/dev/fsync-stm", O_RDWR);
+    stmFd = open("/dev/fsync-stm", O_RDWR);  // Keep the fd open: the shutdown hook runs when the file is closed
     auto err = errno;
     if(stmFd < 0) {
         m_ioctl_failure = true;
@@ -170,9 +156,8 @@ FsyncController::FsyncController()
     auto ret = ioctl(stmFd, GET_CLOSEST_FREQUENCY, &test);
     err = errno;
     if (ret == -1) {
-        if (err == EBADRQC) {
-            // Ioctl failed, because external fsync is not supported on this OS.
-            m_supportsExternalFrameSyncMode = false;
+        if(err == EBADRQC) {
+            m_supportsExternalFrameSyncMode = false;  // EBADRQC: this OS does not support external fsync
         } else {
             m_ioctl_failure = true;
             DAI_ERROR("Failed to detect if the device supports external Fsync slave mode. {} (code: {})", strerror(err), err);
@@ -183,12 +168,8 @@ FsyncController::FsyncController()
 
     setExternalFrameSyncRole(dai::ExternalFrameSyncRole::AUTO_DETECT, false);
 
-    if (m_supportsExternalFrameSyncMode) {
-        // We need to turn off external fsync output when we finish.
-        // If we don't do this and we set a different device to be external Fsync master on the next run,
-        // there will be two masters driving the Fsync line, and slaves won't be able to lock on.
-        // This shutdown hook is executed by the OS if depthai_device crashes.
-        struct fsync_stm_ioctl_shutdown_hook_data shutdown_hooks = {0};
+    if(m_supportsExternalFrameSyncMode) {
+        struct fsync_stm_ioctl_shutdown_hook_data shutdown_hooks = {0};  // Stops fsync output on exit/crash, else 2 masters drive the line on the next run
         shutdown_hooks.enable_hook = 1;
         shutdown_hooks.restore_config_reg = FSYNC_STM_CONFIG_MASTER_MODE_WITH_INPUT;
         auto ret = ioctl(stmFd, SHUTDOWN_HOOK, &shutdown_hooks);
@@ -281,7 +262,6 @@ int FsyncController::getDutyCycle(int stmFd) {
 }
 
 float FsyncController::getFps(int id) {
-    // Lock for this length of operation
     if(fsync.count(id) > 0) {
         return fsync[id].fps;
     }
@@ -297,14 +277,13 @@ void FsyncController::setFps(int id, float fps) {
         std::unique_lock<std::recursive_mutex> lock(mtx);
         DAI_CHECK_V(stmFd >= 0, "Failed to open the fsync-stm device");
 
-        // In slave mode, we still need to do the ioctl. Only polarity/duty are used, fps is ignored. We must also set this->fps in order for exposure updates to work.
         struct fsync_stm_ioctl_pin_data ioctl_data = {
             .id = id,
             .fps = *((int*)&fps),
             .polarity = 0,
             .duty = getDutyCycle(stmFd),
             .locked = false,
-        };
+        };  // Slave mode still needs this ioctl (only polarity/duty used); this->fps is needed for exposure updates
 
         if(ioctl(stmFd, SET_PIN_STATE, &ioctl_data) == -1) {
             m_ioctl_failure = true;
@@ -314,11 +293,9 @@ void FsyncController::setFps(int id, float fps) {
         return;
     }
 
-    // Lock for this length of operation
     std::unique_lock<std::recursive_mutex> lock(mtx);
     configCount++;
 
-    // Default-constructs if it doesn't exist (may be called by multiple users with same `id`)
     FsyncDescription& desc = fsync[id];
     desc.isFsyncStm = std::filesystem::exists("/dev/fsync-stm");  // if /dev/fsync-stm exists, then we have fsync STM controller available
     desc.id = id;
@@ -400,9 +377,6 @@ float FsyncController::getClosestFpsIoctl(float wantedFrequency)
 float FsyncController::stopSetAndQueryActualFrequency(int pinId, float wantedFrequency) {
     std::unique_lock<std::recursive_mutex> lock(mtx);
 
-    // if(m_role == ExternalFrameSyncRole::SLAVE) {
-    //     return wantedFrequency;
-    // }
     if(stmFd < 0) {
         return wantedFrequency;
     }
@@ -454,15 +428,10 @@ float FsyncController::slaveMeasureFrequency() {
 
 void FsyncController::start() {
     printf("Starting FSYNC controller.\n");
-    // Lock for this length of operation
     std::unique_lock<std::recursive_mutex> lock(mtx);
 
-    // 'dequeue' config state, and only when last user calls start, then do start
-    // (as we don't want signal generation to start prior to all cameras being configured)
-    configCount--;
-    if(configCount > 0) return;
-
-    // Nothing else to do, fsync-stm is started when setFps is called
+    configCount--;               // Start only at the last user's call: no fsync signal before all cameras are configured
+    if(configCount > 0) return;  // fsync-stm itself starts in setFps
 }
 void FsyncController::cleanup() {
     std::unique_lock<std::recursive_mutex> lock(mtx);
@@ -474,7 +443,6 @@ void FsyncController::cleanup() {
 }
 
 void FsyncController::stop() {
-    // Lock for this length of operation
     std::unique_lock<std::recursive_mutex> lock(mtx);
     if (dotProjector.isOk()) {
         dotProjector.setIntensity(0);

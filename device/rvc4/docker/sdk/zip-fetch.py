@@ -101,7 +101,6 @@ def main():
         remote = HttpFile(url)
         with zipfile.ZipFile(io.BufferedReader(remote, BLOCK)) as archive:
             entries = sorted(archive.infolist(), key=lambda m: m.header_offset)
-            # A member ends where the next one starts. The last one ends at the list of members.
             ends = [m.header_offset for m in entries[1:]] + [archive.start_dir]
             members = [(m, end) for m, end in zip(entries, ends) if not m.is_dir() and any(fnmatch.fnmatchcase(m.filename, p) for p in patterns)]
             ranges = []

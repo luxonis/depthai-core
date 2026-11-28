@@ -192,9 +192,6 @@ BuiltGraph buildGraph(const std::vector<MultiDeviceExtrinsics>& graph) {
             }
         }
 
-        // The first traversal starts at the first map key, which is already
-        // the lowest key in this component. Keep the explicit comparison above
-        // as a guard for future changes to the traversal container.
         for(const auto& [coordinate, transform] : toRoot) {
             built.bridges[coordinate] = bridgeFromTransform(transform, root);
         }

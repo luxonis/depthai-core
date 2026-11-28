@@ -4,57 +4,26 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_pointclouddata(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // py::class_<RawPointCloudData, RawBuffer, std::shared_ptr<RawPointCloudData>> rawPointCloudData(m, "RawPointCloudData", DOC(dai, RawPointCloudData));
     py::class_<PointCloudData, Py<PointCloudData>, Buffer, ProtoSerializable, Transformable, py::smart_holder> pointCloudData(
         m, "PointCloudData", DOC(dai, PointCloudData));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // // Metadata / raw
-    // rawPointCloudData
-    //     .def(py::init<>())
-    //     .def_readwrite("width", &RawPointCloudData::width)
-    //     .def_readwrite("height", &RawPointCloudData::height)
-    //     .def_readwrite("sparse", &RawPointCloudData::sparse)
-    //     .def_readwrite("instanceNum", &RawPointCloudData::instanceNum)
-    //     .def_readwrite("minx", &RawPointCloudData::minx)
-    //     .def_readwrite("miny", &RawPointCloudData::miny)
-    //     .def_readwrite("minz", &RawPointCloudData::minz)
-    //     .def_readwrite("maxx", &RawPointCloudData::maxx)
-    //     .def_readwrite("maxy", &RawPointCloudData::maxy)
-    //     .def_readwrite("maxz", &RawPointCloudData::maxz)
-    //     ;
-
-    // Message
     pointCloudData.def(py::init<>())
         .def("setColor", &dai::PointCloudData::setColor, py::arg("val"), py::return_value_policy::reference_internal, DOC(dai, PointCloudData, setColor))
         .def("transformTo", &dai::PointCloudData::transformTo, py::arg("target"), DOC(dai, PointCloudData, transformTo))
         .def("__repr__", &PointCloudData::str)
-        // .def_property("points", [](PointCloudData& data) { return &data.getPoints(); }, [](PointCloudData& data, std::vector<Point3f> points)
-        // {data.getPoints() = points;})
         .def("getPoints",
              [](py::object& obj) {
                  dai::PointCloudData& data = obj.cast<dai::PointCloudData&>();

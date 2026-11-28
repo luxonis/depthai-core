@@ -43,7 +43,6 @@ namespace dai {
 namespace node {
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
-// Video Message
 inline std::shared_ptr<Buffer> getVideoMessage(const proto::img_frame::ImgFrame& metadata, ImgFrame::Type outFrameType, std::vector<uint8_t>& frame) {
     auto imgFrame = std::make_shared<ImgFrame>();
     utility::setProtoMessage(*imgFrame, &metadata, true);
@@ -429,7 +428,6 @@ void ReplayVideo::run() {
             if(msg != nullptr) {
                 metadata = std::dynamic_pointer_cast<proto::img_frame::ImgFrame>(msg);
             } else if(!first) {
-                // End of file
                 if(loop) {
                     loopState.seqNumOffset = loopState.lastSeqNum + 1;
                     loopState.lastInterval = ensureReplayInterval(loopState.lastInterval, fps);
@@ -440,7 +438,6 @@ void ReplayVideo::run() {
                     }
                     continue;
                 }
-                // This will stop even if there is still frames in the pipeline
                 stopPipeline();
                 break;
             } else {
@@ -452,7 +449,6 @@ void ReplayVideo::run() {
             if(msg.has_value()) {
                 frame = msg.value();
             } else if(!first) {
-                // End of file
                 if(loop) {
                     if(hasMetadata) {
                         loopState.seqNumOffset = loopState.lastSeqNum + 1;
@@ -463,7 +459,6 @@ void ReplayVideo::run() {
                     videoPlayer.restart();
                     continue;
                 }
-                // This will stop even if there is still frames in the pipeline
                 stopPipeline();
                 break;
             } else {
@@ -510,7 +505,6 @@ void ReplayVideo::run() {
             loopState.tsOffset = loopState.firstTs;
         }
 
-        // Update sequence num and timestamps for looping
         buffer->setSequenceNum(buffer->getSequenceNum() - loopState.firstSeqNum + loopState.seqNumOffset);
         loopState.lastSeqNum = buffer->getSequenceNum();
         auto deviceTsOffset = buffer->getTimestamp() - buffer->getTimestampDevice();
@@ -583,7 +577,6 @@ void ReplayMetadataOnly::run() {
         if(msg != nullptr) {
             metadata = msg;
         } else if(!first) {
-            // End of file
             if(loop) {
                 loopState.seqNumOffset = loopState.lastSeqNum + 1;
                 loopState.lastInterval = ensureReplayInterval(loopState.lastInterval, fps);
@@ -591,7 +584,6 @@ void ReplayMetadataOnly::run() {
                 bytePlayer.restart();
                 continue;
             }
-            // This will stop even if there is still frames in the pipeline
             stopPipeline();
             break;
         } else {
@@ -613,7 +605,6 @@ void ReplayMetadataOnly::run() {
         const auto originalTimestamp = buffer->getTimestamp();
         const auto originalTimestampDevice = buffer->getTimestampDevice();
 
-        // Update sequence num and timestamps for looping
         buffer->setSequenceNum(buffer->getSequenceNum() - loopState.firstSeqNum + loopState.seqNumOffset);
         loopState.lastSeqNum = buffer->getSequenceNum();
         auto deviceTsOffset = buffer->getTimestamp() - buffer->getTimestampDevice();

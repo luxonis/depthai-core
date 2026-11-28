@@ -9,7 +9,6 @@ ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 SUMMARY_RE = re.compile(
     r"^\[(?P<config>[^\]]+)\]\s+\d+% tests passed,\s+(?P<failed>\d+) tests failed out of (?P<total>\d+)"
 )
-# Items of the "The following tests FAILED:" list at the end of a ctest run
 FAILED_LIST_RE = re.compile(
     r"^\[(?P<config>[^\]]+)\]\s+(?P<num>\d+)\s*-\s*(?P<name>.+?)"
     r"(?:\s+\((?P<cause>[^)]+)\))?\s*$"
@@ -19,7 +18,6 @@ TEST_OUTPUT_RE = re.compile(
     r"^\[(?P<config>[^\]]+)\]\s+(?P<num>\d+):\s*(?P<text>.*)$"
 )
 START_RE = re.compile(r"^\[(?P<config>[^\]]+)\]\s+Start\s+(?P<num>\d+):\s+(?P<name>.+?)\s*$")
-# Per-test result line, e.g. "  1/178 Test  #37: camera_stream_restart_test ...............***Failed   29.20 sec"
 RESULT_RE = re.compile(
     r"^\[(?P<config>[^\]]+)\]\s+\d+/\d+\s+Test\s+#(?P<num>\d+):\s+(?P<name>.+?)\s+\.*\s*"
     r"(?P<status>Passed|\*\*\*.+?)\s+(?P<seconds>\d+(?:\.\d+)?)\s+sec\s*$"
@@ -56,7 +54,6 @@ def clip_output_lines(lines):
         needed = len(line) + separator
         if chars + needed > MAX_SNIPPET_CHARS:
             if not selected_reversed and MAX_SNIPPET_CHARS > 0:
-                # Keep tail of very long single lines.
                 fragment = line[-MAX_SNIPPET_CHARS:]
                 if fragment:
                     selected_reversed.append(fragment)
@@ -132,8 +129,7 @@ def main() -> int:
                 ensure_config(config)
                 started[config][start_match.group("num")] = normalize_name(start_match.group("name"))
 
-            # Every test gets a result line, also when the run is cancelled before the final summary
-            result_match = RESULT_RE.search(line)
+            result_match = RESULT_RE.search(line)  # ctest prints a result line also when the run is cancelled
             if result_match:
                 config = result_match.group("config").strip()
                 ensure_config(config)
@@ -153,8 +149,7 @@ def main() -> int:
                 ensure_config(list_config)
                 continue
 
-            # Only accept list items directly below the list header, other "[cfg] N - text" lines are test output
-            failed_match = FAILED_LIST_RE.search(line) if list_config is not None else None
+            failed_match = FAILED_LIST_RE.search(line) if list_config is not None else None  # Other lines: test output
             if failed_match and failed_match.group("config").strip() == list_config:
                 num = failed_match.group("num").strip()
                 name = normalize_name(failed_match.group("name"))
@@ -164,7 +159,6 @@ def main() -> int:
             elif list_config is not None and line.startswith(f"[{list_config}]"):
                 list_config = None
 
-    # Tests that started but have no result line: the run was cancelled or the log is truncated
     for config in order:
         for num, name in started[config].items():
             if num not in results[config] and num not in failures[config]:
@@ -181,8 +175,7 @@ def main() -> int:
             if summary is None and not results[config] and not failures[config]:
                 print(f"| {config} | n/a | n/a | n/a |")
             elif summary is None:
-                # No ctest summary: count the per-test result lines (ctest counts skipped tests as passed)
-                failed = len(failures[config])
+                failed = len(failures[config])  # ctest counts skipped tests as passed
                 total = len(set(results[config]) | set(failures[config]))
                 print(f"| {config} (incomplete, no ctest summary) | {total - failed} | {failed} | {total} |")
             else:

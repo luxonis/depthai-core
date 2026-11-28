@@ -3,20 +3,15 @@
 #include "depthai/pipeline/FilterParams.hpp"
 
 void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
-    // dai.filters.params
     py::module_ filters = m.def_submodule("filters", "Parameters for filters");
     py::module_ params = filters.def_submodule("params", "Parameters for filters");
 
-    // -- Median Filter --
-    // Keep the built-in enum __str__ ("MedianFilter.KERNEL_3x3"). pybind11 v3 runs a custom enum __str__
-    // first, and one that formats self calls itself again.
-    py::enum_<dai::filters::params::MedianFilter> medianFilter(params, "MedianFilter");
+    py::enum_<dai::filters::params::MedianFilter> medianFilter(params, "MedianFilter");  // No custom __str__: in pybind11 v3 one that formats self recurses
     medianFilter.value("MEDIAN_OFF", dai::filters::params::MedianFilter::MEDIAN_OFF)
         .value("KERNEL_3x3", dai::filters::params::MedianFilter::KERNEL_3x3)
         .value("KERNEL_5x5", dai::filters::params::MedianFilter::KERNEL_5x5)
         .value("KERNEL_7x7", dai::filters::params::MedianFilter::KERNEL_7x7);
 
-    // -- Spatial Filter --
     py::class_<dai::filters::params::SpatialFilter> spatialFilter(params, "SpatialFilter");
     spatialFilter.def(py::init<>())
         .def_readwrite("enable", &dai::filters::params::SpatialFilter::enable, DOC(dai, filters, params, SpatialFilter, enable))
@@ -30,7 +25,6 @@ void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
                 .format(self.enable, self.holeFillingRadius, self.alpha, self.delta, self.numIterations);
         });
 
-    // -- Temporal Filter --
     py::class_<dai::filters::params::TemporalFilter> temporalFilter(params, "TemporalFilter", DOC(dai, filters, params, TemporalFilter));
     temporalFilter.def(py::init<>())
         .def_readwrite("enable", &dai::filters::params::TemporalFilter::enable, DOC(dai, filters, params, TemporalFilter, enable))
@@ -73,7 +67,6 @@ void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
                dai::filters::params::TemporalFilter::PersistencyMode::PERSISTENCY_INDEFINITELY,
                DOC(dai, filters, params, TemporalFilter, PersistencyMode, PERSISTENCY_INDEFINITELY));
 
-    // -- Threshold filter --
     py::class_<dai::filters::params::ThresholdFilter> thresholdFilter(params, "ThresholdFilter", DOC(dai, filters, params, ThresholdFilter));
     thresholdFilter.def(py::init<>())
         .def_readwrite("minRange", &dai::filters::params::ThresholdFilter::minRange, DOC(dai, filters, params, ThresholdFilter, minRange))
@@ -82,7 +75,6 @@ void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
             return py::str("ThresholdFilter(minRange={}, maxRange={})").format(self.minRange, self.maxRange);
         });
 
-    // -- Speckle filter --
     py::class_<dai::filters::params::SpeckleFilter> speckleFilter(params, "SpeckleFilter");
     speckleFilter.def(py::init<>())
         .def_readwrite("enable", &dai::filters::params::SpeckleFilter::enable, DOC(dai, filters, params, SpeckleFilter, enable))
@@ -94,8 +86,7 @@ void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
                 .format(self.enable, self.speckleRange, self.differenceThreshold);
         });
 
-    // Aliases for backward compatibility
-    m.attr("MedianFilter") = medianFilter;
+    m.attr("MedianFilter") = medianFilter;  // Old names, kept for backward compatibility
     m.attr("StereoDepthConfig").attr("MedianFilter") = medianFilter;
     m.attr("StereoDepthConfig").attr("PostProcessing").attr("MedianFilter") = medianFilter;
     m.attr("StereoDepthConfig").attr("PostProcessing").attr("SpatialFilter") = spatialFilter;

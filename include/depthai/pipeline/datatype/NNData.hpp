@@ -76,7 +76,6 @@ class NNData : public Buffer, public ProtoSerializable {
     NNData(size_t size);
     virtual ~NNData();
 
-    // getters
     /**
      * @returns Names of all layers added
      */
@@ -151,7 +150,6 @@ class NNData : public Buffer, public ProtoSerializable {
     NNData& addTensor(const std::string& name, const std::vector<_Ty>& data, dai::TensorInfo::DataType dataType) {
         return addTensor<_Ty>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dataType);
     };
-    // addTensor vector dispatch
     template <typename _Ty = double>
     NNData& addTensor(const std::string& name, const std::vector<_Ty>& tensor) {
         if constexpr(std::is_same<_Ty, int>::value) {
@@ -178,7 +176,6 @@ class NNData : public Buffer, public ProtoSerializable {
     NNData& addTensor(const std::string& name, const std::vector<std::int8_t>& tensor);
     NNData& addTensor(const std::string& name, const std::vector<std::uint8_t>& tensor);
 
-    // addTensor dispatch
     template <typename _Ty = double>
     NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor) {
         if constexpr(std::is_same<_Ty, int>::value) {
@@ -305,7 +302,6 @@ class NNData : public Buffer, public ProtoSerializable {
         if(dataTypeSize == 0) throw std::invalid_argument("Unsupported tensor datatype");
         size_t sConvertedData = dataTypeSize;
         info.strides.resize(info.dims.size());
-        // Compute contiguous byte strides and total size before allocating or copying.
         for(size_t i = info.dims.size(); i > 0; --i) {
             if(sConvertedData > std::numeric_limits<unsigned int>::max()) {
                 throw std::overflow_error("Tensor byte stride exceeds TensorInfo capacity");
@@ -320,14 +316,12 @@ class NNData : public Buffer, public ProtoSerializable {
         info.validateStorageOrder();
         const auto tensorSize = sConvertedData / dataTypeSize;
 
-        // Check if data is vector type of data
         if(std::dynamic_pointer_cast<VectorMemory>(data) == nullptr) {
             auto prev = std::vector<uint8_t>(data->getData().begin(), data->getData().end());
             data = std::make_shared<VectorMemory>(std::move(prev));
         }
         auto vecData = std::dynamic_pointer_cast<VectorMemory>(data);
 
-        // Align the tensor and check the full allocation, including existing data.
         const auto padding = (DATA_ALIGNMENT - vecData->size() % DATA_ALIGNMENT) % DATA_ALIGNMENT;
         const auto available = vecData->max_size() - vecData->size();
         if(padding > available || sConvertedData > available - padding) {
@@ -340,7 +334,6 @@ class NNData : public Buffer, public ProtoSerializable {
         info.offset = static_cast<unsigned int>(offset);
         vecData->resize(offset + sConvertedData);
 
-        // Convert data to appropriate data type and write to data
         const auto copyValues = [&](auto value) {
             if(dataType == dai::TensorInfo::DataType::I8) {
                 for(size_t i = 0; i < tensorSize; ++i, ++value) {
@@ -372,8 +365,7 @@ class NNData : public Buffer, public ProtoSerializable {
                 }
             }
         };
-        // Check actual strides: a static row-major layout tag can still carry custom strides.
-        if(xt::do_strides_match(tensor.shape(), tensor.strides(), xt::layout_type::row_major, true)) {
+        if(xt::do_strides_match(tensor.shape(), tensor.strides(), xt::layout_type::row_major, true)) {  // A row-major layout tag can still carry custom strides
             copyValues(tensor.data());
         } else {
             const auto source = xt::strided_view(tensor, tensor.shape(), typename xt::xarray<_Ty>::strides_type(tensor.strides()));
@@ -457,10 +449,8 @@ class NNData : public Buffer, public ProtoSerializable {
      */
     template <typename _Ty>
     xt::xarray<_Ty> getTensor(const std::string& name, TensorInfo::StorageOrder order, bool dequantize = false) {
-        // Get tensor
         xt::xarray<_Ty> tensor = getTensor<_Ty>(name, dequantize);
 
-        // Change storage order
         const auto storageit = std::find_if(tensors.begin(), tensors.end(), [&name](const TensorInfo& ti) { return ti.name == name; });
         TensorInfo::StorageOrder from = storageit->order;
         TensorInfo::StorageOrder to = order;
@@ -470,7 +460,6 @@ class NNData : public Buffer, public ProtoSerializable {
 
     template <typename _Ty>
     void changeStorageOrder(xt::xarray<_Ty>& array, TensorInfo::StorageOrder from, TensorInfo::StorageOrder to) {
-        // Convert storage order to vector
         auto order2vec = [](TensorInfo::StorageOrder order) {
             size_t ord = static_cast<size_t>(order);
             std::vector<size_t> vec;
@@ -484,7 +473,6 @@ class NNData : public Buffer, public ProtoSerializable {
         std::vector<size_t> fromOrder = order2vec(from);
         std::vector<size_t> toOrder = order2vec(to);
 
-        // Just permute dimensions
         if(fromOrder.size() == toOrder.size()) {
             std::vector<size_t> permute;
             for(size_t i = 0; i < toOrder.size(); ++i) {
@@ -498,9 +486,7 @@ class NNData : public Buffer, public ProtoSerializable {
             array = xt::transpose(array, permute);
         }
 
-        // Expand and permute
         if(fromOrder.size() < toOrder.size()) {
-            // Expand dimensions
             std::vector<size_t> expand;
             std::vector<size_t> fromOrderExpanded = fromOrder;
             for(size_t i = 0; i < toOrder.size(); ++i) {
@@ -514,7 +500,6 @@ class NNData : public Buffer, public ProtoSerializable {
                 array = xt::expand_dims(array, expand[i]);
             }
 
-            // Permute
             std::vector<size_t> permute;
             for(size_t i = 0; i < toOrder.size(); ++i) {
                 auto it = std::find(fromOrderExpanded.begin(), fromOrderExpanded.end(), toOrder[i]);
@@ -527,9 +512,7 @@ class NNData : public Buffer, public ProtoSerializable {
             array = xt::transpose(array, permute);
         }
 
-        // Squeeze and permute
         if(fromOrder.size() > toOrder.size()) {
-            // Squeeze extra dimensions
             std::vector<size_t> squeeze;
             std::vector<size_t> fromOrderSqueezed;
             for(size_t i = 0; i < fromOrder.size(); ++i) {
@@ -548,7 +531,6 @@ class NNData : public Buffer, public ProtoSerializable {
                 array = xt::squeeze(array, squeeze[i]);
             }
 
-            // Permute
             std::vector<size_t> permute;
             for(size_t i = 0; i < toOrder.size(); ++i) {
                 auto it = std::find(fromOrderSqueezed.begin(), fromOrderSqueezed.end(), toOrder[i]);

@@ -47,8 +47,7 @@ void FeatureTracker::run() {
     } else {
         logger->trace("No initial configuration is set");
     }
-    // got this value from examples/python/FeatureTracker/feature_tracker.py which had 256-1024 as a reasonable range
-    constexpr std::int32_t defaultNumMaxFeatures = 512;
+    constexpr std::int32_t defaultNumMaxFeatures = 512;  // From examples/python/FeatureTracker/feature_tracker.py: 256-1024 is a reasonable range
     if(latestConfig.cornerDetector.numMaxFeatures <= 0) latestConfig.cornerDetector.numMaxFeatures = defaultNumMaxFeatures;
 
     bool initedFpx = false;
@@ -62,18 +61,15 @@ void FeatureTracker::run() {
     while(mainLoop()) {
         std::shared_ptr<dai::TrackedFeatures> outFeatures = std::make_shared<dai::TrackedFeatures>();
 
-        // Previous frame
         if(frameCounter > 1) {
             inImagePreviousFrame = inImageCurrentFrame;
         }
 
         {
             auto blockEvent = this->inputBlockEvent();
-            // Current frame
             inImageCurrentFrame = inputImage.get<ImgFrame>();
         }
 
-        // Validate every frame before initializing or using the hardware accelerator dispatchers.
         const auto width = inImageCurrentFrame->getWidth();
         const auto height = inImageCurrentFrame->getHeight();
         if(width <= 0 || height <= 0 || width > 1920 || height > 1080 || width % 128 != 0 || height % 32 != 0) {
@@ -86,7 +82,6 @@ void FeatureTracker::run() {
             break;
         }
 
-        // The dispatchers and their buffers are configured for the first frame's size.
         if(inImagePreviousFrame && (width != inImagePreviousFrame->getWidth() || height != inImagePreviousFrame->getHeight())) {
             logger->error("Input image dimensions changed from {}x{} to {}x{} for FeatureTracker on RVC4. "
                           "Input dimensions must remain constant. Stopping the node.",
@@ -130,24 +125,17 @@ void FeatureTracker::run() {
         auto tAbsoluteBeginning = steady_clock::now();
         auto tGotInput = tAbsoluteBeginning;
 
-        // This is Optical Flow mode
         if(latestConfig.motionEstimator.enable == true) {
             std::map<TrackedPoint, uint32_t> motionTrackedFeaturesInCurrentFrame;
 
-            // For the first frame, find feature points which will be tracked through Dense Optical Flow
             if(frameCounter == 1) {
                 cornerDetector.Run(inImageCurrentFrame);
             } else {
-                // Find all feature points in previous frame and call this set: "Tracked Features"
                 cornerDetector.Run(inImagePreviousFrame);
 
-                // Run Dense optical flow to calculate positions of previous frame's Tracked Features in current frame
                 opticalFlow.Run(inImagePreviousFrame, inImageCurrentFrame);
             }
 
-            // Add more features to try to follow
-            // cornerDetector is holding detected points from previous frame
-            // featureId is last id (it is simply incremented for every newly added feature)
             if(frameCounter % detectInterval == 1 or addMoreFeatures) {
                 addMoreFeaturesToPreviousFrame(motionTrackedFeaturesInPreviousFrame,
                                                cornerDetector,
@@ -158,10 +146,8 @@ void FeatureTracker::run() {
                                                latestConfig.featureMaintainer.minimumDistanceBetweenFeatures);
             }
 
-            // Run corner detection on current frame
             cornerDetector.Run(inImageCurrentFrame);
 
-            // Only accept features that Dense Optical flow has matched in previous and current frame
             motionTrackedFeaturesInCurrentFrame = reidentifyUsingDenseOpticalFlow(motionTrackedFeaturesInPreviousFrame,
                                                                                   opticalFlow,
                                                                                   cornerDetector,
@@ -181,12 +167,10 @@ void FeatureTracker::run() {
 
             motionTrackedFeaturesInPreviousFrame = std::move(motionTrackedFeaturesInCurrentFrame);
         } else {
-            // For each frame use all features as new features and calculate ORB descriptors
             cornerDetector.Run(inImageCurrentFrame);
 
             detectFeaturesInCurrentFrame(cornerDetector, minumumHarrisScore, featureId, logger, latestConfig.cornerDetector.numMaxFeatures, outFeatures);
 
-            // if(latestConfig.cornerDetector.enableDescriptorCalculation && outFeatures->trackedFeatures.size() > 0) {
             if(true && outFeatures->trackedFeatures.size() > 0) {  // TODO(Morato) - expose
                 calculateOrbDescriptors(inImageCurrentFrame, descriptorCalculator, outFeatures);
             }
@@ -213,7 +197,6 @@ void FeatureTracker::run() {
             if(latestConfig.cornerDetector.numMaxFeatures <= 0) latestConfig.cornerDetector.numMaxFeatures = defaultNumMaxFeatures;
 
             if(alreadyMotionEnabled && latestConfig.motionEstimator.enable == false) {
-                // Purge data
                 motionTrackedFeaturesInPreviousFrame.clear();
             }
 
@@ -222,10 +205,8 @@ void FeatureTracker::run() {
             if(latestConfig.cornerDetector.thresholds.initialValue) cornerDetector.setThreshold(latestConfig.cornerDetector.thresholds.initialValue);
             cornerDetector.setRobustness(90);  // TODO(Morato) expose
 
-            // Reconfigure the corner detector
             cornerDetector.Config();
 
-            // Reconfigure the descriptor calculator
             descriptorCalculator.Config();
         }
 

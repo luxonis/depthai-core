@@ -15,23 +15,19 @@ except ImportError:  # setuptools < 70.1
 from packaging.version import Version
 from pathlib import Path
 
-### NAME
 MODULE_NAME = 'depthai'
 DEPTHAI_CLI_MODULE_NAME = 'depthai_cli'
 
-### VERSION
 here = os.path.abspath(os.path.dirname(__file__))
 version_file = os.path.join(here, "generated", "version.py")
 os.makedirs(os.path.join(here, "generated"), exist_ok=True)
 if os.environ.get('CI') != None :
-    ### If CI build, respect 'BUILD_COMMIT_HASH' to determine final version if set
     final_version = find_version.get_package_version()
     if os.environ.get('BUILD_COMMIT_HASH') != None:
         final_version = find_version.get_package_dev_version(os.environ['BUILD_COMMIT_HASH'])
     with open(version_file, 'w') as vf :
         vf.write("__version__ = '" + final_version + "'")
 elif os.path.exists("../../.git"):
-    ### else if .git folder exists, create depthai with commit hash retrieved from git rev-parse HEAD
     commit_hash = 'dev'
     try:
         commit_hash = (
@@ -42,7 +38,6 @@ elif os.path.exists("../../.git"):
             .decode()
         )
     except subprocess.CalledProcessError as e:
-        # cannot get commit hash, leave empty
         commit_hash = 'dev'
     final_version = find_version.get_package_dev_version(commit_hash)
 
@@ -50,14 +45,11 @@ elif os.path.exists("../../.git"):
         vf.write("__version__ = '" + final_version + "'")
 
 
-# If not generated, generate from find_version
 if os.path.isfile(version_file) == False :
-    # generate from find_version
     final_version = find_version.get_package_dev_version('dev')
     with open(version_file, 'w') as vf :
         vf.write("__version__ = '" + final_version + "'")
 
-### Get version from version.py (sdist will have this pregenerated)
 exec(open(version_file).read())
 buildCommitHash = None
 if len(__version__.split("+")) > 1 :
@@ -92,10 +84,8 @@ def _license_files():
 _stage_license_files()
 
 
-## Read description (README.md)
 long_description = open("README.md", "r", encoding="utf-8").read()
 
-## Early settings
 MACOSX_DEPLOYMENT_TARGETS = {
     "arm64": "11.0",
     "x86_64": "11.0",
@@ -168,8 +158,7 @@ def _generate_wheel_sbom(build_dir):
     if os.path.isdir(wheel_sbom_output_dir):
         shutil.rmtree(wheel_sbom_output_dir)
     script_path = os.path.join(repo_root, "scripts", "generate_sbom.py")
-    # Best effort: a wheel without an SBOM still works. CI requires it (scripts/verify_license_artifact.py).
-    try:
+    try:  # Best effort: a wheel without an SBOM works; CI checks it (scripts/verify_license_artifact.py)
         subprocess.check_call([
             sys.executable,
             script_path,
@@ -186,10 +175,7 @@ def _generate_wheel_sbom(build_dir):
             shutil.rmtree(wheel_sbom_output_dir)
 
 class BdistWheelWithSbom(bdist_wheel):
-    # Put the SBOMs of the build into .dist-info/sboms/ (PEP 770); bdist_wheel then lists them in RECORD.
-    # write_wheelfile is the hook: bdist_wheel calls it whether it converts egg-info or reuses the
-    # dist-info that pip made with prepare_metadata_for_build_wheel (then egg2dist does not run).
-    def write_wheelfile(self, wheelfile_base, *args, **kwargs):
+    def write_wheelfile(self, wheelfile_base, *args, **kwargs):  # PEP 770; runs for both egg-info and pip dist-info
         super().write_wheelfile(wheelfile_base, *args, **kwargs)
         if not os.path.isdir(wheel_sbom_output_dir):
             return
@@ -224,7 +210,6 @@ class CMakeBuild(build_ext):
 
     def build_extension(self, ext):
         if ext.name == DEPTHAI_CLI_MODULE_NAME:
-            # Copy CLI scripts and their dependencies to depthai_cli/
             cam_test_path      = os.path.join(str(repo_root), "utilities", "cam_test.py")
             cam_test_dest = os.path.join(self.build_lib, DEPTHAI_CLI_MODULE_NAME, "cam_test.py")
             cam_test_gui_path  = os.path.join(str(repo_root), "utilities", "cam_test_gui.py")
@@ -246,11 +231,9 @@ class CMakeBuild(build_ext):
             return
 
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
-        # required for auto-detection of auxiliary "native" libs
-        if not extdir.endswith(os.path.sep):
+        if not extdir.endswith(os.path.sep):  # Trailing separator: needed to auto-detect auxiliary native libs
             extdir += os.path.sep
 
-        # initialize cmake_args and build_args
         cmake_args = []
         build_args = []
         env = os.environ.copy()
@@ -260,8 +243,7 @@ class CMakeBuild(build_ext):
         if env.get('DEPTHAI_BUILD_BETA') == 'ON':
             cmake_args += ['-DDEPTHAI_BUILD_BETA=ON']
 
-        # build shared libs only in CI - for downstream wheel bundling
-        if env.get("CI") is not None:
+        if env.get("CI") is not None:  # Shared libs only in CI, for downstream wheel bundling
             cmake_args += ['-DBUILD_SHARED_LIBS=ON']
 
         cmake_args += ['-DDEPTHAI_MERGED_TARGET=ON']
@@ -276,37 +258,28 @@ class CMakeBuild(build_ext):
         build_args += ['--target=depthai']
 
 
-        # Specify output directory and python executable
         cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir, '-DPYTHON_EXECUTABLE=' + sys.executable]
-        # Specify dir of python executable (pybind11)
         if platform.system() == "Windows":
-            # Windows - remove case insensitive variants
             env = {key:env[key] for key in env if key.upper() != 'pythonLocation'.upper()}
         env['pythonLocation'] = str(Path(sys.executable).parent.absolute())
 
 
-        # Pass a commit hash
         if buildCommitHash != None :
             cmake_args += ['-DDEPTHAI_PYTHON_COMMIT_HASH=' + buildCommitHash]
 
-        # Pass a docstring option
         if 'DEPTHAI_PYTHON_DOCSTRINGS_INPUT' in os.environ:
             cmake_args += ['-DDEPTHAI_PYTHON_DOCSTRINGS_INPUT='+os.environ['DEPTHAI_PYTHON_DOCSTRINGS_INPUT']]
 
-        # Pass installation directory
         if 'DEPTHAI_INSTALLATION_DIR' in os.environ:
             cmake_args += ['-DDEPTHAI_PYTHON_USE_FIND_PACKAGE=ON']
             cmake_args += ['-DCMAKE_PREFIX_PATH='+os.environ['DEPTHAI_INSTALLATION_DIR']]
 
-        # Set build type (debug vs release for library as well as dependencies)
         cfg = 'Debug' if self.debug else 'Release'
         cmake_args += ['-DPIP_TEMP_LIB_FOLDER=' + os.path.abspath(os.path.join(self.build_temp, cfg))]
         cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
         cmake_args += ['-DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF']
-        # Do not export the symbols of the static dependencies from depthai-core (Linux)
         cmake_args += ['-DDEPTHAI_EXCLUDE_ARCHIVE_LIBS_SYMBOLS=ON']
-        # Remove unused code from depthai-core (Linux); needs the option above to remove much
-        cmake_args += ['-DDEPTHAI_LINK_GC_SECTIONS=ON']
+        cmake_args += ['-DDEPTHAI_LINK_GC_SECTIONS=ON']  # Linux; removes much only with EXCLUDE_ARCHIVE_LIBS_SYMBOLS
         build_args += ['--config', cfg]
         if not self.debug:
             rootDirectory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -315,7 +288,6 @@ class CMakeBuild(build_ext):
                     os.path.join(rootDirectory, 'cmake', 'triplets', 'release')
                 )
             ]
-        # Memcheck (guard if it fails)
         freeMemory = 4000
         if platform.system() == "Linux":
             try:
@@ -325,30 +297,20 @@ class CMakeBuild(build_ext):
             except:
                 freeMemory = 4000
 
-        # Configure and build
-
-        # Add additional cmake build args from environment
         if 'CMAKE_BUILD_ARGS' in os.environ:
             build_args += [os.environ['CMAKE_BUILD_ARGS']]
 
-        # Windows
         if platform.system() == "Windows":
             cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir)]
-            # cmake_args += ['-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE={}'.format(os.path.dirname(os.path.abspath(__file__)) + '/cmake/toolchain/msvc.cmake')]
-            # cmake_args += ['-DVCPKG_TARGET_TRIPLET=x64-windows-static-crt'] # Keep the default triplet to avoid dual CRT issues
 
 
-            # Detect whether 32 / 64 bit Python is used and compile accordingly
             if sys.maxsize > 2**32:
                 cmake_args += ['-A', 'x64']
             else:
                 cmake_args += ['-A', 'Win32']
 
-            # Add flag to build with maximum available threads
             build_args += ['--', '/m']
-        # Unix
         else:
-            # if macos add some additional env vars
             if sys.platform == 'darwin':
                 mac_arch = MACOS_SETTINGS.get('arch', platform.machine())
                 deployment_target = MACOS_SETTINGS.get('deployment_target')
@@ -364,7 +326,6 @@ class CMakeBuild(build_ext):
                 if deployment_target and not any(arg.startswith('-DCMAKE_OSX_DEPLOYMENT_TARGET=') for arg in cmake_args):
                     cmake_args += [f'-DCMAKE_OSX_DEPLOYMENT_TARGET={deployment_target}']
 
-            # Specify how many threads to use when building, depending on available memory
             max_threads = os.cpu_count()
             num_threads = (freeMemory // 2000)
             num_threads = min(num_threads, max_threads)
@@ -375,7 +336,6 @@ class CMakeBuild(build_ext):
 
         env['CXXFLAGS'] = '{} -DVERSION_INFO=\\"{}\\"'.format(env.get('CXXFLAGS', ''), self.distribution.get_version())
 
-        # Add additional cmake args from environment
         if 'CMAKE_ARGS' in os.environ:
             cmake_args += [os.environ['CMAKE_ARGS']]
         if ("free-threading build" in sys.version):
@@ -384,11 +344,8 @@ class CMakeBuild(build_ext):
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
 
-        # Configure and build
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
-        if os.environ.get('DEPTHAI_CONFIGURE_ONLY') == '1':
-            # CI warms the vcpkg binary cache with the exact dependency set of the wheel build; the
-            # configure step installs the dependencies, so stop here (.github/workflows/vcpkg_cache_warm.yml).
+        if os.environ.get('DEPTHAI_CONFIGURE_ONLY') == '1':  # Configure installs the deps; for vcpkg_cache_warm.yml
             print('DEPTHAI_CONFIGURE_ONLY=1: dependencies installed and project configured, not building')
             return
         subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp, env=env)

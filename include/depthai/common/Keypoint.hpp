@@ -4,11 +4,9 @@
 #include <vector>
 
 #include "depthai/common/ImgTransformations.hpp"
+#include "depthai/common/KeypointsListT.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
-
-// project
-#include "depthai/common/KeypointsListT.hpp"
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {

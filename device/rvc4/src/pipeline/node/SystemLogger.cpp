@@ -18,7 +18,6 @@ void SystemLogger::run() {
 
     Measurements measurements(logger);
 
-    // Needed for measuring CPU load
     std::vector<Measurements::cpuData> entriesStart;
     std::vector<Measurements::cpuData> entriesEnd;
     Measurements::cpuData totalStart;
@@ -31,14 +30,12 @@ void SystemLogger::run() {
         auto tGotInput = tAbsoluteBeginning;
         auto pSysInfo = std::make_shared<dai::SystemInformationRVC4>();
 
-        // Measure CPU load
         entriesStart.swap(entriesEnd);
         totalStart = totalEnd;
         std::this_thread::sleep_for(sleepPeriod);
         measurements.readStatsCpu(entriesEnd, totalEnd);
         measurements.readSystemInformation(*pSysInfo, sleepPeriod, entriesStart, entriesEnd, totalStart, totalEnd);
 
-        // Send out system information
         auto tProcessed = steady_clock::now();
         out.send(pSysInfo);
         auto tAbsoluteEnd = steady_clock::now();

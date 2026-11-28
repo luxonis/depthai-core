@@ -23,11 +23,9 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraModel.hpp"
 
-// EVM boards have 35 bytes written at beginning, don't want to overwrite it
-#define EEPROM_DATA_OFFSET (128)
+#define EEPROM_DATA_OFFSET (128)  // EVM boards have 35 bytes written at the start; do not overwrite them
 #define TOTAL_DISTORTION_PARAMETERS (14)
 
-// As defined by the used eeprom
 #define EEPROM_MEM_SIZE (4096)
 #define EEPROM_FACTORY_OFFSET ((EEPROM_MEM_SIZE - EEPROM_DATA_OFFSET) / 2)
 
@@ -35,14 +33,8 @@
 
 constexpr size_t SIZE_OF_CONFIGURATION = EEPROM_FACTORY_OFFSET;
 
-// Checks - location of
-// 1. version
-// 2. board_options
-// Have to remain backward compatible because those are used by bootloader and aren't closely followed
-// (eg older bootloader, newer eeprom version)
-static_assert(sizeof(gen2_eeprom_data) + offsetof(gen2_eeprom_ex_data, board_options) == 1810 + 96);
+static_assert(sizeof(gen2_eeprom_data) + offsetof(gen2_eeprom_ex_data, board_options) == 1810 + 96);  // Fixed: the bootloader reads version and board_options
 
-// Checks if eeprom is big enought to fit
 static_assert(sizeof(gen2_eeprom_data) + sizeof(gen2_eeprom_ex_data) <= SIZE_OF_CONFIGURATION);
 
 const char* eeprom_status_to_str(eeprom_status status) {
@@ -72,9 +64,7 @@ const char* eeprom_status_to_str(eeprom_status status) {
 }
 
 #define CAM_OFFSET 1
-// The EEPROM opened for a socket (AUTO is the device's own EEPROM). A CBA EEPROM sits at one of two I2C addresses,
-// so the address it was opened at goes with the fd.
-struct OpenEeprom {
+struct OpenEeprom {  // Index AUTO is the device's own EEPROM; cbaAddress is the one of two CBA addresses it was opened at
     int fd = -1;
     uint16_t cbaAddress = 0;
 };
@@ -111,10 +101,7 @@ static std::vector<float> flattenImuCalibrationMatrix(const std::vector<std::vec
     return flattened;
 }
 
-// The EEPROM structs (eeprom.h) are packed, so their float members can be unaligned.
-// Do not make a float* to them (undefined behaviour, UBSan: "load of misaligned address"),
-// copy the bytes with memcpy instead.
-static std::vector<float> copyPackedFloats(const void* src, size_t count) {
+static std::vector<float> copyPackedFloats(const void* src, size_t count) {  // EEPROM structs are packed: a float* to their members is misaligned (UB)
     std::vector<float> values(count);
     if(count > 0) {
         std::memcpy(values.data(), src, count * sizeof(float));
@@ -136,9 +123,7 @@ static eeprom_status eeprom_store(const void* data, size_t size, size_t add_offs
     }
     const auto* eeprom = getOpenEeprom(camSocket);
 
-    // Check that user area isn't overriding factory area
     if(area == EEPROM_AREA_USER) {
-        // Check aginst overriding factory default section of EEPROM
         if(size + add_offset > EEPROM_FACTORY_OFFSET) {
             return EEPROM_OUT_OF_BOUNDS;
         }
@@ -148,8 +133,7 @@ static eeprom_status eeprom_store(const void* data, size_t size, size_t add_offs
         return EEPROM_INVALID_AREA;
     }
 
-    // CBA EEPROMs share the camera I2C buses with the sensors: write them directly, with paced write cycles
-    if(camSocket != dai::CameraBoardSocket::AUTO) {
+    if(camSocket != dai::CameraBoardSocket::AUTO) {  // CBA EEPROMs share the camera I2C buses with the sensors: direct, paced writes
         const auto error = i2c_eeprom_write(eeprom->fd, eeprom->cbaAddress, static_cast<const uint8_t*>(data), size, EEPROM_DATA_OFFSET + add_offset);
         if(!error.empty()) {
             printf("CBA EEPROM %s\n", error.c_str());
@@ -181,7 +165,6 @@ static eeprom_status eeprom_read(void* data, size_t size, size_t add_offset, eep
     }
     const auto* eeprom = getOpenEeprom(camSocket);
 
-    // Check that user area isn't overriding factory area
     if(area == EEPROM_AREA_USER) {
         add_offset += 0;
     } else if(area == EEPROM_AREA_FACTORY) {
@@ -214,22 +197,11 @@ static eeprom_status eeprom_read(void* data, size_t size, size_t add_offset, eep
     return EEPROM_OK;
 }
 
-// Protected fields are:
-// - board_name, board_rev
-// - board_id, hardware_id
-// - batch_name, batch_time
-// - board_bl_options
-// - (as of 2.20.0) product_name
-// These cannot be override, unless, "factory mode" is enabled
-// This applies both to pre v7 and post v7 versions
-
-static bool eeprom_check_protected_fields_are_same(const dai::EepromData& l, const dai::EepromData& r) {
+static bool eeprom_check_protected_fields_are_same(const dai::EepromData& l, const dai::EepromData& r) {  // Changeable only in factory mode (pre and post v7)
     return l.boardName == r.boardName && l.boardRev == r.boardRev && l.boardConf == r.boardConf && l.hardwareConf == r.hardwareConf
            && l.deviceName == r.deviceName && l.batchTime == r.batchTime && l.boardOptions == r.boardOptions
            && l.productName == r.productName;  // As of v2.20.0
 }
-
-// PUBLIC
 
 int eeprom_open_cba(dai::CameraBoardSocket camSocket, int bus, uint16_t address) {
     auto* eeprom = getOpenEeprom(camSocket);
@@ -255,7 +227,6 @@ int eeprom_open(dai::CameraBoardSocket camSocket) {
     int* eepFd = &eeprom->fd;
 
     if(camSocket != dai::CameraBoardSocket::AUTO) {
-        // CBA EEPROM on the camera's I2C bus, detected at startup
         const auto cba = CameraSingleton::getInstance().getCbaEeprom(camSocket);
         if(!cba.has_value()) {
             return -1;
@@ -308,22 +279,14 @@ std::tuple<bool, std::string, std::vector<uint8_t>> eeprom_read_raw(eeprom_area 
 }
 
 namespace {
-// A write must stay within one page, otherwise it wraps to the start of that page
-constexpr size_t I2C_EEPROM_PAGE_SIZE = 32;
-// The CCI I2C bridge carries at most 11 bytes per write: the 2-byte memory address plus 9 data bytes
-constexpr size_t I2C_EEPROM_MAX_WRITE_CHUNK = 9;
-// Short read transfers, so the CCI is never held long enough to delay the sensors' per-frame register writes
-constexpr size_t I2C_EEPROM_MAX_READ_CHUNK = 128;
-// Worst-case write cycle of the supported parts. Waiting it out instead of polling the busy EEPROM avoids
-// NACKs, on which the CCI driver resets the I2C master shared with the streaming sensor
-constexpr auto I2C_EEPROM_WRITE_CYCLE = std::chrono::milliseconds(10);
+constexpr size_t I2C_EEPROM_PAGE_SIZE = 32;        // A write must stay within one page, otherwise it wraps to the start of that page
+constexpr size_t I2C_EEPROM_MAX_WRITE_CHUNK = 9;   // The CCI I2C bridge carries at most 11 bytes per write: the 2-byte memory address plus 9 data bytes
+constexpr size_t I2C_EEPROM_MAX_READ_CHUNK = 128;  // Short reads so the CCI never delays the sensors' per-frame register writes
+constexpr auto I2C_EEPROM_WRITE_CYCLE = std::chrono::milliseconds(10);  // Worst-case write cycle; polling gives NACKs that reset the I2C master of the sensor
 
-// Camera-module EEPROM (24C64-compatible)
 constexpr size_t CCM_EEPROM_SIZE = 8192;
-// Keeps a write call well within the host's default 10 s RPC timeout
-constexpr size_t CCM_EEPROM_MAX_WRITE_SIZE = 4096;
+constexpr size_t CCM_EEPROM_MAX_WRITE_SIZE = 4096;  // Keeps a write call well within the host's default 10 s RPC timeout
 
-// Opens the socket's I2C bus addressed to its CCM EEPROM; returns the fd, or -1 with `error` set
 int ccm_eeprom_open(dai::CameraBoardSocket camSocket, std::string& error) {
     try {
         return i2c_eeprom_open(CameraSingleton::getInstance().getCcmEepromBus(camSocket), CameraSingleton::CCM_EEPROM_ADDRESS, error);
@@ -350,8 +313,7 @@ int i2c_eeprom_open(int bus, uint16_t address, std::string& error) {
         error = "Couldn't open " + path + ": " + strerror(errno);
         return -1;
     }
-    // Fails with EBUSY if a kernel driver is bound to the address
-    if(ioctl(fd, I2C_SLAVE, address) < 0) {
+    if(ioctl(fd, I2C_SLAVE, address) < 0) {  // Fails with EBUSY if a kernel driver is bound to the address
         char addressText[8];
         snprintf(addressText, sizeof(addressText), "0x%02x", address);
         error = std::string("Couldn't address ") + addressText + " on " + path + ": " + strerror(errno);
@@ -365,7 +327,6 @@ std::string i2c_eeprom_read(int fd, uint16_t address, uint8_t* data, size_t size
     for(size_t done = 0; done < size;) {
         const size_t at = offset + done;
         const size_t chunk = std::min(I2C_EEPROM_MAX_READ_CHUNK, size - done);
-        // Each transfer writes the 2-byte memory address, then reads sequentially
         uint8_t memoryAddress[2] = {static_cast<uint8_t>(at >> 8), static_cast<uint8_t>(at)};
         i2c_msg msgs[2] = {{address, 0, sizeof(memoryAddress), memoryAddress}, {address, I2C_M_RD, static_cast<uint16_t>(chunk), data + done}};
         i2c_rdwr_ioctl_data transfer{msgs, 2};
@@ -386,7 +347,6 @@ std::string i2c_eeprom_write(int fd, uint16_t address, const uint8_t* data, size
         i2c_msg msg{address, 0, static_cast<uint16_t>(2 + chunk), buffer};
         i2c_rdwr_ioctl_data transfer{&msg, 1};
         const int result = ioctl(fd, I2C_RDWR, &transfer);
-        // Never address the EEPROM while it is still busy with this write
         std::this_thread::sleep_for(I2C_EEPROM_WRITE_CYCLE);
         if(result < 0) {
             return "write failed at offset " + std::to_string(at) + ": " + strerror(errno);
@@ -443,17 +403,12 @@ eeprom_version eeprom_get_version(eeprom_area area, dai::CameraBoardSocket camSo
 }
 
 std::tuple<bool, std::string> eeprom_factory_reset(dai::CameraBoardSocket camSocket) {
-    // Check if eeprom is available
     if(!eeprom_found(camSocket)) {
         return {false, "EEPROM not available to do a factory reset"};
     }
 
-    // Tries performing a factory reset of EEPROM contents.
-    // That is, copying the upper half of the EEPROM back to first part.
-    // This is only done if EEPROM has a factory backup available
     dai::EepromData board_data_config;
 
-    // Checks version and if its a valid config
     eeprom_status status = eeprom_load_config(board_data_config, EEPROM_AREA_FACTORY, camSocket);
     if(status == EEPROM_INVALID_DATA) {
         printf("Missing or corrupted factory default calibration");
@@ -462,14 +417,11 @@ std::tuple<bool, std::string> eeprom_factory_reset(dai::CameraBoardSocket camSoc
         return {false, "Coudln't read factory defaults from EEPROM, error: " + std::string(eeprom_status_to_str(status))};
     }
 
-    // Continue to perform a factory reset
     uint8_t factory_default[SIZE_OF_CONFIGURATION];
-    // Read out factory default eeprom content
     if((status = eeprom_read(factory_default, SIZE_OF_CONFIGURATION, 0, EEPROM_AREA_FACTORY, camSocket)) != EEPROM_OK) {
         printf("Couldn't read factory defaults from FACTORY area, ret: %d\n", status);
         return {false, "Couldn't read factory defaults from FACTORY area, error: " + std::string(eeprom_status_to_str(status))};
     }
-    // Restore user EEPROM settings with factory default ones
     if((status = eeprom_store(factory_default, SIZE_OF_CONFIGURATION, 0, EEPROM_AREA_USER, camSocket)) != EEPROM_OK) {
         printf("Couldn't flash factory defaults to USER area\n");
         return {false, "Couldn't flash factory defaults to USER area, error: " + std::string(eeprom_status_to_str(status))};
@@ -480,19 +432,16 @@ std::tuple<bool, std::string> eeprom_factory_reset(dai::CameraBoardSocket camSoc
 
 eeprom_status eeprom_store_config(
     dai::EepromData& board_data_config, eeprom_area area, bool factory_permissions, bool protected_permissions, dai::CameraBoardSocket camSocket) {
-    // Check if eeprom is available
     if(!eeprom_found(camSocket)) {
         return EEPROM_NOT_AVAILABLE;
     }
 
     eeprom_status ret = EEPROM_OK;
 
-    // Check if flashing is allowed
     if(area == EEPROM_AREA_FACTORY && !factory_permissions) {
         return EEPROM_NO_FACTORY_PERMISSIONS;
     }
 
-    // check that a previous configuration exists in EEPROM and if so, that protected fields aren't modified if no factory permissions
     if(!protected_permissions) {
         dai::EepromData prev_board_config;
         if(eeprom_load_config(prev_board_config, area, camSocket) == EEPROM_OK
@@ -519,26 +468,22 @@ eeprom_status eeprom_store_config(
     if(version == EEPROM_VERSION_V7 || version == EEPROM_VERSION_V6 || version == EEPROM_VERSION_V5) {
         gen2_eeprom_data board_data = {};
 
-        // IFF its V5 update to V6 implicitly
         if(version == EEPROM_VERSION_V5) {
             board_data.header.version = EEPROM_VERSION_V6;
         } else {
             board_data.header.version = version;
         }
 
-        // Check for size
         if(board_data_config.boardName.size() > sizeof(board_data.board_name) - 1) {
             return EEPROM_FIELD_TOO_LONG;
         }
         std::strncpy(board_data.board_name, board_data_config.boardName.c_str(), sizeof(board_data.board_name) - 1);
 
-        // Check for size
         if(board_data_config.boardRev.size() > sizeof(board_data.board_rev) - 1) {
             return EEPROM_FIELD_TOO_LONG;
         }
         std::strncpy(board_data.board_rev, board_data_config.boardRev.c_str(), sizeof(board_data.board_rev) - 1);
 
-        // board_data.swap_left_and_right_cameras = board_data_config.swapLeftRightCam;
         if(board_data_config.cameraData.size() > MAX_CAMERAS) {
             return EEPROM_FIELD_TOO_LONG;
         }
@@ -599,7 +544,6 @@ eeprom_status eeprom_store_config(
         matrix_to_1D(board_data_config.imuExtrinsics.rotationMatrix, board_data.imu_extrinsics.rotation);
         board_data.imu_extrinsics.to_camera_socket = static_cast<int8_t>(board_data_config.imuExtrinsics.toCameraSocket);
 
-        // Prepare V7 EEPROM version
         gen2_eeprom_ex_data ex_data = {};
 
         if(board_data_config.productName.size() > sizeof(ex_data.product_name) - 1) {
@@ -617,11 +561,6 @@ eeprom_status eeprom_store_config(
         }
         std::strncpy(ex_data.hardware_conf, board_data_config.hardwareConf.c_str(), sizeof(ex_data.hardware_conf) - 1);
 
-        // if(board_data_config.batchName.size() > sizeof(ex_data.batch_name) - 1) {
-        //     return EEPROM_FIELD_TOO_LONG;
-        // }
-        // std::strncpy(ex_data.batch_name, board_data_config.batchName.c_str(), sizeof(ex_data.batch_name) - 1);
-
         if(board_data_config.boardCustom.size() > sizeof(ex_data.board_custom) - 1) {
             return EEPROM_FIELD_TOO_LONG;
         }
@@ -630,7 +569,6 @@ eeprom_status eeprom_store_config(
         ex_data.batch_time = board_data_config.batchTime;
         ex_data.board_options = board_data_config.boardOptions;
 
-        // Split deviceName
         if(board_data_config.deviceName.size() > sizeof(ex_data.batch2_name) - 1 + sizeof(ex_data.batch2_name) - 1) {
             return EEPROM_FIELD_TOO_LONG;
         }
@@ -643,7 +581,6 @@ eeprom_status eeprom_store_config(
         std::strncpy(ex_data.batch_name, deviceName.c_str(), sizeof(ex_data.batch_name) - 1);
         std::strncpy(ex_data.batch2_name, deviceName2.c_str(), sizeof(ex_data.batch2_name) - 1);
 
-        // Flash housing
         ex_data.housing_extrinsics.translation.x = board_data_config.housingExtrinsics.translation.x;
         ex_data.housing_extrinsics.translation.y = board_data_config.housingExtrinsics.translation.y;
         ex_data.housing_extrinsics.translation.z = board_data_config.housingExtrinsics.translation.z;
@@ -653,15 +590,12 @@ eeprom_status eeprom_store_config(
         matrix_to_1D(board_data_config.housingExtrinsics.rotationMatrix, ex_data.housing_extrinsics.rotation);
         ex_data.housing_extrinsics.to_camera_socket = static_cast<int8_t>(board_data_config.housingExtrinsics.toCameraSocket);
 
-        // Flash vertical
         ex_data.vertical_camera_socket = static_cast<int8_t>(board_data_config.verticalCameraSocket);
 
-        // Flash bitfield
         ex_data.bitfield = 0;                                                                                                       // bit 7 = 0, valid bitfield
         ex_data.bitfield |= board_data_config.stereoUseSpecTranslation ? 0 : EEPROM_BITFIELD_NOT_USE_SPEC_TRANSLATION;              // inverse logic
         ex_data.bitfield |= board_data_config.stereoEnableDistortionCorrection ? EEPROM_BITFIELD_ENABLE_DISTORTION_CORRECTION : 0;  // normal logic
 
-        // IMU calibration parameters
         board_data.imu.params.magic = IMU_CALIB_PARAMS_MAGIC;
 
         const auto accelerometerCalibParams = flattenImuCalibrationMatrix(board_data_config.imuCalibrationParams.accelerometer);
@@ -682,7 +616,6 @@ eeprom_status eeprom_store_config(
         }
         board_data.imu.params.gyro_calib_count = gyroscopeCalibParams.size();
 
-        // Flash V6
         board_data.header.misc_data_size = 0;
         ret = eeprom_store(&board_data,
                            sizeof(board_data) - (((MAX_CAMERAS - board_data.header.num_cameras) * sizeof(lux_camera_info)) + sizeof(board_data.imu)),
@@ -693,13 +626,11 @@ eeprom_status eeprom_store_config(
             return ret;
         }
 
-        // Store the IMU calibration data
         ret = eeprom_store(&board_data.imu, sizeof(board_data.imu.params), offsetof(gen2_eeprom_data, imu), area, camSocket);
         if(ret != EEPROM_OK) {
             return ret;
         }
 
-        // Flash V7
         if(version == EEPROM_VERSION_V7) {
             ret = eeprom_store(&ex_data, sizeof(ex_data), sizeof(board_data), area, camSocket);
             if(ret != 0) {
@@ -709,7 +640,6 @@ eeprom_status eeprom_store_config(
 
         return EEPROM_OK;
     } else {
-        // Not using this as of now
         eeprom_data board_data;
         board_data.version = version;
         switch(version) {
@@ -733,9 +663,7 @@ eeprom_status eeprom_store_config(
                 matrix_to_1D(board_data_config.stereoRectificationData.rectifiedRotationLeft, board_data.calib_R1_left);
                 board_data.left_to_right_distance_m = board_data_config.cameraData[dai::CameraBoardSocket::CAM_B].extrinsics.specTranslation.x / 100;
                 board_data.left_to_rgb_distance_m = board_data_config.cameraData[dai::CameraBoardSocket::CAM_C].extrinsics.specTranslation.x / 100;
-                // board_data.swap_left_and_right_cameras = board_data_config.swapLeftRightCam;
         }
-        // Filling empty arrays with zeros
         switch(version) {
             case EEPROM_VERSION_V1:
                 board_data.rgb_fov_deg = 0;
@@ -770,14 +698,12 @@ eeprom_status eeprom_store_config(
 }
 
 eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area area, dai::CameraBoardSocket camSocket) {
-    // Check if eeprom is available
     if(!eeprom_found(camSocket)) {
         return EEPROM_NOT_AVAILABLE;
     }
 
     eeprom_status ret = EEPROM_OK;
 
-    // Retrieve version
     uint32_t version = eeprom_get_version(area, camSocket);
     if(!eeprom_version_is_valid(version)) {
         return EEPROM_INVALID_DATA;
@@ -800,16 +726,13 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
             printf("Reading VERSION 7 --- ->\n");
         }
 
-        // Zero out the structure
         gen2_info header = {};
         ret = eeprom_read(&header, sizeof(gen2_info), 0, area, camSocket);
         if(ret != EEPROM_OK) return ret;
-        // Cross check if num_cameras is valid for V6/V7 (max num cameras)
         if(header.num_cameras > MAX_CAMERAS) {
             return EEPROM_INVALID_DATA;
         }
 
-        // Zero out the structure
         gen2_eeprom_data board_data = {};
         ret = eeprom_read(
             &board_data, sizeof(board_data) - (((MAX_CAMERAS - header.num_cameras) * sizeof(lux_camera_info)) + sizeof(board_data.imu)), 0, area, camSocket);
@@ -818,9 +741,7 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
         ret = eeprom_read(&board_data.imu.params, sizeof(board_data.imu.params), offsetof(gen2_eeprom_data, imu), area, camSocket);
         if(ret != EEPROM_OK) return ret;
 
-        // Sanity check, in some cases (TBD / FIXME) EEPROM data can get corrupted really bad,
-        // this field could end up a huge number...
-        if(header.misc_data_size > EEPROM_MEM_SIZE) header.misc_data_size = 0;
+        if(header.misc_data_size > EEPROM_MEM_SIZE) header.misc_data_size = 0;  // Corrupted EEPROM data can make this a huge number
 
         std::vector<uint8_t> misc_data(header.misc_data_size);
 
@@ -833,7 +754,6 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
             if(ret != EEPROM_OK) return ret;
         }
 
-        // board_data_config.swapLeftRightCam = board_data.swap_left_and_right_cameras;
         board_data_config.miscellaneousData = misc_data;
         for(uint8_t i = 0; i < header.num_cameras; ++i) {
             lux_camera_info cam_data = board_data.camera_data[i];
@@ -853,12 +773,9 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
             camera.width = cam_data.width;
             camera.height = cam_data.height;
             camera.lensPosition = cam_data.lens_position;
-            // copying intrinsics
             matrix_3x3_conv(cam_data.intrinsics, camera.intrinsicMatrix);
-            // copying rotation matrix of extrinsics
             matrix_3x3_conv(cam_data.extrinsics.rotation, camera.extrinsics.rotationMatrix);
 
-            // copying translation from calibration and CAD based translation vector
             point temp_translation = cam_data.extrinsics.translation;
             camera.extrinsics.translation = dai::Point3f(temp_translation.x, temp_translation.y, temp_translation.z);
 
@@ -874,17 +791,12 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
             camera.cameraType = (dai::CameraModel)cam_data.camera_type;
             int8_t to_cam_id = cam_data.extrinsics.to_camera_socket;
 
-            // copying distortion_coeff of the camera
             camera.distortionCoeff = copyPackedFloats(cam_data.distortion_coeff, TOTAL_DISTORTION_PARAMETERS);
-            // camera assignment
             board_data_config.cameraData[static_cast<dai::CameraBoardSocket>(cam_data.camera_id)] = camera;
         }
 
-        // Patch for spec translation incorrectly set for some boards with RGB not centered (CM3/CM4).
-        // Reduce a bit verbosity with a shorter var name...
-        auto& ec = board_data_config.cameraData;
+        auto& ec = board_data_config.cameraData;  // Workaround: spec translation is wrong on some boards with RGB not centered (CM3/CM4)
         if(ec.find(dai::CameraBoardSocket::CAM_B) != ec.end() && ec.find(dai::CameraBoardSocket::CAM_C) != ec.end()) {
-            // Patch if the diff (vs calibrated) is higher than 0.5cm
             float& actual_spec = ec[dai::CameraBoardSocket::CAM_C].extrinsics.specTranslation.x;
             float calib_val = ec[dai::CameraBoardSocket::CAM_C].extrinsics.translation.x;
             float diff_spec_to_calib = abs(actual_spec - calib_val);
@@ -893,13 +805,11 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
                 float correct_spec = abs(ec[dai::CameraBoardSocket::CAM_B].extrinsics.specTranslation.x) - abs(actual_spec);
                 float diff_correct_to_calib = abs(correct_spec - calib_val);
                 if(diff_correct_to_calib < 0.5) {
-                    // Acceptable result, override with the corrected value
                     actual_spec = correct_spec;
                 }
             }
         }
 
-        // stereo rectification_data
         dai::StereoRectification rectification_data{};
         matrix_3x3_conv(board_data.stereo_data.rectified_rotation_left, rectification_data.rectifiedRotationLeft);
         matrix_3x3_conv(board_data.stereo_data.rectified_rotation_right, rectification_data.rectifiedRotationRight);
@@ -907,7 +817,6 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
         rectification_data.rightCameraSocket = (dai::CameraBoardSocket)board_data.stereo_data.right_camera_socket;
         board_data_config.stereoRectificationData = rectification_data;
 
-        // Imu extrinsics
         dai::Extrinsics imu_data{};
         matrix_3x3_conv(board_data.imu_extrinsics.rotation, imu_data.rotationMatrix);
         point temp_translation = board_data.imu_extrinsics.translation;
@@ -917,8 +826,6 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
         imu_data.toCameraSocket = (dai::CameraBoardSocket)board_data.imu_extrinsics.to_camera_socket;
         board_data_config.imuExtrinsics = imu_data;
 
-        // Check IMU calib params availability
-        // Only assign if magic is correct and counts are within bounds
         if((board_data.imu.params.magic == IMU_CALIB_PARAMS_MAGIC) && (board_data.imu.params.acc_calib_count <= ARRAY_LEN(board_data.imu.params.acc_calib))
            && (board_data.imu.params.gyro_calib_count <= ARRAY_LEN(board_data.imu.params.gyro_calib))) {
             assignFlatImuCalibration(
@@ -933,14 +840,12 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
             board_data_config.imuCalibrationParams.gyroscope = kImuCalibrationMatrixIdentity;
         }
 
-        // Load the IMU model-specific parameters
         board_data_config.imuCalibrationParams.noise = dai::getDefaultImuNoiseParams();
 
         board_data_config.boardName.assign(board_data.board_name, std::find(board_data.board_name, board_data.board_name + 16, '\0'));
         board_data_config.boardRev.assign(board_data.board_rev, std::find(board_data.board_rev, board_data.board_rev + 10, '\0'));
 
-        // patch OAK-D-LITE R0M0E0 or R1M1E1 (stereo width/height set to 1280x800)
-        for(uint8_t i = 0; i < header.num_cameras; ++i) {
+        for(uint8_t i = 0; i < header.num_cameras; ++i) {  // Workaround: OAK-D-LITE R0M0E0/R1M1E1 have stereo width/height set to 1280x800
             lux_camera_info cam_data = board_data.camera_data[i];
             if(cam_data.intrinsics[0] == 0) {
                 continue;
@@ -957,16 +862,12 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
             }
         }
 
-        // V7 ex data
         if(version == EEPROM_VERSION_V7) {
-            // Zero out the structure
             gen2_eeprom_ex_data ex_data = {};
-            // Note: the offset is correct if `gen2_eeprom_data` doesn't change in size
-            static_assert(sizeof(board_data) == 1810);
+            static_assert(sizeof(board_data) == 1810);  // The ex_data offset is correct only while gen2_eeprom_data keeps this size
             ret = eeprom_read(&ex_data, sizeof(ex_data), sizeof(board_data), area, camSocket);
             if(ret != EEPROM_OK) return ret;
 
-            // Check for validity of fields
             if(std::find(ex_data.product_name, ex_data.product_name + sizeof(ex_data.product_name), '\0')
                == ex_data.product_name + sizeof(ex_data.product_name))
                 return EEPROM_INVALID_DATA;
@@ -981,7 +882,6 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
                == ex_data.board_custom + sizeof(ex_data.board_custom))
                 return EEPROM_INVALID_DATA;
 
-            // Copy over the data
             board_data_config.productName.assign(ex_data.product_name,
                                                  std::find(ex_data.product_name, ex_data.product_name + sizeof(ex_data.product_name), '\0'));
             board_data_config.boardConf.assign(ex_data.board_conf, std::find(ex_data.board_conf, ex_data.board_conf + sizeof(ex_data.board_conf), '\0'));
@@ -993,7 +893,6 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
             board_data_config.batchTime = ex_data.batch_time;
             board_data_config.boardOptions = ex_data.board_options;
 
-            // Parse out new deviceName if available, forego batch_name
             std::string batchName;
             batchName.assign(ex_data.batch_name, std::find(ex_data.batch_name, ex_data.batch_name + sizeof(ex_data.batch_name), '\0'));
             std::string batchName2;
@@ -1002,7 +901,6 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
                 board_data_config.deviceName = batchName + batchName2;
             }
 
-            // parse out housing extrinsics
             dai::Extrinsics housing_extrinsics{};
             if(ex_data.housing_extrinsics.to_camera_socket >= 0
                && ex_data.housing_extrinsics.to_camera_socket <= static_cast<int>(dai::CameraBoardSocket::CAM_J)
@@ -1017,14 +915,12 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
             }
             board_data_config.housingExtrinsics = housing_extrinsics;
 
-            // parse out vertical stereo if available
             if(ex_data.vertical_camera_socket >= 0 && ex_data.vertical_camera_socket <= static_cast<int>(dai::CameraBoardSocket::CAM_J)) {
                 board_data_config.verticalCameraSocket = (dai::CameraBoardSocket)ex_data.vertical_camera_socket;
             } else {
                 board_data_config.verticalCameraSocket = dai::CameraBoardSocket::AUTO;
             }
 
-            // parse out bitfield
             if(!(ex_data.bitfield & EEPROM_BITFIELD_NOT_VALID)) {
                 board_data_config.stereoUseSpecTranslation = (ex_data.bitfield & EEPROM_BITFIELD_NOT_USE_SPEC_TRANSLATION) ? false : true;  // inverse logic
                 board_data_config.stereoEnableDistortionCorrection =
@@ -1060,9 +956,7 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
 
         switch(board_data.version) {
             case EEPROM_VERSION_V5:
-                // copying intrinsics
                 matrix_3x3_conv(board_data.calib_M3_rgb, rgb_camera.intrinsicMatrix);
-                // copying rotation matrix of extrinsics
                 matrix_3x3_conv(board_data.calib_R_rgb, right_camera.extrinsics.rotationMatrix);
                 {
                     float temp = right_camera.extrinsics.rotationMatrix[0][1];
@@ -1078,18 +972,15 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
                     right_camera.extrinsics.rotationMatrix[2][1] = temp;
                 }
                 right_camera.extrinsics.toCameraSocket = dai::CameraBoardSocket::CAM_A;
-                // copying distortion_coeff of the camera
                 rgb_camera.cameraType = dai::CameraModel::Perspective;
 
                 rgb_camera.distortionCoeff = copyPackedFloats(board_data.calib_d3_rgb, TOTAL_DISTORTION_PARAMETERS);
-                // copying translation from calibration and CAD based translation vector
                 right_camera.extrinsics.translation = dai::Point3f(-board_data.calib_T_rgb[0], -board_data.calib_T_rgb[1], -board_data.calib_T_rgb[2]);
 
                 left_camera.distortionCoeff = copyPackedFloats(board_data.calib_d1_left, TOTAL_DISTORTION_PARAMETERS);
                 right_camera.distortionCoeff = copyPackedFloats(board_data.calib_d2_right, TOTAL_DISTORTION_PARAMETERS);
                 __attribute__((fallthrough));
             case EEPROM_VERSION_V4:
-                // board_data_config.cameraData[dai::CameraBoardSocket::CAM_C].extrinsics.ro
                 matrix_3x3_conv(board_data.calib_M2_right, right_camera.intrinsicMatrix);
                 matrix_3x3_conv(board_data.calib_M1_left, left_camera.intrinsicMatrix);
                 matrix_3x3_conv(board_data.calib_R, left_camera.extrinsics.rotationMatrix);
@@ -1111,8 +1002,6 @@ eeprom_status eeprom_load_config(dai::EepromData& board_data_config, eeprom_area
                 board_data_config.stereoRectificationData.leftCameraSocket = left;
                 left_camera.extrinsics.specTranslation = dai::Point3f(-board_data.left_to_right_distance_m * 100, 0, 0);
                 right_camera.extrinsics.specTranslation = dai::Point3f((board_data.left_to_right_distance_m - board_data.left_to_rgb_distance_m) * 100, 0, 0);
-                // board_data_config.swapLeftRightCam = board_data.swap_left_and_right_cameras;
-                // board_data_config.stereoRectificationData.baseline = board_data.left_to_right_distance_m * 100;
                 left_camera.specHfovDeg = board_data.left_fov_deg;
                 right_camera.specHfovDeg = board_data.left_fov_deg;
         }
@@ -1153,12 +1042,10 @@ std::tuple<bool, std::string> eeprom_clear(eeprom_area area, bool protectedPermi
 }
 
 eeprom_status eeprom_load_board_options(uint32_t& options, eeprom_area area, dai::CameraBoardSocket camSocket) {
-    // Retrieve version
     uint32_t version = eeprom_get_version(area, camSocket);
     if(version == EEPROM_VERSION_V7 && version < EEPROM_VERSION_UNPROGRAMMED) {
         gen2_eeprom_ex_data ex_data;
-        // Note: the offset is correct if `gen2_eeprom_data` doesn't change in size
-        static_assert(sizeof(gen2_eeprom_data) == 1810);
+        static_assert(sizeof(gen2_eeprom_data) == 1810);  // The ex_data offset is correct only while gen2_eeprom_data keeps this size
         int ret = eeprom_read(&ex_data, sizeof(ex_data), sizeof(gen2_eeprom_data), area, camSocket);
         if(ret) {
             return EEPROM_ERROR;
@@ -1174,28 +1061,21 @@ eeprom_status eeprom_load_board_options(uint32_t& options, eeprom_area area, dai
 }
 
 eeprom_status eeprom_get_board_config_area(eeprom_area& area, dai::CameraBoardSocket camSocket) {
-    // By default its FACTORY area
-    // but if USER area has boardOptions USE_BOARD_CONFIG_USER_AREA bit set, then use USER area
     area = EEPROM_AREA_FACTORY;
 
-    // Board options are 0 by default
     uint32_t boardOptions = 0;
 
-    // Try USER area first, IFF flag is set
     if(eeprom_load_board_options(boardOptions, EEPROM_AREA_USER, camSocket) == EEPROM_OK) {
         if(boardOptions & EEPROM_BOARD_OPTIONS_USE_BOARD_CONFIG_USER_AREA) {
-            // v7 & use user area board config flag is set
             area = EEPROM_AREA_USER;
             return EEPROM_OK;
         }
     }
 
-    // Then try FACTORY if not USER
     if(eeprom_load_board_options(boardOptions, EEPROM_AREA_FACTORY, camSocket) == EEPROM_OK) {
         area = EEPROM_AREA_FACTORY;
         return EEPROM_OK;
     } else {
-        // error out
         return EEPROM_NO_BOARD_CONFIG;
     }
 }

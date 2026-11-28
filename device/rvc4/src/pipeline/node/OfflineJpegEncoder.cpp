@@ -20,13 +20,10 @@ void logCallbackError(const char* what) noexcept {
         if(logger) {
             logger->error("{}: exception in the completion callback: {}", UNIT, what);
         }
-    } catch(...) {
-        // Nothing to do: this runs on the thread of the encoder
+    } catch(...) {  // Nothing to do: this runs on the encoder thread
     }
 }
 
-/// The completion function of the vendor module (dai_device_jpeg_done_fn): user is the CompletionCallback of the
-/// encoder. It runs on the thread of the encoder and must not throw.
 void onJpegDone(void* user, void* jobTag, uint32_t encodedSize) noexcept {
     auto* callback = static_cast<OfflineJpegEncoder::CompletionCallback*>(user);
     if(callback == nullptr || !*callback) {
@@ -52,10 +49,7 @@ OfflineJpegEncoder::OfflineJpegEncoder(CompletionCallback onComplete) : completi
 
 OfflineJpegEncoder::~OfflineJpegEncoder() = default;
 
-// The methods return false when the vendor module gives a status that is not DAI_STATUS_OK, as before the C interface
-// (dai_device_last_error() has the reason)
-
-bool OfflineJpegEncoder::initialize(int width, int height) {
+bool OfflineJpegEncoder::initialize(int width, int height) {  // The methods return false on a vendor error; dai_device_last_error() has the reason
     return dai_device_jpeg_initialize(handle.get(), width, height) == DAI_STATUS_OK;
 }
 

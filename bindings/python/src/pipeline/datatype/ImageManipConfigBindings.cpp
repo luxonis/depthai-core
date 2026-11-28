@@ -5,14 +5,10 @@
 #include "depthai/common/Point2f.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_imagemanipconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -21,31 +17,20 @@ void bind_imagemanipconfig(pybind11::module& m, void* pCallstack) {
         m, "ImageManipConfig", DOC(dai, ImageManipConfig));
     py::enum_<ImageManipConfig::ResizeMode> resizeMode(imageManipConfig, "ResizeMode");
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     resizeMode.value("NONE", ImageManipConfig::ResizeMode::NONE)
         .value("LETTERBOX", ImageManipConfig::ResizeMode::LETTERBOX)
         .value("CENTER_CROP", ImageManipConfig::ResizeMode::CENTER_CROP)
         .value("STRETCH", ImageManipConfig::ResizeMode::STRETCH);
 
-    // Message
-
     imageManipConfig.def(py::init<>())
         .def("getReusePreviousImage", &dai::ImageManipConfig::getReusePreviousImage, DOC(dai, ImageManipConfig, getReusePreviousImage))
         .def("getSkipCurrentImage", &dai::ImageManipConfig::getSkipCurrentImage, DOC(dai, ImageManipConfig, getSkipCurrentImage))
         .def("__repr__", &ImageManipConfig::str)
-        // New API Setters
         .def("clearOps", &ImageManipConfig::clearOps, DOC(dai, ImageManipConfig, clearOps))
         .def("addCrop",
              static_cast<ImageManipConfig& (ImageManipConfig::*)(uint32_t, uint32_t, uint32_t, uint32_t)>(&ImageManipConfig::addCrop),

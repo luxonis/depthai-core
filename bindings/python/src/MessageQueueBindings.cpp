@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <chrono>
 
-// depthai
 #include "MessageQueueBindings.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
@@ -17,10 +16,8 @@ namespace dai {
 namespace mq_utils {
 
 inline int addCallbackUnlocked(MessageQueue& queue, std::function<void(std::string, std::shared_ptr<ADatatype>)> callback) {
-    // Get unique id
     int uniqueId = queue.uniqueCallbackId++;
 
-    // Assign callback directly without lock
     queue.callbacks[uniqueId] = std::move(callback);
 
     return uniqueId;
@@ -68,35 +65,21 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace std::chrono;
 
-    // Type definitions
     py::class_<MessageQueue, py::smart_holder> messageQueue(m, "MessageQueue", DOC(dai, MessageQueue));
     constexpr auto QUEUE_EXCEPTION_NAME = "QueueException";
     py::register_exception<dai::MessageQueue::QueueException>(messageQueue, QUEUE_EXCEPTION_NAME);
     messageQueueException = messageQueue.attr(QUEUE_EXCEPTION_NAME);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // To prevent blocking whole python interpreter, blocking functions like 'get' and 'send'
-    // are pooled with a reasonable delay and check for python interrupt signal in between.
-
-    // Bind DataOutputQueue
     auto addCallbackLambda = [](MessageQueue& q, py::function cb) -> int {
         pybind11::module inspectModule = pybind11::module::import("inspect");
         pybind11::object result = inspectModule.attr("signature")(cb).attr("parameters");
         auto numParams = pybind11::len(result);
-        // Unlock the GIL before acquiring the mutex to avoid deadlocks
-        py::gil_scoped_release release;
+        py::gil_scoped_release release;  // Release the GIL before the mutex lock to avoid deadlocks
         std::unique_lock<std::mutex> lock(q.callbacksMtx);
         pybind11::gil_scoped_acquire
             gil;  // Order is important! Only acquire after the mutex is locked, to allow any callbacks to capture the GIL and finish the execution
@@ -141,15 +124,12 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
         .def(
             "removeCallback",
             [](MessageQueue& q, int id) {
-                // Unlock the GIL before acquiring the mutex to avoid deadlocks
-                py::gil_scoped_release release;
+                py::gil_scoped_release release;  // Release the GIL before the mutex lock to avoid deadlocks
 
                 std::unique_lock<std::mutex> lock(q.callbacksMtx);
                 pybind11::gil_scoped_acquire
                     gil;  // Order is important! Only acquire after the mutex is locked, to allow any callbacks to capture the GIL and finish the execution
-                // If callback with id 'callbackId' doesn't exists, return false
                 if(q.callbacks.count(id) == 0) return false;
-                // Otherwise erase and return true
                 q.callbacks.erase(id);
                 return true;
             },
@@ -164,13 +144,9 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
                 bool timedout = true;
                 do {
                     {
-                        // releases python GIL
                         py::gil_scoped_release release;
-                        // block for 100ms
-                        d = obj.get(milliseconds(100), timedout);
+                        d = obj.get(milliseconds(100), timedout);  // Poll in 100 ms steps, so Python interrupts are checked in between
                     }
-                    // reacquires python GIL for PyErr_CheckSignals call
-                    // check if interrupt triggered in between
                     if(PyErr_CheckSignals() != 0) throw py::error_already_set();
                 } while(timedout);
                 return d;

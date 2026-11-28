@@ -9,27 +9,16 @@ void bind_messagedemux(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Node and Properties declare upfront
     py::class_<MessageDemuxProperties> messageDemuxProperties(m, "MessageDemuxProperties", DOC(dai, MessageDemuxProperties));
     auto messageDemux = ADD_NODE(MessageDemux);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Properties
     messageDemuxProperties.def_readwrite("processor", &MessageDemuxProperties::processor, DOC(dai, MessageDemuxProperties, processor));
 
-    // Node
     messageDemux.def_readonly("outputs", &MessageDemux::outputs, DOC(dai, node, MessageDemux, outputs))
         .def_readonly("input", &MessageDemux::input, DOC(dai, node, MessageDemux, input))
         .def("setProcessor", &MessageDemux::setProcessor, DOC(dai, node, MessageDemux, setProcessor))

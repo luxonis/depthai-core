@@ -393,7 +393,6 @@ class CameraControl : public Buffer {
         DEPTHAI_SERIALIZE_DECL(ManualExposureParams, exposureTimeUs, sensitivityIso, frameDurationUs);
     };
 
-    // AE_REGION / AF_REGION
     struct RegionParams {
         uint16_t x;
         uint16_t y;
@@ -478,7 +477,6 @@ class CameraControl : public Buffer {
      */
     CameraControl& setStrobeDisable();
 
-    // Focus
     /**
      * Set a command to specify autofocus mode. Default `CONTINUOUS_VIDEO`
      */
@@ -531,7 +529,6 @@ class CameraControl : public Buffer {
      */
     CameraControl& setManualFocusRaw(float lensPositionRaw);
 
-    // Exposure
     /**
      * Set a command to enable auto exposure
      */
@@ -623,7 +620,6 @@ class CameraControl : public Buffer {
      */
     CameraControl& setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso);
 
-    // White Balance
     /**
      * Set a command to specify auto white balance mode
      * @param mode Auto white balance mode to use. Default `AUTO`
@@ -642,7 +638,6 @@ class CameraControl : public Buffer {
      */
     CameraControl& setManualWhiteBalance(int colorTemperatureK);
 
-    // Other image controls
     /**
      * Set a command to adjust image brightness
      * @param value Brightness, range -10..10, default 0
@@ -744,7 +739,6 @@ class CameraControl : public Buffer {
      */
     CameraControl& setCaptureIntent(CaptureIntent mode);
 
-    // Functions to retrieve properties
     /**
      * Check whether command to capture a still is set
      * @returns True if capture still command is set

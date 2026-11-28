@@ -1,18 +1,14 @@
 #pragma once
 
-// pybind
 #include "pybind11_common.hpp"
 
-// Libraries
 #include "hedley/hedley.h"
 
-// pybind11
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "pybind11/stl_bind.h"
 
-// Map of python node classes and call to pipeline to create it
 extern std::vector<
     std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_, const std::shared_ptr<dai::Device>& device)>>>
     pyNodeCreateMap;
@@ -20,8 +16,6 @@ extern py::handle daiNodeModule;
 extern py::handle daiNodeInternalModule;
 extern py::handle daiBetaNodeModule;
 
-// Shared creator for all bound node types: device-aware for DeviceNode types,
-// an explicit error when a device is passed for a host node
 template <typename T>
 std::shared_ptr<dai::Node> createBoundNode(dai::Pipeline& p, py::object class_, const std::shared_ptr<dai::Device>& device) {
     if constexpr(std::is_base_of_v<dai::DeviceNode, T>) {
@@ -66,7 +60,6 @@ py::class_<T, DERIVED, py::smart_holder> addNodeAbstract(const char* name, const
     return node;
 }
 
-// Macro helpers
 #define ADD_NODE(NodeName) addNode<NodeName>(#NodeName, DOC(dai, node, NodeName))
 #define ADD_NODE_DERIVED(NodeName, Derived) addNode<NodeName, Derived>(#NodeName, DOC(dai, node, NodeName))
 #define ADD_NODE_INTERNAL(NodeName) addNodeInternal<NodeName>(#NodeName, DOC(dai, node, internal, NodeName))

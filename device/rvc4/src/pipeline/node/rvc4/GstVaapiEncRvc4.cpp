@@ -15,7 +15,6 @@
 #include "gst/video/video-frame.h"
 #include "utilities/GstBufferMemory.hpp"
 
-// Error callback function
 static void on_error(GstBus* bus, GstMessage* message, gpointer user_data) {
     GError* err;
     gchar* debug_info;
@@ -72,28 +71,14 @@ static GstFlowReturn on_new_sample(GstElement* elem, GstVaapiEnc* vaapiEncClass)
     int sample_height = vaapiEncClass->height;
     g_signal_emit_by_name(elem, "pull-sample", &sample);
     if(sample) {
-        // auto& logger = vaapiEncClass->logger;
         buffer = gst_sample_get_buffer(sample);
-        // This doesn' work for MJPEG for some reason
-        // GstCaps* caps = gst_sample_get_caps(sample);
-        // const GstStructure* info = gst_caps_get_structure(caps, 0);
-        // gst_structure_get_int(info, "width", &sample_width);
-        // gst_structure_get_int(info, "height", &sample_height);
 
         gst_buffer_map(buffer, &map, GST_MAP_READ);
 
         vaapiEncClass->handle_buffer(map.data, gst_buffer_get_size(buffer) * sizeof(uint8_t), sample_width, sample_height);
-        // size_t size = map.size;
-        // int fd = gst_dmabuf_memory_get_fd(map.memory);
         gst_buffer_unmap(buffer, &map);
 
-        // // Creates VpuDataMemory and imports fd
-        // auto data = std::make_shared<dai::gate::VpuDataMemory>(map.size, fd);
-
-        // vaapiEncClass->handle_buffer(data, gst_buffer_get_size(buffer) * sizeof(uint8_t));
-
-        // Creating GstBufferMemory adds a reference to buffer, but sample still has to be unrefed
-        gst_sample_unref(sample);
+        gst_sample_unref(sample);  // GstBufferMemory adds its own buffer reference; the sample still has to be unrefed
         return GST_FLOW_OK;
     }
     return GST_FLOW_ERROR;
@@ -168,16 +153,6 @@ void GstVaapiEnc::set_encoder_props(dai::VideoEncoderProperties props) {
         case dai::VideoEncoderProperties::Profile::H264_HIGH:
         case dai::VideoEncoderProperties::Profile::H264_MAIN:
         case dai::VideoEncoderProperties::Profile::H265_MAIN:
-            // from gst-inspect-1.0 qtic2venc
-            //   control-rate        : Bitrate control method
-            //             flags: readable, writable, changeable only in NULL or READY state
-            //             Enum "GstC2RateControl" Default: 0, "disable"
-            //                (0): disable          - Disable bitrate control
-            //                (1): constant         - Constant bitrate
-            //                (2): CBR-VFR          - Constant bitrate, variable framerate
-            //                (3): VBR-CFR          - Variable bitrate, constant framerate
-            //                (4): VBR-VFR          - Variable bitrate, variable framerate
-            //                (5): CQ               - Constant quality
             if(props.rateCtrlMode == dai::VideoEncoderProperties::RateControlMode::CBR) {
                 rateCtrlMode = 1;  // constant
 
@@ -191,30 +166,17 @@ void GstVaapiEnc::set_encoder_props(dai::VideoEncoderProperties props) {
             }
 
             g_object_set(encoder, "control-rate", rateCtrlMode, NULL);
-            // qtic2venc uses UINT_MAX as "component default", while setting any explicit value (including
-            // zero) enables its adaptive B-frame path. Preserve the component default when B-frames are disabled.
-            if(props.numBFrames > 0) {
+            if(props.numBFrames > 0) {  // Any explicit b-frames value (also 0) enables qtic2venc adaptive B-frames; keep the UINT_MAX default
                 g_object_set(encoder, "b-frames", static_cast<guint>(props.numBFrames), NULL);
             }
             if(props.keyframeFrequency > 0) {
-                // Periodicity of IDR frames, in frames
                 g_object_set(encoder, "idr-interval", static_cast<guint>(props.keyframeFrequency), NULL);
             }
-            // Cap the I-frame QP: the component's rate control over-quantizes keyframes (measured ~1-2 dB
-            // PSNR-Y below a QP-30 I-frame at equal size), which also degrades the P-frames referencing them.
-            // The cap only sets a quality floor - RC still picks a lower QP when the budget allows. Value 30
-            // matches the previously shipped behavior (the old code accidentally clamped I-frame QP to
-            // keyframeFrequency, which defaults to 30).
-            g_object_set(encoder, "max-quant-i-frames", static_cast<guint>(30), NULL);
+            g_object_set(encoder, "max-quant-i-frames", static_cast<guint>(30), NULL);  // RC over-quantizes keyframes; 30 matches the previously shipped value
             if(props.bitrate) {
                 g_object_set(encoder, "target-bitrate", bitrate, NULL);
             }
 
-            // g_object_set(encoder, "resend-pps", 1, NULL);
-            // g_object_set(encoder, "resend-sps", 1, NULL);
-            // g_object_set(encoder, "send-aud", 1, NULL);
-            // g_object_set(encoder, "send-sei", 1, NULL);
-            // g_object_set(encoder, "aud", 1, NULL);
             break;
         case dai::VideoEncoderProperties::Profile::MJPEG:
             g_object_set(encoder, "quality", qualityClamped, NULL);
@@ -227,7 +189,6 @@ void GstVaapiEnc::set_encoder_props(dai::VideoEncoderProperties props) {
             break;
     }
 
-    // Set downsteam capabilites (caps)
     GstCaps* caps = nullptr;
     switch(props.profile) {
         case dai::VideoEncoderProperties::Profile::H264_BASELINE:
@@ -257,7 +218,6 @@ void GstVaapiEnc::set_appsrc_caps(const int width, const int height, const int f
     this->width = width;
     this->height = height;
 
-    // Interpolate the documented 30 FPS bitrate reference points by pixel count, then scale by FPS.
     if(props.bitrate == 0 && props.maxBitrate == 0 && props.profile != dai::VideoEncoderProperties::Profile::MJPEG) {
         const auto autoBitrate = get_auto_bitrate(width, height, fps);
         logger->info("VideoEncoder: automatic bitrate set to {} bit/s for {}x{}@{}", autoBitrate, width, height, fps);
@@ -285,7 +245,6 @@ void GstVaapiEnc::set_appsrc_caps(const int width, const int height, const int f
 
 std::tuple<bool, std::string> GstVaapiEnc::push_to_encoder(std::shared_ptr<dai::ImgFrame> frame) {
     auto data = frame->data;
-    // Check first if pipeline is okay
     if(error) {
         return {false, errorMsg};
     }
@@ -372,9 +331,11 @@ std::tuple<bool, std::string> GstVaapiEnc::push_to_encoder(std::shared_ptr<dai::
                     return {false, "Failed to create input buffer!"};
                 }
                 gst_buffer_append_memory(buffer, mem);
-                // Keep the camera buffer alive until GStreamer releases its non-owning dmabuf import.
-                gst_mini_object_set_qdata(
-                    GST_MINI_OBJECT(buffer), g_quark_from_static_string("dai-imgframe"), new std::shared_ptr<dai::ImgFrame>(frame), on_destroy_buffer);
+                gst_mini_object_set_qdata(  // Keep the camera buffer alive until GStreamer releases its non-owning dmabuf import
+                    GST_MINI_OBJECT(buffer),
+                    g_quark_from_static_string("dai-imgframe"),
+                    new std::shared_ptr<dai::ImgFrame>(frame),
+                    on_destroy_buffer);
             } else {
                 buffer = gst_buffer_new_wrapped_full((GstMemoryFlags)(GST_MEMORY_FLAG_READONLY | GST_MEMORY_FLAG_PHYSICALLY_CONTIGUOUS),
                                                      _data,
@@ -413,7 +374,6 @@ std::tuple<bool, std::string> GstVaapiEnc::push_to_encoder(std::shared_ptr<dai::
         gst_buffer_add_video_meta_full(buffer, GST_VIDEO_FRAME_FLAG_NONE, GST_VIDEO_FORMAT_NV12, width, height, numPlanes, offsets, strides);
     }
 
-    // g_signal_emit_by_name(src, "push-buffer", buffer, &ret);
     ret = gst_app_src_push_buffer(appsrc, buffer);  // buffer released automatically
     if(ret != GST_FLOW_OK) {
         printf("Couldn't push to appsrc, ret: %d\n", ret);
@@ -424,13 +384,10 @@ std::tuple<bool, std::string> GstVaapiEnc::push_to_encoder(std::shared_ptr<dai::
 }
 
 void GstVaapiEnc::run(bool run_in_thread) {
-    // Debug: dump graph
     gst_debug_bin_to_dot_file(GST_BIN(pipeline), GST_DEBUG_GRAPH_SHOW_ALL, "encoder");
 
-    // Start the pipeline
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 
-    // run in thread
     if(run_in_thread) {
         g_thread_new("GstreamerLoop", (GThreadFunc)g_main_loop_run, main_loop);
     } else {

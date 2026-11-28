@@ -1,12 +1,10 @@
 #pragma once
 
 #include <depthai/modelzoo/Zoo.hpp>
-#include <depthai/pipeline/DeviceNode.hpp>
-
-// standard
 #include <depthai/nn_archive/NNArchive.hpp>
 #include <depthai/nn_archive/NNArchiveVersionedConfig.hpp>
 #include <depthai/openvino/OpenVINO.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/properties/DetectionParserProperties.hpp>
 #include <optional>
 #include <string>
@@ -332,7 +330,6 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     bool decodeSegmentationResolver(const std::vector<std::string>& outputs);
     void configureYOLONetworkParser(DetectionParserOptions& parser, const nn_archive::v1::Head& metadata);
     void checkKptExtraParams(DetectionParserOptions& parser, const nlohmann::json& extraParams);
-    // host runnable requirements
     void buildStage1() override;
     void decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDetections, DetectionParserProperties& runtimeProperties);
     std::vector<dai::TensorInfo> inTensorInfo;

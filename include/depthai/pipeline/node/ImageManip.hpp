@@ -2,8 +2,6 @@
 
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/datatype/ImageManipConfig.hpp>
-
-// shared
 #include <depthai/properties/ImageManipProperties.hpp>
 #include <functional>
 
@@ -50,7 +48,6 @@ class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipPrope
     /**
      * Outputs ImgFrame message that carries modified image.
      */
-    // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 
     /**

@@ -14,10 +14,8 @@ struct SlugComponents {
     std::string modelVariantSlug;
     std::string modelRef;
 
-    // Merges the fields into a single string
     std::string merge() const;
 
-    // Splits a slug string into components
     static SlugComponents split(const std::string& slug);
 };
 

@@ -10,9 +10,7 @@ bool hasGPU() {
     static bool cached = false;
 
     std::call_once(once, []() {
-        // Fast/robust check for a real Adreno GPU on these devices: KGSL must be present.
-        // Note: /sys/class/kgsl/kgsl-3d0/gpu_model will exist if the Adreno kernel driver is enabled.
-        std::ifstream ifs("/sys/class/kgsl/kgsl-3d0/gpu_model");
+        std::ifstream ifs("/sys/class/kgsl/kgsl-3d0/gpu_model");  // gpu_model exists only when the Adreno KGSL kernel driver is enabled
         cached = ifs.good();
     });
 

@@ -1,5 +1,3 @@
-// The hardware stages of the FeatureTracker node over the C interface of the vendor module (vendor/dai_device_accel.h)
-
 #include "pipeline/node/FeatureTracker/FeatureTrackerAccel.hpp"
 
 #include "utilities/AcceleratorMemory.hpp"
@@ -15,7 +13,6 @@ constexpr const char* CORNER_UNIT = "Hardware corner detector";
 constexpr const char* FLOW_UNIT = "Hardware optical flow";
 constexpr const char* DESCRIPTOR_UNIT = "Hardware descriptor calculator";
 
-/// The image of a frame without memory: the template frame of an init call, which gives only the size and the format
 dai_device_image templateImage(const ImgFrame& frame) {
     dai_device_image image{};
     image.mem = nullptr;
@@ -29,19 +26,13 @@ dai_device_image templateImage(const ImgFrame& frame) {
     return image;
 }
 
-/// Converts the data of the frame to an accelerator buffer (no copy for DMA-BUF memory) and puts it into the frame,
-/// as before the C interface: the frame keeps the buffer alive, and the passthrough output sends it. `size` is the
-/// input size of the unit (dai_device_*_in_min_bytes): the size of a copy.
-std::shared_ptr<AcceleratorMemory> toAcceleratorMemory(ImgFrame& frame, uint32_t size) {
+std::shared_ptr<AcceleratorMemory> toAcceleratorMemory(ImgFrame& frame, uint32_t size) {  // Frame keeps the buffer alive; size: unit input size, the copy size
     auto memory = AcceleratorMemory::convert(frame.data, size);
     frame.data = memory;
     return memory;
 }
 
 }  // namespace
-
-// ---------------------------------------------------------------------------
-// CornerDetector
 
 CornerDetector::CornerDetector() : handle(nullptr, &dai_device_corner_destroy) {
     device::installDeviceLog();
@@ -68,8 +59,7 @@ int CornerDetector::Config() {
 }
 
 void CornerDetector::Run(std::shared_ptr<dai::ImgFrame> inImageData) {
-    // No frame: the vendor module throws "ImgData error"
-    std::shared_ptr<AcceleratorMemory> memory;
+    std::shared_ptr<AcceleratorMemory> memory;  // No frame: the vendor module throws "ImgData error"
     dai_device_image image{};
     if(inImageData) {
         memory = toAcceleratorMemory(*inImageData, dai_device_corner_in_min_bytes(handle.get()));
@@ -98,8 +88,7 @@ const FeaturePoint* CornerDetector::points() const {
     const dai_device_feature_point* points = nullptr;
     size_t count = 0;
     DAI_CHECK_DEVICE(CORNER_UNIT, dai_device_corner_points(handle.get(), &points, &count));
-    // Same layout (static_assert in the header): the output buffer of the hardware, no copy
-    return reinterpret_cast<const FeaturePoint*>(points);
+    return reinterpret_cast<const FeaturePoint*>(points);  // Same layout (static_assert in the header): no copy of the hardware buffer
 }
 
 size_t CornerDetector::numPoints() const {
@@ -108,9 +97,6 @@ size_t CornerDetector::numPoints() const {
     DAI_CHECK_DEVICE(CORNER_UNIT, dai_device_corner_points(handle.get(), &points, &count));
     return count;
 }
-
-// ---------------------------------------------------------------------------
-// OpticalFlow
 
 OpticalFlow::OpticalFlow() : handle(nullptr, &dai_device_oflow_destroy) {
     device::installDeviceLog();
@@ -127,8 +113,7 @@ int OpticalFlow::Open() {
 
 int OpticalFlow::Init(std::shared_ptr<dai::ImgFrame> inFrame, bool runAsync) {
     dai_device_image image{};
-    if(inFrame) image = templateImage(*inFrame);
-    // runAsync: the vendor module returns DAI_STATUS_UNSUPPORTED, so this throws
+    if(inFrame) image = templateImage(*inFrame);  // runAsync: the vendor module returns DAI_STATUS_UNSUPPORTED, so this throws
     return device::returnDriverStatus(dai_device_oflow_init(handle.get(), inFrame ? &image : nullptr, runAsync ? 1 : 0), FLOW_UNIT, "dai_device_oflow_init");
 }
 
@@ -142,15 +127,13 @@ void OpticalFlow::Run(std::shared_ptr<dai::ImgFrame> refImageData, std::shared_p
     dai_device_image refImage{};
     dai_device_image curImage{};
     if(refImageData && curImageData) {
-        // The current frame first, as before the C interface. Both frames have the input size of the unit.
         const uint32_t size = dai_device_oflow_in_min_bytes(handle.get());
         curMemory = toAcceleratorMemory(*curImageData, size);
         curImage = device::toDeviceImage(*curImageData, *curMemory);
         refMemory = toAcceleratorMemory(*refImageData, size);
         refImage = device::toDeviceImage(*refImageData, *refMemory);
     } else {
-        // Only one frame: the vendor module does not read it (no conversion, as before); no frame: it throws
-        if(refImageData) refImage = templateImage(*refImageData);
+        if(refImageData) refImage = templateImage(*refImageData);  // One frame: the vendor module does not read it; no frame: it throws
         if(curImageData) curImage = templateImage(*curImageData);
     }
     DAI_CHECK_DEVICE(FLOW_UNIT, dai_device_oflow_run(handle.get(), refImageData ? &refImage : nullptr, curImageData ? &curImage : nullptr));
@@ -178,9 +161,6 @@ const uint8_t* OpticalFlow::confidenceMap() const {
     return result().confidence;
 }
 
-// ---------------------------------------------------------------------------
-// DescriptorCalculator
-
 DescriptorCalculator::DescriptorCalculator() : handle(nullptr, &dai_device_descriptor_destroy) {
     device::installDeviceLog();
     dai_device_descriptor* descriptor = nullptr;
@@ -197,9 +177,10 @@ int DescriptorCalculator::Open() {
 int DescriptorCalculator::Init(std::shared_ptr<dai::ImgFrame> inFrame, bool runAsync) {
     dai_device_image image{};
     if(inFrame) image = templateImage(*inFrame);
-    // runAsync: the vendor module returns DAI_STATUS_UNSUPPORTED, so this throws
-    return device::returnDriverStatus(
-        dai_device_descriptor_init(handle.get(), inFrame ? &image : nullptr, runAsync ? 1 : 0), DESCRIPTOR_UNIT, "dai_device_descriptor_init");
+    return device::returnDriverStatus(  // runAsync: the vendor module returns DAI_STATUS_UNSUPPORTED, so this throws
+        dai_device_descriptor_init(handle.get(), inFrame ? &image : nullptr, runAsync ? 1 : 0),
+        DESCRIPTOR_UNIT,
+        "dai_device_descriptor_init");
 }
 
 int DescriptorCalculator::Config() {
@@ -207,7 +188,6 @@ int DescriptorCalculator::Config() {
 }
 
 void DescriptorCalculator::Run(std::shared_ptr<dai::ImgFrame> inImageData, const std::vector<DescriptorSearchPosition>& positions) {
-    // Nothing to do (and no conversion of the frame data) for an empty list, as before the C interface
     if(positions.empty()) {
         return;
     }
@@ -216,8 +196,7 @@ void DescriptorCalculator::Run(std::shared_ptr<dai::ImgFrame> inImageData, const
         searchPositions[i].x = positions[i].x;
         searchPositions[i].y = positions[i].y;
     }
-    // No frame: the vendor module returns DAI_STATUS_INVALID_ARGUMENT (no image)
-    std::shared_ptr<AcceleratorMemory> memory;
+    std::shared_ptr<AcceleratorMemory> memory;  // No frame: the vendor module returns DAI_STATUS_INVALID_ARGUMENT
     dai_device_image image{};
     if(inImageData) {
         memory = toAcceleratorMemory(*inImageData, dai_device_descriptor_in_min_bytes(handle.get()));
@@ -231,7 +210,6 @@ int DescriptorCalculator::Close() {
 }
 
 void DescriptorCalculator::setNumPoints(uint32_t numPoints) {
-    // The vendor module clamps it to MAX_POINTS
     dai_device_descriptor_set_num_points(handle.get(), numPoints);
 }
 

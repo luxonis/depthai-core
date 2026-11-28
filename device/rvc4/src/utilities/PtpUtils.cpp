@@ -9,14 +9,11 @@ namespace dai {
 namespace gate {
 
 static std::string toLowerTrimmed(std::string s) {
-    // Trim leading/trailing whitespace
-    auto isSpace = [](unsigned char c){ return std::isspace(c); };
+    auto isSpace = [](unsigned char c) { return std::isspace(c); };
     s.erase(s.begin(), std::find_if_not(s.begin(), s.end(), isSpace));
     s.erase(std::find_if_not(s.rbegin(), s.rend(), isSpace).base(), s.end());
 
-    // Lowercase everything
-    std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c){ return std::tolower(c); });
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
     return s;
 }
 

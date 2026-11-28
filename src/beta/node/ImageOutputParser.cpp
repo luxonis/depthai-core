@@ -25,37 +25,17 @@ namespace node {
 
 namespace {
 
-/**
- * Tensor values in the tensor's stored order together with the tensor shape.
- */
 using TensorData = utilities::ClassificationUtils::ShapedTensorData;
 
-/**
- * Retrieve a tensor from NNData as dequantized FP32 values in the tensor's stored order, matching
- * the source parser's output.getTensor(name, dequantize=True).
- */
 TensorData getTensorData(dai::NNData& nnData, const std::string& tensorName) {
     return utilities::ClassificationUtils::getShapedTensorData(nnData, tensorName);
 }
 
-/**
- * 8-bit image values together with the image shape in CHW or HWC orientation, as produced by the
- * model.
- */
 struct Uint8Image {
-    /// Image values in row-major order over dims.
     std::vector<std::uint8_t> values;
-    /// Image shape, 3D in CHW or HWC orientation.
-    std::vector<std::size_t> dims;
+    std::vector<std::size_t> dims;  // 3D, in CHW or HWC orientation
 };
 
-/**
- * Convert a model image output tensor into an 8-bit image, mirroring the source
- * compute_image_output() and unnormalize_image() utilities. A leading batch dimension of 1 is
- * squeezed and the tensor must then be 3D. The values are min-max normalized to [0, 1], or only
- * shifted by the minimum when all values are equal, then scaled to [0, 255], clipped and truncated
- * to uint8.
- */
 Uint8Image computeImageOutput(TensorData tensor) {
     if(tensor.dims.size() == 4 && tensor.dims[0] == 1) {
         tensor.dims.erase(tensor.dims.begin());
@@ -84,14 +64,6 @@ Uint8Image computeImageOutput(TensorData tensor) {
     return image;
 }
 
-/**
- * Create the output ImgFrame message from an 8-bit image, mirroring the source
- * create_image_message() creator and the ImgFrame::setCvFrame() data packing for the BGR888i,
- * BGR888p and GRAY8 frame types. The image orientation is detected as CHW when the first dimension
- * is 1 or 3 (checked first) and as HWC when the third dimension is 1 or 3. A single-channel image
- * is emitted as a GRAY8 frame; a 3-channel image is emitted with the requested BGR frame type,
- * swapping the channels from RGB to BGR unless the image is marked as already BGR.
- */
 std::shared_ptr<dai::ImgFrame> createImageMessage(const Uint8Image& image, bool isBGR, dai::ImgFrame::Type requestedFrameType) {
     bool hwc = false;
     if(image.dims[0] == 1 || image.dims[0] == 3) {
@@ -115,10 +87,7 @@ std::shared_ptr<dai::ImgFrame> createImageMessage(const Uint8Image& image, bool 
     std::vector<std::uint8_t> data;
 
     if(channels == 1) {
-        // Grayscale: squeeze to a single plane. The source creator forces GRAY8 unless a RAW*
-        // or GRAY* frame type is requested; this parser only ever requests BGR888p or BGR888i,
-        // so a grayscale image is always emitted as GRAY8.
-        data.resize(planeSize);
+        data.resize(planeSize);  // Always GRAY8: the source forces it unless RAW* or GRAY* is requested, and this parser never requests those
         for(std::size_t y = 0; y < height; y++) {
             for(std::size_t x = 0; x < width; x++) {
                 data[y * width + x] = valueAt(y, x, 0);
@@ -127,14 +96,11 @@ std::shared_ptr<dai::ImgFrame> createImageMessage(const Uint8Image& image, bool 
         frame->setType(dai::ImgFrame::Type::GRAY8);
         frame->setStride(static_cast<unsigned int>(width));
     } else {
-        // Color: when the image is RGB (isBGR == false) the red and blue channels are swapped,
-        // mirroring the source cv2.cvtColor(image, cv2.COLOR_RGB2BGR) conversion.
         const std::size_t blueChannel = isBGR ? 0 : 2;
         const std::size_t greenChannel = 1;
         const std::size_t redChannel = isBGR ? 2 : 0;
         data.resize(planeSize * 3);
         if(requestedFrameType == dai::ImgFrame::Type::BGR888p) {
-            // Planar packing: B plane first, then G and R planes.
             for(std::size_t y = 0; y < height; y++) {
                 for(std::size_t x = 0; x < width; x++) {
                     data[y * width + x] = valueAt(y, x, blueChannel);
@@ -148,7 +114,6 @@ std::shared_ptr<dai::ImgFrame> createImageMessage(const Uint8Image& image, bool 
             frame->fb.p2Offset = static_cast<unsigned int>(planeSize);
             frame->fb.p3Offset = static_cast<unsigned int>(2 * planeSize);
         } else {
-            // Interleaved packing: B, G, R values per pixel.
             for(std::size_t y = 0; y < height; y++) {
                 for(std::size_t x = 0; x < width; x++) {
                     data[(y * width + x) * 3] = valueAt(y, x, blueChannel);
@@ -169,7 +134,6 @@ std::shared_ptr<dai::ImgFrame> createImageMessage(const Uint8Image& image, bool 
 }  // namespace
 
 NNArchive ImageOutputParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -248,8 +212,6 @@ void ImageOutputParser::setConfig(const dai::nn_archive::v1::Head& head) {
     DAI_CHECK_V(numOutputs == 1, "ImageOutputParser expects exactly 1 output layer, got {} layers.", numOutputs);
     setOutputLayerName(head.outputs->front());
 
-    // The output_is_bgr key without a typed metadata field lives in the head metadata extra
-    // parameters.
     const auto& extraParams = head.metadata.extraParams;
 
     if(extraParams.is_object() && extraParams.contains("output_is_bgr") && !extraParams.at("output_is_bgr").is_null()) {
@@ -287,17 +249,12 @@ void ImageOutputParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
-    // The color output frame type is resolved from the pipeline's default device platform once at
-    // startup, mirroring the source parser: BGR888p on RVC2, BGR888i otherwise. A device-less
-    // pipeline has no platform to query, so the source creator's default BGR888i is used.
     ImgFrame::Type requestedFrameType = ImgFrame::Type::BGR888i;
     auto device = getParentPipeline().getDefaultDevice();
     if(device != nullptr && device->getPlatformAsString() == "RVC2") {
         requestedFrameType = ImgFrame::Type::BGR888p;
     }
 
-    // The resolved layer name persists across messages once auto-selected from a single-tensor
-    // NNData, mirroring the source parser behavior.
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
@@ -312,7 +269,6 @@ void ImageOutputParser::run() {
         }
         auto tGotInput = std::chrono::steady_clock::now();
 
-        // Extract
         const auto layerNames = nnData->getAllLayerNames();
         if(resolvedOutputLayerName.empty()) {
             DAI_CHECK_V(
@@ -322,10 +278,8 @@ void ImageOutputParser::run() {
 
         auto tensor = getTensorData(*nnData, resolvedOutputLayerName);
 
-        // Compute. The image dimensions and channel count are derived from the tensor shape.
         auto image = computeImageOutput(std::move(tensor));
 
-        // Emit
         auto message = createImageMessage(image, properties.outputIsBGR, requestedFrameType);
         if(nnData->transformation.has_value()) {
             message->setTransformation(*nnData->transformation);

@@ -11,17 +11,7 @@
 namespace dai {
 namespace gate {
 
-/**
- * Stamps a locally-calibrated image transformation with the current device
- * identity and, when a graph is installed, rebases it to the multi-device
- * component origin.
- *
- * When the local calibration no longer matches the graph the local metadata is
- * kept and a warning is logged once per `warnedForMismatch` flag.
- *
- * @param multiDeviceCalibration Resolved handler, or nullptr when no graph is set
- */
-ImgTransformation prepareMultiDeviceTransformation(ImgTransformation transformation,
+ImgTransformation prepareMultiDeviceTransformation(ImgTransformation transformation,  // multiDeviceCalibration: nullptr when no graph is set
                                                    const std::string& deviceId,
                                                    const beta::MultiDeviceCalibrationHandler* multiDeviceCalibration,
                                                    bool& warnedForMismatch,

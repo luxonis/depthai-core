@@ -2,14 +2,10 @@
 
 #include <cstdint>
 #include <depthai/pipeline/ThreadedNode.hpp>
-#include <memory>
-
-// shared
-#include <depthai/properties/internal/XLinkOutProperties.hpp>
-
-// project
 #include <depthai/pipeline/datatype/Buffer.hpp>
+#include <depthai/properties/internal/XLinkOutProperties.hpp>
 #include <depthai/utility/RecordReplay.hpp>
+#include <memory>
 
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"

@@ -1,13 +1,10 @@
 #include "XLinkIn.hpp"
 
-// std
 #include <chrono>
 
-// project
 #include <depthai/pipeline/datatype/MessageGroup.hpp>
 #include <depthai/pipeline/datatype/StreamMessageParser.hpp>
 #include <memory>
-// libraries
 #include <XLink/XLink.h>
 
 #include "spdlog/fmt/bin_to_hex.h"
@@ -35,7 +32,6 @@ void XLinkIn::run() {
 
     static const milliseconds DELAY_AFTER_XLINK_CONNECTION{50};
 
-    // Open stream
     streamId_t streamId = XLinkOpenStream(0, properties.streamName.c_str(), 1);
     if(streamId == INVALID_STREAM_ID) {
         // if(logger) logger->error("Cannot open stream (Maximum is {} streams)",
@@ -44,7 +40,6 @@ void XLinkIn::run() {
         return;
     }
 
-    // Sleep for constant time
     std::this_thread::sleep_for(DELAY_AFTER_XLINK_CONNECTION);
 
     while(mainLoop()) {
@@ -84,12 +79,6 @@ void XLinkIn::run() {
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
                     tmpMsg.second->serialize(metadata, type);
-                    // logger->trace("Received message from device ({}) - parsing time: {}, data size: {}, object type: {} object data: {}",
-                    //               properties.streamName,
-                    //               duration_cast<microseconds>(t2Parse - t1Parse),
-                    //               msg->data->getSize(),
-                    //               type,
-                    //               spdlog::to_hex(metadata));
                 }
             }
         }
@@ -97,7 +86,6 @@ void XLinkIn::run() {
         auto tProcessed = tGotInput;
         {
             auto blockEvent = this->outputBlockEvent();
-            // Send message
             out.send(msg);
         }
         auto tAbsoluteEnd = steady_clock::now();

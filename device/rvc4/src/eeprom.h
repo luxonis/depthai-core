@@ -3,12 +3,9 @@
 #include <stdint.h>
 #include "depthai/common/EepromData.hpp"
 
-// Reserve the last two legacy camera slots for IMU calibration parameters.
-#define MAX_CAMERAS (10 - 2)
+#define MAX_CAMERAS (10 - 2)  // The last two legacy camera slots are reserved for IMU calibration parameters
 
-// The EEPROM layout version is not changed by ading the IMU calibration parameters
-// Use a magic number to identify if the IMU calibration parameters are present in the EEPROM
-#define IMU_CALIB_PARAMS_MAGIC 0xC0DE
+#define IMU_CALIB_PARAMS_MAGIC 0xC0DE  // Marks IMU calibration params as present; adding them did not change the layout version
 #define IMU_CALIB_PARAMS_SIZE 12
 
 enum eeprom_area { EEPROM_AREA_USER, EEPROM_AREA_FACTORY };
@@ -39,23 +36,7 @@ enum eeprom_version {
     EEPROM_VERSION_CURRENT = EEPROM_VERSION_LAST - 1
 };
 
-/*
- * EEPROM board options, bit index:
- * 33222222222211111111110000000000
- * 10987654321098765432109876543210
- *  |         |    |   |||||___||||_0: PCIe clock internal
- *  |         |    |   || |  |  ||__1: USB3 clock internal (no USB3 signals exposed)
- *  |         |    |   || |  |  |___2: MIPI all 3 ports 4-lane
- *  |         |    |   || |  |______7..3: Camera config (0x00-0x1F): 0x01: KeemBay-like (OAK-D-SR),
- *  |         |    |   || |                                          0x10: I2C different busses for all cams
- *  |         |    |   || |_________9..8: ETH Config (0x0-0x3): 0x00: Default, 0x01: PERST39(AH), ISOLATE17(AL)
- *  |         |    |   ||___________10: Dual-port device (Ethernet and USB, e.g: OAK-D-LR)
- *  |         |    |___|____________15..11: Default boot mode (0x00-0x1F): 0x00: GPIO bootstrap, else as defined by MyriadX.
- *  |         |_____________________20: 5bits PMIC config
- *  |_______________________________30: EEPROM use BoardConfig from User area (not Factory)
- */
-
-enum eeprom_board_options {
+enum eeprom_board_options {  // CAM_CONF 0x01 = OAK-D-SR (KeemBay-like); ETH_CONF 0x01 = PERST39(AH), ISOLATE17(AL); boot mode 0 = GPIO bootstrap
     EEPROM_BOARD_OPTIONS_PCIE_CLOCK_INTERNAL = 0x1,
     EEPROM_BOARD_OPTIONS_USB3_CLOCK_INTERNAL = 0x2,
     EEPROM_BOARD_OPTIONS_MIPI_4LANE_RGB = 1U << 2,
@@ -90,26 +71,21 @@ enum eeprom_bitfield : uint8_t {
 };
 
 struct eeprom_data {
-    // EEPROM_VERSION_V1
     uint32_t version;
     float calib_R1_left[9];  // calib_homography_right_to_left for <=V3, calib_H1_left for V4
     float left_fov_deg;
     float left_to_right_distance_m;
     float left_to_rgb_distance_m;
     bool swap_left_and_right_cameras;
-    // EEPROM_VERSION_V2 additional fields
     float rgb_fov_deg;
     char board_name[16];
     char board_rev[10];
-    // EEPROM_VERSION_V3 additional fields
     bool stereo_center_crop;
-    // EEPROM_VERSION_V4 additional fields
     float calib_R2_right[9];  // calib_H2_right for V4
     float calib_M1_left[9];
     float calib_M2_right[9];
     float calib_R[9];
     float calib_T[3];
-    // EEPROM_VERSION_V5 additional fields
     float calib_M3_rgb[9];
     float calib_R_rgb[9];
     float calib_T_rgb[3];
@@ -126,10 +102,8 @@ struct point {
 
 struct raw_extrinsics {
     float rotation[9];
-    // (x, y, z) pose of dest_camera_socket w.r.t current_camera_socket obtained through calibration
-    point translation;
-    // (x, y, z) pose of dest_camera_socket w.r.t current_camera_socket measured through CAD design
-    point measured_translation;
+    point translation;           // Pose of to_camera_socket w.r.t. this camera socket, from calibration
+    point measured_translation;  // Pose of to_camera_socket w.r.t. this camera socket, from the CAD design
     int8_t to_camera_socket;
 } __attribute__((packed));
 
@@ -138,7 +112,6 @@ struct stereo_rectification {
     float rectified_rotation_right[9];
     uint8_t left_camera_socket;
     uint8_t right_camera_socket;
-    // float baseline; // in mtrs ? or cm ?
 } __attribute__((packed));
 
 struct lux_camera_info {
@@ -195,13 +168,10 @@ struct gen2_eeprom_data {
 #define EEPROM_VERSION_SIZE sizeof(uint32_t)
 
 int eeprom_open(dai::CameraBoardSocket camSocket = dai::CameraBoardSocket::AUTO);
-// Opens the CBA EEPROM at `address` on camera I2C bus `bus` as the EEPROM of `camSocket`. Doesn't need CameraSingleton,
-// so it also works while CameraSingleton is still initializing
-int eeprom_open_cba(dai::CameraBoardSocket camSocket, int bus, uint16_t address);
+int eeprom_open_cba(dai::CameraBoardSocket camSocket, int bus, uint16_t address);  // Doesn't need CameraSingleton: works while it is still initializing
 int eeprom_close(dai::CameraBoardSocket camSocket = dai::CameraBoardSocket::AUTO);
 bool eeprom_found(dai::CameraBoardSocket camSocket = dai::CameraBoardSocket::AUTO);
 
-// eeprom_data access
 eeprom_version eeprom_get_version(eeprom_area area, dai::CameraBoardSocket camSocket = dai::CameraBoardSocket::AUTO);
 eeprom_status eeprom_store_config(dai::EepromData& board_data_config,
                                   eeprom_area area,
@@ -216,15 +186,10 @@ eeprom_status eeprom_get_board_config_area(eeprom_area& area, dai::CameraBoardSo
 
 std::tuple<bool, std::string, std::vector<uint8_t>> eeprom_read_raw(eeprom_area area, dai::CameraBoardSocket camSocket = dai::CameraBoardSocket::AUTO);
 
-// Direct access to a 24Cxx EEPROM (2-byte memory address) on a camera I2C bus through /dev/i2c-<bus>.
-// Writes are chunked within pages and wait out each write cycle, so the busy EEPROM is never addressed:
-// on the camera buses a NACK resets the I2C master shared with the streaming sensor.
-// i2c_eeprom_open returns the fd, or -1 with `error` set; read/write return an empty string on success
-int i2c_eeprom_open(int bus, uint16_t address, std::string& error);
+int i2c_eeprom_open(int bus, uint16_t address, std::string& error);  // Returns the fd, or -1 with error set; read/write return an empty string on success
 std::string i2c_eeprom_read(int fd, uint16_t address, uint8_t* data, size_t size, size_t offset);
 std::string i2c_eeprom_write(int fd, uint16_t address, const uint8_t* data, size_t size, size_t offset);
 
-// Raw access to the camera-module (CCM) EEPROM; supported on RVC4 only
 std::tuple<bool, std::string, std::vector<uint8_t>> ccm_eeprom_read_raw(dai::CameraBoardSocket camSocket, size_t size, size_t offset);
 std::tuple<bool, std::string> ccm_eeprom_write_raw(dai::CameraBoardSocket camSocket, std::vector<uint8_t> data, size_t offset);
 
@@ -232,10 +197,6 @@ std::tuple<bool, std::string> eeprom_clear(eeprom_area area,
                                            bool protectedPermissions,
                                            bool factoryPermissions,
                                            dai::CameraBoardSocket camSocket = dai::CameraBoardSocket::AUTO);
-
-// // Raw read access
-// int eeprom_store(const void *data, size_t size, size_t add_offset);
-// int eeprom_read(void *data, size_t size, size_t add_offset);
 
 static inline bool eeprom_version_is_valid(uint32_t version) {
     return version >= EEPROM_VERSION_V1 && version < EEPROM_VERSION_LAST;

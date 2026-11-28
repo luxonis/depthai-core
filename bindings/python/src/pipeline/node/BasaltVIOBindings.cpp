@@ -11,22 +11,12 @@ void bind_basaltnode(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // declare upfront
     auto basaltNode = ADD_NODE_DERIVED(BasaltVIO, ThreadedHostNode);
     py::class_<BasaltVIO::VioConfig> vioConfig(m, "VioConfig");
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // BasaltVIO Node
     basaltNode.def_property_readonly(
                   "left", [](BasaltVIO& node) { return &node.left; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
@@ -44,7 +34,6 @@ void bind_basaltnode(pybind11::module& m, void* pCallstack) {
         .def("runSyncOnHost", &BasaltVIO::runSyncOnHost, py::arg("runOnHost"), DOC(dai, node, BasaltVIO, runSyncOnHost))
         .def("setImuExtrinsics", &BasaltVIO::setImuExtrinsics, py::arg("imuExtr"), DOC(dai, node, BasaltVIO, setImuExtrinsics))
         .def("setLocalTransform", &BasaltVIO::setLocalTransform, py::arg("transform"), DOC(dai, node, BasaltVIO, setLocalTransform));
-    // VioConfig
     vioConfig.def(py::init<>())
         .def_readwrite("optical_flow_type", &BasaltVIO::VioConfig::optical_flow_type)
         .def_readwrite("optical_flow_detection_grid_size", &BasaltVIO::VioConfig::optical_flow_detection_grid_size)
@@ -110,5 +99,4 @@ void bind_basaltnode(pybind11::module& m, void* pCallstack) {
         .def_readwrite("mapper_use_lm", &BasaltVIO::VioConfig::mapper_use_lm)
         .def_readwrite("mapper_lm_lambda_min", &BasaltVIO::VioConfig::mapper_lm_lambda_min)
         .def_readwrite("mapper_lm_lambda_max", &BasaltVIO::VioConfig::mapper_lm_lambda_max);
-    ///////////////////////////////////////////////////////////////////////
 }

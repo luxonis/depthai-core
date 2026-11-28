@@ -1,22 +1,17 @@
 #pragma once
 
-// C++ std
 #include <filesystem>
 #include <functional>
 #include <optional>
 #include <string>
 #include <vector>
 
-// libraries
 #include "archive.h"
 #include "archive_entry.h"
-
-// internal public
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
 
 namespace dai::utility {
 
-// Wrapper C++ class for correct exception handling without memory leaks
 class ArchiveUtil {
    public:
     explicit ArchiveUtil(struct archive* archivePtr);
@@ -30,13 +25,9 @@ class ArchiveUtil {
                 NNArchiveEntry::Compression format);
 
     struct archive* getA();
-    // Throws on error
     void readEntry(struct archive_entry* entry, std::vector<uint8_t>& out);
     void unpackArchiveInDirectory(const std::filesystem::path& directory);
-    // Reads entryName from archive to curEntry member.
-    // Returns true if entry found, false otherwise.
-    // Throws on other errors
-    bool readEntry(const std::string& entryName, std::vector<uint8_t>& out);
+    bool readEntry(const std::string& entryName, std::vector<uint8_t>& out);  // false if entryName is not found; throws on other errors
     ArchiveUtil(const ArchiveUtil&) = delete;
     ArchiveUtil& operator=(const ArchiveUtil&) = delete;
     ArchiveUtil(ArchiveUtil&&) = delete;

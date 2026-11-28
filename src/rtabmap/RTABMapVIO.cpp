@@ -100,7 +100,6 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
 
             if(!pimplRtabmap->accBuffer.empty() && !pimplRtabmap->gyroBuffer.empty() && pimplRtabmap->accBuffer.rbegin()->first >= stamp
                && pimplRtabmap->gyroBuffer.rbegin()->first >= stamp) {
-                // acc
                 iterB = pimplRtabmap->accBuffer.lower_bound(stamp);
                 if(iterB != pimplRtabmap->accBuffer.end()) {
                     iterA = iterB;
@@ -114,7 +113,6 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
                     pimplRtabmap->accBuffer.erase(pimplRtabmap->accBuffer.begin(), iterB);
                 }
 
-                // gyro
                 iterB = pimplRtabmap->gyroBuffer.lower_bound(stamp);
                 if(iterB != pimplRtabmap->gyroBuffer.end()) {
                     iterA = iterB;
@@ -134,9 +132,7 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
 
             Point3d velocity;
             const auto& velocityGuess = pimplRtabmap->odom->getVelocityGuess();
-            if(!pose.isNull() && !velocityGuess.isNull()) {
-                // RTAB-Map reports velocity in the tracked body's local frame. Rotate it first
-                // into RTAB-Map's world frame and then into the published output frame.
+            if(!pose.isNull() && !velocityGuess.isNull()) {  // RTAB-Map velocity is in the body frame: rotate to world, then output frame
                 const float worldX = pose.r11() * velocityGuess.x() + pose.r12() * velocityGuess.y() + pose.r13() * velocityGuess.z();
                 const float worldY = pose.r21() * velocityGuess.x() + pose.r22() * velocityGuess.y() + pose.r23() * velocityGuess.z();
                 const float worldZ = pose.r31() * velocityGuess.x() + pose.r32() * velocityGuess.y() + pose.r33() * velocityGuess.z();
@@ -206,8 +202,7 @@ void RTABMapVIO::initialize(dai::Pipeline& pipeline, int instanceNum, int width,
                                                          double(imuExtr[2][2]),
                                                          double(imuExtr[2][3]));
 
-    // First align IMU data via EEPROM extrinsics, then map RDF output frame to FLU.
-    pimplRtabmap->imuLocalTransform = pimplRtabmap->localTransform * pimplRtabmap->imuLocalTransform;
+    pimplRtabmap->imuLocalTransform = pimplRtabmap->localTransform * pimplRtabmap->imuLocalTransform;  // IMU extrinsics first, then RDF to FLU
     pimplRtabmap->odom.reset(rtabmap::Odometry::create(pimplRtabmap->rtabParams));
     initialized = true;
 }

@@ -3,11 +3,9 @@
 
 #include "DatatypeBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/SegmentationMask.hpp"
 #include "ndarray_converter.h"
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
@@ -42,19 +40,10 @@ void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
     py::class_<SegmentationMask, Py<SegmentationMask>, Buffer, ProtoSerializable, Transformable, py::smart_holder> segmentationMask(
         m, "SegmentationMask", DOC(dai, SegmentationMask));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-
-    // Actual bindings
-    /////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     segmentationMask.def(py::init<>())
         .def(py::init<const std::vector<std::uint8_t>&, size_t, size_t>(),

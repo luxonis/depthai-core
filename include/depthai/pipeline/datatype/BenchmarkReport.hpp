@@ -15,8 +15,7 @@ class BenchmarkReport : public Buffer {
     float numMessagesReceived = 0;
     float averageLatency = 0.0f;  // seconds
 
-    // Only filled if measureIndividualLatencies is set to true
-    std::vector<float> latencies;
+    std::vector<float> latencies;  // Filled only when measureIndividualLatencies is true
 
     ~BenchmarkReport() override;
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;

@@ -36,7 +36,6 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
 
     virtual ~EncodedFrame();
 
-    // getters
     /**
      * Retrieves instance number
      */

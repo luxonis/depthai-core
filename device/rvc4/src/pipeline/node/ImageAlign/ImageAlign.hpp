@@ -3,7 +3,6 @@
 #include <array>
 #include <vector>
 
-// libraries
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
@@ -22,9 +21,7 @@ class ImageAlign : public ::dai::node::ImageAlign {
 
     constexpr static const char* NAME = node::ImageAlign::NAME;
     ImageAlign() : ImageAlign(std::make_unique<dai::node::ImageAlign::Properties>()) {}
-    ImageAlign(std::unique_ptr<Properties> props) : dai::node::ImageAlign(std::move(props)) {
-        // override that this is a host node
-    }
+    ImageAlign(std::unique_ptr<Properties> props) : dai::node::ImageAlign(std::move(props)) {}
     bool runOnHost() const override {
         return true;
     }

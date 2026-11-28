@@ -9,7 +9,6 @@
 #include <sstream>
 #include <stdexcept>
 
-// Platform specific
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
     #include <iphlpapi.h>
     #include <ws2tcpip.h>
@@ -79,8 +78,7 @@ std::filesystem::path getHomePath() {
 uint32_t getIPv4AddressAsBinary(const std::string& address) {
     uint32_t binary = 0;
     if(address == "") {
-        // inet_addr returns 0xFFFFFFFF if addr is ""
-        return 0;
+        return 0;  // inet_addr returns 0xFFFFFFFF for an empty string
     }
 
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
@@ -116,8 +114,7 @@ bool isIPv4Address(const std::string& address) {
     uint32_t binary = 0;
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
     #if(_WIN32_WINNT <= 0x0501)
-    // for XP: inet_addr is the only parser available (it is not strict about leading zeros)
-    binary = inet_addr(address.c_str());
+    binary = inet_addr(address.c_str());  // XP has only inet_addr; it accepts leading zeros
     return binary != INADDR_NONE;
     #else
     return inet_pton(AF_INET, address.c_str(), &binary) == 1;  // for Vista or higher
@@ -134,7 +131,6 @@ std::string getLocalIpAddress() {
     ULONG flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER;
     ULONG outBufLen = 0;
 
-    // First call to get required buffer size
     GetAdaptersAddresses(AF_INET, flags, nullptr, nullptr, &outBufLen);
     if(outBufLen == 0) {
         return result;
@@ -148,12 +144,10 @@ std::string getLocalIpAddress() {
     }
 
     for(auto* pCurrAddresses = pAddresses; pCurrAddresses; pCurrAddresses = pCurrAddresses->Next) {
-        // Skip adapters that are not up
         if(pCurrAddresses->OperStatus != IfOperStatusUp) {
             continue;
         }
 
-        // Skip loopback adapters
         if(pCurrAddresses->IfType == IF_TYPE_SOFTWARE_LOOPBACK) {
             continue;
         }
@@ -337,9 +331,7 @@ bool checkPathExists(const std::filesystem::path& path, bool directory) {
 
 bool checkWritePermissions(const std::filesystem::path& path) {
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
-    // On Windows, using _waccess() checks for existence for directories, not read and write permissions.
-    // We check for write permission by creating a dummy file and deleting it.
-    if(std::filesystem::is_directory(path)) {
+    if(std::filesystem::is_directory(path)) {  // _waccess() on a directory checks only existence: probe with a temporary file
         std::string uniqueName = std::to_string(std::time(nullptr)) + "_random_name";
         std::filesystem::path probe = path / uniqueName;
 
@@ -351,20 +343,16 @@ bool checkWritePermissions(const std::filesystem::path& path) {
                                FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE,
                                nullptr);
 
-        // Check if the file was created
         if(h == INVALID_HANDLE_VALUE) {
             return false;
         }
 
-        // Close handle and delete the file
         CloseHandle(h);
         DeleteFileW(probe.c_str());
 
-        // All checks passed, folder has write permissions
         return true;
     }
-    // 2 = write permission
-    return (_waccess(path.c_str(), 2) == 0);
+    return (_waccess(path.c_str(), 2) == 0);  // 2 = write permission
 #else
     return (access(path.c_str(), W_OK) == 0);
 #endif
@@ -373,7 +361,6 @@ bool checkWritePermissions(const std::filesystem::path& path) {
 bool checkReadPermissions(const std::filesystem::path& path) {
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
     if(std::filesystem::is_directory(path)) {
-        // Try to open the directory for listing
         HANDLE h = CreateFileW(path.c_str(),
                                FILE_LIST_DIRECTORY,
                                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
@@ -382,18 +369,15 @@ bool checkReadPermissions(const std::filesystem::path& path) {
                                FILE_FLAG_BACKUP_SEMANTICS,
                                nullptr);
 
-        // Check for valid handle, otherwise, we don't have read permissions
         if(h == INVALID_HANDLE_VALUE) {
             return false;
         }
 
-        // properly close everything
         CloseHandle(h);
         return true;
     }
 
-    // 4 = read permission
-    return (_waccess(path.c_str(), 4) == 0);
+    return (_waccess(path.c_str(), 4) == 0);  // 4 = read permission
 #else
     return (access(path.c_str(), R_OK) == 0);
 #endif
@@ -408,7 +392,6 @@ FSLock::~FSLock() {
 }
 
 void FSLock::lock() {
-    // First acquire the thread lock
     threadLock.lock();
 
     lockPath = getLockPath(filename);

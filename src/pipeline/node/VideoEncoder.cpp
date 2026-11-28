@@ -1,9 +1,7 @@
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 
-// std
 #include <stdexcept>
 
-// libraries
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
 
@@ -14,18 +12,14 @@ std::shared_ptr<VideoEncoder> VideoEncoder::build(Node::Output& input) {
     input.link(this->input);
     return std::static_pointer_cast<VideoEncoder>(shared_from_this());
 }
-// node properties
 void VideoEncoder::setNumFramesPool(int frames) {
     properties.numFramesPool = frames;
-    // // Set default input queue size as well
-    // input.defaultQueueSize = frames;
 }
 
 int VideoEncoder::getNumFramesPool() const {
     return properties.numFramesPool;
 }
 
-// encoder properties
 void VideoEncoder::setRateControlMode(VideoEncoderProperties::RateControlMode mode) {
     properties.rateCtrlMode = mode;
 }
@@ -86,10 +80,6 @@ int VideoEncoder::getKeyframeFrequency() const {
     return properties.keyframeFrequency;
 }
 
-// int VideoEncoder::getMaxBitrate() const {
-//    return properties.maxBitrate;
-//}
-
 int VideoEncoder::getNumBFrames() const {
     return properties.numBFrames;
 }
@@ -103,9 +93,6 @@ float VideoEncoder::getFrameRate() const {
 }
 
 void VideoEncoder::setDefaultProfilePreset(float fps, VideoEncoderProperties::Profile profile) {
-    // Checks
-
-    // Set properties
     setProfile(profile);
     setFrameRate(fps);
 
@@ -118,10 +105,8 @@ void VideoEncoder::setDefaultProfilePreset(float fps, VideoEncoderProperties::Pr
         case VideoEncoderProperties::Profile::H264_HIGH:
         case VideoEncoderProperties::Profile::H264_MAIN:
         case VideoEncoderProperties::Profile::H265_MAIN:
-            // By default set keyframe frequency to equal fps
             properties.keyframeFrequency = static_cast<int32_t>(fps);
-            // A default bitrate computed by firmware based on size and fps
-            setBitrate(0);
+            setBitrate(0);  // 0 = firmware computes the bitrate from size and fps
             break;
 
         default:

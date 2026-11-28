@@ -1,6 +1,5 @@
 #include "EventsManagerBindings.hpp"
 
-// depthai
 #ifdef DEPTHAI_ENABLE_EVENTS_MANAGER
     #include "depthai/utility/EventsManager.hpp"
 #endif
@@ -8,17 +7,10 @@
 void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
 #ifdef DEPTHAI_ENABLE_EVENTS_MANAGER
     using namespace dai::utility;
@@ -45,11 +37,6 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("fileTag"),
              py::arg("encodedFrame"),
              DOC(dai, utility, FileGroup, addFile))
-        //.def("addFile",
-        //     static_cast<void (FileGroup::*)(std::string, const std::shared_ptr<NNData>&)>(&FileGroup::addFile),
-        //     py::arg("fileTag"),
-        //     py::arg("nnData"),
-        //     DOC(dai, utility, FileGroup, addFile))
         .def("addFile",
              static_cast<void (FileGroup::*)(const std::optional<std::string>&, const std::shared_ptr<ImgDetections>&)>(&FileGroup::addFile),
              py::arg("fileTag"),
@@ -69,19 +56,6 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("encodedFrame"),
              py::arg("imgDetections"),
              DOC(dai, utility, FileGroup, addImageDetectionsPair));
-    //.def("addImageNNDataPair",
-    //     static_cast<void (FileGroup::*)(std::string, const std::shared_ptr<ImgFrame>&, const std::shared_ptr<NNData>&)>(&FileGroup::addImageNNDataPair),
-    //     py::arg("fileTag"),
-    //     py::arg("imgFrame"),
-    //     py::arg("nnData"),
-    //     DOC(dai, utility, FileGroup, addImageNNDataPair))
-    //.def(
-    //    "addImageNNDataPair",
-    //    static_cast<void (FileGroup::*)(std::string, const std::shared_ptr<EncodedFrame>&, const std::shared_ptr<NNData>&)>(&FileGroup::addImageNNDataPair),
-    //    py::arg("fileTag"),
-    //    py::arg("encodedFrame"),
-    //    py::arg("nnData"),
-    //    DOC(dai, utility, FileGroup, addImageNNDataPair));
 
     py::enum_<SendSnapCallbackStatus> sendSnapCallbackStatus(m, "SendSnapCallbackStatus", DOC(dai, utility, SendSnapCallbackStatus));
 

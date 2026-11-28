@@ -22,7 +22,6 @@ namespace beta {
 namespace node {
 
 NNArchive KeypointParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -101,8 +100,6 @@ void KeypointParser::setConfig(const dai::nn_archive::v1::Head& head) {
     DAI_CHECK_V(numOutputs == 1, "Only one output layer supported for KeypointParser, got {} layers.", numOutputs);
     setOutputLayerName(head.outputs->front());
 
-    // The keypoint-specific keys without typed metadata fields live in the head metadata extra
-    // parameters.
     const auto& extraParams = head.metadata.extraParams;
 
     if(const auto scaleFactor = utilities::KeypointsUtils::readFloatParam(extraParams, "scale_factor")) {
@@ -117,8 +114,6 @@ void KeypointParser::setConfig(const dai::nn_archive::v1::Head& head) {
     if(const auto labelNames = utilities::KeypointsUtils::readKeypointLabelsParam(extraParams)) {
         setLabelNames(*labelNames);
     }
-    // An empty edge list does not overwrite explicitly configured edges, mirroring the source
-    // parser behavior.
     const auto edges = utilities::KeypointsUtils::readSkeletonEdgesParam(extraParams);
     if(!edges.empty()) {
         setEdges(edges);
@@ -190,8 +185,6 @@ void KeypointParser::run() {
 
     DAI_CHECK(properties.nKeypoints.has_value(), "Number of keypoints must be specified!");
 
-    // The resolved layer name persists across messages once auto-selected from a
-    // single-tensor NNData, mirroring the source parser behavior.
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
@@ -206,7 +199,6 @@ void KeypointParser::run() {
         }
         auto tGotInput = std::chrono::steady_clock::now();
 
-        // Extract
         const auto layerNames = nnData->getAllLayerNames();
         if(resolvedOutputLayerName.empty()) {
             DAI_CHECK_V(
@@ -216,12 +208,8 @@ void KeypointParser::run() {
 
         auto values = utilities::ClassificationUtils::getFlattenedTensorData(*nnData, resolvedOutputLayerName);
 
-        // Compute
         auto coordinates = utilities::KeypointsUtils::computeKeypoints(std::move(values), *properties.nKeypoints, properties.scaleFactor);
 
-        // Emit. The source parser passes no scores and no confidence threshold to the message
-        // creator, so every keypoint is kept with a confidence of -1 and the edges are only
-        // filtered against out-of-range indices.
         auto message = utilities::KeypointsUtils::createKeypointsMessage(coordinates, std::nullopt, std::nullopt, properties.labelNames, properties.edges);
         if(nnData->transformation.has_value()) {
             message->setTransformation(*nnData->transformation);

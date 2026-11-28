@@ -114,10 +114,6 @@ class DeviceHealthCheck {
    public:
     DeviceHealthCheck() = delete;
 
-    /**
-     * Performs all configured health-check steps and aggregates the results.
-     * Stops early (returns the results collected so far) when shouldStop returns true.
-     */
    private:
     static HealthCheckMetrics run(const DeviceInfo& devInfo, const HealthCheckConfig& config, const std::function<bool()>& shouldStop = nullptr);
 };

@@ -1,14 +1,11 @@
 #pragma once
-#include <string>
-
-// libraries
 #include <spdlog/fmt/std.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
-// shared
 #include <depthai/log/LogConstants.hpp>
 #include <depthai/log/LogLevel.hpp>
+#include <string>
 
 namespace dai {
 
@@ -16,7 +13,6 @@ LogLevel spdlogLevelToLogLevel(spdlog::level::level_enum level, LogLevel default
 spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::level::level_enum defaultValue = spdlog::level::off);
 
 class Logging {
-    // private constructor
     Logging();
     ~Logging() {}
 
@@ -28,7 +24,6 @@ class Logging {
     Logging(Logging const&) = delete;
     void operator=(Logging const&) = delete;
 
-    // Public API
     spdlog::logger logger;
     static spdlog::level::level_enum parseLevel(std::string lvl);
 };

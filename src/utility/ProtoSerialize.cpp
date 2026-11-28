@@ -48,8 +48,6 @@
 
 namespace dai {
 namespace utility {
-// // Writes the FileDescriptor of this descriptor and all transitive dependencies
-// // to a string, for use as a channel schema.
 static std::string serializeFdSet(const google::protobuf::Descriptor* toplevelDescriptor) {
     google::protobuf::FileDescriptorSet fdSet;
     std::queue<const google::protobuf::FileDescriptor*> toAdd;
@@ -74,8 +72,7 @@ std::vector<std::uint8_t> serializeProto(std::unique_ptr<google::protobuf::Messa
     std::size_t nbytes = protoMessage->ByteSizeLong();
     std::vector<std::uint8_t> buffer(nbytes);
 
-    // The test is necessary becaue v.data could be NULL if nbytes is 0
-    if(nbytes > 0) {
+    if(nbytes > 0) {  // buffer.data() can be NULL when nbytes is 0
         protoMessage->SerializeToArray(buffer.data(), nbytes);
     }
 
@@ -479,9 +476,7 @@ void populateImgDetection(ImgDetection& detection, const proto::img_detections::
     }
 }
 
-// Helper function to populate an EncodedFrame proto from an EncodedFrame object
 void populateEncodedFrameToProto(proto::encoded_frame::EncodedFrame* encodedFrame, const EncodedFrame* message, bool metadataOnly) {
-    // Populate the protobuf message fields with the EncodedFrame data
     encodedFrame->set_instancenum(message->instanceNum);  // instanceNum -> instancenum
     encodedFrame->set_width(message->width);
     encodedFrame->set_height(message->height);
@@ -494,7 +489,6 @@ void populateEncodedFrameToProto(proto::encoded_frame::EncodedFrame* encodedFram
     encodedFrame->set_framesize(message->frameSize);                                      // frameSize -> framesize
     encodedFrame->set_sequencenum(message->sequenceNum);                                  // sequenceNum -> sequencenum
 
-    // Set timestamps
     proto::common::Timestamp* ts = encodedFrame->mutable_ts();
     ts->set_sec(message->ts.sec);
     ts->set_nsec(message->ts.nsec);
@@ -511,7 +505,6 @@ void populateEncodedFrameToProto(proto::encoded_frame::EncodedFrame* encodedFram
         encodedFrame->clear_tssystem();
     }
 
-    // Set camera settings
     proto::common::CameraSettings* cam = encodedFrame->mutable_cam();
     cam->set_exposuretimeus(message->cam.exposureTimeUs);    // exposureTimeUs -> exposuretimeus
     cam->set_sensitivityiso(message->cam.sensitivityIso);    // sensitivityIso -> sensitivityiso
@@ -526,7 +519,6 @@ void populateEncodedFrameToProto(proto::encoded_frame::EncodedFrame* encodedFram
     }
 
     if(!metadataOnly) {
-        // Set the encoded message data
         encodedFrame->set_data(message->data->getData().data(), message->data->getData().size());
     }
 
@@ -534,7 +526,6 @@ void populateEncodedFrameToProto(proto::encoded_frame::EncodedFrame* encodedFram
     utility::serializeImgTransformation(imgTransformation, message->transformation);
 }
 
-// Helper function to populate an ImgFrame proto from an ImgFrame object
 void populateImgFrameToProto(proto::img_frame::ImgFrame* imgFrame, const ImgFrame* message, bool metadataOnly) {
     proto::common::Timestamp* ts = imgFrame->mutable_ts();
     ts->set_sec(message->ts.sec);
@@ -553,7 +544,6 @@ void populateImgFrameToProto(proto::img_frame::ImgFrame* imgFrame, const ImgFram
 
     imgFrame->set_sequencenum(message->sequenceNum);
 
-    // frame buffer info
     proto::img_frame::Specs* fb = imgFrame->mutable_fb();
     fb->set_type(static_cast<proto::img_frame::Type>(message->fb.type));
     fb->set_width(message->fb.width);
@@ -564,7 +554,6 @@ void populateImgFrameToProto(proto::img_frame::ImgFrame* imgFrame, const ImgFram
     fb->set_p2offset(message->fb.p2Offset);
     fb->set_p3offset(message->fb.p3Offset);
 
-    // source frame buffer info
     proto::img_frame::Specs* sourceFb = imgFrame->mutable_sourcefb();
     sourceFb->set_type(static_cast<proto::img_frame::Type>(message->sourceFb.type));
     sourceFb->set_width(message->sourceFb.width);
@@ -575,7 +564,6 @@ void populateImgFrameToProto(proto::img_frame::ImgFrame* imgFrame, const ImgFram
     sourceFb->set_p2offset(message->sourceFb.p2Offset);
     sourceFb->set_p3offset(message->sourceFb.p3Offset);
 
-    // camera settings
     proto::common::CameraSettings* cam = imgFrame->mutable_cam();
     cam->set_exposuretimeus(message->cam.exposureTimeUs);
     cam->set_sensitivityiso(message->cam.sensitivityIso);
@@ -589,7 +577,6 @@ void populateImgFrameToProto(proto::img_frame::ImgFrame* imgFrame, const ImgFram
         cam->set_sensortemperaturec(*message->cam.sensorTemperatureC);
     }
 
-    // instance number and category
     imgFrame->set_instancenum(message->instanceNum);
     imgFrame->set_category(message->category);
 
@@ -601,7 +588,6 @@ void populateImgFrameToProto(proto::img_frame::ImgFrame* imgFrame, const ImgFram
     }
 }
 
-// Helper function to populate an EncodedFrame object from an EncodedFrame proto
 void populateEncodedFrameFromProto(EncodedFrame& obj, const proto::encoded_frame::EncodedFrame& encFrame, bool metadataOnly) {
     const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
         using clock = std::chrono::steady_clock;
@@ -655,7 +641,6 @@ void populateEncodedFrameFromProto(EncodedFrame& obj, const proto::encoded_frame
     }
 }
 
-// Helper function to populate an ImgFrame object from an ImgFrame proto
 void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::ImgFrame& imgFrame, bool metadataOnly) {
     const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
         using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
@@ -672,7 +657,6 @@ void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::ImgFrame& 
 
     obj.setSequenceNum(imgFrame.sequencenum());
 
-    // frame buffer info
     obj.fb.type = static_cast<dai::ImgFrame::Type>(imgFrame.fb().type());
     obj.fb.width = imgFrame.fb().width();
     obj.fb.height = imgFrame.fb().height();
@@ -682,7 +666,6 @@ void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::ImgFrame& 
     obj.fb.p2Offset = imgFrame.fb().p2offset();
     obj.fb.p3Offset = imgFrame.fb().p3offset();
 
-    // source frame buffer info
     obj.sourceFb.type = static_cast<dai::ImgFrame::Type>(imgFrame.sourcefb().type());
     obj.sourceFb.width = imgFrame.sourcefb().width();
     obj.sourceFb.height = imgFrame.sourcefb().height();
@@ -692,7 +675,6 @@ void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::ImgFrame& 
     obj.sourceFb.p2Offset = imgFrame.sourcefb().p2offset();
     obj.sourceFb.p3Offset = imgFrame.sourcefb().p3offset();
 
-    // camera settings
     obj.cam.exposureTimeUs = imgFrame.cam().exposuretimeus();
     obj.cam.sensitivityIso = imgFrame.cam().sensitivityiso();
     obj.cam.lensPosition = imgFrame.cam().lensposition();
@@ -703,7 +685,6 @@ void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::ImgFrame& 
     obj.cam.fps = imgFrame.cam().fps();
     obj.cam.sensorTemperatureC = imgFrame.cam().has_sensortemperaturec() ? std::make_optional(imgFrame.cam().sensortemperaturec()) : std::nullopt;
 
-    // instance number and category
     obj.instanceNum = imgFrame.instancenum();
     obj.category = imgFrame.category();
 
@@ -717,7 +698,6 @@ void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::ImgFrame& 
     }
 }
 
-// Helper function to populate an NNData proto from an NNData object
 void populateNNDataToProto(proto::nn_data::NNData* nnData, const NNData* message, bool metadataOnly) {
     nnData->set_sequencenum(message->sequenceNum);
 
@@ -769,7 +749,6 @@ void populateNNDataToProto(proto::nn_data::NNData* nnData, const NNData* message
     }
 }
 
-// Helper function to populate an NNData object from an NNData proto
 void populateNNDataFromProto(NNData& obj, const proto::nn_data::NNData& nnData, bool metadataOnly) {
     obj.setSequenceNum(nnData.sequencenum());
     obj.setTimestamp(utility::safeTimestamp<std::chrono::steady_clock>(nnData.ts(), nnData.has_ts()));
@@ -899,7 +878,6 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations*
 }
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetections* message, bool metadataOnly) {
-    // create and populate SpatialImgDetections protobuf message
     auto spatialImgDetections = std::make_unique<proto::spatial_img_detections::SpatialImgDetections>();
     spatialImgDetections->set_sequencenum(message->sequenceNum);
 
@@ -922,7 +900,6 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
     for(const auto& detection : message->detections) {
         auto* spatialImgDetection = spatialImgDetections->add_detections();
 
-        // Populate embedded ImgDetection message.
         auto* protoDetection = spatialImgDetection->mutable_detection();
         protoDetection->set_label(detection.label);
         protoDetection->set_labelname(detection.labelName);
@@ -940,28 +917,22 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
             bboxProto->set_angle(bbox.angle);
         }
 
-        // Populate SpatialImgDetection.Point3f
         auto* spatialCoordinates = spatialImgDetection->mutable_spatialcoordinates();
         spatialCoordinates->set_x(detection.spatialCoordinates.x);
         spatialCoordinates->set_y(detection.spatialCoordinates.y);
         spatialCoordinates->set_z(detection.spatialCoordinates.z);
 
-        // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData
         auto* boundingBoxMapping = spatialImgDetection->mutable_boundingboxmapping();
 
-        // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData.Rect
         serializeSpatialRect(boundingBoxMapping->mutable_roi(), detection.boundingBoxMapping.roi);
 
-        // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData.SpatialLocationCalculatorConfigThresholds
         auto* depthTresholds = boundingBoxMapping->mutable_depththresholds();
         depthTresholds->set_lowerthreshold(detection.boundingBoxMapping.depthThresholds.lowerThreshold);
         depthTresholds->set_upperthreshold(detection.boundingBoxMapping.depthThresholds.upperThreshold);
 
-        // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData.SpatialLocationCalculatorAlgorithm
         boundingBoxMapping->set_calculationalgorithm(
             static_cast<proto::spatial_img_detections::SpatialLocationCalculatorAlgorithm>(detection.boundingBoxMapping.calculationAlgorithm));
 
-        // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData.stepSize
         boundingBoxMapping->set_stepsize(detection.boundingBoxMapping.stepSize);
 
         if(detection.keypoints.has_value()) {
@@ -969,7 +940,6 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
             const auto keypointsVec = keypointsList.getKeypoints();
             const auto edgesVec = keypointsList.getEdges();
 
-            // Spatial keypoints with spatial coordinates.
             auto* protoSpatialKeypoints = spatialImgDetection->mutable_keypoints();
             protoSpatialKeypoints->set_unit(static_cast<proto::common::LengthUnit>(keypointsList.unit));
             for(const auto& keypoint : keypointsVec) {
@@ -1014,7 +984,6 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
 }
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* message, bool) {
-    // create and populate ImgFrame protobuf message
     auto imuData = std::make_unique<proto::imu_data::IMUData>();
     auto imuPackets = imuData->mutable_packets();
     imuPackets->Reserve(message->packets.size());
@@ -1094,7 +1063,6 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* messag
         }
     }
 
-    // Set timestamps
     proto::common::Timestamp* ts = imuData->mutable_ts();
     ts->set_sec(message->ts.sec);
     ts->set_nsec(message->ts.nsec);
@@ -1282,8 +1250,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData*
     pointCloudData->set_maxy(message->getMaxY());
     pointCloudData->set_maxz(message->getMaxZ());
 
-    // Set sparse flag based on height for backward compatibility with protobuf
-    pointCloudData->set_sparse(message->getHeight() == 1);
+    pointCloudData->set_sparse(message->getHeight() == 1);  // The proto keeps a sparse flag for backward compatibility
     pointCloudData->set_color(message->isColor());
 
     if(!metadataOnly) {
@@ -1297,7 +1264,6 @@ template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const RGBDData* message, bool metadataOnly) {
     auto rgbdData = std::make_unique<dai::proto::rgbd_data::RGBDData>();
 
-    // Set timestamps
     auto timestamp = rgbdData->mutable_ts();
     timestamp->set_sec(message->ts.sec);
     timestamp->set_nsec(message->ts.nsec);
@@ -1314,10 +1280,8 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const RGBDData* messa
         rgbdData->clear_tssystem();
     }
 
-    // Set sequence number
     rgbdData->set_sequencenum(message->sequenceNum);
 
-    // Serialize color frame if present (can be ImgFrame or EncodedFrame)
     auto colorFrame = message->getRGBFrame();
     if(colorFrame.has_value()) {
         auto handler = [&](auto&& framePtr) {
@@ -1338,7 +1302,6 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const RGBDData* messa
         std::visit(handler, colorFrame.value());
     }
 
-    // Serialize depth frame if present (can be ImgFrame or EncodedFrame)
     auto depthFrame = message->getDepthFrame();
     if(depthFrame.has_value()) {
         auto handler = [&](auto&& framePtr) {
@@ -1684,7 +1647,6 @@ void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, 
         using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
         return hasField ? utility::fromProtoTimestamp<std::chrono::steady_clock>(protoTs) : steady_tp{};
     };
-    // create and populate ImgFrame protobuf message
     obj.setTimestamp(safeTimestamp(pcl->ts(), pcl->has_ts()));
     obj.setTimestampDevice(safeTimestamp(pcl->tsdevice(), pcl->has_tsdevice()));
 
@@ -1733,7 +1695,6 @@ void setProtoMessage(RGBDData& obj, const google::protobuf::Message* msg, bool m
 
     obj.setSequenceNum(rgbdData->sequencenum());
 
-    // Deserialize color frame if present (can be ImgFrame or EncodedFrame)
     switch(rgbdData->color_frame_case()) {
         case proto::rgbd_data::RGBDData::kColorImgFrame: {
             auto colorFrame = std::make_shared<ImgFrame>();
@@ -1752,7 +1713,6 @@ void setProtoMessage(RGBDData& obj, const google::protobuf::Message* msg, bool m
             break;
     }
 
-    // Deserialize depth frame if present (can be ImgFrame or EncodedFrame)
     switch(rgbdData->depth_frame_case()) {
         case proto::rgbd_data::RGBDData::kDepthImgFrame: {
             auto depthFrame = std::make_shared<ImgFrame>();

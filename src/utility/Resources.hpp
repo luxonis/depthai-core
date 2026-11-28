@@ -1,17 +1,15 @@
 #pragma once
 
 #include <cstdint>
+#include <depthai/device/Device.hpp>
+#include <depthai/device/DeviceBootloader.hpp>
+#include <depthai/openvino/OpenVINO.hpp>
 #include <filesystem>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
 #include <vector>
-
-// project
-#include <depthai/device/Device.hpp>
-#include <depthai/device/DeviceBootloader.hpp>
-#include <depthai/openvino/OpenVINO.hpp>
 
 #include "archive.h"
 
@@ -21,10 +19,8 @@ namespace fs = std::filesystem;
 
 class TarXzAccessor {
    public:
-    // Constructor takes a tar.gz file in memory (std::vector<std::uint8_t>)
     TarXzAccessor(const std::vector<std::uint8_t>& tarGzFile);
 
-    // Function to get file data by path
     std::optional<std::vector<std::uint8_t>> getFile(const std::string& path) const;
 
    private:
@@ -32,7 +28,6 @@ class TarXzAccessor {
 };
 
 class Resources {
-    // private constructor
     Resources();
     ~Resources();
 
@@ -54,7 +49,6 @@ class Resources {
     Resources(Resources const&) = delete;
     void operator=(Resources const&) = delete;
 
-    // Available resources
     std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = OpenVINO::VERSION_UNIVERSAL) const;
     std::vector<std::uint8_t> getDeviceFirmware(Device::Config config, std::filesystem::path pathToMvcmd = std::filesystem::path()) const;
     std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Type type = DeviceBootloader::Type::USB) const;

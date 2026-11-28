@@ -160,7 +160,6 @@ struct WorldConstraints {
     DEPTHAI_SERIALIZE_DECL(WorldConstraints, markerType, arucoDictionary, markerDistances, socketDistances, markerSizes);
 
    private:
-    /// fromJson() without the translation of nlohmann exceptions into std::invalid_argument.
     static WorldConstraints parseJson(const nlohmann::json& json);
 };
 

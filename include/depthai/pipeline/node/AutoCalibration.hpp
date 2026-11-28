@@ -34,9 +34,7 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     Subnode<node::Gate> gate{*this, "gate"};
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    // The firmware instantiates the Sync subnode as a separate pipeline node, so the input map only
-    // exists on the host side of the node.
-    InputMap& inputs = sync->inputs;
+    InputMap& inputs = sync->inputs;  // Host only: the firmware makes Sync a separate pipeline node
 #endif
 
     std::string leftInputName = "left";
@@ -52,7 +50,6 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     ~AutoCalibration() override;
 
-    // Starts from the properties: the RVC4 firmware constructs the node from them.
     std::shared_ptr<AutoCalibrationConfig> initialConfig = std::make_shared<AutoCalibrationConfig>(properties.initialConfig);
 
     void run() override;
@@ -93,7 +90,6 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
    private:
     struct TelemetryAggregateState;
 
-    // report for logging purposes
     struct Report {
         double dataConfidence = 0.;
         double calibrationConfidence = 0.;
@@ -109,14 +105,8 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
         std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, std::vector<float>> pairwiseRotationDifference;
     };
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    /**
-     * Input left image
-     */
     Input& left = inputs[leftInputName];
 
-    /**
-     * Input right image
-     */
     Input& right = inputs[rightInputName];
 
     InputMap& syncedInput = sync->inputs;
@@ -144,7 +134,6 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     void discardQueuedFrames();
     CalibrationHandler readCurrentCalibration();
     int gateFps() const;
-    /// Logger, telemetry aggregate and the lens dependent data confidence threshold.
     void setUp();
 
     std::shared_ptr<dai::CalibrationMetrics> getMetrics(const std::shared_ptr<dai::CalibrationHandler>& calibration);
@@ -163,7 +152,6 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     void recordAggregateRotationDifference(const std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, std::vector<float>>& pairwiseRotationDifference);
 
-    // internal queues
     Output gateControlQueue{*this, {"gateControlQueue", DEFAULT_GROUP, {{{DatatypeEnum::GateControl, false}}}}};
 
     Output dynamicCalibrationCommandQueue{*this, {"dynamicCalibrationCommandQueue", DEFAULT_GROUP, {{{DatatypeEnum::DynamicCalibrationControl, false}}}}};
@@ -180,7 +168,6 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     std::shared_ptr<TelemetryAggregateState> telemetryAggregateState;
     std::uint64_t telemetryAggregateMetricsHandle = 0;
 
-    // logger
     std::shared_ptr<::spdlog::async_logger> logger;
 };
 

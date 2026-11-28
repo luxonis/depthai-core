@@ -13,13 +13,10 @@ void bind_beta_predictions(pybind11::module& m, void* pCallstack) {
     py::class_<beta::Predictions, Py<beta::Predictions>, Buffer, Transformable, py::smart_holder> predictions(
         betaModule, "Predictions", DOC(dai, beta, Predictions));
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     prediction.def(py::init<>()).def_readwrite("prediction", &beta::Prediction::prediction, DOC(dai, beta, Prediction, prediction));
 

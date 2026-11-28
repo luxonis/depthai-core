@@ -44,7 +44,6 @@ For the 'Select control: ...' options, use these keys to modify the value:
 
 import depthai as dai
 import os
-# os.environ["DEPTHAI_LEVEL"] = "debug"
 
 import cv2
 import numpy as np
@@ -87,44 +86,34 @@ def unpackRaw10(rawData, width, height, stride=None):
     if len(rawData) < expectedSize:
         raise ValueError(f"Data too small: {len(rawData)} bytes, expected {expectedSize}")
 
-    # Convert raw_data to numpy array
     packedData = np.frombuffer(rawData, dtype=np.uint8)
 
-    # Process image row by row to handle stride correctly
     result = np.zeros((height, width), dtype=np.uint16)
 
     for row in range(height):
-        # Get row data using stride
         rowStart = row * stride
         rowData = packedData[rowStart:rowStart + stride]
-        # Calculate how many complete 5-byte groups we need for width pixels
         numGroups = (width + 3) // 4  # Ceiling division
         rowBytes = numGroups * 5
-        # Ensure we don't go beyond available data
         if len(rowData) < rowBytes:
             break
 
-        # Process only the bytes we need for this row
         rowPacked = rowData[:rowBytes].reshape(-1, 5)
         rowUnpacked = np.zeros((rowPacked.shape[0], 4), dtype=np.uint16)
 
-        # Extract 8 most significant bits
         rowUnpacked[:, 0] = rowPacked[:, 0].astype(np.uint16) << 2
         rowUnpacked[:, 1] = rowPacked[:, 1].astype(np.uint16) << 2
         rowUnpacked[:, 2] = rowPacked[:, 2].astype(np.uint16) << 2
         rowUnpacked[:, 3] = rowPacked[:, 3].astype(np.uint16) << 2
 
-        # Extract least significant 2 bits from 5th byte
         rowUnpacked[:, 0] |= (rowPacked[:, 4] & 0b00000011)
         rowUnpacked[:, 1] |= (rowPacked[:, 4] & 0b00001100) >> 2
         rowUnpacked[:, 2] |= (rowPacked[:, 4] & 0b00110000) >> 4
         rowUnpacked[:, 3] |= (rowPacked[:, 4] & 0b11000000) >> 6
 
-        # Flatten and copy only the required width pixels to result
         rowFlat = rowUnpacked.flatten()
         result[row, :width] = rowFlat[:width]
 
-    # Scale from 10-bit (0-1023) to 16-bit (0-65535) for proper display
     result16bit = (result * 64).astype(np.uint16)
     return result16bit
 
@@ -147,11 +136,9 @@ def camera_tuning_item(arg: str):
       - SOCKET,PATH
     Returns (socket_or_all, Path).
     """
-    # Case 1: plain path = global tuning for all cameras
     if ',' not in arg:
         return ("__all__", Path(arg))
 
-    # Case 2: socket,path
     socket, path_str = arg.split(',', 1)
 
     if socket not in ALL_SOCKETS:
@@ -237,9 +224,6 @@ parser.add_argument('-ctimeout', '--connection-timeout', default=30000,
 parser.add_argument('-btimeout', '--boot-timeout', default=30000,
                     help="Boot timeout in ms. Default: %(default)s (sets DEPTHAI_BOOT_TIMEOUT environment variable)")
 
-# parser.add_argument('-stress', action='store_true',
-#                     help="Run stress test. This will override all other options (except -d/--device) and will run a heavy pipeline until the user stops it.")
-
 parser.add_argument("-stereo", action="store_true", default=False,
                     help="Create a stereo depth node if the device has a stereo pair.")
 
@@ -296,13 +280,8 @@ def get_socket_resolution(socket, socket_default_resolutions):
         return resolution_default_override
     return socket_default_resolutions.get(socket, DEFAULT_RESOLUTION)
 
-# Set timeouts before importing depthai
 os.environ["DEPTHAI_CONNECTION_TIMEOUT"] = str(args.connection_timeout)
 os.environ["DEPTHAI_BOOT_TIMEOUT"] = str(args.boot_timeout)
-
-# if args.stress:
-#     stress_test(args.device)
-#     exit(0)
 
 if args.help:
     parser.print_help()
@@ -329,8 +308,6 @@ rotate = {
 def clamp(num, v0, v1):
     return max(v0, min(num, v1))
 
-# Calculates FPS over a moving window, configurable
-
 
 class FPS:
     def __init__(self, window_size=30):
@@ -351,7 +328,6 @@ class FPS:
 class Cycle:
     def __init__(self, enum_type, start_item=None):
         self.items = [item for name, item in vars(enum_type).items() if name.isupper()]
-        # If start_item is provided, set the index to its position. Otherwise, default to 0
         self.index = self.items.index(start_item) if start_item else 0
 
     def step(self, n):
@@ -376,7 +352,6 @@ def socket_to_socket_opt(socket: dai.CameraBoardSocket) -> str:
 
 signal.signal(signal.SIGINT, exit_cleanly)
 
-# Connect to device, so that we can get connected cameras in case of no args
 dai_device_args = []
 if args.device:
     success, device_info = dai.Device.getDeviceById(args.device)
@@ -406,9 +381,6 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
         cam_type_thermal[socket] = is_thermal
         print(socket.rjust(7), ':', 'tof' if is_tof else 'color' if is_color else 'thermal' if is_thermal else 'mono')
     socket_default_resolutions = build_socket_resolution_defaults(connected_cameras)
-
-    # Uncomment to get better throughput
-    # pipeline.setXLinkChunkSize(0)
 
     cam = {}
     tof = {}
@@ -445,7 +417,6 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
             cam[c] = pipeline.create(dai.node.Thermal).build(cam_socket_opts[c])
             thermal_name = 'thermal_temperature_' + c
             xout[thermal_name] = cam[c].temperature
-            # streams.append(thermal_name)
             thermal_color_name = c
             xout[thermal_color_name] = cam[c].color
             streams.append(thermal_color_name)
@@ -467,12 +438,10 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
 
     if args.camera_tuning:
         if len(args.camera_tuning) == 1 and args.camera_tuning[0][0] == "__all__":
-            # Single tuning for all cameras
             tuning_path = args.camera_tuning[0][1]
             print(f'Applying camera tuning from {tuning_path} to all cameras')
             pipeline.setCameraTuningBlobPath(str(tuning_path))
         else:
-            # Per-socket tuning
             for socket, tuning_path in args.camera_tuning:
                 if socket == "__all__":
                     print(f'Cannot apply all tuning to all and specific sockets at the same time.')
@@ -491,8 +460,6 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                 raise Exception("Device is not calibrated.")
             eeprom = calib.getEepromData()
             left, right = eeprom.stereoRectificationData.leftCameraSocket, eeprom.stereoRectificationData.rightCameraSocket
-            # Get the actual camera nodes
-            # The cameras may have been specified with -cams rgb,c left,m right,m kind of names, so we need to handle these edge cases
             left_sock_opt = socket_to_socket_opt(left)
             right_sock_opt = socket_to_socket_opt(right)
             left_cam = cam.get(left_sock_opt, None)
@@ -565,15 +532,11 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
 
     print('USB speed:', device.getUsbSpeed().name)
 
-    #print('IR drivers:', device.getIrDrivers())
-
     q = {}
     fps_host = {}  # FPS computed based on the time we receive frames in app
     fps_capt = {}  # FPS computed based on capture timestamps from device
     for c in streams:
-        # q[c] = device.getOutputQueue(name=c, maxSize=4, blocking=False)
         q[c] = xout[c].createOutputQueue(maxSize=4, blocking=False)
-        # The OpenCV window resize may produce some artifacts
         if args.resizable_windows:
             cv2.namedWindow(c, cv2.WINDOW_NORMAL)
             cv2.resizeWindow(c, (640, 480))
@@ -582,7 +545,6 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
 
     pipeline.start()
 
-    # Manual exposure/focus set step
     EXP_STEP = 500  # us
     ISO_STEP = 50
     LENS_STEP = 1 / 1024
@@ -591,7 +553,6 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
     DOT_MAX = 1
     FLOOD_MAX = 1
 
-    # Defaults and limits for manual focus/exposure controls
     lensPos = 0.59
     lensMin = 0.0
     lensMax = 1.0
@@ -668,8 +629,7 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
 
                     if cam_type_tof.get(cam_skt, None) and not (c.startswith('raw_') or c.startswith('tof_amplitude_')):
                         if args.tof_cm:
-                            # pixels represent `cm`, capped to 255. Value can be checked hovering the mouse
-                            frame = (frame // 10).clip(0, 255).astype(np.uint8)
+                            frame = (frame // 10).clip(0, 255).astype(np.uint8)  # Pixel value = cm, capped to 255
                         else:
                             frame = (frame.view(np.int16).astype(float))
                             frame = cv2.normalize(
@@ -707,7 +667,6 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                             print('Saving:', filename)
                             frame.tofile(filename)
                     else:
-                        # Save YUV too, but only when RAW is also enabled (for tuning purposes)
                         if capture and args.enable_raw:
                             payload = pkt.getData()
                             filename = capture_file_info + '_P420.yuv'
@@ -733,7 +692,6 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
             break
         elif key == ord('/'):
             show = not show
-            # Print empty string as FPS status new-line separator
             print("" if show else "Printing camera settings: OFF")
         elif key == ord('c'):
             capture_list = streams.copy()

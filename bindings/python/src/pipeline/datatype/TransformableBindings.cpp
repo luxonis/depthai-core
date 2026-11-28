@@ -12,18 +12,10 @@ void bind_transformable(pybind11::module& m, void* pCallstack) {
     py::class_<TransformableBuffer, Py<TransformableBuffer>, Buffer, Transformable, py::smart_holder> transformableBuffer(
         m, "TransformableBuffer", DOC(dai, TransformableBuffer));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     transformable.def_readwrite("transformation", &Transformable::transformation)
         .def("getTransformation", &Transformable::getTransformation, DOC(dai, Transformable, getTransformation))

@@ -1,10 +1,8 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
-#include <utility>
-
-// shared
 #include <depthai/properties/ImageAlignProperties.hpp>
+#include <utility>
 
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"

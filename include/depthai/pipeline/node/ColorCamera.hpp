@@ -3,7 +3,6 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/datatype/CameraControl.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
-// shared
 #include <depthai/properties/ColorCameraProperties.hpp>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -238,10 +237,8 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
      */
     void setIsp3aFps(int isp3aFps);
 
-    // Set events on which frames will be received
     void setFrameEventFilter(const std::vector<dai::FrameEvent>& events);
 
-    // Get events on which frames will be received
     std::vector<dai::FrameEvent> getFrameEventFilter() const;
 
     /**
@@ -309,7 +306,6 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
     /// Get sensor top left y crop coordinate
     float getSensorCropY() const;
 
-    // Node properties configuration
     /**
      * Specifies whether preview output should preserve aspect ratio,
      * after downscaling from video size or not.

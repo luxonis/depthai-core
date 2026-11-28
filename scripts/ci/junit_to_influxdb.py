@@ -24,8 +24,6 @@ client = influxdb_client.InfluxDBClient(
    token=token,
    org=org
 )
-#client.delete_api().delete("2020-01-01T00:00:00.000Z", "2028-01-01T00:00:00.000Z", "", bucket, org)
-# exit(0)
 write_api = client.write_api(write_options=SYNCHRONOUS)
 read_api = client.query_api()
 def getPrevFailures(config):
@@ -40,7 +38,6 @@ def getPrevFailures(config):
     ''', org=org)
     if (len(got) < 1): return []
     fails = list(map(lambda r: r['testName'], got[0].records))
-    # print(fails)
     return fails
 
 def writeTestsuite(
@@ -164,7 +161,6 @@ def parseTestSummary():
             name = prop.get('name')
             match name:
                 case 'ctest.summary':
-                    #presumed format: Passed=n, Failed=m, Total=nm
                     summary = prop.get('value')
                     if (type(summary) != str):
                         print("Invalid ctest.summary, skipping!")

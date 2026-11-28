@@ -1,6 +1,5 @@
 #include "DeviceBindings.hpp"
 
-// depthai
 #include "depthai/device/Device.hpp"
 #include "depthai/device/EepromError.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -8,20 +7,14 @@
 #include "depthai/utility/CompilerWarnings.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
-// pybind11_json
 #include "pybind11_json/pybind11_json.hpp"
 
-// std
 #include <filesystem>
 #include <optional>
 
-// std::chrono bindings
 #include <pybind11/chrono.h>
-// py::detail
 #include <pybind11/detail/common.h>
-// hedley
 #include <hedley/hedley.h>
-// STL Bind
 #include <pybind11/numpy.h>
 #include <pybind11/pytypes.h>
 #include <pybind11/stl_bind.h>
@@ -29,29 +22,6 @@
 PYBIND11_MAKE_OPAQUE(std::unordered_map<std::int8_t, dai::BoardConfig::GPIO>);
 PYBIND11_MAKE_OPAQUE(std::unordered_map<std::int8_t, dai::BoardConfig::UART>);
 PYBIND11_MAKE_OPAQUE(std::unordered_map<dai::CameraBoardSocket, dai::BoardConfig::Camera>);
-
-// static std::vector<std::string> deviceGetQueueEventsHelper(dai::Device& d, const std::vector<std::string>& queueNames, std::size_t maxNumEvents,
-// std::chrono::microseconds timeout){
-//     using namespace std::chrono;
-
-//     // if timeout < 0, unlimited timeout
-//     bool unlimitedTimeout = timeout < microseconds(0);
-//     auto startTime = steady_clock::now();
-//     do {
-//         {
-//             // releases python GIL
-//             py::gil_scoped_release release;
-//             // block for 100ms
-//             auto events = d.getQueueEvents(queueNames, maxNumEvents, std::chrono::milliseconds(100));
-//             if(!events.empty()) return events;
-//         }
-//         // reacquires python GIL for PyErr_CheckSignals call
-//         // check if interrupt triggered in between
-//         if (PyErr_CheckSignals() != 0) throw py::error_already_set();
-//     } while(unlimitedTimeout || steady_clock::now() - startTime < timeout);
-
-//     return std::vector<std::string>();
-// }
 
 template <typename D, typename ARG>
 static void bindConstructors(ARG& arg) {
@@ -99,7 +69,6 @@ static void bindConstructors(ARG& arg) {
              py::arg("deviceInfo"),
              DOC(dai, DeviceBase, DeviceBase, 6))
 
-        // DeviceInfo version
         .def(py::init([](const DeviceInfo& deviceInfo) {
                  py::gil_scoped_release release;
                  return std::make_unique<D>(deviceInfo);
@@ -114,7 +83,6 @@ static void bindConstructors(ARG& arg) {
              py::arg("maxUsbSpeed"),
              DOC(dai, DeviceBase, DeviceBase, 8))
 
-        // name or device id version
         .def(py::init([](std::string nameOrDeviceId) {
                  py::gil_scoped_release release;
                  return std::make_unique<D>(std::move(nameOrDeviceId));
@@ -133,7 +101,6 @@ static void bindConstructors(ARG& arg) {
 void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // Type definitions
     py::class_<DeviceBase, std::shared_ptr<DeviceBase>> deviceBase(m, "DeviceBase", DOC(dai, DeviceBase));
     py::class_<Device, DeviceBase, std::shared_ptr<Device>> device(m, "Device", DOC(dai, Device));
     py::class_<DeviceBase::Config> deviceConfig(device, "Config", DOC(dai, DeviceBase, Config));
@@ -166,17 +133,8 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
     using CameraMap = std::unordered_map<CameraBoardSocket, BoardConfig::Camera>;
     auto boardCameraMap = py::bind_map<CameraMap>(boardConfig, "CameraMap");
 
-    // pybind11 limitation of having actual classes as exceptions
-    // Possible but requires a larger workaround
-    // https://stackoverflow.com/questions/62087383/how-can-you-bind-exceptions-with-custom-fields-and-constructors-in-pybind11-and
+    auto eepromError = py::register_exception<EepromError>(m, "EepromError", PyExc_RuntimeError);  // pybind11 cannot bind exception classes with fields
 
-    // Bind EepromError
-    auto eepromError = py::register_exception<EepromError>(m, "EepromError", PyExc_RuntimeError);
-
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
@@ -248,11 +206,6 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("boot", &dai::BoardConfig::IMU::boot, DOC(dai, BoardConfig, IMU, boot))
         .def_readwrite("reset", &dai::BoardConfig::IMU::reset, DOC(dai, BoardConfig, IMU, reset));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-
-    // Bind BoardConfig::USB
     boardConfigUsb.def(py::init<>())
         .def_readwrite("vid", &BoardConfig::USB::vid)
         .def_readwrite("pid", &BoardConfig::USB::pid)
@@ -262,13 +215,11 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("productName", &BoardConfig::USB::productName)
         .def_readwrite("manufacturer", &BoardConfig::USB::manufacturer);
 
-    // Bind BoardConfig::Network
     boardConfigNetwork.def(py::init<>())
         .def_readwrite("mtu", &BoardConfig::Network::mtu)
         .def_readwrite("xlinkTcpNoDelay", &BoardConfig::Network::xlinkTcpNoDelay)
         .def_readwrite("forceEnable", &BoardConfig::Network::forceEnable);
 
-    // GPIO Mode
     boardConfigGpioMode.value("ALT_MODE_0", BoardConfig::GPIO::ALT_MODE_0, DOC(dai, BoardConfig, GPIO, Mode, ALT_MODE_0))
         .value("ALT_MODE_1", BoardConfig::GPIO::ALT_MODE_1, DOC(dai, BoardConfig, GPIO, Mode, ALT_MODE_1))
         .value("ALT_MODE_2", BoardConfig::GPIO::ALT_MODE_2, DOC(dai, BoardConfig, GPIO, Mode, ALT_MODE_2))
@@ -279,31 +230,26 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("DIRECT", BoardConfig::GPIO::DIRECT, DOC(dai, BoardConfig, GPIO, Mode, DIRECT))
         .export_values();
 
-    // GPIO Direction
     boardConfigGpioDirection.value("INPUT", BoardConfig::GPIO::INPUT, DOC(dai, BoardConfig, GPIO, Direction, INPUT))
         .value("OUTPUT", BoardConfig::GPIO::OUTPUT, DOC(dai, BoardConfig, GPIO, Direction, OUTPUT))
         .export_values();
 
-    // GPIO Level
     boardConfigGpioLevel.value("LOW", BoardConfig::GPIO::LOW, DOC(dai, BoardConfig, GPIO, Level, LOW))
         .value("HIGH", BoardConfig::GPIO::HIGH, DOC(dai, BoardConfig, GPIO, Level, HIGH))
         .export_values();
 
-    // GPIO Pull
     boardConfigGpioPull.value("NO_PULL", BoardConfig::GPIO::NO_PULL, DOC(dai, BoardConfig, GPIO, Pull, NO_PULL))
         .value("PULL_UP", BoardConfig::GPIO::PULL_UP, DOC(dai, BoardConfig, GPIO, Pull, PULL_UP))
         .value("PULL_DOWN", BoardConfig::GPIO::PULL_DOWN, DOC(dai, BoardConfig, GPIO, Pull, PULL_DOWN))
         .value("BUS_KEEPER", BoardConfig::GPIO::BUS_KEEPER, DOC(dai, BoardConfig, GPIO, Pull, BUS_KEEPER))
         .export_values();
 
-    // GPIO Drive
     boardConfigGpioDrive.value("MA_2", BoardConfig::GPIO::MA_2, DOC(dai, BoardConfig, GPIO, Drive, MA_2))
         .value("MA_4", BoardConfig::GPIO::MA_4, DOC(dai, BoardConfig, GPIO, Drive, MA_4))
         .value("MA_8", BoardConfig::GPIO::MA_8, DOC(dai, BoardConfig, GPIO, Drive, MA_8))
         .value("MA_12", BoardConfig::GPIO::MA_12, DOC(dai, BoardConfig, GPIO, Drive, MA_12))
         .export_values();
 
-    // Bind BoardConfig::GPIO
     boardConfigGpio.def(py::init<>())
         .def(py::init<BoardConfig::GPIO::Direction>())
         .def(py::init<BoardConfig::GPIO::Direction, BoardConfig::GPIO::Level>())
@@ -318,10 +264,8 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("schmitt", &BoardConfig::GPIO::schmitt)
         .def_readwrite("slewFast", &BoardConfig::GPIO::slewFast);
 
-    // Bind BoardConfig::UART
     boardConfigUart.def(py::init<>()).def_readwrite("tmp", &BoardConfig::UART::tmp);
 
-    // Bind BoardConfig::UVC
     boardConfigUvc.def(py::init<>())
         .def(py::init<uint16_t, uint16_t>())
         .def_readwrite("cameraName", &BoardConfig::UVC::cameraName)
@@ -330,12 +274,10 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("frameType", &BoardConfig::UVC::frameType)
         .def_readwrite("enable", &BoardConfig::UVC::enable);
 
-    // Bind Device::ReconnectionStatus
     enumReconnectionStatus.value("RECONNECT_FAILED", Device::ReconnectionStatus::RECONNECT_FAILED);
     enumReconnectionStatus.value("RECONNECTED", Device::ReconnectionStatus::RECONNECTED);
     enumReconnectionStatus.value("RECONNECTING", Device::ReconnectionStatus::RECONNECTING);
 
-    // Bind BoardConfig
     boardConfig.def(py::init<>())
         .def_readwrite("camera", &dai::BoardConfig::camera, DOC(dai, BoardConfig, camera))
         .def_readwrite("imu", &dai::BoardConfig::imu, DOC(dai, BoardConfig, imu))
@@ -360,7 +302,6 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("logDevicePrints", &BoardConfig::logDevicePrints, DOC(dai, BoardConfig, logDevicePrints))
         .def_readwrite("uvc", &BoardConfig::uvc, DOC(dai, BoardConfig, uvc));
 
-    // Bind DeviceBase::Config (inherited by Device)
     deviceConfig.def(py::init<>())
         .def_readwrite("version", &DeviceBase::Config::version)
         .def_readwrite("board", &DeviceBase::Config::board)
@@ -369,7 +310,6 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("logLevel", &DeviceBase::Config::logLevel)
         .def_readwrite("dangerousIrPowerOverride", &DeviceBase::Config::dangerousIrPowerOverride, DOC(dai, DeviceBase, Config, dangerousIrPowerOverride));
 
-    // Bind UsbGeneration
     usbGeneration.value("UNKNOWN", UsbGeneration::UNKNOWN, DOC(dai, UsbGeneration, UNKNOWN))
         .value("USB_1_0", UsbGeneration::USB_1_0, DOC(dai, UsbGeneration, USB_1_0))
         .value("USB_1_1", UsbGeneration::USB_1_1, DOC(dai, UsbGeneration, USB_1_1))
@@ -377,16 +317,13 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("USB_3_0", UsbGeneration::USB_3_0, DOC(dai, UsbGeneration, USB_3_0))
         .value("USB_3_1", UsbGeneration::USB_3_1, DOC(dai, UsbGeneration, USB_3_1));
 
-    // Bind HealthCheckResult
     healthCheckResult.value("NOT_RUN", HealthCheckResult::NOT_RUN, DOC(dai, HealthCheckResult, NOT_RUN))
         .value("PASS", HealthCheckResult::PASS, DOC(dai, HealthCheckResult, PASS))
         .value("FAIL", HealthCheckResult::FAIL, DOC(dai, HealthCheckResult, FAIL));
 
-    // Bind HealthCheckIssueType
     healthCheckIssueType.value("Warning", HealthCheckIssueType::Warning, DOC(dai, HealthCheckIssueType, Warning))
         .value("Error", HealthCheckIssueType::Error, DOC(dai, HealthCheckIssueType, Error));
 
-    // Bind HealthCheckIssueStage
     healthCheckIssueStage.value("Connection", HealthCheckIssueStage::Connection, DOC(dai, HealthCheckIssueStage, Connection))
         .value("DeviceAvailability", HealthCheckIssueStage::DeviceAvailability, DOC(dai, HealthCheckIssueStage, DeviceAvailability))
         .value("UsbGeneration", HealthCheckIssueStage::UsbGeneration, DOC(dai, HealthCheckIssueStage, UsbGeneration))
@@ -397,13 +334,11 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("ImuCalibration", HealthCheckIssueStage::ImuCalibration, DOC(dai, HealthCheckIssueStage, ImuCalibration))
         .value("PowerSupply", HealthCheckIssueStage::PowerSupply, DOC(dai, HealthCheckIssueStage, PowerSupply));
 
-    // Bind HealthCheckIssue
     healthCheckIssue.def(py::init<HealthCheckIssueType, HealthCheckIssueStage, const std::string&>(), py::arg("type"), py::arg("stage"), py::arg("message"))
         .def_readwrite("type", &HealthCheckIssue::type, DOC(dai, HealthCheckIssue, type))
         .def_readwrite("stage", &HealthCheckIssue::stage, DOC(dai, HealthCheckIssue, stage))
         .def_readwrite("message", &HealthCheckIssue::message, DOC(dai, HealthCheckIssue, message));
 
-    // Bind HealthCheckConfig
     healthCheckConfig
         .def(py::init<bool, bool, bool, bool, bool, bool, bool, std::chrono::milliseconds>(),
              py::arg("checkUsbGeneration") = true,
@@ -423,7 +358,6 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("verifyPowerSupply", &HealthCheckConfig::verifyPowerSupply, DOC(dai, HealthCheckConfig, verifyPowerSupply))
         .def_readwrite("powerSupplyCheckDuration", &HealthCheckConfig::powerSupplyCheckDuration, DOC(dai, HealthCheckConfig, powerSupplyCheckDuration));
 
-    // Bind HealthCheckMetrics
     healthCheckMetrics.def(py::init<>())
         .def_readwrite("usbGeneration", &HealthCheckMetrics::usbGeneration, DOC(dai, HealthCheckMetrics, usbGeneration))
         .def_readwrite("bandwidthMbps", &HealthCheckMetrics::bandwidthMbps, DOC(dai, HealthCheckMetrics, bandwidthMbps))
@@ -440,12 +374,8 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("__repr__", &HealthCheckMetrics::toString)
         .def("__str__", &HealthCheckMetrics::toString);
 
-    // Bind constructors
     bindConstructors<DeviceBase>(deviceBase);
-    // Bind the rest
-    deviceBase
-        // Python only methods
-        .def("__enter__", [](DeviceBase& d) -> DeviceBase& { return d; })
+    deviceBase.def("__enter__", [](DeviceBase& d) -> DeviceBase& { return d; })
         .def("__exit__",
              [](DeviceBase& d, py::object type, py::object value, py::object traceback) {
                  py::gil_scoped_release release;
@@ -472,8 +402,6 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("callback") = py::none(),
              DOC(dai, DeviceBase, setMaxReconnectionAttempts))
 
-        // dai::Device methods
-        // static
         .def_static(
             "getAnyAvailableDevice",
             [](std::chrono::milliseconds ms) {
@@ -548,14 +476,11 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_static(
             "performHealthCheck",
             [](const DeviceInfo& deviceInfo, const HealthCheckConfig& config) {
-                // Python runs signal handlers only between bytecodes, so the long C++ call checks for them itself
-                // and stops when a handler raises (e.g. KeyboardInterrupt on Ctrl+C)
-                std::optional<py::error_already_set> pendingError;
+                std::optional<py::error_already_set> pendingError;  // Python runs signal handlers only between bytecodes; the C++ call checks them itself
                 HealthCheckMetrics metrics;
                 {
                     py::gil_scoped_release release;
                     metrics = DeviceBase::performHealthCheck(deviceInfo, config, [&pendingError]() {
-                        // reacquires python GIL for PyErr_CheckSignals call
                         py::gil_scoped_acquire acquire;
                         if(!pendingError && PyErr_CheckSignals() != 0) pendingError.emplace();
                         return pendingError.has_value();
@@ -568,7 +493,6 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             py::arg("config") = HealthCheckConfig(),
             DOC(dai, DeviceBase, performHealthCheck))
 
-        // methods
         .def("getBootloaderVersion", &DeviceBase::getBootloaderVersion, DOC(dai, DeviceBase, getBootloaderVersion))
         .def(
             "getOSVersion",
@@ -585,11 +509,9 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, isPipelineRunning))
 
-        // Doesn't require GIL release (eg, don't do RPC or long blocking things in background)
-        .def("setLogOutputLevel", &DeviceBase::setLogOutputLevel, py::arg("level"), DOC(dai, DeviceBase, setLogOutputLevel))
+        .def("setLogOutputLevel", &DeviceBase::setLogOutputLevel, py::arg("level"), DOC(dai, DeviceBase, setLogOutputLevel))  // No RPC, so no GIL release
         .def("getLogOutputLevel", &DeviceBase::getLogOutputLevel, DOC(dai, DeviceBase, getLogOutputLevel))
 
-        // Requires GIL release
         .def(
             "setLogLevel",
             [](DeviceBase& d, LogLevel l) {
@@ -803,14 +725,11 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def(
             "registerCrashdumpCallback",
             [](DeviceBase& d, std::function<void(std::shared_ptr<CrashDump>)> callback) {
-                // Create a python-compatible callback function that acquires the GIL
                 auto pythonCallback = [callback](std::shared_ptr<CrashDump> dump) {
                     py::gil_scoped_acquire acquire;
-                    // Keep one stable Python wrapper alive across callback and sync.
-                    py::object pyDump = py::cast(dump);
+                    py::object pyDump = py::cast(dump);  // One stable Python wrapper alive across callback and sync
                     callback(dump);
 
-                    // After callback, sync _extra_dict to native extra
                     if(py::hasattr(pyDump, "_extra_dict")) {
                         dump->extra = pyjson::to_json(pyDump.attr("_extra_dict"));
                     }
@@ -1344,7 +1263,6 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getPlatform", &DeviceBase::getPlatform, DOC(dai, DeviceBase, getPlatform))
         .def("getPlatformAsString", &DeviceBase::getPlatformAsString, DOC(dai, DeviceBase, getPlatformAsString));
 
-    // Bind constructors
     bindConstructors<Device>(device);
 
     clock.def("now", &Clock::now);

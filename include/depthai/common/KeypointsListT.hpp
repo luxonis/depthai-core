@@ -24,10 +24,6 @@ struct KeypointsListT {
     explicit KeypointsListT(std::vector<KeypointT> keypoints) : keypoints(std::move(keypoints)) {}
     ~KeypointsListT() = default;
 
-    /*
-     * Iterator support
-     */
-
     using value_type = KeypointT;
     using iterator = typename std::vector<KeypointT>::iterator;
     using const_iterator = typename std::vector<KeypointT>::const_iterator;
@@ -63,10 +59,6 @@ struct KeypointsListT {
     const value_type& operator[](size_t i) const {
         return keypoints[i];
     }
-
-    /*
-     * Common API
-     */
 
     /**
      * Sets the keypoints list.

@@ -4,39 +4,24 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "ndarray_converter.h"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_spatialimgdetections(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // py::class_<RawSpatialImgDetections, RawBuffer, std::shared_ptr<RawSpatialImgDetections>> rawSpatialImgDetections(m, "RawSpatialImgDetections", DOC(dai,
-    // RawSpatialImgDetections));
     py::class_<SpatialImgDetection> spatialImgDetection(m, "SpatialImgDetection", DOC(dai, SpatialImgDetection));
     py::class_<SpatialImgDetections, Py<SpatialImgDetections>, Buffer, ProtoSerializable, Transformable, py::smart_holder>
         spatialImgDetections(m, "SpatialImgDetections", DOC(dai, SpatialImgDetections));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Metadata / raw
     spatialImgDetection.def(py::init<>())
         .def(py::init<const RotatedRect&, Point3f, float, std::uint32_t>(),
              py::arg("boundingBox"),
@@ -135,7 +120,6 @@ void bind_spatialimgdetections(pybind11::module& m, void* pCallstack) {
         .def("getHeight", &SpatialImgDetection::getHeight, DOC(dai, SpatialImgDetection, getHeight))
         .def("getAngle", &SpatialImgDetection::getAngle, DOC(dai, SpatialImgDetection, getAngle));
 
-    // Message
     spatialImgDetections.def(py::init<>(), DOC(dai, ImgDetectionsT, ImgDetectionsT))
         .def("__repr__", &SpatialImgDetections::str)
         .def_readwrite("unit", &SpatialImgDetections::unit, DOC(dai, SpatialImgDetections, unit))

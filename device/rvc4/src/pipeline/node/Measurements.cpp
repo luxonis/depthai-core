@@ -66,28 +66,22 @@ size_t Measurements::readProcessCpuTicks() {
         return 0;
     }
 
-    // /proc/<pid>/stat format: pid (comm) state ppid pgrp session tty_nr tpgid flags ...
-    // Fields 14 and 15 are utime and stime (1-indexed)
-    // Need to skip past the command name (which may contain spaces) in parentheses
-    size_t startComm = line.find('(');
+    size_t startComm = line.find('(');  // comm in the parentheses can contain spaces: parse after the last ')'
     size_t endComm = line.rfind(')');
     if(startComm == std::string::npos || endComm == std::string::npos) {
         logger->error("Invalid format in {}", statPath);
         return 0;
     }
 
-    // Parse fields after (comm)
     std::istringstream iss(line.substr(endComm + 2));  // Skip ") "
     std::string state;
     size_t field;
     iss >> state;  // Field 3: state
 
-    // Skip fields 4-13 (10 fields)
     for(int i = 4; i <= 13; ++i) {
         iss >> field;
     }
 
-    // Read utime (field 14) and stime (field 15)
     size_t utime, stime;
     iss >> utime >> stime;
 
@@ -111,15 +105,12 @@ void Measurements::readStatsCpu(std::vector<cpuData>& entries, cpuData& total) {
     const std::string strTot("tot");
 
     while(std::getline(fileStat, line)) {
-        // cpu stats line found
         if(!line.compare(0, lenStrCpu, strCpu)) {
             std::istringstream ss(line);
 
-            // store entry
             entries.emplace_back(cpuData());
             cpuData& entry = entries.back();
 
-            // read cpu label
             ss >> entry.cpu;
 
             if(entry.cpu.size() > lenStrCpu)
@@ -127,12 +118,10 @@ void Measurements::readStatsCpu(std::vector<cpuData>& entries, cpuData& total) {
             else
                 entry.cpu = strTot;
 
-            // read times
             for(int i = 0; i < NUM_CPU_STATES; ++i) {
                 ss >> entry.times[i];
             }
 
-            // save total separately
             if(entry.cpu == strTot) {
                 total = entry;
                 entries.pop_back();  // Store total separately
@@ -215,7 +204,6 @@ dai::ChipTemperatureRVC4 Measurements::getChipTemperature() {
 
     std::map<std::string, float> chipTemps = {{"cpuss-0", 0.0f}, {"gpuss-0", 0.0f}, {"mdmss-0", 0.0f}, {"video", 0.0f}, {"ddr", 0.0f}, {"camera-0", 0.0f}};
 
-    // Regular expression to match thermal_zone directories
     std::regex thermalZoneRegex("thermal_zone\\d+");
     for(const auto& entry : std::filesystem::directory_iterator("/sys/class/thermal")) {
         if(!entry.is_directory()) {
@@ -224,7 +212,6 @@ dai::ChipTemperatureRVC4 Measurements::getChipTemperature() {
 
         std::string dirname = entry.path().filename().string();
 
-        // Check if directory matches thermal_zone pattern
         if(!std::regex_match(dirname, thermalZoneRegex)) {
             continue;
         }
@@ -273,19 +260,16 @@ void Measurements::readSystemInformation(dai::SystemInformationRVC4& pSysInfo,
                                          const cpuData& totalEnd) {
     using namespace std::chrono;
 
-    // Parse CPU total load
     dai::CpuUsage cpuAvgUsage;
     cpuAvgUsage.average = getAvgCpuLoad(totalStart, totalEnd);  // Between 0..1
     cpuAvgUsage.msTime = static_cast<int32_t>(duration_cast<milliseconds>(sleepPeriod).count());
     pSysInfo.cpuAvgUsage = cpuAvgUsage;
 
-    // Parse process CPU load
     dai::CpuUsage processCpuAvgUsage;
     processCpuAvgUsage.average = getProcessAvgCpuLoad(totalStart, totalEnd);  // Between 0..1
     processCpuAvgUsage.msTime = static_cast<int32_t>(duration_cast<milliseconds>(sleepPeriod).count());
     pSysInfo.processCpuAvgUsage = processCpuAvgUsage;
 
-    // Parse CPU load per thread
     for(int i = 0; i < entriesStart.size(); i++) {
         dai::CpuUsage cpuUsage;
         auto start = entriesStart[i];
@@ -295,7 +279,6 @@ void Measurements::readSystemInformation(dai::SystemInformationRVC4& pSysInfo,
         pSysInfo.cpuUsages.push_back(cpuUsage);
     }
 
-    // Get chip temperature and memory usage
     pSysInfo.ddrMemoryUsage = getMemoryInfo();
     pSysInfo.processMemoryUsage = getProcessMemoryInfo();
     pSysInfo.chipTemperature = getChipTemperature();

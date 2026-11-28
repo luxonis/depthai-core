@@ -1,11 +1,9 @@
 
 #pragma once
 
-// std
 #include <cstdint>
 #include <ostream>
 
-// project
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {
@@ -163,8 +161,6 @@ struct TensorInfo {
     std::size_t getTensorSize() const {
         uint32_t i = 0;
 
-        // Handle the edge case if all dimensions are 1
-        // In this case, the size is the size of the data type
         bool non1dim = false;
         for(i = 0; i < dims.size(); i++) {
             if(dims[i] != 1) {
@@ -176,7 +172,6 @@ struct TensorInfo {
             return getDataTypeSize();
         }
 
-        // Use the first non zero stride
         for(i = 0; i < strides.size(); i++) {
             if(strides[i] > 0) {
                 break;
@@ -325,8 +320,7 @@ struct TensorInfo {
     std::string name;
     unsigned int offset = 0;
 
-    // quantization params (deqValue = (val - qpZp) * scale )
-    bool quantization = false;
+    bool quantization = false;  // Dequantized value = (val - qpZp) * qpScale
     float qpScale = 1;
     float qpZp = 0;
 };

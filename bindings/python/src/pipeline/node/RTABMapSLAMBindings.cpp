@@ -11,23 +11,13 @@ void bind_rtabmapslamnode(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // declare upfront
     auto rtabmapSLAMNode = ADD_NODE_DERIVED(RTABMapSLAM, ThreadedHostNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // RTABMapSLAM Node
     rtabmapSLAMNode.def_property_readonly(
                        "rect", [](RTABMapSLAM& node) { return &node.rect; }, py::return_value_policy::reference_internal)
         .def_property_readonly(

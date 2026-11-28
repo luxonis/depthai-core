@@ -61,10 +61,6 @@ constexpr T ALIGN_UP(T value, std::size_t alignment) {
 }
 #endif
 
-// #define DEBUG_DISABLE_META
-// #define ENABLE_TIMING_DEBUG
-// #define DISABLE_FSYNC
-
 #ifdef ENABLE_TIMING_DEBUG
     #include <chrono>
 #endif
@@ -78,9 +74,7 @@ bool readRawExposureTimeNs(
                            || (width == 672 && (height == 2420 || height == 3626));
     if(!data || !supported || strideBytes < width * 2 || size / strideBytes < height) return false;
 
-    // VD55H1 SMIA status: four top and four bottom rows. Each register byte
-    // occupies two RAW16 pixels, after a 12-byte row header; its tag is 0x5A.
-    const auto readStatus = [&](uint32_t row, size_t offset, unsigned bytes, uint32_t& value) {
+    const auto readStatus = [&](uint32_t row, size_t offset, unsigned bytes, uint32_t& value) {  // VD55H1 status: 1 byte per 2 RAW16 px, after a 12-byte header
         const auto* packet = data + size_t(row) * strideBytes + 12 + 4 * offset;
         value = 0;
         for(unsigned i = 0; i < bytes; ++i, packet += 4) {
@@ -106,10 +100,7 @@ constexpr int kDefaultStreamBufferCount = 14;
 constexpr int kHfrStreamBufferCount = 48;
 constexpr unsigned int SENSOR_ERROR_GPIO_CHIP = 0;
 
-// Explicit routes are requested through initialControl misc controls
-// ("beta-full-ife" / "beta-shared-isp"); the encoders live with the ISP
-// route allocator, which produces the same strings for automatic routes.
-std::optional<int32_t> encodeExplicitIspRoute(const dai::CameraProperties& properties) {
+std::optional<int32_t> encodeExplicitIspRoute(const dai::CameraProperties& properties) {  // Keys match the strings of the ISP route allocator
     const std::string* fullIfeValue = nullptr;
     const std::string* sharedIspValue = nullptr;
     for(const auto& pairKV : properties.initialControl.miscControls) {
@@ -221,13 +212,6 @@ std::string telemetryFsyncModeName(lux_sc_camera_fsync_t fsyncMode) {
 constexpr float NEUTRAL_KELVINS = 6500.0f;  // D65
 
 std::mutex CameraSensor::buildMtx;
-/**
- * Pops metadata from the cache corresponding to the given sequence number.
- * Also performs cleanup of old metadata entries that are no longer needed.
-
- * IMPORTANT: all outputs should first assign a maximum sequence number before starting the camera,
- * to ensure that the metadata is not cleared before all outputs have popped their metadata.
- */
 std::optional<CameraSensor::MetaCacheItem> CameraSensor::popMetaCache(uint64_t sequenceNumber, const std::string& output) {
     std::lock_guard lock(metaCacheMutex);
     metaCacheLast[output] = sequenceNumber;
@@ -235,7 +219,7 @@ std::optional<CameraSensor::MetaCacheItem> CameraSensor::popMetaCache(uint64_t s
     bool firstRuns = false;
     DAI_CHECK_IN(metaCacheLast.size() > 0);
     for(auto& item : metaCacheLast) {
-        if(item.second == std::numeric_limits<uint64_t>::max()) {
+        if(item.second == std::numeric_limits<uint64_t>::max()) {  // max = output has not popped yet (no cleanup); each output sets it before camera start
             firstRuns = true;
             break;
         }
@@ -246,10 +230,7 @@ std::optional<CameraSensor::MetaCacheItem> CameraSensor::popMetaCache(uint64_t s
     const auto resultMaybe =
         std::find_if(metaCache.begin(), metaCache.end(), [sequenceNumber](const auto iter) { return iter.sequenceNumber == sequenceNumber; });
     if(resultMaybe == metaCache.end()) {
-        // A buffer can legally arrive without cached metadata when its request
-        // errored (HAL notify ERROR_RESULT) or metadata is late; drop the frame
-        // instead of aborting. Log diagnostics to trace the underlying cause.
-        if(sensorErrorGpioState.load() == 1) {
+        if(sensorErrorGpioState.load() == 1) {  // Legal: the request errored (HAL ERROR_RESULT) or metadata is late; drop the frame, do not abort
             return std::nullopt;
         }
         uint64_t cacheMin = std::numeric_limits<uint64_t>::max();
@@ -302,10 +283,7 @@ CameraSensor::CameraSensor(const CameraDescription cam,
     numFramesPoolOutputs = properties.numFramesPoolOutputs;
     maxSizePoolOutputs = properties.maxSizePoolOutputs;
     explicitIspRoute = encodeExplicitIspRoute(properties);
-    // Register with the fleet-wide ISP route allocator. All camera nodes are
-    // constructed before any of them opens, so by the time run() resolves the
-    // route the allocator has seen the whole fleet.
-    {
+    {  // All camera nodes are constructed before any opens, so run() sees the whole fleet
         IspSensorRequest allocReq;
         allocReq.socket = static_cast<int>(cam.camera.socket);
         allocReq.socketName = toString(cam.camera.socket);
@@ -324,7 +302,6 @@ CameraSensor::CameraSensor(const CameraDescription cam,
         }
         IspRouteAllocator::getInstance().registerSensor(allocReq);
     }
-    // Figure out if the sensor is a part of any stereo pair
     bool stereoSensor = false;
     if(eepromData.has_value()) {
         auto stereoPairs = getStereoPairs(eepromData.value());
@@ -521,7 +498,6 @@ void CameraSensor::sensorErrorMonitorLoop() {
 }
 
 void CameraSensor::build(dai::CameraSensorType type) {
-    // Take lock until the CameraSensor is built and added to mainLoop
     std::unique_lock<std::mutex> lock(buildMtx);
     int fsyncId = 0;
     if(0 == (int)cameraId) {
@@ -599,8 +575,7 @@ void CameraSensor::build(dai::CameraSensorType type) {
 void CameraSensor::cameraLoop() {
     int frameNumber{0};
     while(true) {
-        // on rvc4 the move lens command has to be applied after stream start also
-        if(frameNumber == 1) {
+        if(frameNumber == 1) {  // On RVC4 the move lens command must also be applied after stream start
             const bool hasMoveLens = initialControl.getCommand(dai::CameraControl::Command::MOVE_LENS);
             const bool hasMoveLensRaw = initialControl.getCommand(dai::CameraControl::Command::MOVE_LENS_RAW);
             if(hasMoveLens || hasMoveLensRaw) {
@@ -624,13 +599,9 @@ void CameraSensor::cameraLoop() {
             if(curSettingsNextChanged) {
                 curSettingsNextChanged = false;
                 logger->trace("Applying new request settings");
-                // Tricky, the settings need to be unlocked to support any write operations
-                // also the below assignment which copies the whole buffer
-                curSettings.unlock(curSettingsLastLocked);
-                // This copies the curSettingsNext to curSettings that are then used by HAL
+                curSettings.unlock(curSettingsLastLocked);  // Must be unlocked for any write, also for the copy below
                 curSettings = curSettingsNext;
                 curSettingsLastLocked = curSettings.getAndLock();
-                // The AF trigger goes out with this request only, the next one is built with IDLE again
                 auto afTrigger = curSettingsNext.find(ANDROID_CONTROL_AF_TRIGGER);
                 if(afTrigger.count == 1 && afTrigger.data.u8[0] == ANDROID_CONTROL_AF_TRIGGER_START) {
                     logger->debug("Camera[{}] AF trigger sent with request {}", cameraId, frameNumber);
@@ -651,8 +622,7 @@ void CameraSensor::cameraLoop() {
 }
 
 void CameraSensor::addStream(std::vector<camera3_stream_t*>& curStreamsPtrs, const std::string& outputName, int format, uint32_t width, uint32_t height) {
-    // We can't allow the array to grow after the first reserve call as this would move all the pointers elsewhere
-    DAI_CHECK_IN(curStreams.capacity() >= curStreams.size() + 1 && curStreamsPtrs.capacity() >= curStreamsPtrs.size() + 1);
+    DAI_CHECK_IN(curStreams.capacity() >= curStreams.size() + 1 && curStreamsPtrs.capacity() >= curStreamsPtrs.size() + 1);  // Growing would move the pointers
     metaCacheLast[outputName] = std::numeric_limits<uint64_t>::max();
     curStreams.push_back({});
     auto* newStream = &curStreams.back();
@@ -714,11 +684,7 @@ void CameraSensor::addStream(std::vector<camera3_stream_t*>& curStreamsPtrs, con
                               meta.exposureTime,
                               meta.timestamp,
                               meta.lensPosition);
-                // This just converts a nanosecond timestamp to seconds and nanoseconds remainder
-                // meta.timestamp is start of exposure timestamp, so we add the exposure time to get
-                // end of exposure timestamp that depthai-core wants
-                // GST_BUFFER_OFFSET_END(buffer) should also contain the same value as meta.timestamp
-                GST_TIME_TO_TIMESPEC(meta.timestamp + meta.exposureTime, timestamp);
+                GST_TIME_TO_TIMESPEC(meta.timestamp + meta.exposureTime, timestamp);  // meta.timestamp is start of exposure; depthai-core wants end of exposure
 #endif
                 dai::Timestamp ts = {.sec = timestamp.tv_sec, .nsec = timestamp.tv_nsec};
                 auto* bo = cameraPool->getBo(buffer);
@@ -729,7 +695,6 @@ void CameraSensor::addStream(std::vector<camera3_stream_t*>& curStreamsPtrs, con
                 }
                 auto stride = gbm_bo_get_stride(bo);
                 if(buffer->stream->format == HAL_PIXEL_FORMAT_RAW16) {
-                    // ToF RAW16 (GRAY16_LE) frame
                     if(cameraDescription.camera.sensorName == "VD55H1") {
                         uint64_t exposureNs = 0;
                         if(readRawExposureTimeNs(halData->getData().data(),
@@ -864,10 +829,7 @@ void CameraSensor::run() {
         return;
     }
     onlyOnce = false;
-    // Resolve the ISP route against the whole fleet: manual routes pass
-    // through verbatim, automatic ones get dedicated IFEs, a shared pool
-    // slot, or BPS. The IspAlloc line is stable and parsed by tests.
-    {
+    {  // The IspAlloc log line is stable: tests parse it
         const auto decision = IspRouteAllocator::getInstance().resolve(static_cast<int>(cameraDescription.camera.socket));
         DAI_CHECK_V(decision.error.empty(),
                     "ISP route allocation failed for socket {}: {}",
@@ -901,14 +863,6 @@ void CameraSensor::run() {
     auto res = camM->common.methods->open(&camM->common, std::to_string(cameraId).c_str(), (hw_device_t**)(&mDevice));
     DAI_CHECK_V(0 == res && mDevice != nullptr, "Opening the camera {} failed", cameraId);
     res = mDevice->ops->initialize(mDevice, this);
-    /*
-    {
-        using CameraMetadata = android::hardware::camera::common::V1_0::helper::CameraMetadata;
-        CameraMetadata static_meta;
-        static_meta = CameraSingleton::getInstance().cameraInfos[cameraId].static_camera_characteristics;
-        PrintAfAvailableModes(static_meta, cameraId, logger);
-    }
-    */
     int specIndex{0};
     float fps{0.0f};
     std::vector<camera3_stream_t*> curStreamsPtrs;
@@ -916,18 +870,9 @@ void CameraSensor::run() {
     curStreams.reserve(allStreamsSize);
     curStreamsPtrs.reserve(allStreamsSize);
     highFpsMode = curFps > 120.999999f;
-    // Shared-ISP sessions must keep the NORMAL stream configuration mode: the
-    // constrained high-speed mode makes the usecase selector pick the realtime
-    // HFR usecase and the shared/offline route would be ignored. The frame
-    // rate is still driven by the forced sensor mode and the frame-duration
-    // override, and the deeper HFR buffering is kept via highFpsMode.
-    const bool sharedIspRoute = explicitIspRoute.has_value() && !dai::ispRouteUsesBps(*explicitIspRoute)
+    const bool sharedIspRoute = explicitIspRoute.has_value() && !dai::ispRouteUsesBps(*explicitIspRoute)  // Shared ISP needs NORMAL mode: HFR ignores the route
                                 && !dai::ispRouteHasDedicatedFullIfe(*explicitIspRoute);
-    hfrModeEnabled = highFpsMode && !sharedIspRoute;
-    // Shared-ISP sessions keep the deep buffer pool as well: the pool is
-    // served in turns, and a shallow request pipeline collapses into
-    // request/result waves under load — the serving engine then idles in
-    // per-camera droughts that show as frozen frames on a live view.
+    hfrModeEnabled = highFpsMode && !sharedIspRoute;  // sharedIspRoute keeps kHfrStreamBufferCount: a shallow pool shows as frozen frames
     cameraPool = std::make_shared<CameraPool>((highFpsMode || sharedIspRoute) ? kHfrStreamBufferCount : numFramesPoolOutputs, maxSizePoolOutputs);
     if(hasRaw) {
         auto features = CameraDiscovery::getInstance().getCameraFeatures("", cameraDescription.camera.socket);
@@ -986,25 +931,13 @@ void CameraSensor::run() {
     int cam_feature_flags = (FORCE_SENSOR_MODE_DATA(sensorMode) | forceSensorMode);
     config->operation_mode |= ((FORCE_SENSOR_MODE_MASK & cam_feature_flags) | FORCE_SENSORMODE_ENABLE);
     config->num_streams = curStreamsPtrs.size();
-    // config.streams = reinterpret_cast<camera3_stream_t**>(mixedStreams);
     config->streams = curStreamsPtrs.data();
-    // logger->trace("config->streams[0] = %p\n", config->streams[0]);
-    // The session's frame rate, in every session. CHI runs AF/AE/AWB on one frame in (session max fps / batch / 30);
-    // without this range it takes the sensor mode's max fps instead, e.g. 480 for the IMX586's 1280x720, so at 120 fps
-    // AF ran on one frame in 16. HFR streams also need it, as
-    // org.quic.camera.manualExposure.overrideSensorFrameDuration seems to get ignored there.
-    int32_t fpsRange[2] = {static_cast<int32_t>(std::lround(curFps)), static_cast<int32_t>(std::lround(curFps))};
+    int32_t fpsRange[2] = {static_cast<int32_t>(std::lround(curFps)), static_cast<int32_t>(std::lround(curFps))};  // Without it, 3A runs at the mode's max fps
     res = sessionParameters.update(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, fpsRange, 2);
     DAI_CHECK_IN(res == 0);
-    // Without an explicit route, use the normal realtime full-IFE path and let
-    // the camera stack select the physical full IFE. Shared IFE/BPS paths are
-    // opt-in through CameraProperties.
     const auto socket = cameraDescription.camera.socket;
     const bool useRealtimeBPS = explicitIspRoute.has_value() && dai::ispRouteUsesBps(*explicitIspRoute);
-    const bool useOfflineIFE =
-        explicitIspRoute.has_value() && !useRealtimeBPS && !dai::ispRouteHasDedicatedFullIfe(*explicitIspRoute);
-    // An explicit route value describes either dedicated full IFEs or the
-    // ingress and shared processors used by an offline/BPS path.
+    const bool useOfflineIFE = explicitIspRoute.has_value() && !useRealtimeBPS && !dai::ispRouteHasDedicatedFullIfe(*explicitIspRoute);
     int32_t enableOfflineIFE{explicitIspRoute.value_or(useOfflineIFE ? 1 : 0)};
     if(explicitIspRoute.has_value()) {
         logger->info("Explicit ISP route for socket {}: 0x{:08x}, offline {}, BPS {}",
@@ -1015,11 +948,8 @@ void CameraSensor::run() {
     }
     res = sessionParameters.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.sessionParameters.EnableOfflineIFE"), &enableOfflineIFE, 1);
     DAI_CHECK_IN(res == 0);
-    // The CHI tag is TYPE_BYTE with sizeof(BOOL) bytes. It both selects the
-    // realtime BPS use case and enables BPS-specific stats/IPE behavior.
-    uint8_t cameraRunningOnBPS[sizeof(int32_t)] = {static_cast<uint8_t>(useRealtimeBPS)};
-    res = sessionParameters.update(
-        HalUtil::getVendorTag("com.qti.chi.bpsrealtimecam.cameraRunningOnBPS"), cameraRunningOnBPS, sizeof(cameraRunningOnBPS));
+    uint8_t cameraRunningOnBPS[sizeof(int32_t)] = {static_cast<uint8_t>(useRealtimeBPS)};  // HAL tag is TYPE_BYTE with sizeof(BOOL) bytes
+    res = sessionParameters.update(HalUtil::getVendorTag("com.qti.chi.bpsrealtimecam.cameraRunningOnBPS"), cameraRunningOnBPS, sizeof(cameraRunningOnBPS));
     DAI_CHECK_IN(res == 0);
     config->session_parameters = sessionParameters.getAndLock();
     res = mDevice->ops->configure_streams(mDevice, config);
@@ -1028,15 +958,12 @@ void CameraSensor::run() {
         mDevice->ops->construct_default_request_settings(mDevice, hfrModeEnabled ? CAMERA3_TEMPLATE_VIDEO_RECORD : CAMERA3_TEMPLATE_PREVIEW);
     curRequest.frame_number = 0;
     curSettings = rawRequest;
-    int64_t frameDuration = std::lround(1.0 / curFps * 1.0e9);
-    // Note this seems to get ignored in HFR streams by camx, so need to be handled by driver explicitly
-    // or it will get rounded to nearest integer by ANDROID_CONTROL_AE_TARGET_FPS_RANGE above
+    int64_t frameDuration = std::lround(1.0 / curFps * 1.0e9);  // Override set explicitly: else AE_TARGET_FPS_RANGE rounds fps
     res = curSettings.update(HalUtil::getVendorTag("org.quic.camera.manualExposure.overrideSensorFrameDuration"), &frameDuration, 1);
     DAI_CHECK_IN(res == 0);
     uint8_t disable{1};
     res = curSettings.update(HalUtil::getVendorTag("org.quic.camera.manualExposure.disableFPSLimits"), &disable, 1);
     DAI_CHECK_IN(res == 0);
-    // Disable chroma and luma denoise by default as it causes artifacts
     if(isStereoSensor) {
         uint8_t mode = ANDROID_NOISE_REDUCTION_MODE_HIGH_QUALITY;
         auto res = curSettings.update(ANDROID_NOISE_REDUCTION_MODE, &mode, 1);
@@ -1063,13 +990,9 @@ enum sensor_register_control_command {
     HDR_LOCAL_TONE_WEIGHT_COMMAND,
 };
 
-// Map DAI camera attribute value to GStreamer plugin attributes
 #define MAP_VALUE(x, in_min, in_max, out_min, out_max) ((((x) - (in_min)) * ((out_max) - (out_min)) / ((in_max) - (in_min))) + (out_min))
 
-// CamX reads ANDROID_CONTROL_AF_REGIONS and ANDROID_CONTROL_AE_REGIONS in active-array pixels: the full sensor, which is
-// also the source of the frames' transformations (ImgTransformation::getSourceSize()). CameraControl regions are given in
-// those pixels, whatever the selected sensor mode, and passed on as they are.
-std::optional<std::pair<int32_t, int32_t>> CameraSensor::readActiveArraySize() const {
+std::optional<std::pair<int32_t, int32_t>> CameraSensor::readActiveArraySize() const {  // AF/AE regions are in active-array pixels, for any sensor mode
     using CameraMetadata = android::hardware::camera::common::V1_0::helper::CameraMetadata;
     CameraMetadata staticMeta;
     staticMeta = CameraSingleton::getInstance().cameraInfos[cameraId].static_camera_characteristics;
@@ -1082,10 +1005,7 @@ std::optional<std::pair<int32_t, int32_t>> CameraSensor::readActiveArraySize() c
     return std::make_pair(activeArray.data.i32[2], activeArray.data.i32[3]);
 }
 
-// The frames per batch of a high-frame-rate session, as the camera HAL picks them: the max batch size of the static
-// high-speed video configuration for the first stream's size and the session's frame rate.
-// 1 when none matches, so no frame takes another frame's settings.
-uint32_t CameraSensor::readHfrBatchSize(uint32_t width, uint32_t height) const {
+uint32_t CameraSensor::readHfrBatchSize(uint32_t width, uint32_t height) const {  // As the HAL picks it; 1 when none matches
     using CameraMetadata = android::hardware::camera::common::V1_0::helper::CameraMetadata;
     CameraMetadata staticMeta;
     staticMeta = CameraSingleton::getInstance().cameraInfos[cameraId].static_camera_characteristics;
@@ -1100,9 +1020,7 @@ uint32_t CameraSensor::readHfrBatchSize(uint32_t width, uint32_t height) const {
     return 1;
 }
 
-// [xmin, ymin, xmax, ymax, weight] for ANDROID_CONTROL_AF_REGIONS or ANDROID_CONTROL_AE_REGIONS, clamped to the active array.
-// `name` is AutoFocus or AutoExposure, as in the CameraControl setter.
-std::array<int32_t, 5> CameraSensor::toCamxRegion(const dai::CameraControl::RegionParams& region, const char* name) const {
+std::array<int32_t, 5> CameraSensor::toCamxRegion(const dai::CameraControl::RegionParams& region, const char* name) const {  // [xmin, ymin, xmax, ymax, weight]
     constexpr int32_t weight = 1000;  // Max priority; CameraControl does not expose the region priority.
     const int32_t right = region.x + region.width, bottom = region.y + region.height;
     if(!activeArraySize) {
@@ -1134,9 +1052,7 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
         curSettingsNextChanged = true;
         curSettingsNext = curSettings;
     }
-    // A trigger runs one scan, then the lens holds until the next trigger. HAL3 only locks the focus in the
-    // continuous modes and ignores the trigger in OFF, so unless the control sets a mode itself these switch to AUTO.
-    if(control.getCommand(dai::CameraControl::Command::AF_TRIGGER) && !control.getCommand(dai::CameraControl::Command::AF_MODE)) {
+    if(control.getCommand(dai::CameraControl::Command::AF_TRIGGER) && !control.getCommand(dai::CameraControl::Command::AF_MODE)) {  // HAL3 ignores it in AF OFF
         const auto afMode = curSettingsNext.find(ANDROID_CONTROL_AF_MODE);
         if(afMode.count == 1 && afMode.data.u8[0] != ANDROID_CONTROL_AF_MODE_AUTO && afMode.data.u8[0] != ANDROID_CONTROL_AF_MODE_MACRO) {
             control.setAutoFocusMode(dai::CameraControl::AutoFocusMode::AUTO);
@@ -1154,7 +1070,6 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                         } else {
                             logger->info("Camera[{}] manual exp: {}, iso {}", cameraId, control.expManual.exposureTimeUs, control.expManual.sensitivityIso);
                         }
-                        // const uint8_t aeMode = ANDROID_CONTROL_AE_MODE_ON;
                         const uint8_t aeMode = ANDROID_CONTROL_AE_MODE_OFF;
                         auto res = curSettingsNext.update(ANDROID_CONTROL_AE_MODE, &aeMode, 1);
                         DAI_CHECK_IN(res == 0);
@@ -1188,8 +1103,7 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                         DAI_CHECK_IN(res == 0);
                     } break;
                     case dai::CameraControl::Command::AE_REGION: {
-                        // (2): spot - The camera exposure metering is calculated from a chosen spot
-                        int32_t exposureMeteringMode{2};
+                        int32_t exposureMeteringMode{2};  // 2 = spot metering
                         auto res = curSettingsNext.update(
                             HalUtil::getVendorTag("org.codeaurora.qcamera3.exposure_metering.exposure_metering_mode"), &exposureMeteringMode, 1);
 
@@ -1200,7 +1114,6 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                         }
                     } break;
                     case dai::CameraControl::Command::EXPOSURE_COMPENSATION: {
-                        // Range: -12 - 12 Default: 0
                         int32_t compensation = MAP_VALUE(control.expCompensation, -9, 9, -12, 12);
                         auto res = curSettingsNext.update(ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION, &compensation, 1);
                         DAI_CHECK_IN(res == 0);
@@ -1222,9 +1135,7 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                                           control.wbColorTemp);
                             continue;
                         }
-                        // Manual white balance mode of the camera HAL: 0: disable, 1: CCT, 2: gains.
-                        // The camera HAL applies it as a partial override of the auto white balance.
-                        int32_t awbMode = 1;
+                        int32_t awbMode = 1;  // HAL manual WB mode: 0 disable, 1 CCT, 2 gains
                         curSettingsNext.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.manualWB.partial_mwb_mode"), &awbMode, 1);
                         uint8_t awbOff = ANDROID_CONTROL_AWB_MODE_OFF;
                         curSettingsNext.update(ANDROID_CONTROL_AWB_MODE, &awbOff, 1);
@@ -1257,21 +1168,6 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                         DAI_CHECK_IN(res == 0);
                     } break;
                     case dai::CameraControl::Command::EFFECT_MODE: {
-                        // direct cast as enum values happen to match with RVC2
-                        // (0): off - No color effect will be applied.
-                        // (1): mono - A 'monocolor' effect where the image is mapped into a single color.
-                        // (2): negative - A 'photo-negative' effect where the image's colors are inverted.
-                        // (3): solarize - A 'solarisation' effect (Sabattier effect) where the image is wholly or
-                        //      partially reversed in tone.
-                        // (4): sepia - A 'sepia' effect where the image is mapped into warm gray, red, and brown
-                        //      tones.
-                        // (5): posterize - A 'posterization' effect where the image uses discrete regions of tone
-                        //      rather than a continuous gradient of tones.
-                        // (6): whiteboard - A 'whiteboard' effect where the image is typically displayed as regions
-                        //      of white, with black or grey details.
-                        // (7): blackboard - A 'blackboard' effect where the image is typically displayed as regions
-                        //      of black, with white or grey details.
-                        // (8): aqua - An 'aqua' effect where a blue hue is added to the image.
                         static const std::vector<uint8_t> effects = {ANDROID_CONTROL_EFFECT_MODE_OFF,
                                                                      ANDROID_CONTROL_EFFECT_MODE_MONO,
                                                                      ANDROID_CONTROL_EFFECT_MODE_NEGATIVE,
@@ -1288,7 +1184,6 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                         DAI_CHECK_IN(res == 0);
                     } break;
                     case dai::CameraControl::Command::CONTRAST: {
-                        // Range: 1 - 10 Default: 5
                         const int32_t contrast = MAP_VALUE(control.contrast, -10, 10, 1, 10);
                         auto res = curSettingsNext.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.contrast.level"), &contrast, 1);
                         DAI_CHECK_IN(res == 0);
@@ -1300,9 +1195,7 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                         DAI_CHECK_IN(res == 0);
                     } break;
                     case dai::CameraControl::Command::AF_REGION: {
-                        // Do not touch AF MODE. It is applicable to all modes except when set to OFF
-
-                        const auto controlAfRegions = toCamxRegion(control.afRegion, "AutoFocus");
+                        const auto controlAfRegions = toCamxRegion(control.afRegion, "AutoFocus");  // Leave AF mode: regions apply in all modes but OFF
                         auto res = curSettingsNext.update(ANDROID_CONTROL_AF_REGIONS, controlAfRegions.data(), controlAfRegions.size());
                         DAI_CHECK_IN(res == 0);
                     } break;
@@ -1325,9 +1218,7 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                         } else {
                             LuxonisSidechannel::getInstance().sendMessage(msg);
                         }
-                        // This forces the af algorithm to write to the actuator which we can then intercept
-                        // as the distance diff of 0.2 is always big enough to have to apply
-                        float tag_value = isEvenFocusApply ? 0.4 : 0.6;
+                        float tag_value = isEvenFocusApply ? 0.4 : 0.6;  // Alternating 0.4/0.6 forces AF to write the actuator, which we intercept
                         auto res = curSettingsNext.update(ANDROID_LENS_FOCUS_DISTANCE, &tag_value, 1);
                         DAI_CHECK_IN(res == 0);
                         uint8_t focusMode = ANDROID_CONTROL_AF_MODE_OFF;
@@ -1351,24 +1242,19 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                     } break;
 
                     case dai::CameraControl::Command::SHARPNESS: {
-                        // Range: 0 - 6 Default: 2
                         int32_t sharpness = MAP_VALUE(control.sharpness, 0, 4, 0, 6);
                         auto res = curSettingsNext.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.sharpness.strength"), &sharpness, 1);
                         DAI_CHECK_IN(res == 0);
                     } break;
 
                     case dai::CameraControl::Command::SATURATION: {
-                        // Range: 0 - 10 Default: 5
                         int32_t saturation = MAP_VALUE(control.saturation, -10, 10, 0, 10);
                         auto res = curSettingsNext.update(HalUtil::getVendorTag("org.codeaurora.qcamera3.saturation.use_saturation"), &saturation, 1);
                         DAI_CHECK_IN(res == 0);
                     } break;
 
                     case dai::CameraControl::Command::AF_MODE: {
-                        // Both continuous modes map to the continuous mode of the session's request template:
-                        // CONTINUOUS_PICTURE for PREVIEW (normal) sessions, CONTINUOUS_VIDEO for VIDEO_RECORD (HFR) ones
-                        const int continuousMode =
-                            hfrModeEnabled ? ANDROID_CONTROL_AF_MODE_CONTINUOUS_VIDEO : ANDROID_CONTROL_AF_MODE_CONTINUOUS_PICTURE;
+                        const int continuousMode = hfrModeEnabled ? ANDROID_CONTROL_AF_MODE_CONTINUOUS_VIDEO : ANDROID_CONTROL_AF_MODE_CONTINUOUS_PICTURE;
                         int af_mode_lookup[] = {ANDROID_CONTROL_AF_MODE_OFF,
                                                 ANDROID_CONTROL_AF_MODE_AUTO,
                                                 ANDROID_CONTROL_AF_MODE_MACRO,
@@ -1392,12 +1278,7 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
                     } break;
 
                     case dai::CameraControl::Command::HDR: {
-                        if(!firstControlApply) {
-                            // Tested reconfigure streams mDevice->ops->configure_streams() with HDR mode on/off with gstreamer stack
-                            // but ov9282 randomly crashes (sometimes yes, sometimes no) because of fsync during reconfigure().
-                            // So not supporting for now.
-                            //
-                            // Might work without gstreamer stack but probably not, we would need to get the timing right !!!
+                        if(!firstControlApply) {  // Reconfigure with HDR on/off randomly crashes ov9282 (fsync during reconfigure)
                             logger->warn("Runtime HDR switching is not supported, please use Camera::initialControl to enable HDR");
                         }
                     } break;
@@ -1470,8 +1351,7 @@ void CameraSensor::applyCameraControl(dai::CameraControl control) {
         int32_t sensor_register_control[32] = {0};
 
         if(name == "beta-full-ife" || name == "beta-shared-isp") {
-            // Consumed at camera open time for explicit ISP routing
-            continue;
+            continue;  // Consumed at camera open for explicit ISP routing
         }
 
         std::cout << "Misc Control: [" << name << " : " << value << "]" << std::endl;
@@ -1522,11 +1402,7 @@ void CameraSensor::processCaptureResultCb(const struct camera3_callback_ops* ops
     auto endTime = std::chrono::high_resolution_clock::now();
     logger->trace("process capture took: {}ms", std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count() / 1000.0f);
 #endif
-    // MUST BE LESS then 5ms and sig aborts at 4+ frame intervals see process_capture_result documentation in camera3.h
-    // might be controlled with android.request.pipelineDepth and android.request.pipelineMaxDepth
-    // mmap() uses up to 6ms sometimes so we should cache that to speed it up
-    // DAI_CHECK_IN(std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count() < 5000);
-}
+}  // Must take < 5 ms: the HAL aborts at 4+ frame intervals (camera3.h process_capture_result)
 
 void CameraSensor::notifyCb(const struct camera3_callback_ops* ops, const camera3_notify_msg_t* msg) {
     auto* thisPtr = const_cast<CameraSensor*>(static_cast<const CameraSensor*>(ops));
@@ -1536,8 +1412,8 @@ void CameraSensor::notifyCb(const struct camera3_callback_ops* ops, const camera
 camera3_buffer_request_status_t CameraSensor::requestStreamBuffersCb(const struct camera3_callback_ops* ops,
                                                                      uint32_t num_buffer_reqs,
                                                                      const camera3_buffer_request_t* buffer_reqs,
-                                                                     /*out*/ uint32_t* num_returned_buf_reqs,
-                                                                     /*out*/ camera3_stream_buffer_ret_t* returned_buf_reqs) {
+                                                                     uint32_t* num_returned_buf_reqs,
+                                                                     camera3_stream_buffer_ret_t* returned_buf_reqs) {
     printf("ERROR: HAL request_stream_buffers() called!!!\n");
     return CAMERA3_BUF_REQ_FAILED_UNKNOWN;
 }
@@ -1558,9 +1434,7 @@ void CameraSensor::processCaptureResult(const camera3_capture_result_t* result) 
     try {
         if(result->partial_result == 2 || (result->partial_result == 0 && result->num_output_buffers > 0 && result->result)) {
             bool warnMissing = !hfrModeEnabled && !hasRaw;
-            // Some meta is only in partial_result == 1, so if that is needed take it from there.
-            // Might make sense to always combine partial_result 1 and 2 metadata together to have it available in the same spot.
-            int64_t timestamp{0};
+            int64_t timestamp{0};  // Some meta is only in partial_result == 1; take it from there when needed
             if(!HalUtil::getMetaInt64(result->result, ANDROID_SENSOR_TIMESTAMP, timestamp)) {
                 logger->warn("seqNum: {}, Couldn't find ANDROID_SENSOR_TIMESTAMP meta on frame meta. Setting frame timestamp to 0.", result->frame_number);
             }
@@ -1602,14 +1476,10 @@ void CameraSensor::processCaptureResult(const camera3_capture_result_t* result) 
             if(sensorTemperatureTag.has_value()) {
                 std::array<uint8_t, 2> sensorTemperatureBytes{};
                 if(HalUtil::getMetaSensorReadOutput(result->result, *sensorTemperatureTag, sensorTemperatureBytes)) {
-                    // The camera HAL publishes the tag zeroed until it first reads the sensor's temperature register, and
-                    // always for sensors without a temperature read, so a reading counts only once it was non-zero.
-                    if(sensorTemperatureBytes != std::array<uint8_t, 2>{}) {
+                    if(sensorTemperatureBytes != std::array<uint8_t, 2>{}) {  // HAL sends zeros until its first sensor read, and always for sensors without one
                         sensorTemperatureRead = true;
                     }
-                    if(sensorTemperatureRead) {
-                        // Byte 0 is the signed integer part in Celsius, byte 1 the fraction in 1/256 Celsius; the camera
-                        // HAL converts each sensor's register format to this.
+                    if(sensorTemperatureRead) {  // Byte 0: signed whole Celsius, byte 1: 1/256 Celsius (HAL format)
                         const auto value = static_cast<int16_t>((sensorTemperatureBytes[0] << 8) | sensorTemperatureBytes[1]);
                         sensorTemperatureC = static_cast<float>(value) / 256.0f;
                     }
@@ -1636,13 +1506,7 @@ void CameraSensor::processCaptureResult(const camera3_capture_result_t* result) 
                                          static_cast<double>(std::round(lensPosition * 255.0f)));
             {
                 std::lock_guard lock(metaCacheMutex);
-                // In a high-frame-rate session the camera HAL runs a batch of hfrBatchSize frames per request, and returns
-                // the batch's metadata only with its last frame. The others get sparse metadata without the capture
-                // settings. All frames of a batch ran on the same settings, so the frames before this one in its batch
-                // take them from it. The camera HAL returns a batch's metadata before its buffers, so those frames are
-                // still waiting here. The walk stays in this batch and stops at a missing frame (its metadata errored) or
-                // one with settings, so no frame takes another batch's settings.
-                if(item.hasSettings) {
+                if(item.hasSettings) {  // HFR: the HAL sends a batch's settings only with its last frame; earlier frames take them
                     for(uint64_t back = 1; back < hfrBatchSize && back <= item.sequenceNumber; ++back) {
                         const auto earlier =
                             std::find_if(metaCache.begin(), metaCache.end(), [sequenceNumber = item.sequenceNumber - back](const auto& cached) {
@@ -1689,9 +1553,6 @@ void CameraSensor::processCaptureResult(const camera3_capture_result_t* result) 
         for(int idx = 0; idx < result->num_output_buffers; ++idx) {
             auto* outBuf = &result->output_buffers[idx];
             logger->trace("Fence was: acquire: {}, release: {}", outBuf->acquire_fence, outBuf->release_fence);
-            // HAL3: buffers can come back with an error status (paired with a
-            // notify ERROR_BUFFER); their content is undefined - return them
-            // to the pool instead of dispatching a frame.
             if(outBuf->status != CAMERA3_BUFFER_STATUS_OK) {
                 logger->warn("Buffer for frame {} returned with error status {}, dropping", result->frame_number, static_cast<int>(outBuf->status));
                 cameraPool->returnBuffer(outBuf);
@@ -1759,7 +1620,6 @@ void CameraSensor::applyTuningFile(const std::string& tuningPath) {
 }
 
 void CameraSensor::loadCorrectTuning() {
-    // A user supplied tuning blob takes precedence over the default tuning selection
     if(tuningOverride.has_value()) {
         applyTuningFile(*tuningOverride);
         return;
@@ -1771,7 +1631,6 @@ void CameraSensor::loadCorrectTuning() {
     if(dai::gate::getOSVersion() < dai::Version(1, 20, 4)) {
         logger->info("Old OS version doesn't override tuning");
     } else {
-        // This checks if device is wide or normal and loads the correct tuning for the lens
         if(eepromData->hardwareConf.size() < 7) {
             logger->error("Wrong HW config in eeprom: \"{}\"", eepromData->hardwareConf);
             return;

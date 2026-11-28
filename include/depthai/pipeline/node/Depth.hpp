@@ -58,7 +58,6 @@ class Depth : public DeviceNodeGroup {
      */
     using Config = std::variant<std::monostate, DeviceModelZoo, StereoDepth::PresetMode>;
 
-    // Non-copyable / non-movable: owns pipeline subnodes and output pointers tied to this instance.
     Depth(const Depth&) = delete;
     Depth& operator=(const Depth&) = delete;
     Depth(Depth&&) = delete;

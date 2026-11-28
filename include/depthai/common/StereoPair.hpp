@@ -20,7 +20,6 @@ struct StereoPair {
 };
 }  // namespace dai
 
-// Global namespace
 inline std::ostream& operator<<(std::ostream& out, const dai::StereoPair& pair) {
     out << "{left: " << pair.left << ", ";
     out << "right: " << pair.right << ", ";

@@ -11,17 +11,10 @@
 void RemoteConnectionBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 #ifdef DEPTHAI_ENABLE_REMOTE_CONNECTION
     py::class_<RemoteConnection>(m, "RemoteConnection")
         .def(py::init<const std::string&, uint16_t, bool, uint16_t>(),
@@ -45,7 +38,6 @@ void RemoteConnectionBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("blocking") = false,
              py::arg("useVisualizationIfAvailable") = true,
              DOC(dai, RemoteConnection, addTopic))
-        // Release the GIL
         .def("removeTopic",
              &RemoteConnection::removeTopic,
              py::arg("topicName"),
@@ -70,9 +62,8 @@ void RemoteConnectionBindings::bind(pybind11::module& m, void* pCallstack) {
             DOC(dai, RemoteConnection, registerBinaryService))
         .def("waitKey", &RemoteConnection::waitKey, py::arg("delay"), py::call_guard<py::gil_scoped_release>(), DOC(dai, RemoteConnection, waitKey));
 #else
-    // Define a placeholder class for RemoteConnection
     struct RemoteConnectionPlaceholder {
-        RemoteConnectionPlaceholder(const std::string& /*address*/, uint16_t /*port*/, bool /*serveFrontend*/, uint16_t /*httpPort*/) {
+        RemoteConnectionPlaceholder(const std::string&, uint16_t, bool, uint16_t) {
             throw std::runtime_error("Remote connection is not enabled in this build.");
         }
     };

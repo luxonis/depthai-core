@@ -11,13 +11,10 @@ void bind_beta_classificationsequenceparser(pybind11::module& m, void* pCallstac
     py::class_<beta::ClassificationSequenceParserProperties> properties(betaModule, "ClassificationSequenceParserProperties");
     auto classificationSequenceParser = ADD_BETA_NODE_DERIVED(ClassificationSequenceParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     properties.def_readwrite("initialConfig", &beta::ClassificationSequenceParserProperties::initialConfig)
         .def_readwrite("outputLayerName", &beta::ClassificationSequenceParserProperties::outputLayerName)

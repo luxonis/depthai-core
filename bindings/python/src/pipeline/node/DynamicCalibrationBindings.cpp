@@ -11,23 +11,15 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
     using namespace dai::node;
     namespace py = pybind11;
 
-    // Node and Properties declare upfront
     py::class_<DynamicCalibrationProperties> DynamicCalibrationProperties(m, "DynamicCalibrationProperties", DOC(dai, DynamicCalibrationProperties));
 
-    // Create/bind the node class first; this returns a py::class_<DynamicCalibration,...>
     auto dynamicCalibration = ADD_NODE(DynamicCalibration);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
 
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
     dynamicCalibration.def_readonly("qualityOutput", &DynamicCalibration::qualityOutput, DOC(dai, node, DynamicCalibration, qualityOutput))
         .def_readonly("coverageOutput", &DynamicCalibration::coverageOutput, DOC(dai, node, DynamicCalibration, coverageOutput))
         .def_readonly("metricsOutput", &DynamicCalibration::metricsOutput, DOC(dai, node, DynamicCalibration, metricsOutput))
@@ -59,6 +51,5 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
         .def("clearWorldConstraints", &DynamicCalibration::clearWorldConstraints, DOC(dai, node, DynamicCalibration, clearWorldConstraints))
         .def("getWorldConstraints", &DynamicCalibration::getWorldConstraints, DOC(dai, node, DynamicCalibration, getWorldConstraints));
 
-    // Keep the Properties class attached to the node type
     daiNodeModule.attr("DynamicCalibration").attr("Properties") = DynamicCalibrationProperties;
 }

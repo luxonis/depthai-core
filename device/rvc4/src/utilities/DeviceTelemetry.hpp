@@ -23,15 +23,8 @@ class DeviceTelemetry {
     void start();
     void stop();
 
-    /**
-     * Always prefix depthai only events with depthai_
-     * Don't prefix global events (shared across software stack)
-     */
-    void event(std::string eventName, nlohmann::json properties = {});
+    void event(std::string eventName, nlohmann::json properties = {});  // Prefix depthai-only events with depthai_; do not prefix global (stack-wide) events
 
-    /**
-     * Use this functions if you want to send aggregate metrics. Don't schedule your custom events
-     */
     void addAggregateMetrics(AggregateMetricsCallback functionLikeCb);
 
    private:

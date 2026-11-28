@@ -4,9 +4,6 @@
 #include <unordered_map>
 #include <vector>
 
-// shared
-// #include "depthai/common/IMUFeatures.hpp"
-
 namespace dai {
 namespace gate {
 
@@ -22,7 +19,6 @@ struct IMUDescription {
 };
 
 class IMUDiscovery {
-    // private constructor
     IMUDiscovery();
     ~IMUDiscovery() = default;
 

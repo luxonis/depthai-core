@@ -22,15 +22,13 @@ CalibrationHandler DynamicCalibration::readFactoryCalibration() {
 }
 
 std::vector<StereoPair> DynamicCalibration::getStereoPairs() {
-    // Same rules as dai::DeviceBase::getStereoPairs(), with the calibration and the cameras read on the device.
     return detail::findStereoPairs([this]() { return getParentPipeline().getCalibrationData(); },
                                    [this]() { return readFactoryCalibration(); },
                                    []() { return CameraDiscovery::getInstance().getConnectedCameraFeatures(); });
 }
 
 std::pair<std::string, std::string> DynamicCalibration::getProductAndBoardName() {
-    // An unreadable area counts as empty, like dai::Device::getProductName() and readCalibrationOrDefault() on the host.
-    EepromData eeprom;
+    EepromData eeprom;  // An unreadable area counts as empty, like dai::Device::getProductName() on the host
     EepromData eepromFactory;
     if(auto [success, errorMessage, data] = ::readFromEeprom(CameraBoardSocket::AUTO); success) {
         eeprom = data;
@@ -47,8 +45,7 @@ void DynamicCalibration::applyCalibration(const CalibrationHandler& handler, boo
     if(!success) {
         throw std::runtime_error("DynamicCalibration: failed to apply the calibration on the device: " + errorMessage);
     }
-    if(flash) {
-        // User area only, like dai::Device::flashCalibration() without factory or protected permissions.
+    if(flash) {  // User area only, like dai::Device::flashCalibration()
         auto [flashed, flashError] = ::storeToEeprom(eepromData, false, false, CameraBoardSocket::AUTO);
         if(!flashed) {
             throw std::runtime_error("DynamicCalibration: failed to flash the calibration: " + flashError);

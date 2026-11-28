@@ -9,26 +9,16 @@ void bind_imu(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Node and Properties declare upfront
     py::enum_<IMUSensor> imuSensor(m, "IMUSensor", DOC(dai, IMUSensor));
     py::class_<IMUSensorConfig, std::shared_ptr<IMUSensorConfig>> imuSensorConfig(m, "IMUSensorConfig", DOC(dai, IMUSensorConfig));
     py::class_<IMUProperties> imuProperties(m, "IMUProperties", DOC(dai, IMUProperties));
     auto imu = ADD_NODE(IMU);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Properties
     DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     imuSensor.value("ACCELEROMETER_RAW", IMUSensor::ACCELEROMETER_RAW, DOC(dai, IMUSensor, ACCELEROMETER_RAW))
         .value("ACCELEROMETER_UNCALIBRATED", IMUSensor::ACCELEROMETER_UNCALIBRATED, DOC(dai, IMUSensor, ACCELEROMETER_UNCALIBRATED))
@@ -63,14 +53,10 @@ void bind_imu(pybind11::module& m, void* pCallstack) {
                 PyErr_WarnEx(PyExc_DeprecationWarning, "LINEAR_ACCELERATION is deprecated; use ACCELEROMETER_CALIBRATED and subtract gravity on the host.", 1);
                 return IMUSensor::LINEAR_ACCELERATION;
             })
-        .def_property_readonly_static(
-            "GRAVITY",
-            [](py::object) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "GRAVITY is deprecated; use ACCELEROMETER_CALIBRATED and estimate gravity on the host.", 1);
-                return IMUSensor::GRAVITY;
-            })
-        // .value("GYRO_INTEGRATED_ROTATION_VECTOR", IMUSensor::GYRO_INTEGRATED_ROTATION_VECTOR)
-        ;
+        .def_property_readonly_static("GRAVITY", [](py::object) {
+            PyErr_WarnEx(PyExc_DeprecationWarning, "GRAVITY is deprecated; use ACCELEROMETER_CALIBRATED and estimate gravity on the host.", 1);
+            return IMUSensor::GRAVITY;
+        });
     DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 
     imuSensorConfig.def(py::init<>())
@@ -85,7 +71,6 @@ void bind_imu(pybind11::module& m, void* pCallstack) {
         .def_readwrite("maxBatchReports", &IMUProperties::maxBatchReports, DOC(dai, IMUProperties, maxBatchReports))
         .def_readwrite("enableFirmwareUpdate", &IMUProperties::enableFirmwareUpdate, DOC(dai, IMUProperties, enableFirmwareUpdate));
 
-    // Node
     imu.def_readonly("out", &IMU::out, DOC(dai, node, IMU, out))
         .def_readonly("mockIn", &IMU::mockIn, DOC(dai, node, IMU, mockIn))
         .def("enableIMUSensor",

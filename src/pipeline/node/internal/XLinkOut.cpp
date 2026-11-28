@@ -5,10 +5,8 @@ namespace node {
 namespace internal {
 
 void XLinkOut::buildInternal() {
-    // set some default properties
     properties.maxFpsLimit = -1;
 }
-// Setters
 void XLinkOut::setStreamName(const std::string& name) {
     properties.streamName = name;
 }
@@ -28,7 +26,6 @@ void XLinkOut::setPacketSize(int packetSize) {
 void XLinkOut::setBytesPerSecondLimit(int bytesPerSecondLimit) {
     properties.bytesPerSecondLimit = bytesPerSecondLimit;
 }
-// Getters
 
 std::string XLinkOut::getStreamName() const {
     return properties.streamName;

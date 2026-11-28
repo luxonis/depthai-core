@@ -24,7 +24,6 @@ struct span_name_maker<1> {
     }
 };
 
-// span with fixed size converts to a tuple
 template <typename Type, size_t Extent>
 struct type_caster<dai::span<Type, Extent>> {
     using span_type = typename dai::span<Type, Extent>;
@@ -67,7 +66,6 @@ struct type_caster<dai::span<Type, Extent>> {
     }
 };
 
-// span with dynamic extent
 template <typename Type>
 struct type_caster<dai::span<Type, dai::dynamic_extent>> {
     using span_type = typename dai::span<Type, dai::dynamic_extent>;
@@ -105,7 +103,6 @@ struct type_caster<dai::span<Type, dai::dynamic_extent>> {
     }
 };
 
-// span specialization: accepts any readonly buffers
 template <>
 struct type_caster<dai::span<const uint8_t, dai::dynamic_extent>> {
     using span_type = typename dai::span<const uint8_t, dai::dynamic_extent>;
@@ -130,7 +127,6 @@ struct type_caster<dai::span<const uint8_t, dai::dynamic_extent>> {
     }
 };
 
-// span specialization: writeable buffer
 template <>
 struct type_caster<dai::span<uint8_t, dai::dynamic_extent>> {
     using span_type = typename dai::span<const uint8_t, dai::dynamic_extent>;

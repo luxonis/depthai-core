@@ -28,7 +28,6 @@ ClassificationSequenceParser::Properties& ClassificationSequenceParser::getPrope
 }
 
 NNArchive ClassificationSequenceParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -119,11 +118,9 @@ void ClassificationSequenceParser::setConfig(const dai::nn_archive::v1::Head& he
         setSoftmax(*head.metadata.isSoftmax);
     }
 
-    // The sequence-specific keys live in the head metadata extra parameters.
     const auto& extraParams = head.metadata.extraParams;
 
-    // Ignored indexes are reset when the head does not provide them, mirroring the source parser.
-    std::vector<std::int32_t> headIgnoredIndexes;
+    std::vector<std::int32_t> headIgnoredIndexes;  // Reset when the head has none, like the source parser
     if(extraParams.is_object() && extraParams.contains("ignored_indexes") && !extraParams.at("ignored_indexes").is_null()) {
         const auto& ignoredIndexesJson = extraParams.at("ignored_indexes");
         DAI_CHECK(ignoredIndexesJson.is_array(), "Ignored indexes must be a list.");
@@ -210,8 +207,6 @@ void ClassificationSequenceParser::run() {
     DAI_CHECK(config.validate(), "ClassificationSequenceParser initial configuration is invalid.");
     const bool inputConfigSync = inputConfig.getWaitForMessage();
 
-    // The resolved layer name persists across messages once auto-selected from a
-    // single-tensor NNData, mirroring the source parser behavior.
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
@@ -244,7 +239,6 @@ void ClassificationSequenceParser::run() {
         auto tGotInput = std::chrono::steady_clock::now();
         const ClassificationSequenceParserConfig configSnapshot = config;
 
-        // Extract
         const auto layerNames = nnData->getAllLayerNames();
         if(resolvedOutputLayerName.empty()) {
             DAI_CHECK_V(layerNames.size() == 1,
@@ -257,10 +251,8 @@ void ClassificationSequenceParser::run() {
 
         auto tensor = utilities::ClassificationUtils::getShapedTensorData(*nnData, resolvedOutputLayerName);
 
-        // Compute
         auto scores = utilities::ClassificationUtils::computeClassificationSequenceScores(std::move(tensor), properties.isSoftmax);
 
-        // Emit
         auto message = utilities::ClassificationUtils::createClassificationSequenceMessage(
             properties.classes, scores, configSnapshot.ignoredIndexes, configSnapshot.removeDuplicates, configSnapshot.concatenateClasses);
         if(nnData->transformation.has_value()) {

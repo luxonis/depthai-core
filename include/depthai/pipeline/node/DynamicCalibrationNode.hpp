@@ -129,9 +129,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     std::string rgbInputName = "rgb";
     std::vector<std::string> names;
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    // The firmware instantiates the Sync subnode as a separate pipeline node, so the input map only
-    // exists on the host side of the node.
-    InputMap& inputs = sync->inputs;
+    InputMap& inputs = sync->inputs;  // Firmware runs Sync as a separate node: this input map exists only on host
     /**
      * Input left image
      */
@@ -207,13 +205,9 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     std::vector<ConnectedSensor> connectedSensors;
     std::vector<CameraBoardSocket> socketsInHandler;
-    /// Sockets a marker distance refers to that are not image inputs: registered with DCL for their pose only.
-    std::vector<ConnectedSensor> auxiliarySensors;
-    /// Marker centers of the loaded image sets, newest last.
-    std::deque<MarkerObservationSet> markerObservations;
-    /// Marker status of the last image set that was looked at, accepted or not; attached to the CoverageData messages.
+    std::vector<ConnectedSensor> auxiliarySensors;        // Marker-distance sockets that are not image inputs; DCL uses only their pose
+    std::deque<MarkerObservationSet> markerObservations;  // Newest last
     std::optional<CoverageData::MarkerCoverage> lastMarkerCoverage;
-    /// The last CoverageData computed by DCL; its numbers are repeated when an image set is rejected for missing markers.
     std::shared_ptr<CoverageData> lastCoverageMessage;
     std::optional<CameraBoardSocket> leftQueueSocket;
     std::optional<CameraBoardSocket> rightQueueSocket;
@@ -230,13 +224,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
         CALIBRATION_DOES_NOT_EXIST = 7,
         STOP_LOADING_IMAGES_DURING_CALIBRATION = 8,
         INVALID_COMMAND = 9,
-        /// World constraints are configured and the image set did not show every required marker to two cameras.
-        MARKERS_NOT_VISIBLE = 10,
+        MARKERS_NOT_VISIBLE = 10,  // World constraints set and a required marker was not seen by two cameras
     };
-
-    /**
-     * Check if the node is set to run on host
-     */
 
     void run() override;
 
@@ -246,15 +235,11 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     ErrorCode runLoadImage(const bool blocking = false);
 #endif
     ErrorCode computeCoverage();
-    /// Sends the CoverageData (last DCL numbers, current marker status) and a DynamicCalibrationResult for an
-    /// image set rejected because of missing markers, so every loaded or skipped set produces both messages.
-    void reportMarkersNotVisible();
+    void reportMarkersNotVisible();  // Every loaded or skipped image set must produce both messages
 
     ErrorCode initializePipeline();
 
-    /// Creates the DCL state and logger. Runs from buildInternal() on the host and from run() on the device,
-    /// where the firmware constructs the node without calling buildInternal().
-    void ensureInitialized();
+    void ensureInitialized();  // Firmware constructs the node without buildInternal(), so run() calls it too
 
     ErrorCode doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime);
 
@@ -262,23 +247,11 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     void computeMetrics(const CalibrationHandler& handler);
     const ConnectedSensor* findConnectedSensor(CameraBoardSocket socket) const;
-    /// Registers the sockets that marker distances refer to but that deliver no images.
     ErrorCode initializeAuxiliarySensors(const EepromData& eepromData);
-    /**
-     * From dai::CalibrationHandler data convert to DCL dcl::CameraCalibrationHandle, which includes all necesarry data for calibration
-     * @return dcl::CameraCalibrationHanlder
-     */
-    /**
-     * Overwrites the internal calibration of DCL with new Calibration data provided by node.
-     */
     void setCalibration(CalibrationHandler& handler, bool flash);
 
-    /// Platform the node runs for: the device's on the host, RVC4 inside the RVC4 firmware (no device handle there).
-    Platform getPlatform() const;
+    Platform getPlatform() const;  // RVC4 inside the RVC4 firmware, which has no device handle
 
-    /**
-     * DAI held properties
-     */
     CalibrationHandler calibrationHandler;
     ImgTransformation imgTransformationA;
     ImgTransformation imgTransformationB;
@@ -286,36 +259,23 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     std::variant<CameraBoardSocket, HousingCoordinateSystem> daiSocketBase = CameraBoardSocket::CAM_A;
     std::shared_ptr<::spdlog::async_logger> logger;
 
-    // std::chrono::milliseconds sleepingTime = 250ms;
-    // static constexpr std::chrono::milliseconds kSleepingTime{250};
     std::chrono::milliseconds sleepingTime{250};
     DynamicCalibrationControl::PerformanceMode performanceMode = DynamicCalibrationControl::PerformanceMode::DEFAULT;
     bool slept = false;
     std::optional<DynamicCalibrationControl::Commands::StartCalibration> startCalibrationCommand;
 
-    /// Placement set with setRunOnHost(): host by default, the device only on RVC4.
-    bool runOnHostVar = true;
+    bool runOnHostVar = true;  // Device placement only on RVC4
 
-    // When old calibration is encountered, issue a warning once
     bool oldCalibrationWarningIssued = false;
 
-    // When the marker detector rejects an image, issue a warning once
     bool markerDetectionWarningIssued = false;
-    // Configured markers already reported as too small to use
     std::set<int32_t> markerSizeWarningIssued;
-    // A calibration without any applicable marker constraint has been reported
     bool metricReferenceWarningIssued = false;
-    /// Reports a calibration that runs without its configured metric reference: once as a warning, then at debug level.
     void warnMetricReferenceMissing(const std::string& reason);
-    // A calibration rejected because the marker constraints do not fit the scene has been reported
     bool constraintMismatchWarningIssued = false;
-    /// Reports a calibration rejected for its marker constraints: once as a warning, then at debug level.
     void warnConstraintMismatch(const std::string& reason);
-    /// Start of the current run of image sets rejected for missing markers, and when it was last reported.
     std::optional<std::chrono::steady_clock::time_point> markersMissingSince;
     std::optional<std::chrono::steady_clock::time_point> markersMissingReportedAt;
-    /// Keeps a run of image sets rejected for missing markers from going unnoticed: warns once the run lasts
-    /// kMarkersMissingWarnAfter and then every kMarkersMissingWarnPeriod; accepted tells that the run ended.
     void trackMissingMarkers(bool accepted);
 };
 

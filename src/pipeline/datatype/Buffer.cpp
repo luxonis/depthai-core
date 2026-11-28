@@ -44,7 +44,6 @@ void Buffer::setData(const std::vector<std::uint8_t>& d) {
         // TODO(themarpe) - has to set offset as well
         memcpy(data->getData().data(), d.data(), d.size());
     } else {
-        // allocate new holder
         data = std::make_shared<VectorMemory>(std::move(d));
     }
 }
@@ -54,10 +53,7 @@ void Buffer::setData(const long fd) {
 }
 
 void Buffer::setData(std::vector<std::uint8_t>&& d) {
-    // allocate new holder
     data = std::make_shared<VectorMemory>(std::move(d));
-    // *mem = std::move(d);
-    // data = mem;
 }
 
 std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> Buffer::getTimestamp() const {
@@ -86,21 +82,18 @@ std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::sy
 }
 
 void Buffer::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
-    // Set timestamp from timepoint
     using namespace std::chrono;
     auto tsLocal = tp.time_since_epoch();
     ts.sec = duration_cast<seconds>(tsLocal).count();
     ts.nsec = duration_cast<nanoseconds>(tsLocal).count() % 1000000000;
 }
 void Buffer::setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
-    // Set timestamp from timepoint
     using namespace std::chrono;
     auto ts = tp.time_since_epoch();
     tsDevice.sec = duration_cast<seconds>(ts).count();
     tsDevice.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
 }
 void Buffer::setTimestampSystem(std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> tp) {
-    // Set timestamp from timepoint
     if(!tp.has_value()) {
         tsSystem = std::nullopt;
         return;

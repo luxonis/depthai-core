@@ -66,7 +66,6 @@ dai::Version getOSVersion() {
 }
 
 DeviceState getDeviceState() {
-    // First check if the factory file exists
     bool factoryFileExists = fs::exists("/persist/factory/enabled");
     bool deviceIsConfigured = fs::exists("/etc/agentconfd/.setup_complete");
 

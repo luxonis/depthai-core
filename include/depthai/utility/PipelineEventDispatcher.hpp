@@ -39,13 +39,11 @@ class PipelineEventDispatcher : public PipelineEventDispatcherInterface {
     void endInputEvent(const std::string& source, std::optional<uint32_t> queueSize = std::nullopt) override;
     void endOutputEvent(const std::string& source) override;
     void endCustomEvent(const std::string& source) override;
-    // Timestamp in event is not used. If ts is specified ts is used, else curent time is applied
     void startTrackedEvent(PipelineEvent event, std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt) override;
     void startTrackedEvent(PipelineEvent::Type type,
                            const std::string& source,
                            int64_t sequenceNum,
                            std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt) override;
-    // Timestamp in event is not used. If ts is specified ts is used, else curent time is applied
     void endTrackedEvent(PipelineEvent event, std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt) override;
     void endTrackedEvent(PipelineEvent::Type type,
                          const std::string& source,

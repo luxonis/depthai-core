@@ -1,10 +1,7 @@
 #pragma once
 
-#include <depthai/pipeline/DeviceNode.hpp>
-// #include <depthai/pipeline/datatype/WarpConfig.hpp>
-
-// shared
 #include <depthai/common/Point2f.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/properties/WarpProperties.hpp>
 
 namespace dai {

@@ -21,7 +21,6 @@ namespace dai {
 namespace utility {
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
-// Recursively adds all `fd` dependencies to `fd_set`.
 void fdSetInternal(google::protobuf::FileDescriptorSet& fd_set, std::unordered_set<std::string>& files, const google::protobuf::FileDescriptor* fd) {
     for(int i = 0; i < fd->dependency_count(); ++i) {
         const auto* dep = fd->dependency(i);
@@ -32,8 +31,6 @@ void fdSetInternal(google::protobuf::FileDescriptorSet& fd_set, std::unordered_s
     fd->CopyTo(fd_set.add_file());
 }
 
-// Returns a serialized google::protobuf::FileDescriptorSet containing
-// the necessary google::protobuf::FileDescriptor's to describe d.
 std::string fdSet(const google::protobuf::Descriptor* d) {
     std::string res;
     std::unordered_set<std::string> files;
@@ -97,7 +94,6 @@ std::string BytePlayer::init(const std::string& filePath) {
     if(initialized) {
         throw std::runtime_error("BytePlayer already initialized");
     }
-    // Check if file exists
     if(filePath.empty()) {
         throw std::runtime_error("BytePlayer file path is empty");
     }
@@ -162,7 +158,6 @@ std::optional<std::tuple<uint32_t, uint32_t>> BytePlayer::getVideoSize(const std
     }
     return std::nullopt;
 #else
-    // Avoid warning for an unused parameter
     (void)filePath;
     throw std::runtime_error("BytePlayer::getVideoSize requires protobuf support");
 #endif
@@ -178,10 +173,8 @@ bool checkRecordConfig(std::filesystem::path& recordPath, RecordConfig& config) 
         }
     }
     if(platform::checkPathExists(recordPath, true)) {
-        // Is a directory
         config.outputDir = recordPath;
     } else {
-        // Is a file
         if(recordPath.extension() != ".json") {
             spdlog::warn("DEPTHAI_RECORD path is not a directory or a json file. Record disabled.");
             return false;
@@ -192,7 +185,6 @@ bool checkRecordConfig(std::filesystem::path& recordPath, RecordConfig& config) 
             config = j.get<RecordConfig>();
 
             if(platform::checkPathExists(config.outputDir, true)) {
-                // Is a directory
                 recordPath = config.outputDir;
             } else {
                 spdlog::warn("DEPTHAI_RECORD outputDir is not a directory. Record disabled.");

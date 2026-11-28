@@ -16,17 +16,7 @@
 namespace dai {
 
 struct NNArchiveOptions {
-    // General parameters
     DEPTAHI_ARG_DEFAULT(NNArchiveEntry::Compression, compression, NNArchiveEntry::Compression::AUTO);
-
-    // Blob parameters
-    // ...
-
-    // Superblob parameters
-    // ...
-
-    // Parameters for other formats, ONNX, PT, etc..
-    // ...
 };
 
 class NNArchive {
@@ -128,22 +118,17 @@ class NNArchive {
     model::ModelType getModelType() const;
 
    private:
-    // Read model from archive
     std::vector<uint8_t> readModelFromArchive(const std::filesystem::path& archivePath, const std::string& modelPathInArchive) const;
 
     model::ModelType modelType;
     NNArchiveOptions archiveOptions;
 
-    // Archive config
     std::shared_ptr<NNArchiveVersionedConfig> archiveVersionedConfigPtr;
 
-    // Blob related stuff
     std::shared_ptr<OpenVINO::Blob> blobPtr;
 
-    // Superblob related stuff
     std::shared_ptr<OpenVINO::SuperBlob> superblobPtr;
 
-    // Other formats
     std::shared_ptr<std::vector<uint8_t>> otherModelFormatPtr;
 };
 

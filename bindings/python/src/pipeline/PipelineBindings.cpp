@@ -7,11 +7,9 @@
 #include "DeviceBindings.hpp"
 #include "node/NodeBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 
-// depthai - nodes
 #include "depthai/pipeline/node/AprilTag.hpp"
 #include "depthai/pipeline/node/BenchmarkIn.hpp"
 #include "depthai/pipeline/node/BenchmarkOut.hpp"
@@ -42,7 +40,6 @@
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 
-// depthai/
 #include <memory>
 
 #include "depthai/properties/GlobalProperties.hpp"
@@ -60,7 +57,6 @@ std::shared_ptr<dai::Node> createNode(dai::Pipeline& p, py::object class_, const
     return nullptr;
 }
 
-// Fully qualified Python name of a type object, e.g. "depthai.node.Camera", "depthai.DeviceInfo" or "str"
 static std::string pyQualifiedTypeName(py::handle type) {
     const auto attrAsString = [&](const char* name, const char* fallback) {
         return static_cast<std::string>(py::str(py::getattr(type, name, py::str(fallback))));
@@ -71,10 +67,6 @@ static std::string pyQualifiedTypeName(py::handle type) {
     return module + "." + qualname;
 }
 
-// Parses the arguments pipeline.create(NodeClass, ...) accepts for bound (C++) node classes: a single optional explicit device, either as
-// the positional argument after the node class or as the 'device' keyword argument. Only a depthai.Device instance (as returned by
-// pipeline.addDevice(...)) or None (no explicit device) is accepted. Anything else - a wrong type, extra positional arguments or unknown
-// keyword arguments - raises TypeError, so a mistake can never silently fall back to creating the node on the default device.
 static std::shared_ptr<dai::Device> parseBoundNodeCreateArgs(py::handle class_, const py::args& args, const py::kwargs& kwargs) {
     const std::string context = "pipeline.create(" + pyQualifiedTypeName(class_) + ", ...)";
     const std::string expected = "a depthai.Device (as returned by pipeline.addDevice(...), or a depthai.Device instance) or None";
@@ -117,7 +109,6 @@ static std::shared_ptr<dai::Device> parseBoundNodeCreateArgs(py::handle class_, 
 void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // Type definitions
     py::class_<GlobalProperties> globalProperties(m, "GlobalProperties", DOC(dai, GlobalProperties));
     py::class_<DeviceProperties> deviceProperties(m, "DeviceProperties", DOC(dai, DeviceProperties));
     py::class_<RecordConfig> recordConfig(m, "RecordConfig", DOC(dai, RecordConfig));
@@ -135,24 +126,15 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Pipeline> pipeline(m, "Pipeline", DOC(dai, Pipeline, 2));
     py::enum_<Pipeline::AutoCalibrationMode> pipelineAutoCalibrationMode(pipeline, "AutoCalibrationMode");
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     pipelineAutoCalibrationMode.value("OFF", Pipeline::AutoCalibrationMode::OFF)
         .value("ON_START", Pipeline::AutoCalibrationMode::ON_START)
         .value("CONTINUOUS", Pipeline::AutoCalibrationMode::CONTINUOUS);
 
-    // Bind global properties
     globalProperties.def(py::init<>())
         .def_readwrite("pipelineName", &GlobalProperties::pipelineName)
         .def_readwrite("pipelineVersion", &GlobalProperties::pipelineVersion)
@@ -265,12 +247,9 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, NodeStateApi, otherTimings),
              py::call_guard<py::gil_scoped_release>());
 
-    // bind pipeline
     pipeline
         .def(py::init([](bool createImplicitDevice) {
-                 // If createImplicitDevice is true, use deviceSearchHelper to find a device
-                 // as it periodically checks for python interrupts
-                 if(createImplicitDevice) {
+                 if(createImplicitDevice) {  // deviceSearchHelper: it checks for Python interrupts while it searches
                      dai::DeviceInfo deviceInfo = deviceSearchHelper<dai::Device>();
                      auto device = std::make_shared<dai::Device>(deviceInfo);
                      return new Pipeline(device);
@@ -291,7 +270,6 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("isPipelineDebuggingEnabled", &dai::Pipeline::isPipelineDebuggingEnabled, DOC(dai, Pipeline, isPipelineDebuggingEnabled))
         .def("getPipelineStateOut", &dai::Pipeline::getPipelineStateOut, DOC(dai, Pipeline, getPipelineStateOut))
         .def("getPipelineStateRequest", &dai::Pipeline::getPipelineStateRequest, DOC(dai, Pipeline, getPipelineStateRequest))
-        // Python only methods
         .def("__enter__",
              [](Pipeline& p) -> Pipeline& {
                  setImplicitPipeline(&p);
@@ -304,7 +282,6 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                  d.stop();
                  d.wait();
              })
-        //.def(py::init<const Pipeline&>())
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
         .def(
             "setMultiDeviceCalibration",
@@ -331,18 +308,9 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              &Pipeline::getDefaultDeviceProperties,
              py::call_guard<py::gil_scoped_release>(),
              DOC(dai, Pipeline, getDefaultDeviceProperties))
-        //.def("create", &Pipeline::create<node::XLinkIn>)
         .def("remove", &Pipeline::remove, py::arg("node"), DOC(dai, Pipeline, remove))
         .def("getAllNodes", static_cast<std::vector<std::shared_ptr<Node>> (Pipeline::*)() const>(&Pipeline::getAllNodes), DOC(dai, Pipeline, getAllNodes))
-        // .def("getAllNodes", static_cast<std::vector<std::shared_ptr< Node>> (Pipeline::*)()>(&Pipeline::getAllNodes),
-        // py::return_value_policy::reference_internal, DOC(dai, Pipeline, getAllNodes))
         .def("getNode", static_cast<std::shared_ptr<Node> (Pipeline::*)(Node::Id)>(&Pipeline::getNode), DOC(dai, Pipeline, getNode))
-        // .def("getNode", static_cast<std::shared_ptr<Node> (Pipeline::*)(Node::Id) const>(&Pipeline::getNode), DOC(dai, Pipeline, getNode))
-        // .def("getNode", static_cast<std::shared_ptr<Node> (Pipeline::*)(Node::Id)>(&Pipeline::getNode), py::return_value_policy::reference_internal, DOC(dai,
-        // Pipeline, getNode)) .def("getConnections", &Pipeline::getConnections, DOC(dai, Pipeline, getConnections), DOC(dai, Pipeline, getConnections))
-        // .def("getNodeMap", &Pipeline::getNodeMap, DOC(dai, Pipeline, getNodeMap), py::return_value_policy::reference_internal,
-        // DOC(dai, Pipeline, getNodeMap)) .def("link", &Pipeline::link, DOC(dai, Pipeline, link), DOC(dai, Pipeline, link)) .def("unlink", &Pipeline::unlink,
-        // DOC(dai, Pipeline, unlink), DOC(dai, Pipeline, unlink))
         .def("getAssetManager",
              static_cast<const AssetManager& (Pipeline::*)() const>(&Pipeline::getAssetManager),
              py::return_value_policy::reference_internal,
@@ -493,7 +461,6 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setDeviceStateCallback", &Pipeline::setDeviceStateCallback, py::arg("callback"), DOC(dai, Pipeline, setDeviceStateCallback))
         .def("setStopOnDeviceLoss", &Pipeline::setStopOnDeviceLoss, py::arg("stop"), DOC(dai, Pipeline, setStopOnDeviceLoss))
         .def("getStopOnDeviceLoss", &Pipeline::getStopOnDeviceLoss, DOC(dai, Pipeline, getStopOnDeviceLoss))
-        // 'Template' create function
         .def(
             "add",
             [](Pipeline& p, std::shared_ptr<Node> hostNode) {
@@ -501,22 +468,16 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                 return hostNode;
             },
             py::keep_alive<1, 2>())
-        // 'Template' create function
         .def(
             "create",
             [](dai::Pipeline& p, py::object class_, const py::args& args, const py::kwargs& kwargs) {
-                // Check if class_ is a subclass of HostNode
                 py::object issubclass = py::module::import("builtins").attr("issubclass");
                 py::object nodeClass = py::module::import("depthai").attr("node").attr("ThreadedHostNode");
                 auto isSubclass = issubclass(class_, nodeClass).cast<bool>();
 
-                // Check if the class is directly from stable or beta bindings. If so, the node comes from bindings,
-                // so we create in the same manner as device nodes.
                 const auto nodeModule = class_.attr("__module__").cast<std::string>();
                 auto isFromBindings = nodeModule == "depthai.node" || nodeModule == "depthai.beta.node";
-                // Create a copy from kwargs and add autoAddToPipeline to false
 
-                // Check if the node is a ColorCamera or a MonoCamera node and issue a deprecation warning
                 py::object colorCameraClass = py::module::import("depthai").attr("node").attr("ColorCamera");
                 py::object monoCameraClass = py::module::import("depthai").attr("node").attr("MonoCamera");
                 if(class_.is(colorCameraClass)) {
@@ -541,8 +502,6 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                     }
                     delCreatingNodeFromPipelineCreate();
                     delImplicitPipeline();
-                    // Node already adds itself to the pipeline in the constructor
-                    // To be sure - check if it is already added
                     auto allNodes = p.getAllNodes();
                     auto found = false;
                     for(auto& n : allNodes) {
@@ -556,10 +515,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                     }
                     return hostNode;
                 }
-                // Bound (C++) node classes: the only argument accepted after the class is an optional explicit device (positional or
-                // 'device='), validated strictly so that a DeviceInfo, a string or any other mistake raises instead of being dropped
-                const auto explicitDevice = parseBoundNodeCreateArgs(class_, args, kwargs);
-                // Otherwise create the node with `pipeline.create()` method
+                const auto explicitDevice = parseBoundNodeCreateArgs(class_, args, kwargs);  // Strict: a wrong argument raises, never a silent default device
                 auto node = createNode(p, class_, explicitDevice);
                 if(node == nullptr) {
                     throw std::invalid_argument(std::string(py::str(class_)) + " is not a subclass of depthai.node");
@@ -583,7 +539,6 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                  constexpr double timeoutSeconds = 0.1;
                  while(p.isRunning()) {
                      {
-                         // Process tasks
                          py::gil_scoped_release release;
                          p.processTasks(false, timeoutSeconds);
                      }

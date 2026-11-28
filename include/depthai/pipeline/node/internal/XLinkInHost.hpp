@@ -24,10 +24,7 @@ class XLinkInHost : public NodeCRTP<ThreadedHostNode, XLinkInHost> {
     bool connectionRefreshed = false;
     std::unique_ptr<XLinkStream> stream;
 
-    // Park until the connection is refreshed (returns true) or the device is gone for good
-    // (returns false). A stream failure on a connection nobody closes within a grace period
-    // is not a device loss and is rethrown instead of parking forever.
-    bool parkUntilReconnect(const std::shared_ptr<XLinkConnection>& lostConn, bool streamOpenFailed);
+    bool parkUntilReconnect(const std::shared_ptr<XLinkConnection>& lostConn, bool streamOpenFailed);  // true: reconnected; false: device gone for good
 
     virtual StreamPacketDesc readStreamMessage() const;
 
@@ -37,9 +34,7 @@ class XLinkInHost : public NodeCRTP<ThreadedHostNode, XLinkInHost> {
 
    public:
     constexpr static const char* NAME = "XLinkInHost";
-    // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
-    // XLinkInHost(std::shared_ptr<XLinkConnection> conn, std::string streamName);
     void setStreamName(const std::string& name);
     void setConnection(std::shared_ptr<XLinkConnection> conn);
     void disconnect();

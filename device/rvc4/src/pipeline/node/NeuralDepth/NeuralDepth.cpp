@@ -100,8 +100,7 @@ void NeuralDepth::run() {
             newConfigReceived = true;
         }
 
-        // The rectified input transformations carry the current calibration, so recompute the depth scale whenever they or the depth unit change
-        const auto& leftTransformation = alignedFrame->transformation;
+        const auto& leftTransformation = alignedFrame->transformation;  // Transformations carry the calibration: recompute the depth scale on change
         const auto& rightTransformation = latestRightFrame->transformation;
         if(inputConfigMessage || !leftTransformation.isEqualTransformation(leftCalibrationTransformation)
            || !rightTransformation.isEqualTransformation(rightCalibrationTransformation)) {
@@ -144,9 +143,7 @@ void NeuralDepth::run() {
         cvDisparity.setTo(0.0f, confidenceMask);
         cvDisparity.setTo(0.0f, edgeMask);
 
-        // Temporal filtering
         if(config.postProcessing.temporalFilter.enable) {
-            // initialize temporal filter
             if(newConfigReceived) {
                 size_t frameMemorySize = cvDisparity.total() * cvDisparity.elemSize();
                 float alpha = config.postProcessing.temporalFilter.alpha;
@@ -155,7 +152,6 @@ void NeuralDepth::run() {
                 temporalFilter.Init(frameMemorySize, alpha, delta, persistenceMode);
             }
 
-            // apply temporal filter
             uint8_t* disparityData = cvDisparity.data;
             size_t frameHeight = cvDisparity.rows;
             size_t frameWidth = cvDisparity.cols;
@@ -168,7 +164,6 @@ void NeuralDepth::run() {
         size_t depthFrameSize = depthWidth * depthHeight * sizeof(uint16_t);
         depthFrame->setData(std::vector<uint8_t>(depthFrameSize));
         depthFrame->setMetadata(*alignedFrame);
-        // Get timestamps from NN data
         depthFrame->setBufferMetadataFrom(nnResult);
         depthFrame->setWidth(depthWidth);
         depthFrame->setHeight(depthHeight);
@@ -177,7 +172,6 @@ void NeuralDepth::run() {
         depthFrame->setType(dai::ImgFrame::Type::RAW16);
         depthFrame->fb.stride = depthFrame->fb.width * depthFrame->getBytesPerPixel();
 
-        // Convert disparity to depth: depth = disparityToDepthMultiplier / disparity
         disparityToDepth(cvDisparity, depthFrame, disparityToDepthMultiplier);
         if(config.postProcessing.thresholdFilter.minRange > 0 || config.postProcessing.thresholdFilter.maxRange < 65535) {
             thresholdFilter.process(depthFrame, config.postProcessing.thresholdFilter.minRange, config.postProcessing.thresholdFilter.maxRange);
@@ -189,7 +183,6 @@ void NeuralDepth::run() {
         size_t disparityFrameSize = disparityWidth * disparityHeight * sizeof(uint16_t);
         disparityFrame->setData(std::vector<uint8_t>(disparityFrameSize));
         disparityFrame->setMetadata(*alignedFrame);
-        // Get timestamps from NN data
         disparityFrame->setBufferMetadataFrom(nnResult);
         disparityFrame->setWidth(disparityWidth);
         disparityFrame->setHeight(disparityHeight);
@@ -198,7 +191,6 @@ void NeuralDepth::run() {
         disparityFrame->setType(dai::ImgFrame::Type::RAW16);
         disparityFrame->fb.stride = disparityFrame->fb.width * disparityFrame->getBytesPerPixel();
 
-        // Convert float cvDisparity to uint16_t with 16 subpixel levels, multiply by 16 and round up
         auto disparityU16 = disparityFrame->getFrame();
         cvDisparity.convertTo(disparityU16, CV_16U, 16.0);
 
@@ -208,7 +200,6 @@ void NeuralDepth::run() {
         size_t confidenceFrameSize = confidenceWidth * confidenceHeight * sizeof(uint8_t);
         confidenceFrame->setData(std::vector<uint8_t>(confidenceFrameSize));
         confidenceFrame->setMetadata(*alignedFrame);
-        // Get timestamps from NN data
         confidenceFrame->setBufferMetadataFrom(nnResult);
         confidenceFrame->setWidth(confidenceWidth);
         confidenceFrame->setHeight(confidenceHeight);
@@ -217,7 +208,6 @@ void NeuralDepth::run() {
         confidenceFrame->setType(dai::ImgFrame::Type::RAW8);
         confidenceFrame->fb.stride = confidenceFrame->fb.width * confidenceFrame->getBytesPerPixel();
 
-        // Convert float cvConfidence [0.0, 1.0] to uint8_t [0, 255]
         auto confidenceU8 = confidenceFrame->getFrame();
         cvConfidence.convertTo(confidenceU8, CV_8U, 255.0);
 
@@ -227,7 +217,6 @@ void NeuralDepth::run() {
         size_t edgeFrameSize = edgeWidth * edgeHeight * sizeof(uint8_t);
         edgeFrame->setData(std::vector<uint8_t>(edgeFrameSize));
         edgeFrame->setMetadata(*alignedFrame);
-        // Get timestamps from NN data
         edgeFrame->setBufferMetadataFrom(nnResult);
         edgeFrame->setWidth(edgeWidth);
         edgeFrame->setHeight(edgeHeight);

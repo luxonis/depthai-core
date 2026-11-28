@@ -1,30 +1,24 @@
 #include "depthai/device/CrashDump.hpp"
 
-// std
-#include <filesystem>
-#include <fstream>
-#include <sstream>
-#include <string_view>
-
-// project
-#include "depthai/utility/Compression.hpp"
-#include "utility/Platform.hpp"
-
-// third party
 #include <fmt/format.h>
 #include <fmt/std.h>
 
+#include <filesystem>
+#include <fstream>
 #include <nlohmann/json.hpp>
+#include <sstream>
+#include <string_view>
+
+#include "depthai/utility/Compression.hpp"
+#include "utility/Platform.hpp"
 
 namespace dai {
 
-// Crashdump constants for tar file structure
 static constexpr const char* METADATA_FILENAME = "metadata.json";
 static constexpr const char* EXTRA_FILENAME = "extra.json";
 static constexpr const char* RVC2_DATA_FILENAME = "crash_reports.json";
 static constexpr const char* RVC4_DATA_FILENAME = "crash_dump.tar.gz";
 
-// JSON indentation level
 static constexpr int JSON_INDENT = 2;
 
 namespace fs = std::filesystem;
@@ -78,7 +72,6 @@ static void readFromFile(const fs::path& path, std::vector<uint8_t>& data) {
     }
 }
 
-// Helper function to get value from json or return default value
 static std::string fromJson(const nlohmann::json& json, const std::string& key, const std::string& defaultValue) {
     if(json.contains(key) && !json[key].is_null()) {
         return json[key].get<std::string>();
@@ -86,9 +79,7 @@ static std::string fromJson(const nlohmann::json& json, const std::string& key, 
     return defaultValue;
 }
 
-// Factory method implementation
 std::unique_ptr<CrashDump> CrashDump::load(const fs::path& tarPath) {
-    // First, extract metadata to determine platform
     fs::path tempDir = platform::getTempPath();
 
     fs::path metadataPath = tempDir / METADATA_FILENAME;
@@ -157,11 +148,9 @@ const nlohmann::json& CrashDump::operator[](const std::string& key) const {
 }
 
 void CrashDump::writeMetadata(nlohmann::json& json) const {
-    // basic
     json["platform"] = platform2string(getPlatform());
     json["crashdumpVersion"] = getCrashDumpVersion();
 
-    // depthai
     json["depthaiVersion"] = depthaiVersion;
     json["depthaiVersionMajor"] = depthaiVersionMajor;
     json["depthaiVersionMinor"] = depthaiVersionMinor;
@@ -178,13 +167,11 @@ void CrashDump::writeMetadata(nlohmann::json& json) const {
     json["depthaiDeviceRVC4Version"] = depthaiDeviceRVC4Version;
     json["osPlatform"] = osPlatform;
 
-    // device
     json["crashdumpTimestamp"] = crashdumpTimestamp;
     json["deviceId"] = deviceId;
 }
 
 void CrashDump::readMetadata(const nlohmann::json& json) {
-    // depthai
     depthaiVersion = fromJson(json, "depthaiVersion", "");
     depthaiVersionMajor = fromJson(json, "depthaiVersionMajor", "");
     depthaiVersionMinor = fromJson(json, "depthaiVersionMinor", "");
@@ -201,7 +188,6 @@ void CrashDump::readMetadata(const nlohmann::json& json) {
     depthaiDeviceRVC4Version = fromJson(json, "depthaiDeviceRVC4Version", "");
     osPlatform = fromJson(json, "osPlatform", "");
 
-    // device
     crashdumpTimestamp = fromJson(json, "crashdumpTimestamp", "");
     deviceId = fromJson(json, "deviceId", "");
 }
@@ -211,32 +197,24 @@ CrashDumpRVC2::CrashDumpRVC2(const fs::path& tarFile) {
 }
 
 void CrashDumpRVC2::toTar(const fs::path& tarPath) const {
-    // Create a metadata json
     nlohmann::json metadata;
     writeMetadata(metadata);
 
-    // Create temporary folder
     fs::path tempFolder = platform::getTempPath();
 
     fs::path metadataPath = tempFolder / METADATA_FILENAME;
     fs::path extraPath = tempFolder / EXTRA_FILENAME;
     fs::path rvc2dataPath = tempFolder / RVC2_DATA_FILENAME;
 
-    // Write to temporary files
     writeToFile(metadataPath, metadata.dump(JSON_INDENT));
     writeToFile(extraPath, extra.dump(JSON_INDENT));
 
-    // This takes advantage of the fact the crashreports has DEPTHAI_SERIALIZE macro defined
-    // The crash report strings (prints, thread names, ...) are raw device data and are not always valid UTF-8.
-    // Replace invalid bytes (U+FFFD) instead of throwing, so the crash dump is not lost.
-    writeToFile(rvc2dataPath, nlohmann::json(crashReports).dump(JSON_INDENT, ' ', false, nlohmann::json::error_handler_t::replace));
+    writeToFile(rvc2dataPath, nlohmann::json(crashReports).dump(JSON_INDENT, ' ', false, nlohmann::json::error_handler_t::replace));  // Not always valid UTF-8
 
-    // Combine everything into a tar file
     std::vector<fs::path> filesOnDisk = {metadataPath, extraPath, rvc2dataPath};
     std::vector<std::string> filesInArchive = {METADATA_FILENAME, EXTRA_FILENAME, RVC2_DATA_FILENAME};
     utility::archiveFilesCompressed(tarPath, filesOnDisk, filesInArchive);
 
-    // Cleanup temporary folder
     fs::remove_all(tempFolder);
 }
 
@@ -247,12 +225,10 @@ void CrashDumpRVC2::fromTar(const fs::path& tarPath) {
     fs::path extraPath = tempDir / EXTRA_FILENAME;
     fs::path dataPath = tempDir / RVC2_DATA_FILENAME;
 
-    // Extract files
     std::vector<std::string> filesInArchive = {METADATA_FILENAME, EXTRA_FILENAME, RVC2_DATA_FILENAME};
     std::vector<fs::path> filesOnDisk = {metadataPath, extraPath, dataPath};
     utility::extractFiles(tarPath, filesInArchive, filesOnDisk);
 
-    // Read metadata
     if(!fs::exists(metadataPath)) {
         throw std::runtime_error("Invalid crash dump tar: missing metadata file");
     }
@@ -261,7 +237,6 @@ void CrashDumpRVC2::fromTar(const fs::path& tarPath) {
     nlohmann::json metadata = nlohmann::json::parse(metadataContent);
     readMetadata(metadata);
 
-    // Read extra
     if(fs::exists(extraPath)) {
         std::string extraContent;
         readFromFile(extraPath, extraContent);
@@ -273,7 +248,6 @@ void CrashDumpRVC2::fromTar(const fs::path& tarPath) {
         extra = nlohmann::json::object();
     }
 
-    // Read crash reports data
     if(!fs::exists(dataPath)) {
         throw std::runtime_error("Invalid crash dump tar: missing crash_reports.json");
     }
@@ -282,40 +256,32 @@ void CrashDumpRVC2::fromTar(const fs::path& tarPath) {
     nlohmann::json data = nlohmann::json::parse(dataContent);
     crashReports = data.get<CrashReportCollection>();
 
-    // Cleanup
     fs::remove_all(tempDir);
 }
-
-// CrashDumpRVC4 implementation
 
 CrashDumpRVC4::CrashDumpRVC4(const fs::path& tarFile) {
     fromTar(tarFile);
 }
 
 void CrashDumpRVC4::toTar(const fs::path& tarPath) const {
-    // Create metadata
     nlohmann::json metadata;
     writeMetadata(metadata);
     metadata["originalFilename"] = filename;
 
-    // Create temporary folder
     fs::path tempFolder = platform::getTempPath();
 
     fs::path metadataPath = tempFolder / METADATA_FILENAME;
     fs::path extraPath = tempFolder / EXTRA_FILENAME;
     fs::path rvc4dataPath = tempFolder / RVC4_DATA_FILENAME;
 
-    // Write temporary files
     writeToFile(metadataPath, metadata.dump(JSON_INDENT));
     writeToFile(extraPath, extra.dump(JSON_INDENT));
     writeToFile(rvc4dataPath, data);
 
-    // Create tar
     std::vector<fs::path> filesOnDisk = {metadataPath, extraPath, rvc4dataPath};
     std::vector<std::string> filesInArchive = {METADATA_FILENAME, EXTRA_FILENAME, RVC4_DATA_FILENAME};
     utility::archiveFilesCompressed(tarPath, filesOnDisk, filesInArchive);
 
-    // Cleanup temporary folder
     fs::remove_all(tempFolder);
 }
 
@@ -326,12 +292,10 @@ void CrashDumpRVC4::fromTar(const fs::path& tarPath) {
     fs::path extraPath = tempDir / EXTRA_FILENAME;
     fs::path dataPath = tempDir / RVC4_DATA_FILENAME;
 
-    // Extract files
     std::vector<std::string> filesInArchive = {METADATA_FILENAME, EXTRA_FILENAME, RVC4_DATA_FILENAME};
     std::vector<fs::path> filesOnDisk = {metadataPath, extraPath, dataPath};
     utility::extractFiles(tarPath, filesInArchive, filesOnDisk);
 
-    // Read metadata
     if(!fs::exists(metadataPath)) {
         throw std::runtime_error("Invalid crash dump tar: missing metadata file");
     }
@@ -341,7 +305,6 @@ void CrashDumpRVC4::fromTar(const fs::path& tarPath) {
     readMetadata(metadata);
     filename = fromJson(metadata, "originalFilename", "");
 
-    // Read extra
     if(fs::exists(extraPath)) {
         std::string extraContent;
         readFromFile(extraPath, extraContent);
@@ -353,13 +316,11 @@ void CrashDumpRVC4::fromTar(const fs::path& tarPath) {
         extra = nlohmann::json::object();
     }
 
-    // Read binary data
     if(!fs::exists(dataPath)) {
         throw std::runtime_error("Invalid crash dump tar: missing crash_dump.tar.gz");
     }
     readFromFile(dataPath, data);
 
-    // Cleanup
     fs::remove_all(tempDir);
 }
 

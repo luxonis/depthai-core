@@ -11,13 +11,10 @@ void bind_beta_mapoutputparser(pybind11::module& m, void* pCallstack) {
     py::class_<beta::MapOutputParserProperties> properties(betaModule, "MapOutputParserProperties");
     auto mapOutputParser = ADD_BETA_NODE_DERIVED(MapOutputParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     properties.def_readwrite("initialConfig", &beta::MapOutputParserProperties::initialConfig)
         .def_readwrite("outputLayerName", &beta::MapOutputParserProperties::outputLayerName);

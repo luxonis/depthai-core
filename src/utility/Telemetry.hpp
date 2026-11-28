@@ -30,28 +30,12 @@ class Telemetry {
     Telemetry(Telemetry&&) = delete;
     Telemetry& operator=(Telemetry&&) = delete;
 
-    /**
-     * Always prefix depthai only events with depthai_
-     * Don't prefix global events (shared across software stack)
-     */
-    void event(std::string eventName, nlohmann::json properties);
+    void event(std::string eventName, nlohmann::json properties);  // Prefix depthai-only events with depthai_, not global events
 
-    /**
-     * Adds device_id and the ID of the pipeline started on the device. Does not take ownership of the pipeline,
-     * so node threads can use it.
-     */
     void event(const DeviceBase& device, std::string eventName, nlohmann::json properties);
 
-    /**
-     * Adds pipeline_id and device_id of the default device. Takes a PipelineImpl, not a Pipeline: a node thread must
-     * not take ownership of its pipeline to send an event, because it can become the last owner (~PipelineImpl then
-     * runs on that thread and joins it). Nodes use the device overload.
-     */
-    void event(const PipelineImpl& pipeline, std::string eventName, nlohmann::json properties);
+    void event(const PipelineImpl& pipeline, std::string eventName, nlohmann::json properties);  // Nodes: use the device overload (last owner joins itself)
 
-    /**
-     * Use this functions if you want to send aggregate metrics. Don't schedule your custom events
-     */
     AggregateMetricsHandle addAggregateMetrics(AggregateMetricsCallback functionLikeCb);
 
     void removeAggregateMetrics(AggregateMetricsHandle handle);

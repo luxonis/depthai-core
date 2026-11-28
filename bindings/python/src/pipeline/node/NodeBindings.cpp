@@ -16,10 +16,8 @@
 #include "depthai/pipeline/node/internal/XLinkOutHost.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
-// Libraries
 #include "hedley/hedley.h"
 
-// pybind11
 #include <stack>
 #include <thread>
 #include <unordered_map>
@@ -52,7 +50,6 @@ bool isCreatingNodeFromPipelineCreate() {
     return !pipelineCreateNodeGuards.empty();
 }
 
-// Map of python node classes and call to pipeline to create it
 std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_, const std::shared_ptr<dai::Device>& device)>>>
     pyNodeCreateMap;
 py::handle daiNodeModule;
@@ -60,17 +57,13 @@ py::handle daiNodeInternalModule;
 py::handle daiBetaNodeModule;
 
 #ifdef DEPTHAI_HAVE_BETA
-// A name that moved out of a beta module in v3.12. The name stays the same, only the module changes.
 struct MovedBetaName {
     const char* name;
     py::handle newModule;
     const char* newModulePath;
 };
 
-// Resolves the old beta names with a module-level __getattr__ (PEP 562). Python calls it only when the
-// normal lookup fails, so it does not touch the names that the module has. Each use of an old name gives
-// a DeprecationWarning with the new location.
-static void addMovedBetaNames(py::handle oldModule, std::string oldModulePath, std::vector<MovedBetaName> movedNames) {
+static void addMovedBetaNames(py::handle oldModule, std::string oldModulePath, std::vector<MovedBetaName> movedNames) {  // PEP 562: runs only on failed lookup
     oldModule.attr("__getattr__") = py::cpp_function(
         [oldModulePath = std::move(oldModulePath), movedNames = std::move(movedNames)](const std::string& name) -> py::object {
             for(const auto& moved : movedNames) {
@@ -90,7 +83,6 @@ NodeBindings::getNodeCreateMap() {
     return pyNodeCreateMap;
 }
 
-// Bind map - without init method
 template <typename Map, typename holder_type = std::unique_ptr<Map>, typename... Args>
 py::class_<Map, holder_type> bindNodeMap(py::handle scope, const std::string& name, Args&&... args) {
     using namespace py;
@@ -98,9 +90,6 @@ py::class_<Map, holder_type> bindNodeMap(py::handle scope, const std::string& na
     using MappedType = typename Map::mapped_type;
     using Class_ = class_<Map, holder_type>;
 
-    // If either type is a non-module-local bound type then make the map binding non-local as well;
-    // otherwise (e.g. both types are either module-local or converting) the map will be
-    // module-local.
     auto tinfo = py::detail::get_type_info(typeid(MappedType));
     bool local = !tinfo || tinfo->module_local;
     if(local) {
@@ -110,7 +99,6 @@ py::class_<Map, holder_type> bindNodeMap(py::handle scope, const std::string& na
 
     Class_ cl(scope, name.c_str(), pybind11::module_local(local), std::forward<Args>(args)...);
 
-    // Register stream insertion operator (if possible)
     detail::map_if_insertion_operator<Map, Class_>(cl, name);
 
     cl.def("__bool__", [](const Map& m) -> bool { return !m.empty(); }, "Check whether the map is nonempty");
@@ -123,22 +111,18 @@ py::class_<Map, holder_type> bindNodeMap(py::handle scope, const std::string& na
         "items", [](Map& m) { return make_iterator(m.begin(), m.end()); }, keep_alive<0, 1>() /* Essential: keep list alive while iterator exists */
     );
 
-    // Warning - overload order matters!
-    // Modified __getitem__. Uses operator[string] underneath
-    cl.def(
+    cl.def(  // Overload order matters
         "__getitem__",
         [](Map& m, const std::string& k) -> MappedType& { return m[k]; },
         return_value_policy::reference_internal  // ref + keepalive
     );
-    // Modified __getitem__. Uses operator[pair<string,string>] underneath
     cl.def(
         "__getitem__",
         [](Map& m, const KeyType& k) -> MappedType& { return m[k]; },
         return_value_policy::reference_internal  // ref + keepalive
     );
 
-    // Warning - overload order matters!
-    cl.def("__contains__", [](Map& m, const std::string& k) -> bool {
+    cl.def("__contains__", [](Map& m, const std::string& k) -> bool {  // Overload order matters
         auto it = m.find({m.name, k});
         if(it == m.end()) return false;
         return true;
@@ -149,11 +133,9 @@ py::class_<Map, holder_type> bindNodeMap(py::handle scope, const std::string& na
         return true;
     });
 
-    // Assignment provided only if the type is copyable
     detail::map_assignment<Map, Class_>(cl);
 
-    // Warning - overload order matters!
-    cl.def("__delitem__", [](Map& m, const std::string& k) {
+    cl.def("__delitem__", [](Map& m, const std::string& k) {  // Overload order matters
         auto it = m.find({m.name, k});
         if(it == m.end()) throw key_error();
         m.erase(it);
@@ -253,10 +235,8 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack);
 void bind_auto_calibration(pybind11::module& m, void* pCallstack);
 #endif
 void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
-    // Bind Node et al
     callstack.push_front(NodeBindings::bind);
 
-    // Bind all other nodes
     callstack.push_front(bind_benchmark);
     callstack.push_front(bind_colorcamera);
     callstack.push_front(bind_camera);
@@ -264,8 +244,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_stereodepth);
     callstack.push_front(bind_neuralnetwork);
     callstack.push_front(bind_videoencoder);
-    // ImageManip's enum must be registered before PointCloud's methods bind on unwind.
-    callstack.push_front(bind_pointcloud);
+    callstack.push_front(bind_pointcloud);  // ImageManip's enum must be registered before PointCloud's methods bind on unwind
     callstack.push_front(bind_imagemanip);
     callstack.push_front(bind_warp);
     callstack.push_front(bind_spiout);
@@ -347,13 +326,10 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace std::chrono;
 
-    //// Bindings for actual nodes
-    // Move properties into nodes and nodes under 'node' submodule
     daiNodeModule = m.def_submodule("node");
     daiNodeInternalModule = m.def_submodule("node").def_submodule("internal");
 #ifdef DEPTHAI_HAVE_BETA
     daiBetaNodeModule = m.def_submodule("beta", "Experimental APIs").def_submodule("node", "Experimental nodes");
-    // v3.10 names of the classes that left beta in v3.12
     addMovedBetaNames(
         daiBetaNodeModule, "depthai.beta.node", {{"Stitching", daiNodeModule, "depthai.node"}, {"ImgDetectionsFilter", daiNodeModule, "depthai.node"}});
     addMovedBetaNames(m.def_submodule("beta"),
@@ -361,13 +337,11 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
                       {{"StitchingProperties", m, "depthai"}, {"ImgDetectionsFilterProperties", m, "depthai"}, {"ImgDetectionsFilterConfig", m, "depthai"}});
 #endif
 
-    // XLink bridge structures
     py::class_<dai::node::internal::XLinkInBridge, std::shared_ptr<dai::node::internal::XLinkInBridge>> pyXLinkInBridge(
         daiNodeInternalModule, "XLinkInBridge", DOC(dai, node, internal, XLinkInBridge));
     py::class_<dai::node::internal::XLinkOutBridge, std::shared_ptr<dai::node::internal::XLinkOutBridge>> pyXLinkOutBridge(
         daiNodeInternalModule, "XLinkOutBridge", DOC(dai, node, internal, XLinkOutBridge));
 
-    // Properties
     py::class_<Node, py::smart_holder> pyNode(m, "Node", DOC(dai, Node));
 
     py::class_<Node::Input, MessageQueue, py::smart_holder> pyInput(pyNode, "Input", DOC(dai, Node, Input));
@@ -381,19 +355,13 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     pyInputQueue.def("send", &InputQueue::send, py::arg("msg"), py::call_guard<py::gil_scoped_release>(), DOC(dai, InputQueue, send));
     pyInputQueue.def("trySend", &InputQueue::trySend, py::arg("msg"), py::call_guard<py::gil_scoped_release>(), DOC(dai, InputQueue, trySend));
 
-    // Node::Id bindings
     py::class_<Node::Id>(pyNode, "Id", "Node identificator. Unique for every node on a single Pipeline");
-    // Node::Connection bindings
     py::class_<Node::Connection> nodeConnection(pyNode, "Connection", DOC(dai, Node, Connection));
-    // Node::InputMap bindings
     bindNodeMap<Node::InputMap>(pyNode, "InputMap").def("getSourceDevices", &Node::InputMap::getSourceDevices, DOC(dai, Node, InputMap, getSourceDevices));
-    // Node::OutputMap bindings
     bindNodeMap<Node::OutputMap>(pyNode, "OutputMap");
 
-    //     // NodeGroup
     py::class_<NodeGroup, Node, py::smart_holder> pyNodeGroup(m, "NodeGroup", DOC(dai, NodeGroup));
 
-    // // Threaded & Device nodes
     py::class_<ThreadedNode, Node, py::smart_holder> pyThreadedNode(m, "ThreadedNode", DOC(dai, ThreadedNode));
     py::class_<DeviceNode, ThreadedNode, py::smart_holder> pyDeviceNode(m, "DeviceNode", DOC(dai, DeviceNode));
 
@@ -402,37 +370,18 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<BlockPipelineEvent, std::shared_ptr<BlockPipelineEvent>> pyBlockEvent(
         m, "BlockPipelineEvent", DOC(dai, utility, PipelineEventDispatcherInterface, BlockPipelineEvent));
 
-    // Device Nodegroup
     py::class_<DeviceNodeGroup, DeviceNode, py::smart_holder> pyDeviceNodeGroup(m, "DeviceNodeGroup", DOC(dai, DeviceNodeGroup));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-
-    ////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////
-    // Node Bindings after properties, so types are resolved
-    ////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////
-
-    // Base 'Node' class binding
 
     nodeDatatypeHierarchy.def(py::init<DatatypeEnum, bool>())
         .def_readwrite("datatype", &Node::DatatypeHierarchy::datatype)
         .def_readwrite("descendants", &Node::DatatypeHierarchy::descendants);
 
-    // XLink internal node bindings
-    py::class_<node::internal::XLinkIn, DeviceNode, py::smart_holder> pyXLinkIn(
-        daiNodeInternalModule, "XLinkIn", DOC(dai, node, internal, XLinkIn));
+    py::class_<node::internal::XLinkIn, DeviceNode, py::smart_holder> pyXLinkIn(daiNodeInternalModule, "XLinkIn", DOC(dai, node, internal, XLinkIn));
     py::class_<node::internal::XLinkOut, DeviceNode, py::smart_holder> pyXLinkOut(
         daiNodeInternalModule, "XLinkOut", DOC(dai, node, internal, XLinkOut));
     py::class_<node::internal::XLinkInHost, Node, py::smart_holder> pyXLinkInHost(
@@ -440,13 +389,11 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<node::internal::XLinkOutHost, Node, py::smart_holder> pyXLinkOutHost(
         daiNodeInternalModule, "XLinkOutHost", DOC(dai, node, internal, XLinkOutHost));
 
-    // XLink bridge bindings
     pyXLinkInBridge.def_readonly("xLinkOutHost", &dai::node::internal::XLinkInBridge::xLinkOutHost, DOC(dai, node, internal, XLinkInBridge, xLinkOutHost))
         .def_readonly("xLinkIn", &dai::node::internal::XLinkInBridge::xLinkIn, DOC(dai, node, internal, XLinkInBridge, xLinkIn));
     pyXLinkOutBridge.def_readonly("xLinkOut", &dai::node::internal::XLinkOutBridge::xLinkOut, DOC(dai, node, internal, XLinkOutBridge, xLinkOut))
         .def_readonly("xLinkInHost", &dai::node::internal::XLinkOutBridge::xLinkInHost, DOC(dai, node, internal, XLinkOutBridge, xLinkInHost));
 
-    // Bind XLink node methods
     pyXLinkIn.def("setStreamName", &node::internal::XLinkIn::setStreamName, py::arg("name"), DOC(dai, node, internal, XLinkIn, setStreamName))
         .def("getStreamName", &node::internal::XLinkIn::getStreamName, DOC(dai, node, internal, XLinkIn, getStreamName))
         .def("setMaxDataSize", &node::internal::XLinkIn::setMaxDataSize, py::arg("maxDataSize"), DOC(dai, node, internal, XLinkIn, setMaxDataSize))
@@ -476,7 +423,6 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     pyXLinkOutHost.def("setStreamName", &node::internal::XLinkOutHost::setStreamName, py::arg("name"), DOC(dai, node, internal, XLinkOutHost, setStreamName))
         .def_readonly("in", &node::internal::XLinkOutHost::in, DOC(dai, node, internal, XLinkOutHost, in));
 
-    // Node::Input bindings
     nodeInputType.value("SReceiver", Node::Input::Type::SReceiver).value("MReceiver", Node::Input::Type::MReceiver);
 
     pyInput
@@ -537,7 +483,6 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getXLinkBridge", &Node::Input::getXLinkBridge, DOC(dai, Node, Input, getXLinkBridge))
         .def("getSourceDevice", &Node::Input::getSourceDevice, DOC(dai, Node, Input, getSourceDevice));
 
-    // Node::Output bindings
     nodeOutputType.value("MSender", Node::Output::Type::MSender).value("SSender", Node::Output::Type::SSender);
     pyOutput
         .def(py::init([](Node& parent, const std::string& name, const std::string& group, std::vector<Node::DatatypeHierarchy> types) {

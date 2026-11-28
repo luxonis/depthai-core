@@ -4,8 +4,6 @@
 
 #include "depthai/utility/Serialization.hpp"
 
-// std::optional serialization for nlohmann json
-// partial specialization (full specialization works too)
 namespace nlohmann {
 template <typename T>
 struct adl_serializer<std::optional<T>> {
@@ -14,7 +12,6 @@ struct adl_serializer<std::optional<T>> {
             j = nullptr;
         } else {
             j = *opt;  // this will call adl_serializer<T>::to_json which will
-                       // find the free function to_json in T's namespace!
         }
     }
 
@@ -23,7 +20,6 @@ struct adl_serializer<std::optional<T>> {
             opt = std::nullopt;
         } else {
             opt = j.get<T>();  // same as above, but with
-                               // adl_serializer<T>::from_json
         }
     }
     static std::optional<T> from_json(const json& j) {
@@ -35,26 +31,7 @@ struct adl_serializer<std::optional<T>> {
 };
 }  // namespace nlohmann
 
-// std::optional serialization for libnop
 namespace nop {
-
-//
-// Optional<T> encoding formats:
-//
-// Empty Optional<T>:
-//
-// +-----+
-// | NIL |
-// +-----+
-//
-// Non-empty Optional<T>
-//
-// +---//----+
-// | ELEMENT |
-// +---//----+
-//
-// Element must be a valid encoding of type T.
-//
 
 template <typename T>
 struct Encoding<std::optional<T>> : EncodingIO<std::optional<T>> {
@@ -86,9 +63,7 @@ struct Encoding<std::optional<T>> : EncodingIO<std::optional<T>> {
         if(prefix == EncodingByte::Empty) {
             value->reset();
         } else {
-            T temp;
-            // T temp {} would be better but seems to trigger a bug in libnop or GCC when reading
-            // std::optional<class enum>
+            T temp;  // Not T temp{}: it triggers a libnop or GCC bug for std::optional<enum class>
             auto status = Encoding<T>::ReadPayload(prefix, &temp, reader);
             if(!status) return status;
 

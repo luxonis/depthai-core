@@ -31,7 +31,6 @@ void MessageDemux::run() {
         {
             auto blockEvent = this->outputBlockEvent();
 
-            // Check that the outputs match the messages
             for(auto& output : outputs) {
                 auto messageName = output.first.second;
                 auto messageToSend = message->get(messageName);

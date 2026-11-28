@@ -1,9 +1,7 @@
 #pragma once
 
-// std
 #include <cstdint>
 
-// shared
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Rect.hpp"
 #include "depthai/common/Size2f.hpp"
@@ -96,18 +94,15 @@ struct RotatedRect {
         float halfWidth = size.width / 2.0f;
         float halfHeight = size.height / 2.0f;
 
-        // Precompute sin and cos of the angle
         float cosAngle = std::cos(angleRad);
         float sinAngle = std::sin(angleRad);
 
-        // Corners relative to the center before rotation
         std::array<dai::Point2f, 4> corners;
         corners[0] = {-halfWidth, -halfHeight};
         corners[1] = {halfWidth, -halfHeight};
         corners[2] = {halfWidth, halfHeight};
         corners[3] = {-halfWidth, halfHeight};
 
-        // Rotate each corner and translate it back to the center position
         for(auto& corner : corners) {
             float x = corner.x;
             float y = corner.y;

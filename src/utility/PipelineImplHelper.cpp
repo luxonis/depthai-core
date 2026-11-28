@@ -25,11 +25,8 @@ void PipelineImplHelper::setupHolisticRecordAndReplay(const std::weak_ptr<Pipeli
             auto recordPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_RECORD", ""));
             auto replayPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_REPLAY", ""));
 
-            // The whole record/replay setup below is keyed to the default device only.
-            // Note: this check must stay outside the try block below, which downgrades
-            // runtime errors to warnings.
             if((pipeline->enableHolisticRecordReplay || !recordPath.empty() || !replayPath.empty()) && pipeline->getAllAssignedDevices().size() > 1) {
-                throw std::runtime_error("Holistic record/replay is not supported with multiple devices yet");
+                throw std::runtime_error("Holistic record/replay is not supported with multiple devices yet");  // Keep outside the try below: it only warns
             }
 
             if(pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
@@ -53,10 +50,7 @@ void PipelineImplHelper::setupHolisticRecordAndReplay(const std::weak_ptr<Pipeli
                         }
                     }
 
-                    // The pipeline only needs the stable host-side device identifier here.
-                    // Avoid a live RPC call during build(), which can fail if the device RPC
-                    // client is not available for a reused/external Device instance.
-                    pipeline->defaultDeviceId = pipeline->defaultDevice->getDeviceInfo().getDeviceId();
+                    pipeline->defaultDeviceId = pipeline->defaultDevice->getDeviceInfo().getDeviceId();  // No RPC here: a reused Device can have no RPC client
 
                     if(!recordPath.empty() && !replayPath.empty()) {
                         Logging::getInstance().logger.warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
@@ -173,11 +167,9 @@ void PipelineImplHelper::setupPipelineDebuggingPre(const std::weak_ptr<PipelineI
     auto pipeline = pipelineWeak.lock();
     if(!pipeline) throw std::runtime_error("PipelineImplHelper: Pipeline is no longer available.");
 
-    // Create pipeline event aggregator node and link
     bool envPipelineDebugging = utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false);
     pipeline->enablePipelineDebugging = pipeline->enablePipelineDebugging || envPipelineDebugging;
     if(pipeline->buildingOnHost && pipeline->enablePipelineDebugging) {
-        // Check if any nodes are on host or device
         bool hasDeviceNodes = false;
         for(const auto& node : pipeline->getAllNodes()) {
             if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) continue;
@@ -243,9 +235,7 @@ void PipelineImplHelper::setupPipelineDebuggingPost(const std::weak_ptr<Pipeline
     auto pipeline = pipelineWeak.lock();
     if(!pipeline) throw std::runtime_error("PipelineImplHelper: Pipeline is no longer available.");
 
-    // Finish setting up pipeline debugging
     if(pipeline->buildingOnHost && pipeline->enablePipelineDebugging) {
-        // Enable events on xlink bridges
         std::shared_ptr<node::internal::PipelineEventAggregation> pipelineEventAggHost = nullptr;
         std::shared_ptr<node::internal::PipelineEventAggregation> pipelineEventAggDevice = nullptr;
         for(const auto& node : pipeline->getAllNodes()) {
@@ -277,7 +267,6 @@ void PipelineImplHelper::setupPipelineDebuggingPost(const std::weak_ptr<Pipeline
         }
     }
 
-    // Disable event sending if no PipelineEventAggregation node is present
     {
         auto allNodes = pipeline->getAllNodes();
         if(std::find_if(allNodes.begin(), allNodes.end(), [](const std::shared_ptr<Node>& n) { return strcmp(n->getName(), "PipelineEventAggregation") == 0; })

@@ -10,19 +10,10 @@ void bind_replay(pybind11::module& m, void* pCallstack) {
     auto replayVideo = ADD_NODE_DERIVED(ReplayVideo, ThreadedHostNode);
     auto replayMessage = ADD_NODE_DERIVED(ReplayMetadataOnly, ThreadedHostNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Node
     replayVideo.def_readonly("out", &ReplayVideo::out, DOC(dai, node, ReplayVideo, out))
         .def("setReplayMetadataFile", &ReplayVideo::setReplayMetadataFile, py::arg("replayFile"), DOC(dai, node, ReplayVideo, setReplayMetadataFile))
         .def("setReplayVideoFile", &ReplayVideo::setReplayVideoFile, py::arg("replayVideoFile"), DOC(dai, node, ReplayVideo, setReplayVideoFile))

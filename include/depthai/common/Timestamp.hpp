@@ -1,6 +1,5 @@
 #pragma once
 
-// std
 #include <chrono>
 #include <cstdint>
 

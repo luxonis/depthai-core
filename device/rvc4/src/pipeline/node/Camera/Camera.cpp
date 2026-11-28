@@ -57,10 +57,6 @@ extern "C" {
 #include "utilities/OSUtils.hpp"
 #include "utilities/StereoPairs.hpp"
 
-// #define ENABLE_TIMING_DEBUG
-
-// #define DISABLE_TRY_SEND
-
 #ifndef ALIGN_UP
 template <typename T>
 constexpr T ALIGN_UP(T value, std::size_t alignment) {
@@ -75,9 +71,8 @@ constexpr float F_EPSILON{1e-6};
 namespace {
 
 void logMissingCameraIntrinsics(const std::string& productName,
-                               CameraBoardSocket boardSocket,
-                               const std::shared_ptr<spdlog::async_logger>& logger) {
-    // CS lenses are interchangeable, so factory intrinsics are not expected.
+                                CameraBoardSocket boardSocket,
+                                const std::shared_ptr<spdlog::async_logger>& logger) {  // CS lenses are interchangeable: no factory intrinsics
     const bool isOak4Cs = productName == "OAK-4-CS" || productName.rfind("OAK-4-CS-", 0) == 0 || productName == "OAK-4-S-CS"
                           || productName.rfind("OAK-4-S-CS-", 0) == 0;
     if(isOak4Cs) {
@@ -95,9 +90,7 @@ dai::ImgTransformation getCameraTransformation(const CalibrationHandler& calibHa
     size_t sourceHeight = calibHandler.getSourceHeight(boardSocket);
 
     const auto cameraFeatures = CameraDiscovery::getInstance().getCameraFeatures(cameraName, boardSocket);
-    // Handle the case where the camera was not calibrated with the maximum resolution
-    // NOTE: This assumes that the calibration was done with full FoV.
-    if(sourceWidth < cameraFeatures.width || sourceHeight < cameraFeatures.height) {
+    if(sourceWidth < cameraFeatures.width || sourceHeight < cameraFeatures.height) {  // Assumes the calibration was done with full FoV
         logger->info("Calibration data for camera on socket {} is not for the maximum resolution. Using the maximum resolution for undistortion.",
                      static_cast<int>(boardSocket));
         sourceWidth = cameraFeatures.width;
@@ -109,13 +102,11 @@ dai::ImgTransformation getCameraTransformation(const CalibrationHandler& calibHa
 
     std::vector<float> distortionCoefficients = calibHandler.getDistortionCoefficients(boardSocket);
     dai::CameraModel distortionModel = calibHandler.getDistortionModel(boardSocket);
-    // getExtrinsicsToOrigin always writes a real socket into originSocket or throws.
-    dai::CameraBoardSocket originSocket = dai::CameraBoardSocket::AUTO;
+    dai::CameraBoardSocket originSocket = dai::CameraBoardSocket::AUTO;  // getExtrinsicsToOrigin always writes a real socket here or throws
     const auto cameraToOrigin = calibHandler.getExtrinsicsToOrigin(boardSocket, false, originSocket);
 
     dai::Extrinsics extrinsics(cameraToOrigin, originSocket, dai::LengthUnit::CENTIMETER);
     try {
-        // Same target as the measured pose above so the struct stays consistent.
         const auto specTranslation = calibHandler.getCameraTranslationVector(boardSocket, originSocket, true, dai::LengthUnit::CENTIMETER);
         extrinsics.specTranslation = {specTranslation[0], specTranslation[1], specTranslation[2]};
     } catch(const std::exception& e) {
@@ -327,15 +318,9 @@ static std::shared_ptr<ImgFrame> convertToFormat(ImgFrame::Type type, std::share
               "RGB888i (middle performant), BGR888i (worst performant)");
 
     if(type == ImgFrame::Type::GRAY8 || type == ImgFrame::Type::RAW8) {
-        // If, for example, we have a 2x2 image, NV12 is a 2x2x1.5 = 6 bytes in memory
-        // whereas GRAY8/RAW8 occupies just 2x2x1 = 4 bytes in memory. Moreover, we can view the luminance plane of NV12 as a GRAY8/RAW8 image.
-        // Therefore, we just take the first N bytes of the NV12 image to form a GRAY8/RAW8 image.
-        // This is done by resizing the underlying memory of the ImgFrame to the size of the GRAY8/RAW8 image.
-        inFrame->data->setSize(inFrame->getStride() * ALIGN_UP(inFrame->getHeight(), 32));
+        inFrame->data->setSize(inFrame->getStride() * ALIGN_UP(inFrame->getHeight(), 32));  // The NV12 Y plane is a GRAY8/RAW8 image: keep only its bytes
 
-        // Set other metadata to match the image
         inFrame->setType(type);
-        // inFrame->fb.stride = inFrame->getWidth();
         inFrame->fb.p1Offset = 0;
         inFrame->fb.p2Offset = 0;
         inFrame->fb.p3Offset = 0;
@@ -474,10 +459,6 @@ std::vector<std::pair<int, dai::CameraSensorConfig>> Camera::filterByFps(const s
     out.reserve(modes.size());
     for(const auto& mode : modes) {
         const auto& cfg = mode.second;
-        /*
-         * the modes are sorted lowest to highest and we have a rule on the OS side:
-         * any lower resolution mode should not have lower fps than the higher resolution modes for that sensor (separate by HDR / non-HDR category)
-         */
         if(/*requestedFps >= cfg.minFps && TODO(jakgra) reenable this after adding < 10fps support to imx586 driver in the OS */ requestedFps <= cfg.maxFps) {
             out.push_back(mode);
         }
@@ -557,12 +538,9 @@ Camera::SensorConfig Camera::decideSensorConfig() {
     for(int idx = 0; idx < cameraFeatures.configs.size(); ++idx) {
         modes.emplace_back(idx, cameraFeatures.configs[idx]);
     }
-    // Filter out HDR or non-HDR sensor modes based on what user requested.
     modes = filterByHDR(modes);
-    // Sort by area so below logic works.
     std::sort(modes.begin(), modes.end(), [](const auto& a, const auto& b) { return a.second.width * a.second.height > b.second.width * b.second.height; });
     const float requestedFps = getFps();
-    // If the user overrode the sensor mode use that or error out.
     const bool overrideRes = properties.resolutionWidth != dai::CameraProperties::AUTO || properties.resolutionHeight != dai::CameraProperties::AUTO;
     if(overrideRes) {
         DAI_CHECK(properties.resolutionWidth != dai::CameraProperties::AUTO && properties.resolutionHeight != dai::CameraProperties::AUTO,
@@ -581,7 +559,6 @@ Camera::SensorConfig Camera::decideSensorConfig() {
         }
         DAI_CHECK_V(false, "Requested sensor resolution {}x{} not found", properties.resolutionWidth, properties.resolutionHeight);
     }
-    // If the user requested specific FPS settings filter out all the sensor modes that can't satisfy it.
     if(requestedFps > 0.0f) {
         modes = filterByFps(modes, requestedFps);
     }
@@ -669,7 +646,6 @@ void Camera::sendBuffer(CameraSensor::FrameCallbackArgs args) {
         steadyClockDiff = SteadyToQTimerOffset::instance().offset();
         systemClockDiff = SystemToQTimerOffset::instance().offset();
 
-        // Convert the system clock difference to seconds and nanoseconds
         auto systemClockSec = duration_cast<seconds>(systemClockDiff).count();
         auto systemClockNsec = duration_cast<nanoseconds>(systemClockDiff - seconds(systemClockSec)).count();
         tsSystem.emplace();
@@ -680,7 +656,6 @@ void Camera::sendBuffer(CameraSensor::FrameCallbackArgs args) {
         steadyClockDiff = SteadyToRawOffset::instance().offset();
     }
 
-    // Convert the steady clock difference to seconds and nanoseconds
     auto steadyClockSec = duration_cast<seconds>(steadyClockDiff).count();
     auto steadyClockNsec = duration_cast<nanoseconds>(steadyClockDiff - seconds(steadyClockSec)).count();
     args.ts.sec += steadyClockSec;
@@ -721,7 +696,6 @@ void Camera::sendBuffer(CameraSensor::FrameCallbackArgs args) {
         int size = args.wstride * args.hstride * 3 / 2;
         std::shared_ptr<dai::ImgFrame> NV12frame = makeFrame(args, tsSystem, dai::ImgFrame::Type::NV12, false, socket, currentOutputs[outIndex].transformation);
 
-        // Route the main sensor output to ISP-only consumers as well.
         if(outIndex == maxResolutionIndex) {
             for(size_t i = 0; i < currentOutputs.size(); ++i) {
                 if(!currentOutputs[i].ispOutput) {
@@ -836,13 +810,10 @@ std::shared_ptr<dai::ImgFrame> Camera::makeFrame(CameraSensor::FrameCallbackArgs
     std::shared_ptr<dai::ImgFrame> frame = std::make_shared<dai::ImgFrame>();
     frame->setWidth(args.width);
     frame->setHeight(args.height);
-    // frame->getData().resize(size);
     frame->setType(type);
     frame->setInstanceNum(static_cast<int>(socket));
     frame->cam = args.cam;
-    // Set stride
     frame->fb.stride = args.wstride;
-    // set planes
     frame->fb.p1Offset = args.wstride * args.hstride * 0;
     frame->fb.p2Offset = args.wstride * args.hstride * 1;
     frame->fb.p3Offset = args.wstride * args.hstride * 2;
@@ -886,7 +857,6 @@ std::shared_ptr<dai::ImgFrame> Camera::makeFrame(CameraSensor::FrameCallbackArgs
         // frame->data = std::make_shared<VpuDataMemory>(size);
         // toPlanar(frame->data->getData(), data->getData().data(), width, height);
     } else {
-        // zerocopy
         frame->data = args.data;
     }
 
@@ -900,7 +870,6 @@ void Camera::buildStage1() {
     }
     logger->debug("Camera: mock isp enabled {}", mockIspEnabled);
 
-    // Register the camera to the static vector
     if(std::find(camerasInThePipeline.begin(), camerasInThePipeline.end(), properties.boardSocket) != camerasInThePipeline.end()) {
         throw std::runtime_error("Camera on socket " + std::to_string(static_cast<int>(properties.boardSocket)) + " already exists in the pipeline");
     }
@@ -929,7 +898,6 @@ void Camera::buildStage1() {
     }
     camSyncType = ImgFrame::Fsync::NONE;
 
-    // Set the calibration data
     auto pipeline = getParentPipeline();
     if(pipeline.isCalibrationDataAvailable()) {
         auto calib = pipeline.getCalibrationData();
@@ -1164,9 +1132,7 @@ void Camera::setupResizers(const SensorConfig& config) {
             if(resolutionWidth != width || resolutionHeight != height || (spec.enableUndistortion && *spec.enableUndistortion)) {
                 DAI_CHECK_V(width % 2 == 0 && height % 2 == 0, "We only support even numbers for resolution sizes. Got {}x{}.", width, height);
                 ImageManipConfig config;
-                // Undistortion alone must preserve the requested dimensions too;
-                // automatic ImageManip sizing is capped at 4000x3000.
-                config.setOutputSize(width, height, ImageManipConfig::ResizeMode::STRETCH);
+                config.setOutputSize(width, height, ImageManipConfig::ResizeMode::STRETCH);  // Explicit size: auto ImageManip sizing is capped at 4000x3000
                 if(resolutionWidth != width || resolutionHeight != height) {
                     switch(spec.resizeMode) {
                         using E = ImgResizeMode;
@@ -1199,7 +1165,6 @@ void Camera::setupResizers(const SensorConfig& config) {
         ++specIndex;
     }
     if(!mockIspEnabled) {
-        // Some outputs can be served by routing the main ISP frame and therefore don't need their own HAL stream.
         cameraSensor->setupDynamicOutputs(outSizes);
     }
     maxResolutionIndex = findMaxResolutionIndex();
@@ -1213,16 +1178,11 @@ void Camera::buildStage2() {
         int numPools = properties.numFramesPoolIsp;
 
         auto boardSocket = properties.boardSocket;
-        // Image orientation, default to DTS, allow host to override
         auto orientation = properties.imageOrientation;
-        // if(orientation == CameraImageOrientation::AUTO) orientation = cam.camera.orientation;
 
-        // Query camera id
         auto cam = CameraDiscovery::getInstance().getCameraDescription(properties.cameraName, properties.boardSocket);
         auto features = CameraDiscovery::getInstance().getCameraFeatures(properties.cameraName, properties.boardSocket);
 
-        // Helper function to format supported types for logging
-        // Outputs a string like "COLOR, MONO, TOF, THERMAL"
         auto formatSupportedTypes = [](const std::vector<dai::CameraSensorType>& supportedTypes) {
             return std::accumulate(
                 std::next(supportedTypes.begin()), supportedTypes.end(), dai::toString(supportedTypes.front()), [](std::string a, dai::CameraSensorType b) {
@@ -1233,8 +1193,6 @@ void Camera::buildStage2() {
         selectedSensorType = properties.sensorType;
         constexpr bool performSensorTypeValidation = true;
 
-        // In case of any non-AUTO sensor type, check if it is supported by
-        // the sensor
         if(performSensorTypeValidation && selectedSensorType != dai::CameraSensorType::AUTO
            && std::find(features.supportedTypes.begin(), features.supportedTypes.end(), selectedSensorType) == features.supportedTypes.end()) {
             throw std::invalid_argument(
@@ -1245,8 +1203,6 @@ void Camera::buildStage2() {
                             formatSupportedTypes(features.supportedTypes)));
         }
 
-        // Now, the sensor type is either AUTO or something that we already
-        // know is supported by the underlying sensor
         if(selectedSensorType == dai::CameraSensorType::AUTO) {
             if(features.supportedTypes.size() >= 1) {
                 selectedSensorType = features.supportedTypes[0];
@@ -1267,14 +1223,11 @@ void Camera::buildStage2() {
         }
         if(cam.id == -1) {
             throw std::invalid_argument(fmt::format("Cannot find camera given socket: {}", (int)properties.boardSocket));
-            // throw std::invalid_argument(fmt::format("Cannot find camera given socket: {} and name: '{}'", properties.boardSocket, properties.cameraName));
-            // throw std::invalid_argument(fmt::format("Cannot find camera given name: '{}'", properties.cameraName));
         }
 
         if(properties.initialControl.frameSyncMode != dai::CameraControl::FrameSyncMode::TIME_PTP) {
             const auto requestedFsyncEnable = CameraSingleton::getInstance().isFsyncEnabled(properties.boardSocket);
             if(FsyncController::getInstance().isOk()) {
-                // On old OS version the STM firmware only supports up to 90.0f fps
                 if(FsyncController::getInstance().supportsExternalFrameSyncMode()) {
                     camSyncType = requestedFsyncEnable ? ImgFrame::Fsync::INPUT : ImgFrame::Fsync::NONE;
                 } else {
@@ -1304,7 +1257,6 @@ void Camera::buildStage2() {
             camSyncType = ImgFrame::Fsync::PTP;
         }
 
-        // Sanity check
         if(FsyncController::getInstance().supportsExternalFrameSyncMode() && FsyncController::getInstance().isOk()
            && FsyncController::getInstance().getExternalFrameSyncRole() == dai::ExternalFrameSyncRole::SLAVE && properties.fps != -1
            && camSyncType == ImgFrame::Fsync::INPUT) {
@@ -1381,7 +1333,6 @@ void Camera::buildStage2() {
             }
         }
 
-        // Create camera
         cameraSensor = std::make_unique<CameraSensor>(
             cam,
             (*sensorConfig).modeIndex,
@@ -1397,11 +1348,8 @@ void Camera::buildStage2() {
             cameraSensor->setupRawOutput();
         }
 
-        // Apply a custom camera tuning blob if one was set on the pipeline
         if(auto deviceProps = getParentPipeline().getDefaultDeviceProperties()) {
-            // Match RVC2 semantics: a global tuning blob applies to all cameras,
-            // per-socket blobs are only used when no global blob is set.
-            std::string tuningUri;
+            std::string tuningUri;  // Match RVC2: a global tuning blob applies to all cameras; per-socket blobs only without one
             if(deviceProps->cameraTuningBlobSize.value_or(0) > 0 && !deviceProps->cameraTuningBlobUri.empty()) {
                 tuningUri = deviceProps->cameraTuningBlobUri;
             } else {
@@ -1413,7 +1361,6 @@ void Camera::buildStage2() {
                 }
             }
             if(!tuningUri.empty()) {
-                // URI has the form "asset:<key>" - assets are stored under their key in the pipeline asset manager
                 const auto scheme = tuningUri.find(':');
                 const auto assetKey = scheme != std::string::npos ? tuningUri.substr(scheme + 1) : tuningUri;
                 auto asset = getParentPipeline().getAssetManager().get(assetKey);
@@ -1448,8 +1395,7 @@ void Camera::buildStage3() {
         cameraSensor->build(selectedSensorType);
     }
 
-    // Start FSync only after all camera nodes finished buildStage2.
-    if(camSyncType == ImgFrame::Fsync::INPUT && !mockIspEnabled && FsyncController::getInstance().isOk()) {
+    if(camSyncType == ImgFrame::Fsync::INPUT && !mockIspEnabled && FsyncController::getInstance().isOk()) {  // Only after all cameras finished buildStage2
         FsyncController::getInstance().start();
     }
 }
@@ -1459,21 +1405,16 @@ void Camera::setDefaultExposureMaster() {
     Model const model = dai::gate::DeviceModel::get();
     auto& fsync = FsyncController::getInstance();
 
-    // stobe enabled and exposure master is not registered fsync consumer
-    // This is to check if user specified correct socket
     if(fsync.getExternalStrobeEnable() && fsync.getExternalStrobeExposureMasterCamera().has_value()
        && !fsync.isFsyncConsumer(fsync.getExternalStrobeExposureMasterCamera().value())) {
         throw std::runtime_error("Specified exposure master either not in pipeline or not using fsync");
     }
 
-    // Try to find default exposure master candidates
     auto itr = exposureMasterCameraPriority.find(model);
     if(itr == exposureMasterCameraPriority.cend()) {
-        // If strobe is enabled and no exposure master is defined by the user, we throw
         if(fsync.getExternalStrobeEnable() && !fsync.getExternalStrobeExposureMasterCamera().has_value()) {
             throw std::runtime_error("No default exposure master found. You must specify which camera to use to control exposure");
         }
-        // user specified the master
         return;
     }
 
@@ -1482,11 +1423,7 @@ void Camera::setDefaultExposureMaster() {
         for(auto& cam : camerasInThePipeline) {
             if(cam == camCandidate && fsync.isFsyncConsumer(cam)) {
                 if(cam == properties.boardSocket) {
-                    // We assume that led exposure will always be set automatically,
-                    // because there is no interface just yet, to allow user to set it
-                    // This means that all devices with IR DOT and FLOOD must be defined in exposureMasterCameraPriority
-                    fsync.setLedExposureMasterCamera(cam);
-                    // do not override master if set by user
+                    fsync.setLedExposureMasterCamera(cam);  // No user API yet: every device with IR dot/flood must be in exposureMasterCameraPriority
                     if(!fsync.getExternalStrobeExposureMasterCamera().has_value()) {
                         fsync.setExternalStrobeExposureMasterCamera(cam);
                     }
@@ -1578,12 +1515,9 @@ void Camera::run() {
     if(!serialNumber.empty() && serialNumber != "xlink-server") {
         setDeviceId(serialNumber);
     }
-    // PipelineBuilder installed and validated the graph; runtime updates arrive through the store.
     refreshMultiDeviceCalibration();
 
-    // There is a race condition and we can't initialize FastCV before initializing SNPE (we won't be reporting to qualcomm (for now))
-    // manip.Init() needs to be in the run function so SNPE has time to initialize before FastCV (called via manip.Init())
-    for(auto& cameraOutput : currentOutputs) {
+    for(auto& cameraOutput : currentOutputs) {  // FastCV (manip.Init()) must init after SNPE: race, so it runs here in run()
         if(cameraOutput.resizer != nullptr) {
             std::optional<ImgFrame::Type> type = properties.outputRequests[cameraOutput.index].type;
             cameraOutput.resizer->runThreadedResizer(
@@ -1603,14 +1537,12 @@ void Camera::run() {
         }
     }
 
-    // Start the pipeline, run in separate thread
     if(!mockIspEnabled) {
         cameraSensor->run();
     }
     try {
         while(isRunning()) {
             if(!mockIspEnabled) {
-                // Time out every 200ms to check if isRunning() is true and if cameraSensor->run() thread is still alive or has failed
                 std::shared_ptr<CameraControl> pControl;
                 bool timedOut{false};
                 pControl = inputControl.get<CameraControl>(std::chrono::milliseconds(200), timedOut);

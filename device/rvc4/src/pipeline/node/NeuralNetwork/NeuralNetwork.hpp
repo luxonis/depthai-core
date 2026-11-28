@@ -8,7 +8,6 @@
 
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 
-// shared
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/properties/NeuralNetworkProperties.hpp"
 #include "depthai/utility/LockingQueue.hpp"
@@ -43,9 +42,7 @@ class NeuralNetwork : public node::NeuralNetwork {
 
    public:
     NeuralNetwork() : NeuralNetwork(std::make_unique<NeuralNetwork::Properties>()) {}
-    NeuralNetwork(std::unique_ptr<Properties> props) : node::NeuralNetwork(std::move(props)) {
-        // override that this is a host node
-    }
+    NeuralNetwork(std::unique_ptr<Properties> props) : node::NeuralNetwork(std::move(props)) {}
     void buildStage1() override;
     bool runOnHost() const override {
         return true;
@@ -81,12 +78,7 @@ class NeuralNetwork : public node::NeuralNetwork {
 
     void run() override;
 
-    /**
-     * Save network to a temporary location
-     *
-     * @param modelPath Sets the path to the model
-     */
-    void getModel(std::filesystem::path& modelPath);
+    void getModel(std::filesystem::path& modelPath);  // Writes the model to a temporary file; modelPath is set to it
 
     LockingQueue<std::shared_ptr<dai::ADatatype>> passthroughQueue;
     using InputVariant = std::variant<std::shared_ptr<dai::Buffer>, std::map<std::string, std::shared_ptr<dai::Buffer>>>;

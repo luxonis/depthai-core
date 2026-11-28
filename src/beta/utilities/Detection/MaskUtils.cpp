@@ -13,8 +13,6 @@ namespace utilities {
 namespace MaskUtils {
 
 float sigmoid(float value) {
-    // Split formulation of the source sigmoid(): both branches evaluate in single precision,
-    // matching numpy's float32 computation. NaN input takes the negative branch and yields NaN.
     if(value >= 0.0f) {
         return 1.0f / (1.0f + std::exp(-value));
     }
@@ -25,8 +23,6 @@ float sigmoid(float value) {
 void cropMask(std::vector<float>& mask, std::size_t maskHeight, std::size_t maskWidth, const std::array<double, 4>& bboxCxcywh) {
     DAI_CHECK_V(mask.size() == maskHeight * maskWidth, "Mask size {} does not match the mask shape ({}, {}).", mask.size(), maskHeight, maskWidth);
 
-    // The box edges stay in double precision, matching the numpy float64 comparisons of the
-    // integer pixel indices against the scaled box in the source crop_mask().
     const double x1 = bboxCxcywh[0] - bboxCxcywh[2] / 2.0;
     const double y1 = bboxCxcywh[1] - bboxCxcywh[3] / 2.0;
     const double x2 = bboxCxcywh[0] + bboxCxcywh[2] / 2.0;
@@ -36,9 +32,7 @@ void cropMask(std::vector<float>& mask, std::size_t maskHeight, std::size_t mask
         const bool rowInside = static_cast<double>(row) >= y1 && static_cast<double>(row) < y2;
         for(std::size_t column = 0; column < maskWidth; ++column) {
             const bool inside = rowInside && static_cast<double>(column) >= x1 && static_cast<double>(column) < x2;
-            // Multiply by 0/1 instead of assigning so a NaN value outside the box stays NaN,
-            // matching the numpy multiplication by a boolean mask.
-            mask[row * maskWidth + column] *= inside ? 1.0f : 0.0f;
+            mask[row * maskWidth + column] *= inside ? 1.0f : 0.0f;  // Multiply, not assign: a NaN outside the box stays NaN, as in numpy
         }
     }
 }
@@ -50,10 +44,7 @@ std::vector<T> resizeNearestImpl(const std::vector<T>& src, std::size_t srcHeigh
     DAI_CHECK(srcHeight > 0 && srcWidth > 0, "Nearest-neighbor resize requires a non-empty source mask.");
     DAI_CHECK_V(src.size() == srcHeight * srcWidth, "Mask size {} does not match the mask shape ({}, {}).", src.size(), srcHeight, srcWidth);
 
-    // OpenCV resizeNN index mapping: the inverse scale is computed as 1.0 / (dst / src) in
-    // double precision and destination indices map through floor with a clamp to the last
-    // source index.
-    const double inverseScaleX = 1.0 / (static_cast<double>(dstWidth) / static_cast<double>(srcWidth));
+    const double inverseScaleX = 1.0 / (static_cast<double>(dstWidth) / static_cast<double>(srcWidth));  // Same index mapping as OpenCV resizeNN
     const double inverseScaleY = 1.0 / (static_cast<double>(dstHeight) / static_cast<double>(srcHeight));
 
     std::vector<std::size_t> columnOffsets(dstWidth);
@@ -99,8 +90,6 @@ std::vector<std::uint8_t> processSingleMaskRfdetr(span<const float> maskLogits,
                 maskWidth);
     DAI_CHECK(maskHeight > 0 && maskWidth > 0, "RF-DETR mask logits should have a non-empty (H, W) shape.");
 
-    // scaled_bbox = bbox * [mask_w, mask_h, mask_w, mask_h]: the float32 box multiplied by the
-    // integer dimensions promotes to float64 in the source, so the scaling stays in double.
     const std::array<double, 4> scaledBbox = {static_cast<double>(bboxCxcywh[0]) * static_cast<double>(maskWidth),
                                               static_cast<double>(bboxCxcywh[1]) * static_cast<double>(maskHeight),
                                               static_cast<double>(bboxCxcywh[2]) * static_cast<double>(maskWidth),

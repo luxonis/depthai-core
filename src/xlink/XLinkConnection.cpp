@@ -1,5 +1,7 @@
 #include "xlink/XLinkConnection.hpp"
 
+#include <XLink/XLink.h>
+
 #include <array>
 #include <cassert>
 #include <chrono>
@@ -9,14 +11,10 @@
 #include <thread>
 #include <vector>
 
-// project
 #include "depthai/utility/Initialization.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Platform.hpp"
 #include "utility/spdlog-fmt.hpp"
-
-// libraries
-#include <XLink/XLink.h>
 extern "C" {
 #include <XLink/XLinkLog.h>
 }
@@ -42,23 +40,13 @@ DeviceInfo::DeviceInfo(
     : name(std::move(name)), deviceId(std::move(deviceId)), state(state), protocol(protocol), platform(platform), status(status) {}
 
 DeviceInfo::DeviceInfo(std::string deviceIdOrName) {
-    // Parse parameter and set to ip if any dots found
-    // deviceId doesn't have a dot in the name
-    if(deviceIdOrName.find(".") != std::string::npos) {
-        // An actual IP address always resolves to TCP_IP, so it can never silently land
-        // on the local shared-memory socket (TCP_IP_OR_LOCAL_SHDMEM tries that first).
-        // USB paths and hostnames keep protocol ANY. A USB port path can look like an
-        // IPv4 address too ("1.2.1.4": bus 1, two hubs, port 4) - XLinkConnection::
-        // findFirstSuitableDevice retries such a name over USB when nothing answers on
-        // the network, so the device stays reachable by its port path.
-        if(platform::isIPv4Address(deviceIdOrName)) {
+    if(deviceIdOrName.find(".") != std::string::npos) {  // A deviceId never contains a dot
+        if(platform::isIPv4Address(deviceIdOrName)) {    // IPv4 means TCP_IP, never local SHDMEM; a USB path such as 1.2.1.4 is retried over USB
             protocol = X_LINK_TCP_IP;
         }
-        // This is reasoned as an IP address or USB path (name). Set rest of info accordingly
         name = std::move(deviceIdOrName);
         deviceId = "";
     } else {
-        // This is reasoned as deviceId
         name = "";
         deviceId = std::move(deviceIdOrName);
     }
@@ -72,10 +60,8 @@ DeviceInfo DeviceInfo::local() {
 }
 
 deviceDesc_t DeviceInfo::getXLinkDeviceDesc() const {
-    // Create XLink deviceDesc_t, init all fields to zero
     deviceDesc_t desc = {};
 
-    // c_str is guranteed to be nullterminated
     desc.mxid[sizeof(desc.mxid) - 1] = 0;
     strncpy(desc.mxid, deviceId.c_str(), sizeof(desc.mxid) - 1);
     desc.name[sizeof(desc.name) - 1] = 0;
@@ -89,8 +75,7 @@ deviceDesc_t DeviceInfo::getXLinkDeviceDesc() const {
     return desc;
 }
 
-// backward compatibility
-std::string DeviceInfo::getMxId() const {
+std::string DeviceInfo::getMxId() const {  // Kept for backward compatibility
     return deviceId;
 }
 
@@ -152,7 +137,6 @@ static XLinkPlatform_t getDefaultPlatform() {
     return defaultPlatform;
 }
 
-// STATIC
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::POLLING_DELAY_TIME;
@@ -187,7 +171,6 @@ std::vector<DeviceInfo> filterDevices(const std::vector<DeviceInfo>& deviceInfos
     for(auto& info : filteredEnvs) {
         if(skipInvalidDevices) {
             if(info.status == X_LINK_SUCCESS) {
-                // device is okay
             } else if(info.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
                 logger::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
                              XLinkDeviceStateToStr(info.state),
@@ -251,8 +234,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
         return devicesFiltered;
     }
 
-    // Now also try to find all devices in the DEPTHAI_DEVICE_NAME_LIST (they were not found earlier if they were not in the same subnet)
-    for(auto& name : splitList) {
+    for(auto& name : splitList) {  // The search above does not find devices in other subnets
         deviceDesc_t desc = suitableDevice;
         desc.name[sizeof(desc.name) - 1] = 0;
         strncpy(desc.name, name.c_str(), sizeof(desc.name) - 1);
@@ -261,7 +243,6 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
         for(unsigned i = 0; i < numdev; i++) {
             DeviceInfo info(deviceDescAll.at(i));
             Logging::getInstance().logger.debug("Found device by name: {}", info.toString());
-            // Check if device info was already found and is between the found devices
             bool alreadyExists = false;
             for(const auto& existingInfo : devices) {
                 if(existingInfo.getDeviceId() == info.getDeviceId()) {
@@ -294,7 +275,6 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t 
     if(res == X_LINK_SUCCESS) {
         if(skipInvalidDevice) {
             if(desc.status == X_LINK_SUCCESS) {
-                // device is okay
             } else if(desc.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
                 logger::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
                              XLinkDeviceStateToStr(desc.state),
@@ -323,7 +303,6 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceById(const std::string& d
     if(res == X_LINK_SUCCESS) {
         if(skipInvalidDevices) {
             if(desc.status == X_LINK_SUCCESS) {
-                // device is okay
             } else if(desc.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
                 logger::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
                              XLinkDeviceStateToStr(desc.state),
@@ -339,12 +318,7 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceById(const std::string& d
     return {false, {}};
 }
 
-// A dotted-quad name is ambiguous: DeviceInfo(std::string) reads it as an IPv4 address
-// (protocol TCP_IP, so it never matches the local shared-memory device), but XLink names
-// USB devices "<bus>.<port>.<port>..." as well, so an OAK on bus 1 behind two hubs is
-// "1.2.1.4". Only such a name-only lookup gets the USB retry: a device id, a hostname or
-// any other protocol is searched exactly as given.
-static bool isIpv4NameOnlyLookup(const DeviceInfo& deviceInfo) {
+static bool isIpv4NameOnlyLookup(const DeviceInfo& deviceInfo) {  // A dotted quad can also be a USB port path (1.2.1.4): only it gets the USB retry
     return deviceInfo.protocol == X_LINK_TCP_IP && deviceInfo.deviceId.empty() && platform::isIPv4Address(deviceInfo.name);
 }
 
@@ -356,10 +330,7 @@ XLinkError_t XLinkConnection::findFirstSuitableDevice(const DeviceInfo& deviceIn
         return rc;
     }
 
-    // Nothing answered on the network: retry the name as a USB port path. USB only, not
-    // ANY_PROTOCOL - ANY would also match the local shared-memory device regardless of
-    // name, which is exactly what inferring TCP_IP for an IP address prevents.
-    auto usbDesc = deviceInfo.getXLinkDeviceDesc();
+    auto usbDesc = deviceInfo.getXLinkDeviceDesc();  // USB only: ANY would also match the local shared-memory device, whatever the name
     usbDesc.protocol = X_LINK_USB_VSC;
     logger::trace("No network device answered at \"{}\", retrying it as a USB port path", deviceInfo.name);
     return XLinkFindFirstSuitableDevice(usbDesc, &foundDesc);
@@ -370,32 +341,24 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
 
     using namespace std::chrono;
 
-    // Device is in flash booted state. Boot to bootloader first
     auto deviceDesc = deviceInfo.getXLinkDeviceDesc();
 
-    // Device is in flash booted state. Boot to bootloader first
     XLinkError_t bootBootloaderError = XLinkBootBootloader(&deviceDesc);
     if(bootBootloaderError != X_LINK_SUCCESS) {
         throw std::runtime_error(fmt::format("Couldn't boot device to bootloader - {}", XLinkErrorToStr(bootBootloaderError)));
     }
 
-    // Wait for a bootloader device now
     DeviceInfo deviceToWait = deviceInfo;
     deviceToWait.state = X_LINK_BOOTLOADER;
 
-    // Prepare descriptor to search for
     auto descToWait = deviceToWait.getXLinkDeviceDesc();
-    // Use "name" as hint only, but might still change
-    descToWait.nameHintOnly = true;
+    descToWait.nameHintOnly = true;  // The name can still change after the boot
 
-    // Device desc if found
     deviceDesc_t foundDeviceDesc = {};
 
-    // Wait for device to get to bootloader state
     XLinkError_t rc;
     auto bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT;
 
-    // Override with environment variables, if set
     const std::vector<std::pair<std::string, std::chrono::milliseconds*>> evars = {
         {"DEPTHAI_BOOTUP_TIMEOUT", &bootupTimeout},
     };
@@ -407,8 +370,6 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
             try {
                 std::chrono::milliseconds value{std::stoi(valstr)};
                 *ev.second = value;
-                // auto initial = *ev.second;
-                // logger::warn("{} override: {} -> {}", name, initial, value);
             } catch(const std::invalid_argument& e) {
                 logger::warn("{} value invalid: {}", name, e.what());
             }
@@ -422,7 +383,6 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
         std::this_thread::sleep_for(POLLING_DELAY_TIME);
     } while(steady_clock::now() - tstart < bootupTimeout);
 
-    // If device not found
     if(rc != X_LINK_SUCCESS) {
         throw std::runtime_error(fmt::format("Failed to find device ({}), error message: {}", deviceToWait.toString(), convertErrorCodeToString(rc)));
     }
@@ -446,16 +406,12 @@ XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::filesystem::
     initDevice(deviceDesc, expectedState);
 }
 
-// Skip boot
 XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_t expectedState) : bootDevice(false) {
     initialize();
     initDevice(deviceDesc, expectedState);
 }
 
-// This function is thread-unsafe. The `closed` value is only known and valid
-// within the context of the lock_guard. The value is immediately invalid and outdated
-// when it is returned by value to the caller
-bool XLinkConnection::isClosed() const {
+bool XLinkConnection::isClosed() const {  // The result can be outdated at once: closed can change after the lock is released
     std::lock_guard<std::mutex> lock(closedMtx);
     return closed;
 }
@@ -480,8 +436,6 @@ void XLinkConnection::close() {
 
         // TODO(themarpe) - revisit for TCPIP protocol
 
-        // Wait till same device reappears (is rebooted).
-        // Only in case if device was booted to begin with
         if(bootDevice) {
             auto t1 = steady_clock::now();
             bool found = false;
@@ -533,7 +487,6 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
     using namespace std::chrono;
 
-    // if device is in UNBOOTED then boot
     bootDevice = deviceToInit.state == X_LINK_UNBOOTED;
 
     DeviceInfo lastDeviceInfo = deviceToInit;
@@ -541,7 +494,6 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
     std::chrono::milliseconds connectTimeout = WAIT_FOR_CONNECT_TIMEOUT;
     std::chrono::milliseconds bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT;
 
-    // Override with environment variables, if set
     const std::vector<std::pair<std::string, std::chrono::milliseconds*>> evars = {
         {"DEPTHAI_CONNECT_TIMEOUT", &connectTimeout},
         {"DEPTHAI_BOOTUP_TIMEOUT", &bootupTimeout},
@@ -554,21 +506,18 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
             try {
                 std::chrono::milliseconds value{std::stoi(valstr)};
                 *ev.second = value;
-                // auto initial = *ev.second;
             } catch(const std::invalid_argument& e) {
                 logger::warn("{} value invalid: {}", name, e.what());
             }
         }
     }
 
-    // boot device
     if(bootDevice) {
         DeviceInfo deviceToBoot = lastDeviceInfo;
         deviceToBoot.state = X_LINK_UNBOOTED;
 
         deviceDesc_t foundDeviceDesc = {};
 
-        // Wait for the device to be available
         auto tstart = steady_clock::now();
         do {
             rc = findFirstSuitableDevice(deviceToBoot, foundDeviceDesc);
@@ -576,7 +525,6 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
             std::this_thread::sleep_for(POLLING_DELAY_TIME);
         } while(steady_clock::now() - tstart < bootupTimeout);
 
-        // If device not found
         if(rc != X_LINK_SUCCESS) {
             throw std::runtime_error("Failed to find device (" + deviceToBoot.name + "), error message: " + convertErrorCodeToString(rc));
         }
@@ -594,21 +542,15 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         }
     }
 
-    // Search for booted device (if expected state is specified)
     if(expectedState != X_LINK_ANY_STATE) {
-        // Create description of device to look for
         DeviceInfo bootedDeviceInfo = lastDeviceInfo;
-        // Has to match expected state
         bootedDeviceInfo.state = expectedState;
 
-        // Prepare descriptor to search for
         auto bootedDescInfo = bootedDeviceInfo.getXLinkDeviceDesc();
-        // Use "name" as hint only, but might still change
-        bootedDescInfo.nameHintOnly = true;
+        bootedDescInfo.nameHintOnly = true;  // The name can still change after the boot
 
         logger::debug("Searching for booted device: {}, name used as hint only", bootedDeviceInfo.toString());
 
-        // Find booted device
         deviceDesc_t foundDeviceDesc = {};
         auto tstart = steady_clock::now();
         do {
@@ -624,7 +566,6 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         lastDeviceInfo = DeviceInfo(foundDeviceDesc);
     }
 
-    // Try to connect to device
     {
         XLinkHandler_t connectionHandler = {};
         auto desc = lastDeviceInfo.getXLinkDeviceDesc();

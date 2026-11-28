@@ -41,9 +41,7 @@ NOTICE_LICENSE_PATTERNS = [
     ("GPL-2.0-only", ("gnu general public license", "version 2")),
     ("GPL-3.0-only", ("gnu general public license", "version 3")),
 ]
-# Vendored dependencies of the firmware tree; paths are relative to its root (device/rvc4 of depthai-core).
-# Eigen is not here: it comes from the vcpkg manifest and is collected from the vcpkg install tree.
-VENDORED_DEPENDENCIES = {
+VENDORED_DEPENDENCIES = {  # Paths relative to device/rvc4; Eigen comes from the vcpkg install tree
     "external/cpp-subprocess": {
         "package": "cpp-subprocess",
         "license_expression": "MIT",
@@ -51,17 +49,11 @@ VENDORED_DEPENDENCIES = {
     },
 }
 
-# The licensee-only Qualcomm/ST code is not in this repository: it is the private module depthai-device-rvc4-vendor, the
-# vendor module (CMake: DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR; in the build container it is mounted at
-# /depthai-device-rvc4-vendor). The firmware package bundles what that module builds, so its third-party
-# parts are classified here. The paths are relative to that checkout, which find_private_module_root() locates;
-# when the checkout is absent, these entries are skipped with a warning.
 PRIVATE_MODULE_NAME = "depthai-device-rvc4-vendor"
 PRIVATE_MODULE_ENV = "DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR"
 PRIVATE_MODULE_VENDORED_DEPENDENCIES = {
     "depthmapwrapper-vd55h1/glog": {
-        "package": "glog",
-        # The private module carries a copy of glog (no submodule revision), so the version comes from its CMake file
+        "package": "glog",  # A copy of glog (no submodule revision): the version comes from its CMake file
         "version_file": ("CMakeLists.txt", r"project\s*\(\s*glog\s+VERSION\s+([0-9][0-9.]*)"),
         "license_expression": "BSD-3-Clause",
         "supplier": "Google Inc.",
@@ -89,12 +81,9 @@ EXCLUDED_SUBMODULE_PATHS = {
     "vcpkg": "Package manager; the packages that it builds are collected from the vcpkg install tree.",
 }
 
-# Repository paths that are deliberately not listed (with a reason); none at the moment.
 NOT_LISTED_PATHS: dict[str, str] = {}
 
-# Private-module code that the firmware package bundles without an open-source license (relative to the
-# depthai-device-rvc4-vendor checkout). The SBOM lists it from fwp_sbom.UNLISTED_SOURCES with the same classification.
-PRIVATE_MODULE_NOT_LISTED_PATHS = {
+PRIVATE_MODULE_NOT_LISTED_PATHS = {  # fwp_sbom.UNLISTED_SOURCES has the same classification
     "depthmapwrapper-vd55h1": "depthmapwrapper-lib was received from ST with the VD55H1 IPP library; its "
     "sources are marked 'Copyright Qualcomm Technologies, Inc. Confidential and Proprietary' and have no "
     "open-source license (the IPP library itself is under ST SLA0106). Its third-party parts glog and "
@@ -348,10 +337,8 @@ def read_notice_file(path: Path) -> str:
     return text
 
 
-def find_third_party_gaps(repo_root: Path) -> list[str]:
+def find_third_party_gaps(repo_root: Path) -> list[str]:  # Skips ../ submodules: depthai-core's compliance covers them
     """Git submodules and tracked directories in external/ that no table classifies."""
-    # The firmware tree is the device/rvc4 directory of the depthai-core repository. Submodules outside this tree
-    # (paths starting with "../") belong to depthai-core and are covered by its own compliance flow.
     candidates = {path for path in read_git_submodule_status(repo_root) if not path.startswith("../")}
     tracked = run(["git", "-C", str(repo_root), "ls-files", "external"], capture_output=True).stdout.splitlines()
     candidates.update("/".join(path.split("/")[:2]) for path in tracked if path.count("/") >= 2)
@@ -463,8 +450,6 @@ def parse_gitmodules(repo_root: Path, *, strict: bool = True) -> dict[str, dict[
     gitmodules_path = repo_root / ".gitmodules"
     prefix = ""
     if not gitmodules_path.is_file():
-        # The checkout is a directory of a larger repository (the firmware tree is device/rvc4 of depthai-core):
-        # its submodules are in the .gitmodules of that repository, with paths relative to the repository root.
         try:
             toplevel = Path(run(["git", "-C", str(repo_root), "rev-parse", "--show-toplevel"], capture_output=True).stdout.strip())
         except (OSError, subprocess.CalledProcessError):
@@ -638,12 +623,10 @@ def build_vendored_entry(
         if not match:
             raise ValueError(f"No version of {metadata['package']} found in {source_path / version_file}")
         version = match.group(1)
-    # A relative submodule URL (for example ../../rvc4-private/x.git) is an internal path; do not publish it
-    url = submodule.get("url") if submodule else None
+    url = submodule.get("url") if submodule else None  # A relative submodule URL is an internal path: do not publish it
     if url and not url.startswith(("https://", "http://")):
         url = None
-    # The private module is not public: publish only an upstream URL on a public host (for example glog on GitHub)
-    if url and base_name and not url.startswith("https://github.com/"):
+    if url and base_name and not url.startswith("https://github.com/"):  # Publish only public upstream URLs
         url = None
 
     def output_path(path: Path | None) -> str | None:

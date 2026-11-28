@@ -17,10 +17,7 @@ Stitching::Stitching() = default;
 
 Stitching::Stitching(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperties>(std::move(props)) {
     initializeInputNames(properties.numInputs);
-    // The same node implementation is used by the RVC4 gate node. Device nodes are
-    // constructed from deserialized properties and do not go through buildInternal(),
-    // so initialize the compositor here as well as for host-built pipelines.
-    initializeHostState();
+    initializeHostState();  // Device nodes skip buildInternal(), so initialize the compositor here too
 }
 
 Stitching::~Stitching() = default;

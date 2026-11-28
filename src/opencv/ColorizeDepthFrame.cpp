@@ -48,7 +48,6 @@ cv::Mat colorizeDepthFrame(const cv::Mat& frame, float minDepth, float maxDepth,
         cv::Mat depth32f;
         frame.convertTo(depth32f, CV_32F);
 
-        // Non-positive and non-finite depth values are treated as invalid/missing.
         cv::Mat invalidMask = depth32f <= 0.0f;
         cv::Mat finiteMask;
         cv::inRange(depth32f, -std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), finiteMask);
@@ -65,7 +64,6 @@ cv::Mat colorizeDepthFrame(const cv::Mat& frame, float minDepth, float maxDepth,
 
         cv::Mat scaled;
         if(useLog) {
-            // Avoid log(0) by adding a small epsilon.
             constexpr float EPS = 1e-6f;
             const float logMinDepth = std::log(minDepth + EPS);
             const float logMaxDepth = std::log(maxDepth + EPS);
@@ -77,7 +75,6 @@ cv::Mat colorizeDepthFrame(const cv::Mat& frame, float minDepth, float maxDepth,
             cv::Mat logDepth = depth32f + EPS;
             cv::log(logDepth, logDepth);
 
-            // Set invalid pixels to the lower log bound so they map to 0.
             logDepth.setTo(logMinDepth, invalidMask);
 
             scaled = (logDepth - logMinDepth) * (255.0f / (logMaxDepth - logMinDepth));
@@ -91,7 +88,6 @@ cv::Mat colorizeDepthFrame(const cv::Mat& frame, float minDepth, float maxDepth,
         cv::Mat colored;
         cv::applyColorMap(depth8U, colored, colormap);
 
-        // Set invalid depth pixels to black.
         colored.setTo(cv::Scalar::all(0), invalidMask);
 
         return colored;

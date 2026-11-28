@@ -6,7 +6,6 @@
 namespace dai {
 namespace gate {
 
-// #define ENABLE_DEBUG
 #ifdef ENALBE_DEBUG
     #define DEBUG(...) fprintf(stderr, ##__VA_ARGS__)
 #else

@@ -1,7 +1,5 @@
 #include "RectangleRemapUtils.hpp"
 
-// extern bool hasIMX214; // TMP
-
 namespace dai {
 namespace gate {
 namespace RectangleRemapUtils {

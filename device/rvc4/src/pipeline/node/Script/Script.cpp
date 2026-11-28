@@ -36,15 +36,11 @@ void Script::buildStage1() {
             depthaiModule.attr("__version__") = std::string(DEPTHAI_DEVICE_KB_FINAL_VERSION);
             depthaiModule.attr("__device_rvc4_version__") = std::string(DEPTHAI_DEVICE_KB_FINAL_VERSION);
 
-            // Keep temporary Python objects scoped so their refcounts are decremented
-            // before the GIL is released for the rest of the process lifetime.
-            auto globals = py::globals();
+            auto globals = py::globals();  // Scoped: these objects must be released before the GIL is released for the rest of the process
 
-            // Implicitly include depthai module
             globals.attr("update")(depthaiModule.attr("__dict__"));
         }
 
-        // Release GIL
         py::gil_scoped_release guard{};
         guard.disarm();
     }
@@ -52,19 +48,15 @@ void Script::buildStage1() {
 
 void Script::run() {
     logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
-    // Acquire GIL
     py::gil_scoped_acquire guard{};
 
-    // locals
     auto globalsScript = copyPyDict(py::globals());
     globalsScript["node"] = std::static_pointer_cast<::dai::node::Script>(shared_from_this());
 
-    // Load script and dedent
     auto script = loadResource(properties.scriptUri);
     std::string buffer(reinterpret_cast<const char*>(script.data()), script.size());
     auto expr = (script.data()[0] == '\n') ? py::str(py::module_::import("textwrap").attr("dedent")(buffer)) : py::str(buffer);
 
-    // Execute
     try {
         py::exec(expr, globalsScript, globalsScript);
     } catch(const py::error_already_set& e) {

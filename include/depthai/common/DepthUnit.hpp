@@ -13,7 +13,6 @@ enum class LengthUnit : int32_t { METER, CENTIMETER, MILLIMETER, INCH, FOOT, CUS
  * Measurement unit for angular quantities stored in radians.
  */
 enum class AngleUnit : int32_t { RADIAN, DEGREE };
-// Backward-compatible aliases.
 using DepthUnit = LengthUnit;
 
 constexpr float getSIPrefixMultiplier(SIPrefix unit);

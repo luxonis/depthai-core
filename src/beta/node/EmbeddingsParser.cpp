@@ -17,7 +17,6 @@ namespace beta {
 namespace node {
 
 NNArchive EmbeddingsParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -129,9 +128,6 @@ void EmbeddingsParser::run() {
         }
         auto tGotInput = std::chrono::steady_clock::now();
 
-        // Extract: validate that exactly one output layer is selected. When the output layer name
-        // is configured, the selection is trivially unambiguous and no per-message check is needed,
-        // mirroring the source parser behavior.
         if(properties.outputLayerName.empty()) {
             const auto layerNames = nnData->getAllLayerNames();
             DAI_CHECK_V(layerNames.size() == 1,
@@ -139,8 +135,6 @@ void EmbeddingsParser::run() {
                         layerNames.size());
         }
 
-        // Compute is the identity and emit forwards the same message unchanged, so all tensors,
-        // sequence number, timestamps, and image transformation metadata are preserved.
         logger->debug("EmbeddingsParser forwarding NNData message");
         auto tProcessed = std::chrono::steady_clock::now();
         {

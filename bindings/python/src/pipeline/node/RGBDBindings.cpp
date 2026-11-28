@@ -12,23 +12,13 @@ void bind_rgbd(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // declare upfront
     auto rgbdNode = ADD_NODE_DERIVED(RGBD, ThreadedHostNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // RGBD Node
     rgbdNode.def("setDepthUnit", &dai::node::RGBD::setDepthUnit, py::arg("depthUnit"), DOC(dai, node, RGBD, setDepthUnit))
         .def_property_readonly(
             "inColor", [](RGBD& node) { return &node.inColor; }, py::return_value_policy::reference_internal)
@@ -44,7 +34,6 @@ void bind_rgbd(pybind11::module& m, void* pCallstack) {
              py::arg("size") = std::make_pair(640, 400),
              py::arg("fps") = std::nullopt,
              DOC(dai, node, RGBD, build, 2))
-        // Build method with DepthSource variant
         .def("build",
              py::overload_cast<const std::shared_ptr<Camera>&, const node::DepthSource&, const std::pair<int, int>&, std::optional<float>>(&RGBD::build),
              py::arg("camera"),

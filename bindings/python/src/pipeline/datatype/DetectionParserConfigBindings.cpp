@@ -3,7 +3,6 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/DetectionParserConfig.hpp"
 
 void bind_detectionparserconfig(pybind11::module& m, void* pCallstack) {
@@ -12,20 +11,11 @@ void bind_detectionparserconfig(pybind11::module& m, void* pCallstack) {
     py::class_<DetectionParserConfig, Py<DetectionParserConfig>, Buffer, py::smart_holder> detectionParserConfig(
         m, "DetectionParserConfig", DOC(dai, DetectionParserConfig));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Message
     detectionParserConfig.def(py::init<>())
         .def("__repr__", &DetectionParserConfig::str)
         .def_readwrite("confidenceThreshold", &DetectionParserConfig::confidenceThreshold, DOC(dai, DetectionParserConfig, confidenceThreshold))

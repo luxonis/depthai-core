@@ -8,23 +8,14 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Node and Properties declare upfront
     py::class_<ImageManipProperties, std::shared_ptr<ImageManipProperties>> imageManipProperties(m, "ImageManipProperties", DOC(dai, ImageManipProperties));
     auto imageManip = ADD_NODE(ImageManip);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Properties
     py::enum_<ImageManipProperties::PerformanceMode> perfMode(imageManipProperties, "PerformanceMode");
     perfMode.value("BALANCED", ImageManipProperties::PerformanceMode::BALANCED)
         .value("PERFORMANCE", ImageManipProperties::PerformanceMode::PERFORMANCE)
@@ -46,7 +37,6 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
     imageManip.attr("PerformanceMode") = perfMode;
     imageManip.attr("Backend") = backend;
 
-    // ImageManip Node
     imageManip.def_readonly("inputConfig", &ImageManip::inputConfig, DOC(dai, node, ImageManip, inputConfig))
         .def_readonly("inputImage", &ImageManip::inputImage, DOC(dai, node, ImageManip, inputImage))
         .def_readonly("out", &ImageManip::out, DOC(dai, node, ImageManip, out))
@@ -58,6 +48,5 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
         .def("setMaxOutputFrameSize", &ImageManip::setMaxOutputFrameSize, DOC(dai, node, ImageManip, setMaxOutputFrameSize))
         .def("setMaxPoolSize", &ImageManip::setMaxPoolSize, DOC(dai, node, ImageManip, setMaxPoolSize));
 
-    // Properties alias
     daiNodeModule.attr("ImageManip").attr("Properties") = imageManipProperties;
 }

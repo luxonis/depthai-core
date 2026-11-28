@@ -29,18 +29,14 @@ ThreadedNode::ThreadedNode() {
 ThreadedNode::~ThreadedNode() = default;
 
 void ThreadedNode::start() {
-    // A node should not be started if it is already running
-    // We would be creating multiple threads for the same node
     DAI_CHECK_V(!isRunning(), "Node with id {} is already running. Cannot start it again. Node name: {}", id, getName());
 
     onStart();
-    // Start the thread
     running = true;
     thread = std::thread([this]() {
         try {
             run();
         } catch(const MessageQueue::QueueException& ex) {
-            // catch the exception and stop the node
             auto expStr = fmt::format("Node stopped with a queue exception: {}", ex.what());
             if(pimpl->logger) {
                 pimpl->logger->trace(expStr);
@@ -67,24 +63,16 @@ void ThreadedNode::wait() {
 }
 
 void ThreadedNode::stop() {
-    // onStop() can be user code: if it throws, the thread must still be signalled and its inputs
-    // closed, or it never exits and Pipeline::wait() blocks on it. The error is rethrown below.
-    std::exception_ptr onStopError;
+    std::exception_ptr onStopError;  // onStop() is user code: on a throw, still stop the thread, or Pipeline::wait() blocks
     try {
         onStop();
     } catch(...) {
         onStopError = std::current_exception();
     }
-    // TBD
-    // Sets running to false
     running = false;
-    // closes all the queueus, then waits for the thread to join
     for(auto& in : getInputRefs()) {
         in->close();
     }
-    // for(auto& rout : getOutputRefs()) {
-    // }
-    // wait();
     if(onStopError) {
         std::rethrow_exception(onStopError);
     }

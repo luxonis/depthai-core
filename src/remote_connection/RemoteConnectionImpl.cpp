@@ -28,7 +28,6 @@ inline static uint64_t nanosecondsSinceEpoch() {
 
 static std::shared_ptr<Buffer> getVisualizableMessage(const std::shared_ptr<Buffer>& message) {
     dai::VisualizeType visualizableMessage = message->getVisualizationMessage();
-    // Default behavior is to return a visualizable message, if available, otherwise return the message itself back
     if(auto* imgFrame = std::get_if<std::shared_ptr<ImgFrame>>(&visualizableMessage)) {
         return *imgFrame;
     }
@@ -50,7 +49,6 @@ RemoteConnectionImpl::RemoteConnectionImpl(const std::string& address, uint16_t 
         }
     }
 
-    // Expose services
     exposeKeyPressedService();
     exposeTopicGroupsService();
     exposeLibraryVersionService();
@@ -81,12 +79,10 @@ int RemoteConnectionImpl::waitKey(int delayMs) {
     int ret = keyPressed;
     keyPressed = NEUTRAL_VALUE;
 
-    // If key has been pressed already, just return
     if(ret != NEUTRAL_VALUE) {
         return ret;
     }
 
-    // Wait indefinitely if delay_ms is non-positive
     if(delayMs <= 0) {
         keyCv.wait(lock);
     } else {
@@ -123,7 +119,6 @@ bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
         }
     };
 
-    // Server options
     foxglove::ServerOptions serverOptions;
     serverOptions.numCallbackThreads = 1;                              // one thread handles all service callbacks
     serverOptions.sendBufferPriorityLimitMessages = {{0, 3}, {1, 5}};  // 3 messages for low priority, 5 messages for high priority
@@ -132,7 +127,6 @@ bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
     serverOptions.supportedEncodings.emplace_back("json");
     serverOptions.supportedEncodings.emplace_back("binary");
 
-    // Priority assignment function - based on their datatype (see server options above)
     getMessagePriority = [](DatatypeEnum dtype) -> uint8_t {
         if(dtype == DatatypeEnum::ImgDetections || dtype == DatatypeEnum::ImgAnnotations) {
             return 1;
@@ -274,7 +268,6 @@ bool RemoteConnectionImpl::removeTopic(const std::string& topicName) {
         logger::error("Topic named {} not found", topicName);
         return false;
     }
-    // Move the topic out of the map
     auto topicData = std::move(topicGroupIterator->second);
     topicData.outputQueue->close();
     if(topicData.thread->joinable()) {
@@ -329,14 +322,12 @@ bool RemoteConnectionImpl::initHttpServer(const std::string& address, uint16_t p
         }
     });
 
-    // Bind the server to the address and port
     auto success = httpServer->bind_to_port(address, port);
     if(!success) {
         logger::error("Failed to bind the http server to port {}", port);
         return false;
     }
 
-    // Get the external ip address
     std::string externalAddress = address == "0.0.0.0" ? platform::getLocalIpAddress() : address;
     std::cout << "To connect to the OAK visualizer use the following:\n";
     std::cout << "If you are opening the visualizer locally, open http://localhost:" << port << " in your browser\n";
@@ -421,9 +412,7 @@ void RemoteConnectionImpl::exposeKeyPressedService() {
 }
 
 void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
-    // Make sure pipeline is built so that we can serialize it.
-    // If not built, an error is thrown is case there are host -> device or device -> host connections.
-    DAI_CHECK(pipeline.isBuilt(), "Pipeline is not built. Call Pipeline::build first!");
+    DAI_CHECK(pipeline.isBuilt(), "Pipeline is not built. Call Pipeline::build first!");  // Serializing an unbuilt pipeline throws for host-device links
 
     std::vector<foxglove::ServiceWithoutId> services;
     {
@@ -465,8 +454,6 @@ void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
     auto ids = server->addServices(services);
     assert(ids.size() == 3);
     {
-        // Device pipeline Schema
-
         auto id = ids[0];
 
         auto devicePipelineSchema = pipeline.getDevicePipelineSchema(SerializationType::JSON, false);
@@ -484,8 +471,6 @@ void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
         };
     }
     {
-        // Full Pipeline Schema
-
         auto id = ids[1];
 
         nlohmann::json j;
@@ -499,8 +484,6 @@ void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
         };
     }
     {
-        // Pipeline State
-
         auto id = ids[2];
 
         if(pipeline.isPipelineDebuggingEnabled()) {

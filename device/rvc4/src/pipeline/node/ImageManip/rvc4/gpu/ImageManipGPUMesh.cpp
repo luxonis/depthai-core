@@ -282,8 +282,7 @@ struct WarpKernelArgs {
     cl_int bytesPerChannel = 0;
 };
 
-// Keep mesh allocations within OpenCV's practical signed-int-backed allocation range so we fail before downstream map allocation does.
-constexpr std::size_t kMaxMeshAllocationBytes = static_cast<std::size_t>(std::numeric_limits<int>::max());
+constexpr std::size_t kMaxMeshAllocationBytes = static_cast<std::size_t>(std::numeric_limits<int>::max());  // OpenCV allocations are int-sized: fail early
 
 void validateConfig(const MeshConfig& config) {
     if(config.srcWidth == 0 || config.srcHeight == 0 || config.dstWidth == 0 || config.dstHeight == 0) {

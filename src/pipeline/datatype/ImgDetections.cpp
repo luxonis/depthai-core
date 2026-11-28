@@ -20,8 +20,6 @@
 
 namespace dai {
 
-// ImgDetection functions
-
 ImgDetection::ImgDetection(const dai::RotatedRect& boundingBox, float conf, uint32_t label) {
     setBoundingBox(boundingBox);
     this->confidence = conf;
@@ -70,7 +68,6 @@ RotatedRect ImgDetection::getBoundingBox() const {
         throw std::runtime_error("All bounding box values are zero, no bounding box can be built.");
     }
 
-    // construct from legacy values
     RotatedRect rect = RotatedRect{dai::Rect{Point2f{xmin, ymin}, Point2f{xmax, ymax}}};
     return rect;
 }
@@ -175,7 +172,6 @@ float ImgDetection::getAngle() const {
 }
 
 void ImgDetection::transform(const ImgTransformation& source, const ImgTransformation& target) {
-    // The bounding box is the minimum outer rotated rectangle of the mapped corners; the bounds enclose it.
     const auto size = target.getSize();
     setBoundingBox(source.remapRectTo(target, getBoundingBox()), static_cast<unsigned int>(size.first), static_cast<unsigned int>(size.second));
     if(keypoints.has_value()) {
@@ -183,7 +179,6 @@ void ImgDetection::transform(const ImgTransformation& source, const ImgTransform
     }
 }
 
-// ImgDetections functions
 ImgDetections::~ImgDetections() = default;
 
 void ImgDetections::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {

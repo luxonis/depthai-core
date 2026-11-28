@@ -38,7 +38,6 @@ class MessageGroup : public Buffer {
     // }
     void add(const std::string& name, const std::shared_ptr<ADatatype>& value);
 
-    // Iterators
     std::map<std::string, std::shared_ptr<ADatatype>>::iterator begin();
     std::map<std::string, std::shared_ptr<ADatatype>>::iterator end();
 
@@ -83,9 +82,7 @@ class MessageGroup : public Buffer {
     DEPTHAI_SERIALIZE_DECL(MessageGroup, group, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum);
 
    private:
-    // Deliberately NOT serialized (wire format is shared with device firmware):
-    // device-produced groups are synced with DEVICE timestamps, host Sync overwrites
-    SyncProperties::TimestampSource timestampSource = SyncProperties::TimestampSource::DEVICE;
+    SyncProperties::TimestampSource timestampSource = SyncProperties::TimestampSource::DEVICE;  // Not serialized: wire format is shared with device firmware
 };
 
 }  // namespace dai

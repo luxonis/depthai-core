@@ -45,11 +45,10 @@ class AssetsMutable : public Assets {
     void set(const std::string&, std::uint32_t offset, std::uint32_t size, std::uint32_t alignment);
 };
 
-// Subclass which has its own storage
 /**
  * @brief AssetManager can store assets and serialize
  */
-class AssetManager /*: public Assets*/ {
+class AssetManager {
     std::map<std::string, std::shared_ptr<Asset>> assetMap;
     std::string rootPath;
 

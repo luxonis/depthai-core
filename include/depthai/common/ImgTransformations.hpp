@@ -22,10 +22,8 @@ struct ImgTransformation {
     std::array<std::array<float, 3>, 3> transformationMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};  // Precomputed inverse matrix
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
-    // Full camera model of the image (projection surface + distortion model, see dai::CameraModel), not only its distortion. The name is historical.
-    CameraModel distortionModel = CameraModel::Perspective;
-    // Coefficients of the distortion model that `distortionModel` selects; empty or all-zero for an undistorted image
-    std::vector<float> distortionCoefficients;
+    CameraModel distortionModel = CameraModel::Perspective;  // Full camera model (projection surface + distortion), not only distortion; the name is historical
+    std::vector<float> distortionCoefficients;               // Coefficients for distortionModel; empty or all-zero for an undistorted image
     Extrinsics extrinsics = {};
 
     size_t srcWidth = 0;

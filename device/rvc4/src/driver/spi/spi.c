@@ -1,9 +1,3 @@
-/*
- * Simple Linux wrapper for access to /dev/spidev
- * File: "spi.c"
- */
-
-//-----------------------------------------------------------------------------
 #include "spi.h"
 
 #ifndef SPI_IOC_WR_BUS_LOCKED
@@ -11,25 +5,18 @@
     #define SPI_IOC_WR_BUS_LOCKED _IOW(SPI_IOC_MAGIC, 6, __u32)
 #endif
 
-//-----------------------------------------------------------------------------
 #include <fcntl.h>      // open()
 #include <string.h>     // memset()
 #include <sys/ioctl.h>  // ioctl()
 #include <unistd.h>     // close()
 
 static long is_bus_lock_supported;
-//----------------------------------------------------------------------------
-// open and init SPIdev
-// * spi_mode may have next mask: SPI_LOOP | SPI_CPHA | SPI_CPOL |
-//   SPI_LSB_FIRST | SPI_CS_HIGH SPI_3WIRE | SPI_NO_CS | SPI_READY
-//   or 0 by zefault
-int spi_init(spi_t* self,
+int spi_init(spi_t* self,         // mode: mask of SPI_LOOP, SPI_CPHA, SPI_CPOL, SPI_LSB_FIRST, SPI_CS_HIGH, SPI_3WIRE, SPI_NO_CS, SPI_READY or 0
              const char* device,  // filename like "/dev/spidev0.0"
              int mode,            // SPI_* (look "linux/spi/spidev.h")
              int bits,            // bits per word (usually 8)
              int speed)           // max speed [Hz]
 {
-    // open SPIdev
     int retVal = 0;
     long is_bus_locked;
     self->fd = open(device, O_RDWR);
@@ -38,26 +25,22 @@ int spi_init(spi_t* self,
         return SPI_ERR_OPEN;
     }
 
-    // set mode
     self->mode = (__u8)mode;
     if(ioctl(self->fd, SPI_IOC_WR_MODE, &self->mode) < 0) {
         SPI_DBG("error in spi_init(): can't set bus mode");
         return SPI_ERR_SET_MODE;
     }
 
-    // get mode
     if(ioctl(self->fd, SPI_IOC_RD_MODE, &self->mode) < 0) {
         SPI_DBG("error in spi_init(): can't get bus mode");
         return SPI_ERR_GET_MODE;
     }
 
-    // get "LSB first"
     if(ioctl(self->fd, SPI_IOC_RD_LSB_FIRST, &self->lsb) < 0) {
         SPI_DBG("error in spi_init(): can't get 'LSB first'");
         return SPI_ERR_GET_LSB;
     }
 
-    // set bits per word
     if(bits) {
         self->bits = (__u8)bits;
         if(ioctl(self->fd, SPI_IOC_WR_BITS_PER_WORD, &self->bits) < 0) {
@@ -66,13 +49,11 @@ int spi_init(spi_t* self,
         }
     }
 
-    // get bits per word
     if(ioctl(self->fd, SPI_IOC_RD_BITS_PER_WORD, &self->bits) < 0) {
         SPI_DBG("error in spi_init(): can't get bits per word");
         return SPI_ERR_GET_BITS;
     }
 
-    // set max speed [Hz]
     if(speed) {
         self->speed = (__u32)speed;
         if(ioctl(self->fd, SPI_IOC_WR_MAX_SPEED_HZ, &self->speed) < 0) {
@@ -81,7 +62,6 @@ int spi_init(spi_t* self,
         }
     }
 
-    // get max speed [Hz]
     if(ioctl(self->fd, SPI_IOC_RD_MAX_SPEED_HZ, &self->speed) < 0) {
         SPI_DBG("error in spi_init(): can't get max speed [Hz]");
         return SPI_ERR_SET_SPEED;
@@ -100,14 +80,12 @@ int spi_init(spi_t* self,
 }
 
 int spi_set_mode(spi_t* self, int mode) {
-    // set mode
     self->mode = (__u8)mode;
     if(ioctl(self->fd, SPI_IOC_WR_MODE, &self->mode) < 0) {
         SPI_DBG("error in spi_init(): can't set bus mode");
         return SPI_ERR_SET_MODE;
     }
 
-    // get mode
     if(ioctl(self->fd, SPI_IOC_RD_MODE, &self->mode) < 0) {
         SPI_DBG("error in spi_init(): can't get bus mode");
         return SPI_ERR_GET_MODE;
@@ -119,14 +97,12 @@ int spi_set_mode(spi_t* self, int mode) {
 }
 
 int spi_set_speed(spi_t* self, int speed) {
-    // set max speed [Hz]
     self->speed = (__u32)speed;
     if(ioctl(self->fd, SPI_IOC_WR_MAX_SPEED_HZ, &self->speed) < 0) {
         SPI_DBG("error in spi_init(): can't set max speed [Hz]");
         return SPI_ERR_SET_SPEED;
     }
 
-    // get max speed [Hz]
     if(ioctl(self->fd, SPI_IOC_RD_MAX_SPEED_HZ, &self->speed) < 0) {
         SPI_DBG("error in spi_init(): can't get max speed [Hz]");
         return SPI_ERR_SET_SPEED;
@@ -137,13 +113,9 @@ int spi_set_speed(spi_t* self, int speed) {
     return SPI_ERR_NONE;
 }
 
-//----------------------------------------------------------------------------
-// close SPIdev file and free memory
 void spi_free(spi_t* self) {
     close(self->fd);
 }
-//----------------------------------------------------------------------------
-// read data from SPIdev
 int spi_read(spi_t* self, void* rx_buf, int len) {
     int retv;
 
@@ -161,8 +133,6 @@ int spi_read(spi_t* self, void* rx_buf, int len) {
 
     return retv;
 }
-//----------------------------------------------------------------------------
-// write data to SPIdev
 int spi_write(spi_t* self, const void* tx_buf, int len) {
     int retv;
 
@@ -180,8 +150,6 @@ int spi_write(spi_t* self, const void* tx_buf, int len) {
 
     return retv;
 }
-//----------------------------------------------------------------------------
-// read and write `len` bytes from/to SPIdev
 int spi_exchange(spi_t* self, void* rx_buf, const void* tx_buf, int len) {
     int retv;
 
@@ -199,19 +167,15 @@ int spi_exchange(spi_t* self, void* rx_buf, const void* tx_buf, int len) {
 
     return retv;
 }
-//----------------------------------------------------------------------------
-// read data from SPIdev from specific register address
 int spi_read_reg8(spi_t* self, uint8_t reg_addr, void* rx_buf, int len) {
     int retv;
 
     struct spi_ioc_transfer xfer[2] = {0};
 
-    // Write message for register address
     xfer[0].tx_buf = (__u64)&reg_addr;      // output buffer
     xfer[0].rx_buf = (__u64)0;              // input buffer
     xfer[0].len = (__u32)sizeof(reg_addr);  // length of data to read
 
-    // Write message for rx data
     xfer[1].tx_buf = (__u64)0;       // output buffer
     xfer[1].rx_buf = (__u64)rx_buf;  // input buffer
     xfer[1].len = (__u32)len;        // length of data to read
@@ -224,19 +188,15 @@ int spi_read_reg8(spi_t* self, uint8_t reg_addr, void* rx_buf, int len) {
 
     return retv;
 }
-//----------------------------------------------------------------------------
-// write data to SPIdev to specific register address
 int spi_write_reg8(spi_t* self, uint8_t reg_addr, const void* tx_buf, int len) {
     int retv;
 
     struct spi_ioc_transfer xfer[2] = {0};
 
-    // Write message for register address
     xfer[0].tx_buf = (__u64)&reg_addr;      // output buffer
     xfer[0].rx_buf = (__u64)0;              // input buffer
     xfer[0].len = (__u32)sizeof(reg_addr);  // length of data to write
 
-    // Write message for tx data
     xfer[1].tx_buf = (__u64)tx_buf;  // output buffer
     xfer[1].rx_buf = (__u64)0;       // input buffer
     xfer[1].len = (__u32)len;        // length of data to write
@@ -249,9 +209,7 @@ int spi_write_reg8(spi_t* self, uint8_t reg_addr, const void* tx_buf, int len) {
 
     return retv;
 }
-//----------------------------------------------------------------------------
 
-//----------------------------------------------------------------------------
 int spi_lock(spi_t* self) {
     int retv = 0;
     uint64_t lock_mode = 1;
@@ -261,9 +219,7 @@ int spi_lock(spi_t* self) {
     }
     return retv;
 }
-//----------------------------------------------------------------------------
 
-//----------------------------------------------------------------------------
 int spi_unlock(spi_t* self) {
     int retv = 0;
     uint64_t lock_mode = 0;
@@ -274,4 +230,3 @@ int spi_unlock(spi_t* self) {
 
     return retv;
 }
-//----------------------------------------------------------------------------

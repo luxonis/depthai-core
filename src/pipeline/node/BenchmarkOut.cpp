@@ -47,7 +47,6 @@ void BenchmarkOut::run() {
         if(imgMessage != nullptr) {
             logger->trace("Sending img message with id {}", i);
 
-            // Copying metadata and pointing to same data
             auto newMessage = std::make_shared<dai::ImgFrame>();
             newMessage->setMetadata(imgMessage);
             newMessage->data = imgMessage->data;

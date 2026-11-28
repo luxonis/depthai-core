@@ -1,15 +1,13 @@
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 
 #include "../../datatype/PacketizedData.hpp"
+#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/StreamMessageParser.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkConstants.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 #include "spdlog/fmt/bin_to_hex.h"
 #include "spdlog/fmt/chrono.h"
-
-// libraries
-#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "utility/Logging.hpp"
 
 namespace dai {
@@ -17,9 +15,7 @@ namespace node {
 namespace internal {
 
 namespace {
-// A stream failure on a connection that nobody closes within this period is not a device
-// loss (the device monitor closes the connection a couple of watchdog periods after one)
-constexpr auto CONNECTION_LOSS_GRACE = std::chrono::seconds(10);
+constexpr auto CONNECTION_LOSS_GRACE = std::chrono::seconds(10);  // Open after this = not a device loss: the monitor closes lost ones in ~2 watchdog periods
 constexpr auto PARK_POLL_INTERVAL = std::chrono::milliseconds(100);
 }  // namespace
 
@@ -47,8 +43,6 @@ bool XLinkInHost::parkUntilReconnect(const std::shared_ptr<XLinkConnection>& los
     while(isRunning() && !isDisconnected && !connectionRefreshed) {
         const bool connectionAlive = lostConn != nullptr && !lostConn->isClosed();
         if(connectionAlive && steady_clock::now() - parkStart > CONNECTION_LOSS_GRACE) {
-            // Not a device loss: the connection is healthy but the stream failed (e.g. the
-            // device refused to open it). Surface the error instead of idling forever.
             throw std::runtime_error(fmt::format(
                 "XLinkInHost '{}': stream {} although the device connection is healthy", streamName, streamOpenFailed ? "could not be opened" : "failed"));
         }
@@ -58,9 +52,7 @@ bool XLinkInHost::parkUntilReconnect(const std::shared_ptr<XLinkConnection>& los
         return false;
     }
     if(isDisconnected) {
-        // Device is gone for good - exit quietly so downstream inputs go idle instead of
-        // tearing down the whole pipeline
-        logger::warn("XLinkInHost '{}' stopping - device connection was lost", streamName);
+        logger::warn("XLinkInHost '{}' stopping - device connection was lost", streamName);  // Return quietly: downstream goes idle, pipeline stays up
         return false;
     }
     connectionRefreshed = false;
@@ -115,16 +107,13 @@ void XLinkInHost::parseMessageGroup(const std::shared_ptr<MessageGroup>& message
 
 void XLinkInHost::run() {
     {
-        // Consume a connection refresh recorded before the node started (build time)
-        std::lock_guard<std::mutex> lock(mtx);
+        std::lock_guard<std::mutex> lock(mtx);  // Drop a refresh recorded at build time, before the node started
         connectionRefreshed = false;
     }
-    // Create a stream for the connection
     bool reconnect = true;
     while(reconnect) {
         reconnect = false;
-        // Copy under the lock - setConnection can rebind concurrently
-        std::shared_ptr<XLinkConnection> currentConn;
+        std::shared_ptr<XLinkConnection> currentConn;  // Copy under the lock: setConnection can rebind concurrently
         {
             std::lock_guard<std::mutex> lock(mtx);
             currentConn = conn;
@@ -132,8 +121,6 @@ void XLinkInHost::run() {
         try {
             stream = std::make_unique<XLinkStream>(currentConn, streamName, 1);
         } catch(const std::exception& ex) {
-            // Connection unusable (e.g. closed while waking up) - park until it is
-            // refreshed or the device is declared gone
             logger::error("Cannot open stream '{}': {}", streamName, ex.what());
             if(!parkUntilReconnect(currentConn, true)) {
                 return;
@@ -143,12 +130,10 @@ void XLinkInHost::run() {
         }
         while(mainLoop()) {
             try {
-                // Blocking -- parse packet and gather timing information
                 const auto t1Parse = std::chrono::steady_clock::now();
                 auto msg = readData();
                 const auto t2Parse = std::chrono::steady_clock::now();
 
-                // Trace level debugging
                 if(logger::get_level() == spdlog::level::trace) {
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
@@ -165,23 +150,6 @@ void XLinkInHost::run() {
                     auto blockEvent = this->outputBlockEvent();
                     out.send(msg);
                 }
-                // // Add 'data' to queue
-                // if(!queue.push(msg)) {
-                //     throw std::runtime_error(fmt::format("Underlying queue destructed"));
-                // }
-
-                // Call callbacks
-                // {
-                //     std::unique_lock<std::mutex> l(callbacksMtx);
-                //     for(const auto& kv : callbacks) {
-                //         const auto& callback = kv.second;
-                //         try {
-                //             callback(name, msg);
-                //         } catch(const std::exception& ex) {
-                //             logger::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
-                //         }
-                //     }
-                // }
             } catch(const dai::MessageQueue::QueueException& ex) {
                 logger::info("XLinkInHost node stopped - exception: {}", ex.what());
                 break;
@@ -197,7 +165,6 @@ void XLinkInHost::run() {
                     reconnect = true;
                     break;
                 } else {
-                    // If the node is not running, we can safely ignore the exception, since it's expected
                     logger::info("XLinkInHost node stopped - exception: {}", ex.what());
                     break;
                 }

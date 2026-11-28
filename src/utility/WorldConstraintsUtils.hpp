@@ -9,10 +9,8 @@
 namespace dai {
 namespace utility {
 
-/// Every marker a distance or a size of the constraints refers to, sorted, without duplicates.
-std::vector<int32_t> referencedMarkerIds(const WorldConstraints& constraints);
-/// Sockets referred to by the socket distances of the constraints, sorted, without duplicates.
-std::vector<CameraBoardSocket> referencedSockets(const WorldConstraints& constraints);
+std::vector<int32_t> referencedMarkerIds(const WorldConstraints& constraints);          // Sorted, without duplicates
+std::vector<CameraBoardSocket> referencedSockets(const WorldConstraints& constraints);  // Sorted, without duplicates
 
 }  // namespace utility
 }  // namespace dai

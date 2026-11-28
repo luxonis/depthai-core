@@ -98,8 +98,7 @@ class MultiDeviceCalibration::Impl {
     std::map<std::string, CalibrationHandler> calibrations;
     std::vector<KnownDistance> knownDistances;
     std::vector<MultiDeviceExtrinsics> initialGuesses;
-    // initialGuesses converted to local-origin-to-local-origin transforms for the current cycle
-    std::vector<detail::PairwiseDeviceTransform> originGuesses;
+    std::vector<detail::PairwiseDeviceTransform> originGuesses;  // initialGuesses as local-origin-to-local-origin transforms, for the current cycle
     std::vector<StereoPair> stereoPairs;
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -237,7 +236,6 @@ void MultiDeviceCalibration::setInitialGuess(const MultiDeviceExtrinsics& guess)
 
     std::lock_guard<std::mutex> lock(pimpl->mutex);
     pimpl->requireIdle("initial guess");
-    // One guess per device pair, in either direction: the last one set wins
     const auto existing = std::find_if(pimpl->initialGuesses.begin(), pimpl->initialGuesses.end(), [&](const MultiDeviceExtrinsics& initial) {
         return (initial.fromDeviceId == fromDeviceId && initial.extrinsics.toDeviceId == toDeviceId)
                || (initial.fromDeviceId == toDeviceId && initial.extrinsics.toDeviceId == fromDeviceId);
@@ -335,8 +333,6 @@ bool MultiDeviceCalibration::initializeCycle(const std::shared_ptr<MessageGroup>
         }
     }
 
-    // Convert the initial guesses, given between arbitrary sockets, to local-origin-to-local-origin
-    // transforms: originGuess = (toSocket -> toOrigin) * guess * (fromOrigin -> fromSocket)
     std::map<std::string, CameraBoardSocket> originBySocketDevice;
     for(const auto& camera : pimpl->cameras) originBySocketDevice.emplace(camera.deviceId, camera.localOrigin);
     pimpl->originGuesses.clear();

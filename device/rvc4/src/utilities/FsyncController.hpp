@@ -7,14 +7,10 @@
 #include <unordered_map>
 #include <set>
 
-// shared
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraFeatures.hpp"
 
-// project
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
-
-// #define FSYNC_DONT_WRITE
 
 namespace dai {
 namespace gate {
@@ -42,12 +38,7 @@ class FsyncControllerLed {
     }
     bool setIntensity(float intensity);
 
-    /**
-     * Compare the intensity just set with the brightness ceiling the OS power profile applies to this LED.
-     * @return A warning for the first limited request of an episode, std::nullopt otherwise.
-     *         An episode ends when a request fits under the ceiling or is 0.
-     */
-    std::optional<std::string> checkBrightnessCeiling(float intensity);
+    std::optional<std::string> checkBrightnessCeiling(float intensity);  // Warns once until a request fits under the ceiling or is 0; std::nullopt otherwise
 };
 
 struct CameraExposureMaster {
@@ -56,15 +47,13 @@ struct CameraExposureMaster {
 };
 
 class FsyncController {
-    // private constructor
     FsyncController();
     ~FsyncController() = default;
 
     mutable std::recursive_mutex mtx;
     std::unordered_map<int, FsyncDescription> fsync;
 
-    // config count, to be updated only under `mtx` lock
-    int configCount = 0;
+    int configCount = 0;  // Guarded by mtx
     float fps = -1;  // All pins have the same FPS (except ADIM on leds has 10x higher)
     dai::ExternalFrameSyncRole m_role;
     bool m_roleSetExplicitly;
@@ -90,15 +79,10 @@ class FsyncController {
     FsyncController(FsyncController const&) = delete;
     void operator=(FsyncController const&) = delete;
 
-    // Sets FSync FPS of specified source by ID, which will start after calling 'start' method
-    // Each user shouldn't call this more than once, each call counts, affecting 'start'
-    void setFps(int id, float fps);
-    // Retrieves FPS of source if already specified
+    void setFps(int id, float fps);  // Call once per user: each call counts for start()
     float getFps(int id);
 
-    // starts all fsync sources. Each user needs to call it, actual start happens at the last call
-    void start();
-    // stops all fsync sources
+    void start();  // Each user must call it; the actual start happens at the last call
     void stop();
 
     void cleanup();
@@ -137,17 +121,7 @@ class FsyncController {
         return m_enableExternalStrobe;
     }
 
-    /**
-     * Set the external frame sync role.
-     * If set to AUTO_DETECT, the role will be determined based on the state of the M8 connector:
-     *  - If we detect the M8 connector is connected, we set the role to SLAVE.
-     *  - If we detect the M8 connector is disconnected, we set the role to MASTER.
-     * If set to any other role, that role will be used directly.
-     * NOTE: We can detect if the M8 connector is connected only on slave devices.
-     *       This detection relies on the state of one GPIO pin which is pulled low only on slave devices when the M8 connector is connected.
-     * WARNING: This function must be called before any calls to setFps() or start().
-     */
-    void setExternalFrameSyncRole(dai::ExternalFrameSyncRole role, bool setExplicit);
+    void setExternalFrameSyncRole(dai::ExternalFrameSyncRole role, bool setExplicit);  // Call before setFps()/start(). AUTO_DETECT: SLAVE if M8 connected
 
     bool isExternalFrameSyncRoleSetExplicitly() const {
         return m_roleSetExplicitly;
@@ -168,11 +142,7 @@ class FsyncController {
     bool supportsExternalFrameSyncMode() const {
         return m_supportsExternalFrameSyncMode;
     }
-    
-    /**
-     * Read STM frequency measurement of the external frame sync input pin.
-     * @return Frequency in Hz.
-     */
+
     float slaveMeasureFrequency();
 
     FsyncControllerLed dotProjector;
@@ -182,16 +152,11 @@ class FsyncController {
         return m_role;
     }
 
-    /**
-     * Query the STM if there is a valid signal present on the external frame sync input pin.
-     */
     bool isExternalFrameSyncSignalPresent();
+
    private:
     int getDutyCycle(int stmFd);
 
-    /**
-     * Query the STM for the closest frequency it can generate to the requested frequency.
-     */
     float getClosestFpsIoctl(float wantedFrequency);
 
     float stopSetAndQueryActualFrequency(int pinId, float wantedFrequency);

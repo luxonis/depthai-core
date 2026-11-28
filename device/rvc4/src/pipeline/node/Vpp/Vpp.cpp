@@ -2,17 +2,13 @@
 
 #include "utility/ImgFrameView.hpp"
 
-// std
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <memory>
 #include <thread>
 
-// OpenCV
 #include <opencv2/opencv.hpp>
-
-// project
 
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/VppConfig.hpp"
@@ -22,7 +18,6 @@ namespace dai {
 namespace gate {
 
 cv::Mat Vpp::convertUintMatToFloat(const cv::Mat& matUint) {
-    // Validate input
     if(matUint.empty()) {
         throw std::invalid_argument("convertMatToFloat: Input mat image is empty.");
     }
@@ -31,7 +26,6 @@ cv::Mat Vpp::convertUintMatToFloat(const cv::Mat& matUint) {
         throw std::invalid_argument("convertMatToFloat: Unsupported input type. Expected CV_8U or CV_16U.");
     }
 
-    // Convert to float
     cv::Mat matFloat;
     matUint.convertTo(matFloat, CV_32F, 1. / 16.);
 
@@ -44,8 +38,7 @@ void Vpp::updateDepthToDisparityLut(double scale) {
     depthToDisparityLut.resize(65536);
     depthToDisparityLut[0] = 0.0f;
     for(size_t value = 1; value < depthToDisparityLut.size(); ++value) {
-        // Truncate to unsigned Q4 before converting to pixel disparity, matching the replay reference.
-        const auto q4 = static_cast<uint16_t>(std::min(scale / value, 65535.0));
+        const auto q4 = static_cast<uint16_t>(std::min(scale / value, 65535.0));  // Truncate to unsigned Q4 first to match the replay reference
         depthToDisparityLut[value] = q4 / 16.0f;
     }
     cachedDepthToDisparityScale = scale;
@@ -74,7 +67,6 @@ cv::Mat Vpp::buildDisparityPrior(const cv::Mat& depth, float focalLength, float 
 float Vpp::resolveBaselineMm(const std::shared_ptr<dai::ImgFrame>& leftIn, const std::shared_ptr<dai::ImgFrame>& rightIn) {
     if(baselineMm > 0.0f) return baselineMm;
 
-    // Use measured translation from frame extrinsics, not the CAD design value.
     const auto translation = leftIn->getTransformation().getTranslationVectorTo(rightIn->getTransformation(), false, LengthUnit::MILLIMETER);
     const float fromFrames = std::hypot(translation[0], translation[1], translation[2]);
     if(!std::isfinite(fromFrames) || fromFrames <= 0.0f) {
@@ -88,7 +80,6 @@ float Vpp::resolveBaselineMm(const std::shared_ptr<dai::ImgFrame>& leftIn, const
 void Vpp::sendData(const std::shared_ptr<dai::ImgFrame>& leftOutFrame, const std::shared_ptr<dai::ImgFrame>& rightOutFrame) {
     {
         auto blockEvent = this->outputBlockEvent();
-        // Send output frames
         sendLeft(leftOutFrame);
         sendRight(rightOutFrame);
     }
@@ -108,11 +99,9 @@ void Vpp::copyFrameToGray(cv::Mat& dst, const cv::Mat& src) {
             src.copyTo(dst);
             break;
         case 3:
-            // Convert BGR → Grayscale
             cv::cvtColor(src, dst, cv::COLOR_BGR2GRAY);
             break;
         case 4:
-            // Convert BGRA → Grayscale
             cv::cvtColor(src, dst, cv::COLOR_BGRA2GRAY);
             break;
         default:
@@ -159,7 +148,6 @@ bool Vpp::loadData(cv::Mat& leftImg,
         disparityIn = syncedIn->get<ImgFrame>(disparityName);
         confidenceIn = syncedIn->get<ImgFrame>(confidenceName);
     }
-    // Convert left image safely
     if(!leftIn || !rightIn || (!disparityIn && !depthIn)) {
         return false;
     }
@@ -173,7 +161,6 @@ bool Vpp::loadData(cv::Mat& leftImg,
     copyFrameToGray(leftImg, utility::getCvFrameView(*leftIn));
     copyFrameToGray(rightImg, utility::getCvFrameView(*rightIn));
 
-    // Verify image size consistency
     CV_Assert(leftImg.size() == rightImg.size());
     if(depthIn) {
         if(depthIn->getType() != ImgFrame::Type::RAW16 || depthIn->getWidth() != leftIn->getWidth() || depthIn->getHeight() != leftIn->getHeight()) {
@@ -204,11 +191,9 @@ bool Vpp::loadData(cv::Mat& leftImg,
 void Vpp::run() {
     logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
 
-    // Initialize VppImpl with initialConfig from properties
     const dai::VppProperties& properties = getProperties();
     vppImpl = std::make_unique<VppImpl>(properties.initialConfig);
 
-    // Log the initial configuration values for verification
     logger->info("VPP node: Initialized with initialConfig:");
 
     while(mainLoop()) {
@@ -221,7 +206,6 @@ void Vpp::run() {
             maxFPS = vppConfig->maxFPS;
         }
 
-        // Get input frames
         logger->trace("VPP node: loading data...");
         std::shared_ptr<dai::ImgFrame> leftOutFrame;
         std::shared_ptr<dai::ImgFrame> rightOutFrame;
@@ -253,7 +237,6 @@ void Vpp::run() {
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tAbsoluteEnd - tAbsoluteBeginning);
         dai::gate::logTiming(logger, this->getName(), tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
 
-        // --- FPS limiting ---
         if(maxFPS > 0) {
             int64_t targetMs = 1000 / maxFPS;
             if(elapsed.count() < targetMs) {

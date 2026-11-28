@@ -1,11 +1,7 @@
 #pragma once
 
-// std
-
-// shared
 #include "depthai/pipeline/PipelineSchema.hpp"
 
-// libraries
 #include <spdlog/async.h>
 #include <spdlog/async_logger.h>
 #include <spdlog/fmt/fmt.h>
@@ -13,12 +9,9 @@
 
 #include "CallbackSink.hpp"
 
-// shared
 #include "depthai/log/LogConstants.hpp"
 
-// project
 #include "pipeline/GstMonoCamera.hpp"
-// #include "pipeline/PipelineRequirements.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedNode.hpp"
@@ -36,7 +29,6 @@ class PipelineBuilder {
    private:
     NodeHandler nodeHandler;
     std::vector<std::shared_ptr<GstMonoCamera>> monoCameraHandler;
-    // std::vector<std::shared_ptr<GstColorCamera>> colorCameraHandler;
 
     volatile spdlog::level::level_enum currentLogLevel = spdlog::level::debug;
     volatile spdlog::level::level_enum currentLogLevelLoggers = spdlog::level::warn;
@@ -47,7 +39,6 @@ class PipelineBuilder {
     std::unordered_map<int64_t, std::shared_ptr<spdlog::logger>> nodeLoggers;
     std::shared_ptr<spdlog::logger> systemLogger;
 
-    // Per-node logging level, if not set, use global logging level
     std::unordered_map<int64_t, spdlog::level::level_enum> nodeIdToLogLevel;
 
     PipelineBuilder();
@@ -59,25 +50,18 @@ class PipelineBuilder {
     void setNodeHandler(NodeHandler handler);
     void init();
     void build(const PipelineSchema& schema, Pipeline& pipeline);
-    // PipelineRequirements getRequirements(const Pipeline& pipeline);
     void start(Pipeline& pipeline);
 
     std::shared_ptr<spdlog::logger> getSystemLogger();
 
     void setLogEventCallback(std::function<void(dai::LogMessage)> cb);
 
-    // set logging level of all node logger
     void setLogLevel(dai::LogLevel level);
-    // set logging level of callback for all node loggers
     void setLogLevelCallback(dai::LogLevel level);
-    // set logging level of a specific node logger
     void setNodeLogLevelCallback(int64_t nodeId, dai::LogLevel level);
 
-    // get logging level of all node loggers
     dai::LogLevel getLogLevel();
-    // get logging level of callback for all node loggers
     dai::LogLevel getLogLevelCallback();
-    // get logging level of a specific node logger
     dai::LogLevel getNodeLogLevelCallback(int64_t nodeId);
 };
 

@@ -130,7 +130,6 @@ DEPTHAI_SERIALIZE_EXT_DECL(IMUReportRotationVectorWAcc, i, j, k, real, rotationV
  * See the SH-2 Reference Manual for more detail.
  */
 struct IMUReportGyroscopeUncalibrated : public IMUReport {
-    /* Units are rad/s */
     float x = 0;     /**< @brief [rad/s] */
     float y = 0;     /**< @brief [rad/s] */
     float z = 0;     /**< @brief [rad/s] */
@@ -148,7 +147,6 @@ DEPTHAI_SERIALIZE_EXT(IMUReportGyroscopeUncalibrated, x, y, z, biasX, biasY, bia
  * See the SH-2 Reference Manual for more detail.
  */
 struct IMUReportMagneticFieldUncalibrated : public IMUReport {
-    /* Units are uTesla */
     float x = 0;     /**< @brief [uTesla] */
     float y = 0;     /**< @brief [uTesla] */
     float z = 0;     /**< @brief [uTesla] */
@@ -231,7 +229,6 @@ DEPTHAI_SERIALIZE_EXT_DECL(IMUPacket, acceleroMeter, gyroscope, magneticField, r
  */
 class IMUData : public Buffer, public ProtoSerializable {
    public:
-    // Construct IMUData message
     IMUData() = default;
     virtual ~IMUData();
 

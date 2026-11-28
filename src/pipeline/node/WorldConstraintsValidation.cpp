@@ -31,7 +31,6 @@ bool epipolarErrorContradictsConstraints(double currentPx, double newPx) {
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 namespace {
-/// A camera of the consistency check in OpenCV form.
 struct ReconstructionCamera {
     cv::Matx33d intrinsics;
     std::vector<double> distortion;
@@ -39,7 +38,6 @@ struct ReconstructionCamera {
     cv::Matx33d rotation;  // base to camera
     cv::Vec3d translation;
 
-    /// The pixels as points of the normalized image plane, lens distortion removed.
     std::vector<cv::Point2d> normalized(const std::vector<cv::Point2d>& pixels) const {
         std::vector<cv::Point2d> points;
         if(pixels.empty()) {
@@ -88,9 +86,7 @@ ReconstructionCamera reconstructionCamera(const CalibrationHandler& calibration,
     return camera;
 }
 
-/// The point of the base frame seen at the given normalized image points, by linear triangulation; none when fewer
-/// than two cameras see it or it does not lie in front of all of them.
-std::optional<cv::Vec3d> triangulate(const std::vector<std::pair<const ReconstructionCamera*, cv::Point2d>>& views) {
+std::optional<cv::Vec3d> triangulate(const std::vector<std::pair<const ReconstructionCamera*, cv::Point2d>>& views) {  // nullopt: < 2 views or behind a camera
     if(views.size() < 2) {
         return std::nullopt;
     }
@@ -126,8 +122,7 @@ std::optional<double> median(std::vector<double> values) {
     const auto middle = values.begin() + static_cast<std::ptrdiff_t>(values.size() / 2);
     std::nth_element(values.begin(), middle, values.end());
     if(values.size() % 2 == 0) {
-        // nth_element leaves the lower half in front of middle; its largest value is the other middle sample.
-        return (*std::max_element(values.begin(), middle) + *middle) / 2.0;
+        return (*std::max_element(values.begin(), middle) + *middle) / 2.0;  // nth_element puts the lower half before middle
     }
     return *middle;
 }
@@ -143,8 +138,7 @@ std::vector<ConstraintResidual> worldConstraintResiduals(const WorldConstraints&
     for(const auto& [socket, observed] : cameras) {
         converted.emplace(socket, reconstructionCamera(calibration, base, socket, observed));
     }
-    // A referenced socket need not supply images, but its final camera center is still needed.
-    for(const auto& distance : constraints.socketDistances) {
+    for(const auto& distance : constraints.socketDistances) {  // Referenced sockets without images still need their camera center
         if(converted.count(distance.socket) == 0) {
             converted.emplace(distance.socket,
                               reconstructionCamera(calibration,
@@ -164,7 +158,6 @@ std::vector<ConstraintResidual> worldConstraintResiduals(const WorldConstraints&
         return pixels;
     };
 
-    // Per configured measurement, in configuration order, its reconstructed value in every frame set.
     std::vector<std::vector<double>> markerDistances(constraints.markerDistances.size());
     std::vector<std::vector<double>> socketDistances(constraints.socketDistances.size());
     std::vector<std::vector<double>> markerSizes(constraints.markerSizes.size());
@@ -204,7 +197,6 @@ std::vector<ConstraintResidual> worldConstraintResiduals(const WorldConstraints&
                 continue;
             }
             if(constraints.markerType == MarkerType::ARUCO) {
-                // The side of the square between its triangulated corners.
                 std::vector<cv::Vec3d> corners;
                 for(size_t corner = 0; corner < 4; ++corner) {
                     std::vector<std::pair<const ReconstructionCamera*, cv::Point2d>> views;
@@ -226,9 +218,7 @@ std::vector<ConstraintResidual> worldConstraintResiduals(const WorldConstraints&
                     markerSizes[idx].push_back(perimeter / 4.0);
                 }
             } else {
-                // The ring is a circle: its largest angular radius is not foreshortened, so it gives the diameter at the
-                // triangulated range of the center.
-                std::vector<double> diameters;
+                std::vector<double> diameters;  // Largest angular radius of a circle is not foreshortened: gives the diameter
                 const auto centers = set.centers.find(markerId);
                 for(const auto& [socket, outline] : outlines->second) {
                     const auto camera = converted.find(socket);

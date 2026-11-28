@@ -32,7 +32,6 @@ FastSAMParser::Properties& FastSAMParser::getProperties() {
 }
 
 NNArchive FastSAMParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -107,8 +106,6 @@ void FastSAMParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
 void FastSAMParser::setConfig(const dai::nn_archive::v1::Head& head) {
     DAI_CHECK_V(head.parser == NAME, "The provided head is not a FastSAMParser head, got '{}'.", head.parser);
 
-    // The head output layer names configure the YOLO and mask output layers by the "_yolo" and
-    // "_masks" substring filters of the source build(), each only when at least one matches.
     const std::vector<std::string> headOutputs = head.outputs.value_or(std::vector<std::string>{});
     std::vector<std::string> yoloLayerNames;
     std::vector<std::string> maskLayerNames;
@@ -137,12 +134,7 @@ void FastSAMParser::setConfig(const dai::nn_archive::v1::Head& head) {
         setIouThreshold(static_cast<float>(*head.metadata.iouThreshold));
     }
 
-    // The remaining keys have no typed metadata fields and live in the head metadata extra
-    // parameters. Like the source build(), the protos output layer name is read from the
-    // "protos_output" key; the standard NN Archive YOLO metadata declares "protos_outputs"
-    // (plural), which the source does not consume, so the default layer name applies to such
-    // archives.
-    const auto& extraParams = head.metadata.extraParams;
+    const auto& extraParams = head.metadata.extraParams;  // Singular key like the source; NN Archive's plural protos_outputs is ignored
     if(extraParams.is_object()) {
         if(extraParams.contains("protos_output") && !extraParams.at("protos_output").is_null()) {
             const auto& protosJson = extraParams.at("protos_output");
@@ -332,11 +324,6 @@ void FastSAMParser::run() {
         auto tGotInput = std::chrono::steady_clock::now();
         const FastSAMParserConfig configSnapshot = config;
 
-        // Extract: the YOLO output layers sorted by name, the mask output layers (all layer
-        // names of the incoming NNData when none are configured) filtered by the "mask"
-        // substring and sorted by name, and the protos output layer ("protos_output" when not
-        // configured), each as dequantized FP32 NCHW tensors, mirroring the source extract()
-        // and get_segmentation_outputs().
         std::vector<std::string> yoloLayerNames = properties.yoloOutputs;
         std::sort(yoloLayerNames.begin(), yoloLayerNames.end());
         std::vector<utilities::ClassificationUtils::ShapedTensorData> yoloTensors;
@@ -364,7 +351,6 @@ void FastSAMParser::run() {
                     protosTensor.dims.size());
         const std::size_t protosLen = protosTensor.dims[1];
 
-        // Compute
         utilities::FastSAMUtils::PromptConfig promptConfig;
         switch(configSnapshot.prompt) {
             case FastSAMParserConfig::Prompt::POINT:
@@ -390,7 +376,6 @@ void FastSAMParser::run() {
                                                                         configSnapshot.maskConfidence,
                                                                         promptConfig);
 
-        // Emit
         auto message = std::make_shared<dai::SegmentationMask>();
         message->setMask(result.mergedMask, result.width, result.height);
         if(nnData->transformation.has_value()) {

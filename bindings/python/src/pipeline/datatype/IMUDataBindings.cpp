@@ -4,14 +4,10 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/IMUData.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_imudata(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -26,23 +22,13 @@ void bind_imudata(pybind11::module& m, void* pCallstack) {
     py::class_<IMUReportRotationVectorWAcc, IMUReport, std::shared_ptr<IMUReportRotationVectorWAcc>> imuReportRotationVectorWAcc(
         m, "IMUReportRotationVectorWAcc", DOC(dai, IMUReportRotationVectorWAcc));
     py::class_<IMUPacket> imuPacket(m, "IMUPacket", DOC(dai, IMUPacket));
-    // py::class_<RawIMUData, RawBuffer, std::shared_ptr<RawIMUData>> rawIMUPackets(m, "RawIMUData", DOC(dai, RawIMUData));
     py::class_<IMUData, Py<IMUData>, Buffer, ProtoSerializable, py::smart_holder> imuData(m, "IMUData", DOC(dai, IMUData));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Metadata / raw
     imuReport.def(py::init<>())
         .def_readwrite("tsSystem", &dai::IMUReport::tsSystem, DOC(dai, IMUReport, tsSystem))
         .def_readwrite("sequence", &IMUReport::sequence)
@@ -144,12 +130,6 @@ void bind_imudata(pybind11::module& m, void* pCallstack) {
 #endif
         ;
 
-    // rawIMUPackets
-    //     .def(py::init<>())
-    //     .def_readwrite("packets", &RawIMUData::packets)
-    //     ;
-
-    // Message
     imuData.def(py::init<>())
         .def("__repr__", &IMUData::str)
         .def_property(

@@ -140,8 +140,7 @@ void AutoCalibration::logConfig() const {
     logger->info("Max Images/Recalib:     {}", initialConfig->maxImagesPerRecalibration);
     logger->info("Validation Set Size:    {}", initialConfig->validationSetSize);
     logger->info("Flash Calibration:      {}", initialConfig->flashCalibration ? "Yes" : "No");
-    // Inside the firmware the DynamicCalibration node is a separate pipeline node that logs its own constraints.
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4  // On the device, DynamicCalibration logs its own constraints
     if(const auto constraints = dynamicCalibration->getWorldConstraints()) {
         logger->info("Marker Constraints:     {} markers, {} marker distances, {} socket distances ({})",
                      utility::referencedMarkerIds(*constraints).size(),
@@ -163,9 +162,8 @@ AutoCalibration::~AutoCalibration() {
 }
 
 AutoCalibration::Properties& AutoCalibration::getProperties() {
-    // initialConfig is edited through the shared pointer; a node that runs on the device starts from the serialized copy.
     if(!runOnHost()) {
-        properties.initialConfig = *initialConfig;
+        properties.initialConfig = *initialConfig;  // A device node starts from this serialized copy
     }
     return properties;
 }
@@ -268,18 +266,15 @@ void AutoCalibration::recordAggregateRotationDifference(
     }
 }
 
-void AutoCalibration::setRunOnHost(bool runOnHost) {
-    // The dynamic calibration library is shipped only in the RVC4 firmware.
+void AutoCalibration::setRunOnHost(bool runOnHost) {  // The calibration library ships only in the RVC4 firmware
     DAI_CHECK_V(runOnHost || !device || device->getPlatform() == Platform::RVC4, "AutoCalibration: running on device is supported only on RVC4");
     runOnHostVar = runOnHost;
-    // The DynamicCalibration subnode (and its Sync) follows the node, otherwise the gated frames would still cross the link.
-    dynamicCalibration->setRunOnHost(runOnHost);
+    dynamicCalibration->setRunOnHost(runOnHost);  // Else the gated frames still cross the link
 }
 
 CalibrationHandler AutoCalibration::readCurrentCalibration() {
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    // Read on every call: the DynamicCalibration node or a host setCalibration() may replace it at any time.
-    return getParentPipeline().getCalibrationData();
+    return getParentPipeline().getCalibrationData();  // Not cached: DynamicCalibration or setCalibration() can replace it
 #else
     return device->getCalibration();
 #endif
@@ -287,8 +282,7 @@ CalibrationHandler AutoCalibration::readCurrentCalibration() {
 
 int AutoCalibration::gateFps() const {
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    // The firmware node has no gate subnode; build() sets the host gate to this rate.
-    return GATE_FPS_DEFAULT;
+    return GATE_FPS_DEFAULT;  // No gate subnode in the firmware; build() sets the host gate to this rate
 #else
     return gate->initialConfig->fps;
 #endif
@@ -299,8 +293,7 @@ void addPoolsForAutoCalibration(const std::shared_ptr<Camera>& camera, int addit
     if(numIspPool > 0) {
         camera->setIspNumFramesPool(numIspPool + additionalPools);
     } else {
-        // If getIspNumFramesPool() is unavailable/non-positive, use a known-safe baseline via setIspNumFramesPool().
-        camera->setIspNumFramesPool(6);
+        camera->setIspNumFramesPool(6);  // 6 is a known-safe baseline pool size
     }
 }
 
@@ -348,8 +341,7 @@ bool AutoCalibration::runOnHost() const {
 
 void AutoCalibration::postBuildStage() {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    // On the device the gated frames never cross the link: nothing to throttle.
-    if(!runOnHost()) {
+    if(!runOnHost()) {  // On the device, gated frames never cross the link
         return;
     }
     auto xlinkBridge = gate->output.getXLinkBridge();
@@ -364,9 +356,7 @@ void AutoCalibration::postBuildStage() {
 #endif
 }
 
-void AutoCalibration::discardQueuedFrames() {
-    // Drop frames that passed the gate before it closed. Inside the firmware the next ResetData does this, so after
-    // loadData() one frame can carry over into the recalibration that follows.
+void AutoCalibration::discardQueuedFrames() {  // In the firmware the next ResetData drops them, so one frame can carry over after loadData()
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
 #endif
@@ -430,14 +420,9 @@ std::optional<WorldConstraints> AutoCalibration::getWorldConstraints() const {
     return dynamicCalibration->getWorldConstraints();
 }
 
-/**
-return calibration from DynamicCalibration node
-**/
 std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsigned int maxNumIteration, Report& report) {
-    auto startTime = std::chrono::steady_clock::now();  // Start timer
-    // Validation consumes coverage only, so rejected marker frames can leave informational results behind.
-    // Start with an empty pair of queues before the gate can produce new calibration messages.
-    dynamicCalibrationQueue.tryGetAll<dai::DynamicCalibrationResult>();
+    auto startTime = std::chrono::steady_clock::now();                   // Start timer
+    dynamicCalibrationQueue.tryGetAll<dai::DynamicCalibrationResult>();  // Drain: validation consumes only coverage, so stale results can stay queued
     coverageQueue.tryGetAll<dai::CoverageData>();
     gateControlQueue.send(dai::GateControl::openGate(-1, gateFps()));
     recordAggregateRecalibrationTriggered();
@@ -480,8 +465,6 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
             }
         }
 
-        // One-shot command semantics: close and reset every attempt.
-
         if(coverage) {
             report.coveragesAcquired.push_back({coverage->coverageAcquired, coverage->dataAcquired});
         } else {
@@ -500,13 +483,6 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
     return nullptr;
 }
 
-/**
-1. load data
-2. if data OK -> check calibration
-   if data not OK -> go to 1.
-3. if calibration not OK -> recalibrate; go to 1.
-   if calibration OK -> set calibration
-**/
 bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationHandler> calibration) {
     if(initialConfig->validationSetSize < 0) {
         throw std::invalid_argument("AutoCalibration: validationSetSize must be non-negative");
@@ -589,7 +565,6 @@ void AutoCalibration::runContinuousMode() {
             nlohmann::json{{"mode", telemetryAutoCalibrationModeName(initialConfig->mode)}, {"passed", passed}, {"elapsed_seconds", elapsed.count()}});
         logger->info("AutoCalibration update took: {:.2f}s", elapsed.count());
         int elapsedSleeping = 0;
-        // Continue sleeping only if total time isn't met AND mainLoop is still true
         while(elapsedSleeping < initialConfig->sleepingTime && mainLoop()) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
             elapsedSleeping += 1;
@@ -651,8 +626,7 @@ bool AutoCalibration::validateIncomingData() {
 
 void AutoCalibration::run() {
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    // The firmware constructs the node without buildInternal().
-    setUp();
+    setUp();  // The firmware constructs the node without buildInternal()
     logger->info("{} running on device.", this->getName());
 #else
     logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");

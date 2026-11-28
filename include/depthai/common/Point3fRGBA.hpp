@@ -1,6 +1,5 @@
 #pragma once
 
-// project
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {

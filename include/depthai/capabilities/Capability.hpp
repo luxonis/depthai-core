@@ -6,19 +6,16 @@ namespace dai {
 class Capability {
    public:
     virtual const char* getName() const = 0;
-    // virtual Capability getIntersection(const Capability& other) = 0;
     virtual ~Capability();
 };
 
-// Capability CRTP class
 template <typename Base, typename Derived>
 class CapabilityCRTP : public Base {
    public:
     virtual ~CapabilityCRTP() = default;
 
     const char* getName() const override {
-        // This has to be a global unique name, please use your prefix and / to separate. Example: dai/img-frame
-        return Derived::NAME;
+        return Derived::NAME;  // NAME must be globally unique: prefix/name, e.g. dai/img-frame
     };
 
     static const Derived* get(const Capability& cap) {

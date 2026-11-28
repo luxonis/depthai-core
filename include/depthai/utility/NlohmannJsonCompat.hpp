@@ -2,12 +2,10 @@
 
 #include <nlohmann/json.hpp>
 
-// Check version of nlohmann json
 #if(defined(NLOHMANN_JSON_VERSION_MAJOR) && defined(NLOHMANN_JSON_VERSION_MINOR))
     #if((NLOHMANN_JSON_VERSION_MAJOR < 3) || ((NLOHMANN_JSON_VERSION_MAJOR == 3) && (NLOHMANN_JSON_VERSION_MINOR < 6)))
 static_assert(0, "DepthAI requires nlohmann library version 3.6.0 or higher");
     #else
-        // Set up compat macros for nlohmann json (independent of version)
         #define DEPTHAI_NLOHMANN_JSON_EXPAND(x) x
         #define DEPTHAI_NLOHMANN_JSON_GET_MACRO(_1,   \
                                                 _2,   \

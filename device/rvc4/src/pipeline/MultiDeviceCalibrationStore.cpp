@@ -9,8 +9,6 @@ namespace gate {
 
 namespace {
 
-// RVC4 frame sources publish extrinsics to the extrinsics chain root; the shared probe applies that
-// rule for Platform::RVC4, so the device and the host validate with the very same function.
 beta::LocalCalibrationOrigin describeLocalCalibration(const std::optional<CalibrationHandler>& localCalibration) {
     std::optional<EepromData> calibration;
     if(localCalibration.has_value()) {
@@ -32,7 +30,6 @@ void MultiDeviceCalibrationStore::set(const std::optional<std::vector<MultiDevic
     std::shared_ptr<const beta::MultiDeviceCalibrationHandler> resolved;
     if(graph.has_value()) {
         resolved = std::make_shared<const beta::MultiDeviceCalibrationHandler>(*graph);
-        // A mismatch is reported with both identities and the rule that produced the local one.
         resolved->validateLocalOrigin(deviceId, describeLocalCalibration(localCalibration));
     }
 

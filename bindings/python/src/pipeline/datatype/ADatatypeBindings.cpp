@@ -4,14 +4,10 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 namespace dai {
 class PyADataType : public ADatatype, public py::trampoline_self_life_support {
@@ -25,21 +21,10 @@ void bind_adatatype(pybind11::module& m, void* pCallstack) {
 
     py::class_<ADatatype, PyADataType, py::smart_holder> adatatype(m, "ADatatype", DOC(dai, ADatatype));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
     adatatype.def(py::init<>(), DOC(dai, ADatatype, ADatatype)).def("getDatatype", &dai::ADatatype::getDatatype, DOC(dai, ADatatype, getDatatype));
-    // Message
-    // adatatype
-    // .def("getRaw", &ADatatype::getRaw);
 }

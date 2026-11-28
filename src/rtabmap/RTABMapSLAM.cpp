@@ -70,7 +70,6 @@ class RTABMapSLAM::Impl {
 
         if(publishObstacleCloud) {
             auto obstaclesMap = cloudMap->getMapObstacles();
-            // convert point to point3frgba
 
             auto pclData = setPclDataRGB(obstaclesMap);
             obstaclePCL.send(pclData);
@@ -82,7 +81,6 @@ class RTABMapSLAM::Impl {
         }
     }
     std::shared_ptr<dai::PointCloudData> setPclDataRGB(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud) {
-        // Ensure cloud is valid
         if(!cloud) {
             throw std::invalid_argument("Input cloud is null");
         }
@@ -228,13 +226,11 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
 
 void RTABMapSLAM::odomPoseCB(std::shared_ptr<dai::ADatatype> data) {
     auto odomPose = std::dynamic_pointer_cast<dai::TransformData>(data);
-    // convert odom pose to rtabmap pose
     rtabmap::Transform p = getRTABMapTransform(odomPose->transform);
     pimplRtabmap->currPose = p;
 
     auto outTransform = rtabmapToTransformData(pimplRtabmap->odomCorr * pimplRtabmap->currPose);
     auto outCorrection = rtabmapToTransformData(pimplRtabmap->odomCorr);
-    // set unit rotation for outCorrection
     transform.send(outTransform);
     odomCorrection.send(outCorrection);
     passthroughOdom.send(odomPose);
@@ -280,7 +276,6 @@ void RTABMapSLAM::run() {
                 }
             }
         }
-        // save database periodically if set
         if(saveDatabasePeriodically
            && std::chrono::duration<double>(std::chrono::steady_clock::now() - pimplRtabmap->startTime).count() > databaseSaveInterval) {
             pimplRtabmap->rtabmap.close(true, databasePath);

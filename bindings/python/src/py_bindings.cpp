@@ -7,13 +7,10 @@
 #include <string>
 #include <vector>
 
-// pybind11
 #include "pybind11_common.hpp"
 
-// depthai-core
 #include "depthai/build/version.hpp"
 
-// project
 #include "CalibrationHandlerBindings.hpp"
 #include "CrashDumpBindings.hpp"
 #include "DatatypeBindings.hpp"
@@ -52,7 +49,6 @@ void bind_beta_multidevicecalibrationhandler(pybind11::module& m, void* pCallsta
 extern "C" void depthai_bindings_init() {}  // to force inclusion
 #endif
 
-// Specify module
 #ifdef DEPTHAI_PYTHON_EMBEDDED_MODULE
     #if DEPTHAI_PYTHON_GIL_FREE
 PYBIND11_EMBEDDED_MODULE(depthai, m, py::mod_gil_not_used())
@@ -70,8 +66,7 @@ PYBIND11_MODULE(depthai, m)
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     NDArrayConverter::init_numpy();
 #endif
-    // Depthai python version consists of: (depthai-core).(bindings revision)[+bindings hash]
-    m.attr("__version__") = DEPTHAI_PYTHON_VERSION;
+    m.attr("__version__") = DEPTHAI_PYTHON_VERSION;  // Format: (depthai-core).(bindings revision)[+bindings hash]
     m.attr("__commit__") = DEPTHAI_PYTHON_COMMIT_HASH;
     m.attr("__commit_datetime__") = DEPTHAI_PYTHON_COMMIT_DATETIME;
     m.attr("__build_datetime__") = DEPTHAI_PYTHON_BUILD_DATETIME;
@@ -80,7 +75,6 @@ PYBIND11_MODULE(depthai, m)
     m.attr("__device_rvc3_version__") = dai::build::DEVICE_RVC3_VERSION;
     m.attr("__device_rvc4_version__") = dai::build::DEVICE_RVC4_VERSION;
 
-    // Add bindings
     std::deque<StackFunction> callstack;
     DatatypeBindings::addToCallstack(callstack);
     callstack.push_front(&ModelTypeBindings::bind);
@@ -108,15 +102,12 @@ PYBIND11_MODULE(depthai, m)
     callstack.push_front(&EventsManagerBindings::bind);
     callstack.push_front(&RemoteConnectionBindings::bind);
     callstack.push_front(&FilterParamsBindings::bind);
-    // end of the callstack
     callstack.push_front([](py::module&, void*) {});
 
     Callstack callstackAdapter(callstack);
 
-    // Initial call
     CommonBindings::bind(m, &callstackAdapter);
 
-    // Install signal handler option
     bool installSignalHandler = true;
     constexpr static const char* signalHandlerKey = "DEPTHAI_INSTALL_SIGNAL_HANDLER";
     try {
@@ -125,7 +116,6 @@ PYBIND11_MODULE(depthai, m)
             installSignalHandler = installSignalHandler && sysModule.attr(signalHandlerKey).cast<bool>();
         }
     } catch(...) {
-        // ignore
     }
     try {
         auto builtinsModule = py::module_::import("builtins");
@@ -133,10 +123,8 @@ PYBIND11_MODULE(depthai, m)
             installSignalHandler = installSignalHandler && builtinsModule.attr(signalHandlerKey).cast<bool>();
         }
     } catch(...) {
-        // ignore
     }
 
-    // Apply JavaVM pointer
     std::string javavmEnvStr;
     constexpr static const char* javavmEnvKey = "DEPTHAI_LIBUSB_ANDROID_JAVAVM";
     try {
@@ -145,7 +133,6 @@ PYBIND11_MODULE(depthai, m)
             javavmEnvStr = sysModule.attr(javavmEnvKey).cast<std::string>();
         }
     } catch(...) {
-        // ignore
     }
     try {
         auto builtinsModule = py::module_::import("builtins");
@@ -153,11 +140,8 @@ PYBIND11_MODULE(depthai, m)
             javavmEnvStr = builtinsModule.attr(javavmEnvKey).cast<std::string>();
         }
     } catch(...) {
-        // ignore
     }
-    // JNIEnv handling
     void* javavm = nullptr;
-    // Read the uintptr_t value from the decimal string
     sscanf(javavmEnvStr.c_str(), "%" SCNuPTR, reinterpret_cast<uintptr_t*>(&javavm));
 
     // Import threading module - TODO(Morato) explore why this is needed to avoid the exception
@@ -165,13 +149,11 @@ PYBIND11_MODULE(depthai, m)
     // It should be harmless to import it here, as it is a built-in module
     py::object threading = py::module_::import("threading");
 
-    // Call dai::initialize on 'import depthai' to initialize asap with additional information to print
     try {
         dai::initialize(std::string("Python bindings - version: ") + DEPTHAI_PYTHON_VERSION + " from " + DEPTHAI_PYTHON_COMMIT_DATETIME
                             + " build: " + DEPTHAI_PYTHON_BUILD_DATETIME,
                         installSignalHandler,
                         javavm);
-    } catch(const std::exception&) {
-        // ignore, will be initialized later on if possible
+    } catch(const std::exception&) {  // Ignored: dai is initialized later if possible
     }
 }

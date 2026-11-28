@@ -13,13 +13,10 @@ void bind_beta_clusters(pybind11::module& m, void* pCallstack) {
     py::class_<beta::Clusters, Py<beta::Clusters>, Buffer, Transformable, py::smart_holder> clusters(
         betaModule, "Clusters", DOC(dai, beta, Clusters));
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     cluster.def(py::init<>())
         .def_readwrite("label", &beta::Cluster::label, DOC(dai, beta, Cluster, label))

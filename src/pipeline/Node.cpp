@@ -102,8 +102,6 @@ std::vector<Node::ConnectionInternal> Node::Output::getConnections() {
 }
 
 bool Node::Output::isSamePipeline(const Input& in) {
-    // Check whether current output and 'in' are on same pipeline.
-    // By checking parent of node
     auto outputPipeline = parent.get().parent.lock();
     if(outputPipeline != nullptr) {
         auto inputPipeline = in.getParent().parent.lock();
@@ -113,39 +111,30 @@ bool Node::Output::isSamePipeline(const Input& in) {
 }
 
 static bool isDatatypeMatch(const Node::Output& out, const Node::Input& in) {
-    // Check that datatypes match up
     for(const auto& outHierarchy : out.getPossibleDatatypes()) {
         for(const auto& inHierarchy : in.possibleDatatypes) {
-            // Check if datatypes match for current datatype
             if(outHierarchy.datatype == inHierarchy.datatype) return true;
 
-            // If output can produce descendants
             if(outHierarchy.descendants && isDatatypeSubclassOf(outHierarchy.datatype, inHierarchy.datatype)) return true;
 
-            // If input allows descendants
             if(inHierarchy.descendants && isDatatypeSubclassOf(inHierarchy.datatype, outHierarchy.datatype)) return true;
         }
     }
-    // otherwise return false
     return false;
 }
 
 bool Node::Output::canConnect(const Input& in) {
-    // Check that IoType match up
     if(type == Output::Type::MSender && in.getType() == Input::Type::MReceiver) return false;
     if(type == Output::Type::SSender && in.getType() == Input::Type::SReceiver) return false;
 
-    // Check that datatypes match up
     if(!isDatatypeMatch(*this, in)) {
         return false;
     }
 
-    // All checks pass
     return true;
 }
 
 void Node::Output::link(Input& in) {
-    // Linking across two different pipelines is not supported
     auto outputPipeline = parent.get().parent.lock();
     auto inputPipeline = in.getParent().parent.lock();
     if(outputPipeline != nullptr && inputPipeline != nullptr && outputPipeline != inputPipeline) {
@@ -156,30 +145,22 @@ void Node::Output::link(Input& in) {
                                              in.toString()));
     }
 
-    // First check if can connect
     if(!canConnect(in)) {
         throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
     }
 
-    // Needed for serialization
-    // Create 'Connection' object between 'out' and 'in'
     Node::ConnectionInternal connection(*this, in);
 
-    // Check if connection was already made - the following is possible as operator[] constructs the underlying set if it doesn't exist.
     if(parent.get().connections.count(connection) > 0) {
-        // this means a connection was already made.
         throw std::logic_error(fmt::format("'{}.{}' already linked to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
     }
 
-    // Otherwise all is set to add a new connection
     parent.get().connections.insert(connection);
-    // Add the shared_ptr to the input directly for host side
     connectedInputs.push_back(&in);
     in.connectedOutputs.push_back(this);
 }
 
 std::shared_ptr<dai::MessageQueue> Node::Output::createOutputQueue(unsigned int maxSize, bool blocking) {
-    // Check if pipeline is already started - if so, throw an error
     auto pipelinePtr = parent.get().getParentPipeline();
     if(pipelinePtr.isBuilt()) {
         throw std::runtime_error("Cannot create queue after pipeline is built");
@@ -187,7 +168,6 @@ std::shared_ptr<dai::MessageQueue> Node::Output::createOutputQueue(unsigned int 
     auto queue = std::make_shared<MessageQueue>(maxSize, blocking);
     link(queue);
 
-    // No need to expose this on the public pipeline interface
     pipelinePtr.impl()->outputQueues.push_back(queue);
     return queue;
 }
@@ -198,14 +178,10 @@ std::shared_ptr<InputQueue> Node::Input::createInputQueue(unsigned int maxSize, 
         throw std::runtime_error("Cannot create input queue after pipeline is built");
     }
 
-    // Construct a new InputQueue interface
-    // Cannot use make_shared as the InputQueue's constructor is private - only send method is exposed
-    auto inputQueuePtr = std::shared_ptr<InputQueue>(new InputQueue(maxSize, blocking));
+    auto inputQueuePtr = std::shared_ptr<InputQueue>(new InputQueue(maxSize, blocking));  // make_shared cannot reach the private InputQueue constructor
 
-    // Add the underlying input queue node to the pipeline
     pipelinePtr.add(inputQueuePtr->getNode());
 
-    // Connect input queue node's output to this input
     inputQueuePtr->getNodeOutput().link(*this);
     return inputQueuePtr;
 }
@@ -222,36 +198,18 @@ bool Node::ConnectionInternal::operator==(const Node::ConnectionInternal& rhs) c
 }
 
 void Node::Output::unlink(Input& in) {
-    // Create 'Connection' object between 'out' and 'in'
     Node::ConnectionInternal connection(*this, in);
     if(parent.get().connections.count(connection) == 0) {
-        // this means a connection was not present already made.
         throw std::logic_error(fmt::format("'{}.{}' not linked to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
     }
 
-    // Unlink
     parent.get().connections.erase(connection);
 
-    // Remove the shared_ptr to the input directly for host side
     connectedInputs.erase(std::remove(connectedInputs.begin(), connectedInputs.end(), &in), connectedInputs.end());
     in.connectedOutputs.erase(std::remove(in.connectedOutputs.begin(), in.connectedOutputs.end(), this), in.connectedOutputs.end());
 }
 
 void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
-    // for(auto& conn : getConnections()) {
-    //     // Get node AND hold a reference to it.
-    //     auto node = conn.inputNode.lock();
-    //     // Safe, as long as we also hold 'node' shared_ptr
-    //     auto inputs = node->getInputRefs();
-    //     // Find the corresponding inputs
-    //     for(auto& input : inputs) {
-    //         if(input->group == conn.inputGroup && input->name == conn.inputName) {
-    //             // Corresponding input to a given connection
-    //             // Send the message
-    //             input->queue.send(msg);
-    //         }
-    //     }
-    // }
     auto sendToInputs = [this, &msg]() {
         for(auto& messageQueue : connectedInputs) {
             messageQueue->send(msg);
@@ -268,20 +226,6 @@ void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
 bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
     bool success = true;
 
-    // for(auto& conn : getConnections()) {
-    //     // Get node AND hold a reference to it.
-    //     auto node = conn.inputNode.lock();
-    //     // Safe, as long as we also hold 'node' shared_ptr
-    //     auto inputs = node->getInputRefs();
-    //     // Find the corresponding inputs
-    //     for(auto& input : inputs) {
-    //         if(input->group == conn.inputGroup && input->name == conn.inputName) {
-    //             // Corresponding input to a given connection
-    //             // Send the message
-    //             success &= input->queue.trySend(msg);
-    //         }
-    //     }
-    // }
     auto sendToInputs = [this, &msg, &success]() {
         for(auto& messageQueue : connectedInputs) {
             success &= messageQueue->trySend(msg);
@@ -345,27 +289,22 @@ Node::OutputMap::OutputMap(Node& parent, Node::OutputDescription defaultOutput, 
 
 Node::Output& Node::OutputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
-        // Create using default and rename with group and key
         auto desc = defaultOutput;
         desc.group = name;
         desc.name = key;
         Output output(parent, desc, false);
         insert({{name, key}, output});
     }
-    // otherwise just return reference to existing
     return at({name, key});
 }
 Node::Output& Node::OutputMap::operator[](std::pair<std::string, std::string> groupKey) {
     if(count(groupKey) == 0) {
-        // Create using default and rename with group and key
         auto desc = defaultOutput;
-        // Uses \t (tab) as a special character to parse out as subgroup name
-        desc.group = fmt::format("{}\t{}", name, groupKey.first);
+        desc.group = fmt::format("{}\t{}", name, groupKey.first);  // The tab is a separator that is parsed out as the subgroup name
         desc.name = groupKey.second;
         Output output(parent, desc, false);
         insert(std::make_pair(groupKey, output));
     }
-    // otherwise just return reference to existing
     return at(groupKey);
 }
 
@@ -378,27 +317,22 @@ Node::InputMap::InputMap(Node& parent, Node::InputDescription description) : Inp
 
 Node::Input& Node::InputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
-        // Create using default and rename with group and key
         auto desc = defaultInput;
         desc.group = name;
         desc.name = key;
         Input input(parent, desc, false);
         insert({{name, key}, input});
     }
-    // otherwise just return reference to existing
     return at({name, key});
 }
 Node::Input& Node::InputMap::operator[](std::pair<std::string, std::string> groupKey) {
     if(count(groupKey) == 0) {
-        // Create using default and rename with group and key
         auto desc = defaultInput;
-        // Uses \t (tab) as a special character to parse out as subgroup name
-        desc.group = fmt::format("{}\t{}", name, groupKey.first);
+        desc.group = fmt::format("{}\t{}", name, groupKey.first);  // The tab is a separator that is parsed out as the subgroup name
         desc.name = groupKey.second;
         Input input(parent, desc, false);
         insert(std::make_pair(groupKey, input));
     }
-    // otherwise just return reference to existing
     return at(groupKey);
 }
 
@@ -406,7 +340,6 @@ bool Node::InputMap::has(const std::string& key) const {
     return count({name, key}) > 0;
 }
 
-/// Retrieves all nodes outputs
 std::vector<Node::Output> Node::getOutputs() {
     std::vector<Node::Output> result;
     auto refs = getOutputRefs();
@@ -416,7 +349,6 @@ std::vector<Node::Output> Node::getOutputs() {
     return result;
 }
 
-/// Retrieves all nodes inputs
 std::vector<Node::Input> Node::getInputs() {
     std::vector<Node::Input> result;
     auto refs = getInputRefs();
@@ -426,16 +358,12 @@ std::vector<Node::Input> Node::getInputs() {
     return result;
 }
 
-/// Retrieves reference to node outputs
 std::vector<Node::Output*> Node::getOutputRefs() {
     std::vector<Node::Output*> tmpOutputRefs;
-    // Approximate reservation
     tmpOutputRefs.reserve(outputRefs.size() + outputMapRefs.size() * 5);
-    // Add outputRefs
     for(auto& kv : outputRefs) {
         tmpOutputRefs.push_back(kv);
     }
-    // Add outputs from Maps
     for(auto& kvMap : outputMapRefs) {
         for(auto& kv : *kvMap) {
             tmpOutputRefs.push_back(&kv.second);
@@ -444,16 +372,12 @@ std::vector<Node::Output*> Node::getOutputRefs() {
     return tmpOutputRefs;
 }
 
-/// Retrieves reference to node outputs
 std::vector<const Node::Output*> Node::getOutputRefs() const {
     std::vector<const Node::Output*> tmpOutputRefs;
-    // Approximate reservation
     tmpOutputRefs.reserve(outputRefs.size() + outputMapRefs.size() * 5);
-    // Add outputRefs
     for(const auto& kv : outputRefs) {
         tmpOutputRefs.push_back(kv);
     }
-    // Add outputs from Maps
     for(const auto& kvMap : outputMapRefs) {
         for(const auto& kv : *kvMap) {
             tmpOutputRefs.push_back(&kv.second);
@@ -461,16 +385,12 @@ std::vector<const Node::Output*> Node::getOutputRefs() const {
     }
     return tmpOutputRefs;
 }
-/// Retrieves reference to node inputs
 std::vector<Node::Input*> Node::getInputRefs() {
     std::vector<Node::Input*> tmpInputRefs;
-    // Approximate reservation
     tmpInputRefs.reserve(inputRefs.size() + inputMapRefs.size() * 5);
-    // Add inputRefs
     for(auto& kv : inputRefs) {
         tmpInputRefs.push_back(kv);
     }
-    // Add inputs from Maps
     for(auto* kvMap : inputMapRefs) {
         for(auto& kv : *kvMap) {
             tmpInputRefs.push_back(&kv.second);
@@ -479,16 +399,12 @@ std::vector<Node::Input*> Node::getInputRefs() {
     return tmpInputRefs;
 }
 
-/// Retrieves reference to node inputs
 std::vector<const Node::Input*> Node::getInputRefs() const {
     std::vector<const Node::Input*> tmpInputRefs;
-    // Approximate reservation
     tmpInputRefs.reserve(inputRefs.size() + inputMapRefs.size() * 5);
-    // Add inputRefs
     for(const auto& kv : inputRefs) {
         tmpInputRefs.push_back(kv);
     }
-    // Add inputs from Maps
     for(const auto& kvMap : inputMapRefs) {
         for(const auto& kv : *kvMap) {
             tmpInputRefs.push_back(&kv.second);
@@ -527,7 +443,6 @@ std::vector<Node::InputMap*> Node::getInputMapRefs() {
     std::vector<Node::InputMap*> tmpInputMapRefs;
 
     tmpInputMapRefs.reserve(inputMapRefs.size());
-    // Add inputs from Maps
     for(const auto& kvMap : inputMapRefs) {
         tmpInputMapRefs.push_back(kvMap);
     }
@@ -538,7 +453,6 @@ std::vector<Node::OutputMap*> Node::getOutputMapRefs() {
     std::vector<Node::OutputMap*> tmpOutputMapRefs;
 
     tmpOutputMapRefs.reserve(outputMapRefs.size());
-    // Add inputs from Maps
     for(const auto& kvMap : outputMapRefs) {
         tmpOutputMapRefs.push_back(kvMap);
     }
@@ -604,14 +518,12 @@ void Node::add(const std::shared_ptr<Node>& node) {
     // TODO(themarpe) - check if node is already added somewhere else, etc... (as in Pipeline)
     node->parentId = this->id;
     nodeMap.push_back(node);
-    // If this node group is already in a pipeline, new children must be adopted too (lazy subgraphs).
     if(auto pipeline = parent.lock()) {
         pipeline->adoptSubtree(node);
     }
 }
 
 void Node::remove(const std::shared_ptr<Node>& node) {
-    // Remove the connection to the removed node and all it's children from all the nodes in the pipeline
     auto pipeline = parent.lock();
 
     DAI_CHECK_V(pipeline != nullptr, "Pipeline is null");
@@ -624,12 +536,10 @@ void Node::remove(const std::shared_ptr<Node>& node) {
         n->removeConnectionToNode(node);
     }
 
-    // Finally remove the node from the map
     nodeMap.erase(std::remove(nodeMap.begin(), nodeMap.end(), node), nodeMap.end());
 }
 
 void Node::removeConnectionToNode(const std::shared_ptr<Node>& node) {
-    // Remove all connections to this node
     for(auto it = connections.begin(); it != connections.end();) {
         if(it->inputNode.lock() == node || it->outputNode.lock() == node) {
             it = connections.erase(it);
@@ -658,12 +568,9 @@ Node::Input& SourceNode::getReplayInput() {
     throw std::runtime_error("Not implemented");
 }
 
-// Recursive helpers for pipelines
 Node::ConnectionMap Node::getConnectionMap() {
     ConnectionMap map;
-    // self first
     map[shared_from_this()] = connections;
-    // then subnodes
     for(const auto& node : nodeMap) {
         auto nodeConnMap = node->getConnectionMap();
         for(auto& kv : nodeConnMap) {
@@ -674,10 +581,8 @@ Node::ConnectionMap Node::getConnectionMap() {
     return map;
 }
 std::shared_ptr<Node> Node::getNode(Node::Id id) {
-    // Edge case
     if(this->id == id) return shared_from_this();
 
-    // Search all nodes
     for(auto& node : nodeMap) {
         auto n = node->getNode(id);
         if(n != nullptr) {
@@ -687,10 +592,8 @@ std::shared_ptr<Node> Node::getNode(Node::Id id) {
     return nullptr;
 }
 std::shared_ptr<const Node> Node::getNode(Node::Id id) const {
-    // Edge case
     if(this->id == id) return shared_from_this();
 
-    // Search all nodes
     for(auto& node : nodeMap) {
         auto n = node->getNode(id);
         if(n != nullptr) {
@@ -702,9 +605,7 @@ std::shared_ptr<const Node> Node::getNode(Node::Id id) const {
 std::vector<std::shared_ptr<Node>> Node::getAllNodes() const {
     std::vector<std::shared_ptr<Node>> nodes;
     for(auto& node : nodeMap) {
-        // Add one own nodes first
         nodes.push_back(node);
-        // And its subnodes
         auto n = node->getAllNodes();
         nodes.insert(nodes.end(), n.begin(), n.end());
     }
@@ -723,10 +624,7 @@ size_t Node::ConnectionInternal::Hash::operator()(const dai::Node::ConnectionInt
 }
 
 void Node::stopPipeline() {
-    // Called from host node threads and from pipeline tasks. The stop runs on a thread of the
-    // pipeline that holds no reference to it and that wait() (also called by run()), start() and
-    // the pipeline destructor join - so no teardown runs after run() or main() has returned.
-    auto impl = parent.lock();
+    auto impl = parent.lock();  // Stops on a pipeline thread without a reference to it, that wait(), start() and ~Pipeline join
     if(impl != nullptr) {
         impl->stopAsync();
     }
@@ -796,9 +694,7 @@ std::shared_ptr<Device> Node::Input::getSourceDevice() const {
     if(pipeline == nullptr) {
         return nullptr;
     }
-    // Resolution is keyed by the address of the node's own Input object. getInputs() hands
-    // out copies, so map a copy back to the node's canonical input by group and name.
-    const Node::Input* canonical = this;
+    const Node::Input* canonical = this;  // Keyed by the address of the node's own Input; getInputs() returns copies, so match by group and name
     for(const Node::Input* input : static_cast<const Node&>(parent.get()).getInputRefs()) {
         if(input == this) {
             canonical = this;
@@ -814,8 +710,6 @@ std::shared_ptr<Device> Node::Input::getSourceDevice() const {
 std::map<std::string, std::shared_ptr<Device>> Node::InputMap::getSourceDevices() const {
     std::map<std::string, std::shared_ptr<Device>> sourceDevices;
     for(const auto& entry : *this) {
-        // Inputs created with a group are keyed "<group>/<name>" so they cannot collapse
-        // onto a same-named input of another group
         const auto key = entry.first.first == name ? entry.first.second : entry.first.first + "/" + entry.first.second;
         sourceDevices[key] = entry.second.getSourceDevice();
     }

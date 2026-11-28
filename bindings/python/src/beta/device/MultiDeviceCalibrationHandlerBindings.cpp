@@ -15,13 +15,10 @@ void bind_beta_multidevicecalibrationhandler(pybind11::module& m, void* pCallsta
     py::class_<MultiDeviceCalibrationHandler> multiDeviceCalibrationHandler(
         betaModule, "MultiDeviceCalibrationHandler", DOC(dai, beta, MultiDeviceCalibrationHandler));
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     multiDeviceCalibrationHandler.def(py::init<>())
         .def(py::init<std::vector<MultiDeviceExtrinsics>>(), py::arg("graph"))

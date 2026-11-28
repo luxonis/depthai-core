@@ -27,13 +27,10 @@ void bind_beta_classifications(pybind11::module& m, void* pCallstack) {
     py::class_<beta::Classifications, Py<beta::Classifications>, Buffer, Transformable, py::smart_holder> classifications(
         betaModule, "Classifications", DOC(dai, beta, Classifications));
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     classifications.def(py::init<>())
         .def("__repr__", &beta::Classifications::str)

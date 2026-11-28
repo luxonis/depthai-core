@@ -5,10 +5,8 @@
 #include <optional>
 #include <stdexcept>
 
-#include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
-
-// internal private
 #include "common/ModelType.hpp"
+#include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/Platform.hpp"
@@ -16,17 +14,13 @@
 namespace dai {
 
 NNArchive::NNArchive(const std::filesystem::path& archivePath, NNArchiveOptions options) : archiveOptions(std::move(options)) {
-    // Make sure archive exits
     if(!std::filesystem::exists(archivePath)) DAI_CHECK_V(false, "Archive file does not exist: {}", archivePath);
 
-    // Read config
     archiveVersionedConfigPtr.reset(new NNArchiveVersionedConfig(archivePath, archiveOptions.compression()));
 
-    // Only V1 config is supported at the moment
     DAI_CHECK(archiveVersionedConfigPtr->getVersion() == NNArchiveConfigVersion::V1, "Only V1 config is supported at the moment");
     std::string modelPathInArchive = archiveVersionedConfigPtr->getConfig<nn_archive::v1::Config>().model.metadata.path;
 
-    // Read archive type
     modelType = model::readModelType(modelPathInArchive);
 
     switch(modelType) {
@@ -151,7 +145,6 @@ std::optional<std::pair<uint32_t, uint32_t>> NNArchive::getInputSize(uint32_t in
         return std::make_pair(width, height);
     }
 
-    // Should never happen
     throw std::runtime_error("Unknown layout in NNArchive");
 }
 
@@ -208,7 +201,6 @@ std::vector<dai::Platform> NNArchive::getSupportedPlatforms() const {
             if(blobPtr->device == OpenVINO::Device::VPU) {
                 return {Platform::RVC2};
             }
-            // Should never get here
             return {};
 
         case model::ModelType::NNARCHIVE:

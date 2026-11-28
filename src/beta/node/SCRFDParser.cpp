@@ -36,7 +36,6 @@ SCRFDParser::Properties& SCRFDParser::getProperties() {
 }
 
 NNArchive SCRFDParser::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         auto device = getParentPipeline().getDefaultDevice();
         DAI_CHECK(device != nullptr, "Device is not set. Specify the platform in the NNModelDescription when building without a device.");
@@ -107,9 +106,6 @@ void SCRFDParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
 
     setConfig(scrfdHead);
 
-    // The input size is derived from the model input's declared shape and layout. A head
-    // carries no model input metadata, so this is only possible on the full-archive path; the
-    // source parser leaves the input size at its default instead.
     DAI_CHECK_V(configV1.model.inputs.size() == 1, "Only one input supported for SCRFDParser, got {} inputs.", configV1.model.inputs.size());
     const auto& modelInput = configV1.model.inputs.front();
     const std::string layout = modelInput.layout.value_or("");
@@ -141,8 +137,6 @@ void SCRFDParser::setConfig(const dai::nn_archive::v1::Head& head) {
         setLabelNames(*head.metadata.classes);
     }
 
-    // The head must carry one score, bbox and kps layer per stride; the layer kinds are
-    // identified by substring, mirroring the source parser.
     const std::vector<std::string> headOutputs = head.outputs.value_or(std::vector<std::string>{});
     std::size_t scoreLayers = 0;
     std::size_t bboxLayers = 0;
@@ -159,8 +153,6 @@ void SCRFDParser::setConfig(const dai::nn_archive::v1::Head& head) {
                 kpsLayers);
     setOutputLayerNames(headOutputs);
 
-    // The SCRFD-specific keys without typed metadata fields live in the head metadata extra
-    // parameters. Missing keys keep the already configured values, mirroring the source parser.
     const auto& extraParams = head.metadata.extraParams;
     if(extraParams.is_object() && extraParams.contains("feat_stride_fpn") && !extraParams.at("feat_stride_fpn").is_null()) {
         const auto& stridesJson = extraParams.at("feat_stride_fpn");
@@ -264,13 +256,8 @@ void SCRFDParser::run() {
     DAI_CHECK(activeConfig.validate(), "SCRFDParser initial configuration is invalid.");
     const bool inputConfigSync = inputConfig.getWaitForMessage();
 
-    // The layer name list resolved from the first incoming NNData persists across messages,
-    // mirroring the source parser behavior.
     std::vector<std::string> resolvedOutputLayerNames = properties.outputLayerNames;
 
-    // The anchor centers depend only on the input size, the feature strides and the number of
-    // anchors; they are cached across messages and refreshed when any of the three changes,
-    // mirroring the source parser's cache refresh in the setters and build.
     bool anchorsCached = false;
     std::pair<std::uint32_t, std::uint32_t> cachedInputSize{0, 0};
     std::vector<std::int64_t> cachedStrides;
@@ -312,9 +299,6 @@ void SCRFDParser::run() {
         const auto currentStrides = properties.featStrideFpn;
         const std::int64_t currentNumAnchors = properties.numAnchors;
 
-        // Extract: one score/bbox/kps layer triple per stride. The score tensor is flattened;
-        // the bbox and kps tensors are paired 4 and 10 values per score, which accepts both
-        // batched (1, N, C) and unbatched (N, C) tensors like the source reshapes.
         if(resolvedOutputLayerNames.empty()) {
             resolvedOutputLayerNames = nnData->getAllLayerNames();
         }
@@ -355,7 +339,6 @@ void SCRFDParser::run() {
             kpsPerStride.push_back(std::move(kpsTensor));
         }
 
-        // Compute
         if(!anchorsCached || cachedInputSize != currentInputSize || cachedStrides != currentStrides || cachedNumAnchors != currentNumAnchors) {
             anchors.clear();
             anchors.reserve(currentStrides.size());
@@ -378,10 +361,7 @@ void SCRFDParser::run() {
                                                                               config.maxDetections,
                                                                               anchors);
 
-        // Emit. All detections carry label 0; the first label name (when configured) is mapped
-        // to every detection. Every detection carries 5 keypoints without confidence scores
-        // (confidence -1), mirroring the source message creator.
-        const std::vector<std::uint32_t> labels(detections.bboxes.size(), 0);
+        const std::vector<std::uint32_t> labels(detections.bboxes.size(), 0);  // Keypoints carry no scores: confidence -1, as in the source message creator
         std::vector<std::string> mappedLabelNames;
         if(!properties.labelNames.empty()) {
             mappedLabelNames.assign(detections.bboxes.size(), properties.labelNames.front());
@@ -399,8 +379,7 @@ void SCRFDParser::run() {
             }
             keypoints.push_back(std::move(detectionKeypointList));
         }
-        auto message =
-            utilities::DetectionUtils::createDetectionMessage(detections.bboxes, detections.scores, /*angles=*/{}, labels, mappedLabelNames, keypoints);
+        auto message = utilities::DetectionUtils::createDetectionMessage(detections.bboxes, detections.scores, {}, labels, mappedLabelNames, keypoints);
         if(nnData->transformation.has_value()) {
             utilities::DetectionUtils::setTransformationAndBounds(*message, *nnData->transformation);
         }

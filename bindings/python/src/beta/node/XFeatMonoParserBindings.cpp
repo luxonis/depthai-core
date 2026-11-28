@@ -11,13 +11,10 @@ void bind_beta_xfeatmonoparser(pybind11::module& m, void* pCallstack) {
     py::class_<beta::XFeatMonoParserProperties> properties(betaModule, "XFeatMonoParserProperties");
     auto xfeatMonoParser = ADD_BETA_NODE_DERIVED(XFeatMonoParser, dai::DeviceNode);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Callstack handling
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    ///////////////////////////////////////////////////////////////////////
 
     properties.def_readwrite("initialConfig", &beta::XFeatMonoParserProperties::initialConfig)
         .def_readwrite("outputLayerFeats", &beta::XFeatMonoParserProperties::outputLayerFeats)

@@ -1,22 +1,18 @@
 #pragma once
 
-// std
+#include <nop/serializer.h>
+#include <nop/structure.h>
+#include <nop/utility/buffer_reader.h>
+#include <nop/utility/stream_writer.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <nlohmann/json.hpp>
 #include <sstream>
 #include <vector>
 
-// libraries
-#include <nop/serializer.h>
-#include <nop/structure.h>
-#include <nop/utility/buffer_reader.h>
-#include <nop/utility/stream_writer.h>
-
-// project
 #include "NlohmannJsonCompat.hpp"
 
-// To not require exceptions for embedded usecases.
 #ifndef __has_feature           // Optional of course.
     #define __has_feature(x) 0  // Compatibility with non-clang compilers.
 #endif
@@ -35,7 +31,6 @@ constexpr auto static DEFAULT_SERIALIZATION_TYPE = SerializationType::LIBNOP;
 
 namespace utility {
 
-// JSON-msgpack serialization
 template <SerializationType TYPE, typename T, std::enable_if_t<TYPE == SerializationType::JSON_MSGPACK, bool> = true>
 inline bool serialize(const T& obj, std::vector<std::uint8_t>& data) {
     nlohmann::json j = obj;
@@ -48,7 +43,6 @@ inline bool deserialize(const std::uint8_t* data, std::size_t size, T& obj) {
     return true;
 }
 
-// JSON serialization
 template <SerializationType TYPE, typename T, std::enable_if_t<TYPE == SerializationType::JSON, bool> = true>
 inline bool serialize(const T& obj, std::vector<std::uint8_t>& data) {
     nlohmann::json j = obj;
@@ -70,7 +64,7 @@ class VectorWriter {
     VectorWriter(const VectorWriter&) = default;
     VectorWriter& operator=(const VectorWriter&) = default;
 
-    nop::Status<void> Prepare(std::size_t /*size*/) {
+    nop::Status<void> Prepare(std::size_t) {
         return {};
     }
 
@@ -113,10 +107,7 @@ class VectorWriter {
 };
 // NOLINTEND
 
-// libnop serialization
-// If exceptions are available it throws in error cases
-// Otherwise return value can be checked
-template <SerializationType TYPE, typename T, std::enable_if_t<TYPE == SerializationType::LIBNOP, bool> = true>
+template <SerializationType TYPE, typename T, std::enable_if_t<TYPE == SerializationType::LIBNOP, bool> = true>  // Throws; without exceptions returns false
 inline bool serialize(const T& obj, std::vector<std::uint8_t>& data) {
     nop::Serializer<VectorWriter> serializer{std::move(data)};
     auto status = serializer.Write(obj);
@@ -144,7 +135,6 @@ inline bool deserialize(const std::uint8_t* data, std::size_t size, T& obj) {
     return true;
 }
 
-// Serialization using enum
 template <typename T>
 inline bool serialize(const T& obj, std::vector<std::uint8_t>& data, SerializationType type) {
     switch(type) {
@@ -186,7 +176,6 @@ inline bool deserialize(const std::vector<std::uint8_t>& data, T& obj, Serializa
     return deserialize(data.data(), data.size(), obj, type);
 }
 
-// Serialization using templates
 template <SerializationType TYPE, typename T>
 inline std::vector<std::uint8_t> serialize(const T& obj) {
     std::vector<std::uint8_t> data;
@@ -201,7 +190,6 @@ inline bool deserialize(const std::vector<std::uint8_t>& data, T& obj) {
     return deserialize<TYPE>(data.data(), data.size(), obj);
 }
 
-// Defaults
 template <typename T>
 inline bool serialize(const T& obj, std::vector<std::uint8_t>& data) {
     return serialize<DEFAULT_SERIALIZATION_TYPE>(obj, data);
@@ -223,22 +211,11 @@ std::string jsonDisplay(const nlohmann::json& json, int level = 0, int indent = 
 
 }  // namespace utility
 
-// // In dai scope
-// template<typename Base, typename Derived>
-// struct Serializable : Base {
-//     virtual void serialize(std::vector<std::uint8_t>& data) {
-//         utility::serialize(static_cast<const Derived&>(*this), data);
-//     }
-// };
-
 }  // namespace dai
 
 #define DEPTHAI_DEFERRED_EXPAND(x) x
 #if defined(_MSC_VER) && (!defined(_MSVC_TRADITIONAL) || _MSVC_TRADITIONAL)
-   // Logic using the traditional preprocessor
-    // This is for suppressing false positive warnings when compiling
-    // without /Zc:preprocessor
-    #pragma warning(disable : 4003)
+    #pragma warning(disable : 4003)  // False positive C4003 without /Zc:preprocessor
 #endif
 
 #define DEPTHAI_NLOHMANN_JSON_OPTIONAL_TO(v1) nlohmann::to_json(nlohmann_json_j[#v1], nlohmann_json_t.v1);
@@ -264,7 +241,6 @@ std::string jsonDisplay(const nlohmann::json& json, int level = 0, int indent = 
         return dai::utility::jsonDisplay(j); \
     }
 
-// Macros
 #define DEPTHAI_SERIALIZE_OPTIONAL_EXT(...)                                                   \
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_NLOHMANN_DEFINE_TYPE_OPTIONAL_NON_INTRUSIVE(__VA_ARGS__)) \
     DEPTHAI_DEFERRED_EXPAND(NOP_EXTERNAL_STRUCTURE(__VA_ARGS__))
@@ -277,15 +253,13 @@ std::string jsonDisplay(const nlohmann::json& json, int level = 0, int indent = 
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(__VA_ARGS__)) \
     DEPTHAI_DEFERRED_EXPAND(NOP_EXTERNAL_STRUCTURE(__VA_ARGS__))
 
-// Serialization of a struct without data members (a command tag): an empty JSON object, an empty libnop structure.
-// nlohmann's intrusive macros need at least one member, libnop's NOP_STRUCTURE does not.
 #define DEPTHAI_SERIALIZE_EMPTY(Type)                                   \
     friend void to_json(nlohmann::json& nlohmann_json_j, const Type&) { \
         nlohmann_json_j = nlohmann::json::object();                     \
     }                                                                   \
     friend void from_json(const nlohmann::json&, Type&) {}              \
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_DISPLAY(Type))                      \
-    NOP_STRUCTURE(Type)
+    NOP_STRUCTURE(Type)  // Hand-written json: nlohmann's intrusive macros need at least one member
 
 #define DEPTHAI_SERIALIZE(Type, ...)                                                   \
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_NLOHMANN_DEFINE_TYPE_INTRUSIVE(Type, __VA_ARGS__)) \

@@ -1,13 +1,10 @@
 #include "depthai/pipeline/node/DetectionNetwork.hpp"
 
-// libraries
 #include <nlohmann/json.hpp>
 #include <openvino/BlobReader.hpp>
 
 #include "archive.h"
 #include "archive_entry.h"
-
-// internal
 #include "common/ModelType.hpp"
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/depthai.hpp"
@@ -23,27 +20,18 @@
 namespace dai {
 namespace node {
 
-//--------------------------------------------------------------------
-// Base Detection Network Class
-//--------------------------------------------------------------------
-
 DetectionNetwork::DetectionNetwork(const std::shared_ptr<Device>& device)
     : DeviceNodeGroup(device),
       out{detectionParser->out},
       outNetwork{neuralNetwork->out},
       input{neuralNetwork->input},
       passthrough{neuralNetwork->passthrough} {};
-// -------------------------------------------------------------------
-// Neural Network API
-// -------------------------------------------------------------------
 
 void DetectionNetwork::buildInternal() {
-    // Default confidence threshold
     detectionParser->setConfidenceThreshold(0.5f);
     neuralNetwork->out.link(detectionParser->input);
 
-    // No "internal" buffering to keep interface similar to monolithic nodes
-    detectionParser->input.setBlocking(true);
+    detectionParser->input.setBlocking(true);  // No internal buffering, to behave like the monolithic nodes
     detectionParser->input.setMaxSize(1);
 }
 
@@ -83,7 +71,6 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<
 #endif
 
 NNArchive DetectionNetwork::createNNArchive(NNModelDescription& modelDesc) {
-    // Download model from zoo
     if(modelDesc.platform.empty()) {
         DAI_CHECK(getDevice() != nullptr, "Device is not set.");
         modelDesc.platform = getDevice()->getPlatformAsString();
@@ -132,7 +119,6 @@ void DetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
 }
 
 void DetectionNetwork::setFromModelZoo(NNModelDescription description, bool useCached) {
-    // Download model from zoo
     if(description.platform.empty()) {
         DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
         description.platform = getDevice()->getPlatformAsString();

@@ -1,6 +1,5 @@
 #pragma once
 
-// libraries
 #include "depthai/pipeline/node/MessageDemux.hpp"
 #include "depthai/properties/MessageDemuxProperties.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
@@ -14,9 +13,7 @@ class MessageDemux : public dai::node::MessageDemux {
 
     constexpr static const char* NAME = node::MessageDemux::NAME;
     MessageDemux() : MessageDemux(std::make_unique<dai::node::MessageDemux::Properties>()) {}
-    MessageDemux(std::unique_ptr<Properties> props) : dai::node::MessageDemux(std::move(props)) {
-        // override that this is a host node
-    }
+    MessageDemux(std::unique_ptr<Properties> props) : dai::node::MessageDemux(std::move(props)) {}
     bool runOnHost() const override {
         return true;
     }

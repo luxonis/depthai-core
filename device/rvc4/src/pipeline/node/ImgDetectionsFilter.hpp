@@ -1,9 +1,7 @@
 #pragma once
 
-// C++ std
 #include <memory>
 
-// libraries
 #include <spdlog/async_logger.h>
 
 #include "depthai/pipeline/node/ImgDetectionsFilter.hpp"

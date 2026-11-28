@@ -4,38 +4,23 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/AprilTagConfig.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
-
-// #include "spdlog/spdlog.h"
 
 void bind_apriltagconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // py::class_<AprilTagConfig, RawBuffer, std::shared_ptr<RawAprilTagConfig>>
-    //     rawAprilTagConfig(m, "RawAprilTagConfig", DOC(dai, RawAprilTagConfig));
     py::class_<AprilTagConfig, Py<AprilTagConfig>, Buffer, py::smart_holder> aprilTagConfig(m, "AprilTagConfig", DOC(dai, AprilTagConfig));
     py::enum_<AprilTagConfig::Family> aprilTagFamily(aprilTagConfig, "Family", DOC(dai, AprilTagConfig, Family));
     py::class_<AprilTagConfig::QuadThresholds> quadThresholds(aprilTagConfig, "QuadThresholds", DOC(dai, AprilTagConfig, QuadThresholds));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Metadata / raw
     aprilTagFamily.value("TAG_36H11", AprilTagConfig::Family::TAG_36H11)
         .value("TAG_36H10", AprilTagConfig::Family::TAG_36H10)
         .value("TAG_25H9", AprilTagConfig::Family::TAG_25H9)
@@ -61,11 +46,7 @@ void bind_apriltagconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("maxHammingDistance", &AprilTagConfig::maxHammingDistance, DOC(dai, AprilTagConfig, maxHammingDistance))
         .def_readwrite("quadThresholds", &AprilTagConfig::quadThresholds, DOC(dai, AprilTagConfig, quadThresholds));
 
-    // Message
-    aprilTagConfig.def("__repr__", &AprilTagConfig::str).def("setFamily", &AprilTagConfig::setFamily, py::arg("family"), DOC(dai, AprilTagConfig, setFamily))
-        // .def("set", &AprilTagConfig::set, DOC(dai, AprilTagConfig, set))
-        // .def("get", &AprilTagConfig::get, DOC(dai, AprilTagConfig, get))
-        ;
+    aprilTagConfig.def("__repr__", &AprilTagConfig::str).def("setFamily", &AprilTagConfig::setFamily, py::arg("family"), DOC(dai, AprilTagConfig, setFamily));
     m.attr("AprilTagConfig").attr("Family") = m.attr("AprilTagConfig").attr("Family");
     m.attr("AprilTagConfig").attr("QuadThresholds") = m.attr("AprilTagConfig").attr("QuadThresholds");
 }

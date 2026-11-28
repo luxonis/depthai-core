@@ -85,7 +85,6 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
     void buildInternal() override;
 
    private:
-    // pimpl
     class Impl;
     Pimpl<Impl> pimplRtabmap;
     void run() override;

@@ -4,10 +4,8 @@
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 
-// depthai
 #include "depthai/pipeline/datatype/TransformData.hpp"
 
-// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
@@ -17,20 +15,11 @@ void bind_transformdata(pybind11::module& m, void* pCallstack) {
     py::class_<Transform> transform(m, "Transform", DOC(dai, Transform));
     py::class_<TransformData, Py<TransformData>, Buffer, py::smart_holder> transformData(m, "TransformData", DOC(dai, TransformData));
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-    // Actual bindings
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
 
-    // Metadata / raw
     transform.def(py::init<>()).def_readwrite("matrix", &Transform::matrix, DOC(dai, Transform, matrix));
 
     transformData.def(py::init<>(), DOC(dai, TransformData, TransformData))

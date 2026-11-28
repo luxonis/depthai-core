@@ -16,9 +16,7 @@ static_assert(SensorSample::OTHER == DAI_SENSOR_MESSAGE_OTHER && SensorSample::S
               "SensorSample::Kind must have the values of DAI_SENSOR_MESSAGE_*");
 static_assert(sizeof(SensorSample::data) == sizeof(dai_device_sensor_sample::data), "SensorSample::data must have the size of dai_device_sensor_sample::data");
 
-/// As DAI_CHECK_DEVICE (utilities/ErrorMacros.hpp). That header includes pipeline/PipelineBuilder.hpp and with it the
-/// GStreamer headers, which are not in the include directories of this target (pipeline.node.IMU).
-void check(dai_status status, const char* call) {
+void check(dai_status status, const char* call) {  // Copy of DAI_CHECK_DEVICE: ErrorMacros.hpp pulls in GStreamer headers, not in this target's includes
     if(status != DAI_STATUS_OK) {
         device::throwDeviceError(status, UNIT, call, nullptr);
     }
@@ -34,8 +32,7 @@ uint32_t toDeviceChannelType(SensorChannelType type) {
     }
 }
 
-/// The stream refers to the text of config: config must stay valid during the call
-dai_device_sensor_stream toDeviceStream(const SensorStreamConfig& config) {
+dai_device_sensor_stream toDeviceStream(const SensorStreamConfig& config) {  // The result points into config.sensorDataType: config must outlive it
     dai_device_sensor_stream stream{};
     stream.sensor_data_type = config.sensorDataType.c_str();
     stream.sample_rate_hz = config.sampleRateHz;
@@ -74,8 +71,7 @@ int SensorDirectChannel::queryAttributes(const SensorStreamConfig& config) {
     int32_t result = 0;
     check(dai_device_sensor_query_attributes(handle.get(), &stream, &result), "dai_device_sensor_query_attributes");
 
-    // The query adds the sample rates to the list of the vendor module: copy the list
-    const int32_t* rates = nullptr;
+    const int32_t* rates = nullptr;  // The vendor module owns the list and each query appends to it: copy it
     size_t count = 0;
     check(dai_device_sensor_sample_rates(handle.get(), &rates, &count), "dai_device_sensor_sample_rates");
     if(rates != nullptr) {
@@ -97,7 +93,6 @@ void SensorDirectChannel::adjustSampleRate(uint32_t sampleRateHz, bool resampled
 char* SensorDirectChannel::startStreaming(const SensorStreamConfig& config) {
     const dai_device_sensor_stream stream = toDeviceStream(config);
     char* buffer = nullptr;
-    // A channel that does not start gives DAI_STATUS_OK and no buffer (nullptr), as before the C interface
     check(dai_device_sensor_start(handle.get(), &stream, &buffer), "dai_device_sensor_start");
     return buffer;
 }
@@ -121,9 +116,7 @@ size_t SensorDirectChannel::sharedBufferSize() {
 SensorEventReader::SensorEventReader(const char* eventBuffer, size_t bufferSize) : buffer(eventBuffer), size(bufferSize) {}
 
 SensorEventReader::Status SensorEventReader::next(SensorSample& sample) {
-    // The vendor module writes the sample only when it reads an event, as before the C interface: start from the
-    // values of the caller
-    dai_device_sensor_sample deviceSample{};
+    dai_device_sensor_sample deviceSample{};  // The vendor module writes the sample only on an event: start from the caller's values
     deviceSample.message_kind = sample.messageKind;
     deviceSample.timestamp = sample.timestamp;
     deviceSample.sequence = sample.sequence;

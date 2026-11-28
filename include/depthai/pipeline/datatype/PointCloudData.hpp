@@ -10,7 +10,6 @@
 #include "depthai/pipeline/datatype/Transformable.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 
-// optional
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
     #include <pcl/point_cloud.h>
     #include <pcl/point_types.h>
