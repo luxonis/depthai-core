@@ -193,7 +193,7 @@ def test_p2_odd_size():
 
 
 def test_p3_loop_metadata():
-    """P3 mirrors C15. fps 1000 is the fast-playback sentinel; the pass boundary stays the recorded 150 ms mean."""
+    """P3: fps 1000 repeats the recording before the shared span elapses, so sequence and time stay on the first pass."""
     directory = tempfile.TemporaryDirectory(prefix="dai-p3-")
     pipeline = None
     try:
@@ -213,10 +213,10 @@ def test_p3_loop_metadata():
             (10, 1000),
             (11, 1100),
             (12, 1300),
-            (13, 1450),
-            (14, 1550),
-            (15, 1750),
-            (16, 1900),
+            (10, 1000),
+            (11, 1100),
+            (12, 1300),
+            (10, 1000),
         )
         for sequence, ts_ms in expected:
             frame = take_frame(queue)

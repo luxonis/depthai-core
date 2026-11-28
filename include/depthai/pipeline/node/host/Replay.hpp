@@ -84,7 +84,7 @@ class ReplayVideo : public DeviceNodeCRTP<DeviceNode, ReplayVideo, ReplayVideoPr
     ReplayVideo& setDecodeMode(ReplayDecodeMode mode);
     /** Force host (true) or device (false). The default follows the device. */
     ReplayVideo& setRunOnHost(bool runOnHost);
-    /** Keep the cache entries of this start after the pipeline stops. The default removes them. */
+    /** Keep the cache entries of this start after the pipeline stops. The default keeps them. */
     ReplayVideo& setPersistentUpload(bool persistent);
     /**
      * Select one stream inside an archive or a holistic directory.
@@ -94,7 +94,7 @@ class ReplayVideo : public DeviceNodeCRTP<DeviceNode, ReplayVideo, ReplayVideoPr
     /** With loop off, stop the pipeline after the last frame. Ignored when loop is on. */
     ReplayVideo& setStopPipelineAtEnd(bool stopPipeline);
 
-    /** True for NV12, YUV420p, GRAY8, RGB888i, and BGR888i. */
+    /** True for NV12, YUV420p, GRAY8, RGB888i, BGR888i, RGB888p, BGR888p, and RAW8. */
     static bool isSupportedOutFrameType(ImgFrame::Type type);
 
     /** Host-cache limit in bytes. The default is 32 GiB. A new limit removes nothing by itself. */
@@ -160,7 +160,7 @@ class ReplayMetadataOnly : public DeviceNodeCRTP<DeviceNode, ReplayMetadataOnly,
     ReplayMetadataOnly& setSource(const std::filesystem::path& path, ReplaySourceLocation location = ReplaySourceLocation::HOST);
     /** Force host (true) or device (false). The default follows the device. */
     ReplayMetadataOnly& setRunOnHost(bool runOnHost);
-    /** Keep the cache entries of this start after the pipeline stops. */
+    /** Keep the cache entries of this start after the pipeline stops. The default keeps them. */
     ReplayMetadataOnly& setPersistentUpload(bool persistent);
     /** Inside an archive or a holistic directory, select `<entry>.mcap`. */
     ReplayMetadataOnly& setArchiveEntry(const std::string& entry);

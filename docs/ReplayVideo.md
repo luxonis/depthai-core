@@ -21,11 +21,11 @@ Video must be 8-bit 4:2:0. VP8 and VP9 are not accepted. A `.dai` file that hold
 
 `setArchiveEntry(name)` selects one stream inside an archive or a holistic directory. The entry is the record name, for example `CameraCAM_A`. It can name a directory, `<name>.mp4`, `<name>.avi`, or `<name>.mcap`.
 
-`setReplayMetadataFile` attaches an `ImgFrame` `.mcap` sidecar. For a directory, `<stream>.mcap` is used when it is present. A `.dai` stream ignores that sidecar and logs one warning. The message count and the frame size in the sidecar must match the frames.
+`setReplayMetadataFile` attaches an `ImgFrame` `.mcap` sidecar. For a directory, `<stream>.mcap` is used when it is present. A `.dai` stream ignores that sidecar and logs one warning. A sidecar with fewer messages than frames fails at start. Extra messages are not a mismatch when they contain each frame's sequence number: the frame is paired by that number, and that paired frame's size must match. A directory whose filename sequences are missing from the sidecar fails at start.
 
 ## Output
 
-The default output type is `YUV420p`. `setOutFrameType` accepts `NV12`, `YUV420p`, `GRAY8`, `RGB888i`, and `BGR888i`. An unset `.dai` stream keeps the type stored in the files, including a type outside that set such as `RAW16`. Setting a type or a size on a `RAW16` stream fails at start.
+The default output type is `YUV420p`. `setOutFrameType` accepts `NV12`, `YUV420p`, `GRAY8`, `RGB888i`, `BGR888i`, `RGB888p`, `BGR888p`, and `RAW8`. An unset `.dai` stream keeps the type stored in the files, including a type outside that set such as `RAW16`. Setting a type or a size on a `RAW16` stream fails at start.
 
 `setSize` resizes. Both sides must be positive and even. The check runs at start. A size equal to the source is not resized, and the bytes stay equal. The frame transformation is scaled by the same ratio. There is no half-pixel shift.
 
@@ -37,9 +37,9 @@ JPEG and MJPEG use full range. Other conversions use BT.601 limited range. PNG c
 
 `setFps` sets the send rate. `0` is the same as not set. Negative or non-finite values fail at start. A positive fps sets an interval of `1/fps`, including a 1 ms interval for `1000`. Each send starts no earlier than the previous send's actual start plus that interval, and no earlier than the previous send's completion. Decoding happens before the wait. A late decode or blocked consumer moves subsequent sends forward; the node does not skip frames or catch up to an old deadline. Host and device replay use the same timing policy.
 
-Without fps, the node uses the original recorded device-timestamp gaps, including timestamps stored in `.dai` frames. A gap that is not positive becomes 1/30 s. The gap between passes is one nominal interval. With no timestamps at all, the rate is 30 fps, independent of the video's container frame rate.
+Without fps, the node uses the original recorded device-timestamp gaps, including timestamps stored in `.dai` frames. A raw gap greater than twice the nominal period is paced as one nominal period; the frame timestamp still keeps that recorded gap. A gap that is not positive becomes 1/30 s. The gap between passes is one nominal period. With no timestamps at all, the rate is 30 fps, independent of the video's container frame rate.
 
-On the first pass the recorded sequence numbers and timestamps are kept. Later passes continue the sequence and shift the timestamps by the span of the recording plus one nominal interval. The nominal interval is `1/fps` when fps is set and is not exactly 1000. When fps is unset or exactly 1000, it is the mean of the recorded device timestamps, or 1/30 s for a single frame.
+Recorded sequence numbers and timestamps are kept while the shared loop index is 0. That index is the steady time since the first prepared `ReplayVideo` or `ReplayMetadataOnly` in the pipeline entered `run`, divided by the longest prepared span. It is 0 when that span is 0. Every such node adds the index times that span to the timestamps and the index times the longest sequence stride to the sequence. A node's span is the recorded device-timestamp range plus one nominal interval, or just the nominal interval when it has fewer than two frames. The nominal interval is `1/fps` when fps is set and is not exactly 1000. When fps is unset or exactly 1000, it is the mean of the recorded device timestamps, or 1/30 s for a single frame.
 
 `ts`, `tsDevice`, and `tsSystem` move by the same amount. A stream with no metadata uses the actual send start time for `ts` and `tsDevice`, leaves `tsSystem` unset, and numbers sequences from 0.
 
@@ -55,7 +55,7 @@ Host files are read in place. An archive is extracted into the host cache. A sou
 
 The default limit is 32 GiB. `ReplayVideo::setReplayCacheLimit` changes it and does not delete anything by itself. Entries that are not in use are removed when a new entry would pass the limit or the free space. The oldest entry goes first. An entry larger than the limit fails before anything is removed.
 
-`setPersistentUpload(true)` keeps the entries created by that start after the pipeline stops. The default removes them. Calling `setPersistentUpload(false)` before starting restores that default. An entry shared with another node that requests persistence remains persistent. `DEPTHAI_REPLAY_CACHE` selects the host cache directory. `DEPTHAI_REPLAY_PERSISTENT_UPLOAD=1` and `DEPTHAI_REPLAY_DECODE_MODE=PRE_DECODE` apply when the setters were not called.
+`setPersistentUpload(true)` keeps the entries created by that start after the pipeline stops. The default keeps them. Calling `setPersistentUpload(false)` before starting removes them. An entry shared with another node that requests persistence remains persistent. `DEPTHAI_REPLAY_CACHE` selects the host cache directory. `DEPTHAI_REPLAY_PERSISTENT_UPLOAD=1` and `DEPTHAI_REPLAY_DECODE_MODE=PRE_DECODE` apply when the setters were not called.
 
 `ReplayVideo::getReplayCacheInfo` and `clearReplayCache` read and clean the host cache. The same methods on `Device`, along with `Device::setReplayCacheLimit`, talk to the RVC4 cache. The device limit persists across reconnects, and changing it does not immediately remove entries. Sources prepared for a starting pipeline remain in use until that pipeline releases them. The device methods throw on any other platform and need firmware that implements the cache RPC. This repository does not contain that firmware.
 
@@ -65,7 +65,7 @@ The default limit is 32 GiB. `ReplayVideo::setReplayCacheLimit` changes it and d
 
 `Camera::setMockIsp` and `Camera::build` link the replay output to `mockIsp`. They set the output type to `NV12` on RVC4 and to `YUV420p` on RVC2, and they copy the size and fps onto the mock ISP. A device path with no `setSize` asks the device for the size. An archive with no `setSize` fails in `setMockIsp` because the size is not known until the recording is opened by holistic replay.
 
-`NeuralNetwork::build(ReplayVideo, model, fps)` sets the type, size, and fps from the model. A model type outside the five supported types fails and the error names the type.
+`NeuralNetwork::build(ReplayVideo, model, fps)` sets the type, size, and fps from the model. A model type outside the accepted output types fails and the error names the type.
 
 ## Holistic replay
 

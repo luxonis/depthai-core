@@ -35,7 +35,7 @@ struct ReplayVideoProperties : PropertiesSerializable<Properties, ReplayVideoPro
     bool decodeModeSet = false;
     /// 0 = automatic, 1 = host, 2 = device.
     std::int32_t runOnHostMode = 0;
-    bool persistentUpload = false;
+    bool persistentUpload = true;
     bool persistentUploadSet = false;
     std::string archiveEntry;
     bool archiveEntrySet = false;

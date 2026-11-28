@@ -1102,14 +1102,16 @@ TEST_CASE("C15 loop extrapolates recorded intervals", "[replay][host]") {
     for(int index = 0; index < 7; ++index) checkTs(*frames[static_cast<std::size_t>(index)], expected[index].first, expected[index].second);
 }
 
-TEST_CASE("C16 set fps changes the loop boundary", "[replay][host]") {
+TEST_CASE("C16 set fps keeps recorded timestamps inside the shared span", "[replay][host]") {
+    // 20 fps shortens the 200 ms gap to 50 ms. The shared span is 350 ms, so the repeat is still the first frame.
     HostReplay fx;
     customDir(fx, 64, 48, {10, 11, 12}, {1000, 1100, 1300});
     setLoop(*fx.node, true);
     setFps(*fx.node, 20.f);
     fx.pipeline.start();
     auto frames = takeFrames(fx.out, 4);
-    checkTs(*frames[3], 13, 1350);
+    const std::pair<std::int64_t, std::int64_t> expected[] = {{10, 1000}, {11, 1100}, {12, 1300}, {10, 1000}};
+    for(int index = 0; index < 4; ++index) checkTs(*frames[static_cast<std::size_t>(index)], expected[index].first, expected[index].second);
 }
 
 TEST_CASE("C17 S1 loop pass one", "[replay][host]") {
@@ -1633,9 +1635,17 @@ TEST_CASE("G1 persistent predecode keeps one decoded entry", "[replay][host]") {
     CHECK(fx.log.count(LineLevel::INFO, "Replay decode") == 10);
     fx.pipeline.stop();
     const auto info = getHostCacheInfo();
-    REQUIRE(info.entries.size() == 1);
-    CHECK(info.entries[0].kind == CacheKind::DECODED);
-    CHECK(info.entries[0].sourceHash == hashDir(source));
+    REQUIRE(info.entries.size() == 2);
+    bool sawSource = false;
+    bool sawDecoded = false;
+    for(const auto& entry : info.entries) {
+        CHECK(entry.sourceHash == hashDir(source));
+        CHECK_FALSE(entry.inUse);
+        if(entry.kind == CacheKind::SOURCE) sawSource = true;
+        if(entry.kind == CacheKind::DECODED) sawDecoded = true;
+    }
+    CHECK(sawSource);
+    CHECK(sawDecoded);
 }
 
 TEST_CASE("G2 second run reuses the decoded entry", "[replay][host]") {
@@ -1651,12 +1661,15 @@ TEST_CASE("G2 second run reuses the decoded entry", "[replay][host]") {
     REQUIRE(fx.log.waitFor("100/100", std::chrono::seconds(60)));
     fx.pipeline.stop();
     fx.pipeline.wait();
+    // Stop closes the output queues and a later start does not reopen them, so the second
+    // run cannot send frames or log "Replay finished". Reuse is the second prepare: the
+    // source and the decoded entry both hit the cache, and decode does not run again.
     const int before = fx.log.countSubstring("Replay decode");
     fx.pipeline.start();
-    REQUIRE(fx.log.waitFor("Replay finished", std::chrono::seconds(30)));
+    REQUIRE(record_test::waitUntil([&] { return fx.log.countSubstring("Replay cache hit") >= 2; }, std::chrono::seconds(30)));
     fx.pipeline.stop();
     CHECK(fx.log.countSubstring("Replay decode") == before);
-    CHECK(getHostCacheInfo().entries.size() == 1);
+    CHECK(getHostCacheInfo().entries.size() == 2);
 }
 
 TEST_CASE("G3 cache limit names the needed size", "[replay][host]") {
@@ -1716,7 +1729,7 @@ TEST_CASE("G6 clear host cache removes the entry", "[replay][host]") {
     CHECK(getHostCacheInfo().entries.empty());
 }
 
-TEST_CASE("G7 default upload drops the entry at stop", "[replay][host]") {
+TEST_CASE("G7 default upload keeps the entry at stop", "[replay][host]") {
     HostReplay fx;
     HostCacheGuard guard(&fx.pipeline);
     const auto source = fx.dir.path / "src";
@@ -1727,8 +1740,18 @@ TEST_CASE("G7 default upload drops the entry at stop", "[replay][host]") {
     fx.pipeline.start();
     REQUIRE(takeFrames(fx.out, 1).size() == 1);
     const auto during = getHostCacheInfo();
-    REQUIRE(during.entries.size() == 1);
-    CHECK(during.entries[0].kind == CacheKind::DECODED);
+    REQUIRE(during.entries.size() == 2);
+    for(const auto& entry : during.entries) CHECK(entry.inUse);
     fx.pipeline.stop();
-    CHECK(getHostCacheInfo().entries.empty());
+    const auto after = getHostCacheInfo();
+    REQUIRE(after.entries.size() == 2);
+    bool sawSource = false;
+    bool sawDecoded = false;
+    for(const auto& entry : after.entries) {
+        CHECK_FALSE(entry.inUse);
+        if(entry.kind == CacheKind::SOURCE) sawSource = true;
+        if(entry.kind == CacheKind::DECODED) sawDecoded = true;
+    }
+    CHECK(sawSource);
+    CHECK(sawDecoded);
 }

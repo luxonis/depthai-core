@@ -16,6 +16,7 @@
 #include <optional>
 #include <stdexcept>
 #include <thread>
+#include <tuple>
 #include <utility>
 
 #include "depthai/pipeline/Pipeline.hpp"
@@ -64,35 +65,67 @@ namespace {
 using Steady = std::chrono::steady_clock;
 using SteadyTime = Steady::time_point;
 
-struct TokenBook {
-    struct Lease {
-        std::uint64_t token;
-        std::size_t holders;
-    };
-    std::mutex mutex;
-    std::uint64_t next = 1;
-    std::map<const void*, Lease> pipelines;
+// One lease per pipeline. The clock starts when the first prepared node enters run().
+struct PipelineLease {
+    std::uint64_t token = 0;
+    std::size_t holders = 0;
+    Steady::duration maxSpan{};
+    std::int64_t maxSeqStride = 0;
+    bool started = false;
+    SteadyTime startedAt{};
 };
 
-TokenBook gTokens;
+std::mutex gLeaseMutex;
+std::uint64_t gNextLeaseToken = 1;
+std::map<const void*, PipelineLease> gLeases;
 
 std::uint64_t acquireToken(const void* key) {
-    std::lock_guard<std::mutex> lock(gTokens.mutex);
-    auto found = gTokens.pipelines.find(key);
-    if(found != gTokens.pipelines.end()) {
+    std::lock_guard<std::mutex> lock(gLeaseMutex);
+    auto found = gLeases.find(key);
+    if(found != gLeases.end()) {
         ++found->second.holders;
         return found->second.token;
     }
-    if(gTokens.next == 0) throw std::runtime_error("Replay pipeline token overflow");
-    const auto token = gTokens.next++;
-    gTokens.pipelines.emplace(key, TokenBook::Lease{token, 1});
+    if(gNextLeaseToken == 0) throw std::runtime_error("Replay pipeline token overflow");
+    const auto token = gNextLeaseToken++;
+    gLeases.emplace(key, PipelineLease{token, 1});
     return token;
 }
 
 void releaseToken(const void* key) {
-    std::lock_guard<std::mutex> lock(gTokens.mutex);
-    const auto found = gTokens.pipelines.find(key);
-    if(found != gTokens.pipelines.end() && --found->second.holders == 0) gTokens.pipelines.erase(found);
+    std::lock_guard<std::mutex> lock(gLeaseMutex);
+    const auto found = gLeases.find(key);
+    if(found != gLeases.end() && --found->second.holders == 0) gLeases.erase(found);
+}
+
+void registerLoopSpan(const void* key, Steady::duration span, std::int64_t seqStride) {
+    if(seqStride < 1) seqStride = 1;
+    std::lock_guard<std::mutex> lock(gLeaseMutex);
+    const auto found = gLeases.find(key);
+    if(found == gLeases.end()) return;
+    if(span > found->second.maxSpan) found->second.maxSpan = span;
+    if(seqStride > found->second.maxSeqStride) found->second.maxSeqStride = seqStride;
+}
+
+void noteLoopStart(const void* key) {
+    std::lock_guard<std::mutex> lock(gLeaseMutex);
+    const auto found = gLeases.find(key);
+    if(found == gLeases.end() || found->second.started) return;
+    found->second.started = true;
+    found->second.startedAt = Steady::now();
+}
+
+// loopIndex, shared span, sequence stride. The span is the longest one registered for this pipeline.
+std::tuple<std::int64_t, Steady::duration, std::int64_t> loopShiftFor(const void* key) {
+    std::lock_guard<std::mutex> lock(gLeaseMutex);
+    const auto found = gLeases.find(key);
+    if(found == gLeases.end()) return {0, Steady::duration::zero(), 1};
+    const auto& lease = found->second;
+    auto seqStride = lease.maxSeqStride > 0 ? lease.maxSeqStride : std::int64_t{1};
+    if(!lease.started || lease.maxSpan <= Steady::duration::zero()) return {0, lease.maxSpan, seqStride};
+    const auto elapsed = Steady::now() - lease.startedAt;
+    if(elapsed <= Steady::duration::zero()) return {0, lease.maxSpan, seqStride};
+    return {static_cast<std::int64_t>(elapsed / lease.maxSpan), lease.maxSpan, seqStride};
 }
 
 bool deviceIsRvc4(const DeviceNode& node) {
@@ -107,9 +140,10 @@ bool deviceIsRvc4(const DeviceNode& node) {
 
 std::uint64_t outputBytes(ImgFrame::Type type, int width, int height) {
     const auto pixels = static_cast<std::uint64_t>(width) * static_cast<std::uint64_t>(height);
-    if(type == ImgFrame::Type::GRAY8) return pixels;
+    if(type == ImgFrame::Type::GRAY8 || type == ImgFrame::Type::RAW8) return pixels;
     if(type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p) return pixels * 3 / 2;
-    if(type == ImgFrame::Type::RGB888i || type == ImgFrame::Type::BGR888i) return pixels * 3;
+    if(type == ImgFrame::Type::RGB888i || type == ImgFrame::Type::BGR888i || type == ImgFrame::Type::RGB888p || type == ImgFrame::Type::BGR888p)
+        return pixels * 3;
     return pixels;
 }
 
@@ -154,15 +188,61 @@ FileSnap snapOf(const std::filesystem::path& path) {
     return snap;
 }
 
-void checkSnaps(const std::vector<FileSnap>& snaps) {
-    for(const auto& snap : snaps) {
-        std::error_code error;
-        const auto size = std::filesystem::file_size(snap.path, error);
-        const auto mtime = std::filesystem::last_write_time(snap.path, error);
-        if(error || size != snap.size || mtime != snap.mtime) {
-            throw std::runtime_error("ReplayVideo frame changed during replay: " + snap.path.string());
-        }
+void checkSnap(const FileSnap& snap) {
+    std::error_code error;
+    const auto size = std::filesystem::file_size(snap.path, error);
+    const auto mtime = std::filesystem::last_write_time(snap.path, error);
+    if(error || size != snap.size || mtime != snap.mtime) {
+        throw std::runtime_error("ReplayVideo frame changed during replay: " + snap.path.string());
     }
+}
+
+void checkSnaps(const std::vector<FileSnap>& snaps) {
+    for(const auto& snap : snaps) checkSnap(snap);
+}
+
+void checkCurrentSnap(const std::vector<FileSnap>& snaps, int index) {
+    if(snaps.empty()) return;
+    if(snaps.size() == 1) {
+        checkSnap(snaps.front());
+        return;
+    }
+    if(index < 0 || index >= static_cast<int>(snaps.size())) return;
+    checkSnap(snaps[static_cast<std::size_t>(index)]);
+}
+
+bool archiveNameEscapes(const char* name) {
+    if(name == nullptr || name[0] == '\0') return true;
+    const std::filesystem::path path(name);
+    if(path.is_absolute() || path.has_root_name()) return true;
+    for(const auto& part : path) {
+        if(part == "..") return true;
+    }
+    return false;
+}
+
+void rejectEscapingArchiveLinks(const std::filesystem::path& archive) {
+    struct archive* reader = archive_read_new();
+    if(reader == nullptr) return;
+    archive_read_support_filter_all(reader);
+    archive_read_support_format_all(reader);
+    if(archive_read_open_filename(reader, archive.string().c_str(), 10240) != ARCHIVE_OK) {
+        archive_read_free(reader);
+        return;
+    }
+    struct archive_entry* entry = nullptr;
+    while(archive_read_next_header(reader, &entry) == ARCHIVE_OK) {
+        const char* link = archive_entry_symlink(entry);
+        if(link == nullptr) link = archive_entry_hardlink(entry);
+        if(link != nullptr && archiveNameEscapes(link)) {
+            const char* name = archive_entry_pathname(entry);
+            const std::string member = name == nullptr ? std::string(link) : std::string(name);
+            archive_read_free(reader);
+            throw std::runtime_error("ReplayVideo archive entry escapes: " + member);
+        }
+        archive_read_data_skip(reader);
+    }
+    archive_read_free(reader);
 }
 
 struct RecordedTiming {
@@ -216,6 +296,7 @@ struct ReplayRuntime {
     SteadyTime deviceFirst{};
     SteadyTime deviceLast{};
     Steady::duration nominal{};
+    bool loopJoined = false;
     std::vector<std::shared_ptr<ImgFrame>> metadata;
     std::string metadataWarning;
     std::vector<FileSnap> snaps;
@@ -669,6 +750,18 @@ replay::CacheSlot acquireSlot(ReplayRuntime& runtime,
     return slot;
 }
 
+std::filesystem::path automaticMetadata(const std::filesystem::path& sourcePath) {
+    std::error_code error;
+    if(std::filesystem::is_directory(sourcePath, error)) return replay::inspectReplaySource(sourcePath).autoMetadata;
+    if(error) return {};
+    auto extension = sourcePath.extension().string();
+    std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+    if(extension == ".mcap") return {};
+    const auto metadata = sourcePath.parent_path() / (sourcePath.stem().string() + ".mcap");
+    if(!std::filesystem::is_regular_file(metadata)) return {};
+    return metadata;
+}
+
 void applyEnv(bool& persistent, bool persistentSet, std::int32_t& decodeMode, bool decodeModeSet, const char* nodeName) {
     if(!persistentSet) {
         const auto flag = utility::getEnvAs<std::string>("DEPTHAI_REPLAY_PERSISTENT_UPLOAD", "", false);
@@ -699,16 +792,28 @@ Steady::duration nominalOf(bool fpsSet, float fps, SteadyTime first, SteadyTime 
     return replay::playbackPeriod(30.0);
 }
 
-void applyRecorded(const std::shared_ptr<Buffer>& buffer, const ReplayRuntime& runtime, const RecordedTiming& recorded, int pass) {
-    std::int64_t seqOffset = runtime.seqFirst;
-    SteadyTime tsOffset = runtime.deviceFirst;
-    for(int index = 0; index < pass; index++) {
-        seqOffset += runtime.seqLast - runtime.seqFirst + 1;
-        tsOffset += (runtime.deviceLast - runtime.deviceFirst) + runtime.nominal;
-    }
-    const auto sequence = recorded.sequence - runtime.seqFirst + seqOffset;
-    const auto deviceOut = recorded.timestampDevice - runtime.deviceFirst + tsOffset;
-    const auto amount = deviceOut - recorded.timestampDevice;
+Steady::duration spanOf(const ReplayRuntime& runtime) {
+    if(runtime.count < 2) return runtime.nominal;
+    return (runtime.deviceLast - runtime.deviceFirst) + runtime.nominal;
+}
+
+std::int64_t seqStrideOf(const ReplayRuntime& runtime) {
+    return std::max<std::int64_t>(runtime.seqLast - runtime.seqFirst + 1, 1);
+}
+
+// Idle gaps are skipped in the wait only. The timestamp keeps the recorded delta.
+std::optional<Steady::duration> paceInterval(std::optional<Steady::duration> recorded, Steady::duration nominal) {
+    if(!recorded.has_value()) return recorded;
+    const auto raw = *recorded;
+    if(raw > nominal && raw - nominal > nominal) return nominal;
+    return recorded;
+}
+
+void applyRecorded(const std::shared_ptr<Buffer>& buffer, const ReplayRuntime& runtime, const RecordedTiming& recorded) {
+    const auto [loopIndex, span, seqStride] = loopShiftFor(runtime.pipelineKey);
+    const auto amount = span * loopIndex;
+    const auto sequence = recorded.sequence + seqStride * loopIndex;
+    const auto deviceOut = recorded.timestampDevice + amount;
     const auto originalSequence = buffer->getSequenceNum();
     const auto originalTimestamp = buffer->getTimestamp();
     const auto originalDevice = buffer->getTimestampDevice();
@@ -758,9 +863,10 @@ McapScan scanMcap(const std::filesystem::path& path, bool imgFramesOnly, const c
             scan.deviceFirst = buffer->getTimestampDevice();
             first = false;
         } else {
-            if(buffer->getSequenceNum() <= previousSeq) {
+            const auto sequence = buffer->getSequenceNum();
+            if(sequence < previousSeq || sequence == previousSeq) {
                 throw std::runtime_error(std::string(nodeName) + " sequence numbers do not increase: " + std::to_string(previousSeq) + " then "
-                                         + std::to_string(buffer->getSequenceNum()));
+                                         + std::to_string(sequence));
             }
             if(buffer->getTimestampDevice() < previousDevice) throw std::runtime_error(std::string(nodeName) + " timestamps decrease");
         }
@@ -773,6 +879,61 @@ McapScan scanMcap(const std::filesystem::path& path, bool imgFramesOnly, const c
     }
     if(scan.count == 0) throw std::runtime_error(std::string(nodeName) + " metadata file is empty: " + path.string());
     return scan;
+}
+
+std::vector<std::shared_ptr<ImgFrame>> alignMetadata(const McapScan& scan, int frameCount, const std::vector<replay::ListedFrame>& frames) {
+    if(scan.count < frameCount) {
+        throw std::runtime_error("ReplayVideo metadata count " + std::to_string(scan.count) + " does not match frame count " + std::to_string(frameCount));
+    }
+    std::map<std::int64_t, int> bySequence;
+    bool unique = true;
+    bool anyNonZero = false;
+    for(int index = 0; index < scan.count; index++) {
+        const auto sequence = scan.frames[static_cast<std::size_t>(index)]->getSequenceNum();
+        if(sequence != 0) anyNonZero = true;
+        if(!bySequence.emplace(sequence, index).second) unique = false;
+    }
+    auto takeOrder = [&]() {
+        std::vector<std::shared_ptr<ImgFrame>> aligned;
+        aligned.reserve(static_cast<std::size_t>(frameCount));
+        for(int index = 0; index < frameCount; index++) aligned.push_back(scan.frames[static_cast<std::size_t>(index)]);
+        return aligned;
+    };
+    auto takeSequences = [&](const std::vector<std::int64_t>& sequences) {
+        std::vector<std::shared_ptr<ImgFrame>> aligned;
+        aligned.reserve(sequences.size());
+        for(const auto sequence : sequences) aligned.push_back(scan.frames[static_cast<std::size_t>(bySequence.at(sequence))]);
+        return aligned;
+    };
+    if(!frames.empty() && static_cast<int>(frames.size()) == frameCount) {
+        bool allPresent = true;
+        for(const auto& frame : frames) {
+            if(bySequence.find(frame.sequence) == bySequence.end()) {
+                allPresent = false;
+                break;
+            }
+        }
+        if(!allPresent) throw std::runtime_error("ReplayVideo metadata does not match the frames");
+        std::vector<std::int64_t> sequences;
+        sequences.reserve(frames.size());
+        for(const auto& frame : frames) sequences.push_back(frame.sequence);
+        return takeSequences(sequences);
+    }
+    if(frames.empty() && unique && anyNonZero) {
+        bool indexed = true;
+        for(int index = 0; index < frameCount; index++) {
+            if(bySequence.find(index) == bySequence.end()) {
+                indexed = false;
+                break;
+            }
+        }
+        if(indexed) {
+            std::vector<std::int64_t> sequences(static_cast<std::size_t>(frameCount));
+            for(int index = 0; index < frameCount; index++) sequences[static_cast<std::size_t>(index)] = index;
+            return takeSequences(sequences);
+        }
+    }
+    return takeOrder();
 }
 #endif
 
@@ -1150,6 +1311,7 @@ void ReplayVideo::buildStage1() {
 
         if(onHost && archive) {
             hash = replay::sha256OfFile(sourcePath);
+            rejectEscapingArchiveLinks(sourcePath);
             const auto peak = static_cast<std::uint64_t>(std::filesystem::file_size(sourcePath)) + archiveContentBytes(sourcePath);
             replay::CacheSlotRequest request;
             request.key = hash;
@@ -1216,16 +1378,23 @@ void ReplayVideo::buildStage1() {
             properties.sourceHash = hash;
             properties.resolvedOnHost = false;
             runtime->cacheKeys.push_back(hash);
-            // The device opens resolvedMetadataPath. The host path in metadataPath is not
-            // on the device, so the sidecar has to be uploaded before the early return.
+            // The device opens resolvedMetadataPath. The host path is not on the device,
+            // so an explicit sidecar, or the sibling .mcap the host would open, is uploaded
+            // before the early return. A missing sibling is not uploaded.
+            const auto uploadMetadata = [&](const std::filesystem::path& metadataPath) {
+                const auto metadataHash = replay::sha256OfFile(metadataPath);
+                properties.resolvedMetadataPath = uploadFile(*getDevice(), logger, metadataPath, metadataHash);
+                runtime->cacheKeys.push_back(metadataHash);
+            };
             if(properties.metadataPathSet) {
                 const std::filesystem::path metadataPath(properties.metadataPath);
                 if(!std::filesystem::exists(metadataPath)) {
                     throw std::runtime_error("ReplayVideo metadata file is missing: " + metadataPath.string());
                 }
-                const auto metadataHash = replay::sha256OfFile(metadataPath);
-                properties.resolvedMetadataPath = uploadFile(*getDevice(), logger, metadataPath, metadataHash);
-                runtime->cacheKeys.push_back(metadataHash);
+                uploadMetadata(metadataPath);
+            } else if(!archive) {
+                const auto metadataPath = automaticMetadata(sourcePath);
+                if(!metadataPath.empty() && std::filesystem::is_regular_file(metadataPath)) uploadMetadata(metadataPath);
             }
         }
 
@@ -1280,22 +1449,19 @@ void ReplayVideo::buildStage1() {
         }
         if(!metadataPath.empty()) {
             auto scan = scanMcap(metadataPath, true, "ReplayVideo");
-            if(scan.count != runtime->listed.frameCount) {
-                throw std::runtime_error("ReplayVideo metadata count " + std::to_string(scan.count) + " does not match frame count "
-                                         + std::to_string(runtime->listed.frameCount));
-            }
-            const auto message = scan.frames.front();
+            auto aligned = alignMetadata(scan, runtime->listed.frameCount, runtime->listed.frames);
+            const auto message = aligned.front();
             if(message != nullptr
                && (static_cast<int>(message->getWidth()) != runtime->listed.width || static_cast<int>(message->getHeight()) != runtime->listed.height)) {
                 throw std::runtime_error("ReplayVideo metadata frame size does not match: message 0 is " + std::to_string(message->getWidth()) + "x"
                                          + std::to_string(message->getHeight()));
             }
-            runtime->metadata = std::move(scan.frames);
+            runtime->seqFirst = aligned.front()->getSequenceNum();
+            runtime->seqLast = aligned.back()->getSequenceNum();
+            runtime->deviceFirst = aligned.front()->getTimestampDevice();
+            runtime->deviceLast = aligned.back()->getTimestampDevice();
+            runtime->metadata = std::move(aligned);
             runtime->recorded = true;
-            runtime->seqFirst = scan.seqFirst;
-            runtime->seqLast = scan.seqLast;
-            runtime->deviceFirst = scan.deviceFirst;
-            runtime->deviceLast = scan.deviceLast;
         }
 
         if(runtime->listed.kind == replay::ListedSource::Kind::Video) runtime->snaps.push_back(snapOf(runtime->listed.path));
@@ -1332,7 +1498,7 @@ void ReplayVideo::buildStage1() {
             if(!runtime->usePredecoded) {
                 try {
                     for(int index = 0; index < runtime->count; index++) {
-                        checkSnaps(runtime->snaps);
+                        checkCurrentSnap(runtime->snaps, index);
                         auto pixels = runtime->reader.read(index);
                         if(runtime->listed.dai && metadataPath.empty()) noteDaiTiming(*runtime, pixels, index);
                         if(decodingToCache) {
@@ -1380,7 +1546,11 @@ void ReplayVideo::buildStage1() {
             checkSnaps(runtime->snaps);
             runtime->reader.read(0);
         }
-        if(runtime->recorded) runtime->nominal = nominalOf(runtime->fpsSet, runtime->fps, runtime->deviceFirst, runtime->deviceLast, runtime->count);
+        if(runtime->recorded) {
+            runtime->nominal = nominalOf(runtime->fpsSet, runtime->fps, runtime->deviceFirst, runtime->deviceLast, runtime->count);
+            registerLoopSpan(runtime->pipelineKey, spanOf(*runtime), seqStrideOf(*runtime));
+            runtime->loopJoined = true;
+        }
         properties.resolvedPath = local.string();
         properties.resolvedMetadataPath = metadataPath.string();
         properties.sourceHash = hash;
@@ -1402,8 +1572,11 @@ void ReplayVideo::run() {
     throw std::runtime_error("ReplayVideo node requires protobuf support");
 #else
     auto& logger = pimpl->logger;
+    // Stop releases the prepare, and a later start does not build the pipeline again.
+    if((!prepared || runtime == nullptr) && runOnHost()) buildStage1();
     if(!prepared || runtime == nullptr) throw std::runtime_error("ReplayVideo source is not prepared");
     if(!runtime->onHost) throw std::runtime_error("ReplayVideo device execution is running on the device");
+    if(runtime->loopJoined) noteLoopStart(runtime->pipelineKey);
     if(!runtime->metadataWarning.empty() && logger) logger->warn("{}", runtime->metadataWarning);
     if(!runtime->usePredecoded) runtime->reader.open(runtime->listed);
     replay::PlaybackPacer pacing(runtime->fpsSet ? runtime->fps : 0.f);
@@ -1412,14 +1585,13 @@ void ReplayVideo::run() {
     int sent = 0;
     while(mainLoop()) {
         const int index = runtime->count == 0 ? 0 : sent % runtime->count;
-        const int pass = runtime->count == 0 ? 0 : sent / runtime->count;
         if(sent > 0 && index == 0) {
             if(!runtime->loop) {
                 naturalEnd = true;
                 break;
             }
         }
-        checkSnaps(runtime->snaps);
+        checkCurrentSnap(runtime->snaps, index);
         std::shared_ptr<ImgFrame> frame;
         RecordedTiming timing;
         if(runtime->usePredecoded) {
@@ -1438,9 +1610,7 @@ void ReplayVideo::run() {
             frame = frameFromPixels(pixels, *runtime, metadata);
             timing = timingFrom(pixels, metadata);
         }
-        if(runtime->recorded && timing.present)
-            applyRecorded(frame, *runtime, timing, pass);
-        else {
+        if(!runtime->recorded || !timing.present) {
             frame->setSequenceNum(sent);
             frame->setTimestampSystem(std::nullopt);
             frame->sourceFb = frame->fb;
@@ -1455,9 +1625,12 @@ void ReplayVideo::run() {
                 recordedInterval = timing.timestampDevice - *previousDevice;
             previousDevice = timing.timestampDevice;
         }
+        recordedInterval = paceInterval(recordedInterval, runtime->nominal);
         const auto sendTime = pacing.waitToSend(recordedInterval, [this] { return mainLoop(); });
         if(!sendTime) break;
-        if(!runtime->recorded || !timing.present) {
+        if(runtime->recorded && timing.present)
+            applyRecorded(frame, *runtime, timing);
+        else {
             frame->setTimestamp(*sendTime);
             frame->setTimestampDevice(*sendTime);
         }
@@ -1646,6 +1819,7 @@ void ReplayMetadataOnly::buildStage1() {
             const bool archive = ext.rfind(".tar") != std::string::npos || ext.rfind(".tgz") != std::string::npos;
             if(archive) {
                 const auto hash = replay::sha256OfFile(sourcePath);
+                rejectEscapingArchiveLinks(sourcePath);
                 const auto peak = static_cast<std::uint64_t>(std::filesystem::file_size(sourcePath)) + archiveContentBytes(sourcePath);
                 replay::CacheSlotRequest request;
                 request.key = hash;
@@ -1709,6 +1883,8 @@ void ReplayMetadataOnly::buildStage1() {
         runtime->deviceFirst = scan.deviceFirst;
         runtime->deviceLast = scan.deviceLast;
         runtime->nominal = nominalOf(runtime->fpsSet, runtime->fps, runtime->deviceFirst, runtime->deviceLast, runtime->count);
+        registerLoopSpan(runtime->pipelineKey, spanOf(*runtime), seqStrideOf(*runtime));
+        runtime->loopJoined = true;
         runtime->snaps.push_back(snapOf(local));
         properties.resolvedPath = local.string();
         properties.sourceHash = replay::sha256OfFile(std::filesystem::is_directory(sourcePath) ? local : sourcePath);
@@ -1726,8 +1902,11 @@ void ReplayMetadataOnly::run() {
     throw std::runtime_error("ReplayMetadataOnly node requires protobuf support");
 #else
     auto& logger = pimpl->logger;
+    // Stop releases the prepare, and a later start does not build the pipeline again.
+    if((!prepared || runtime == nullptr) && runOnHost()) buildStage1();
     if(!prepared || runtime == nullptr || runtime->mcapPath.empty()) throw std::runtime_error("ReplayMetadataOnly source is not prepared");
     if(!runtime->onHost) throw std::runtime_error("ReplayMetadataOnly device execution is running on the device");
+    if(runtime->loopJoined) noteLoopStart(runtime->pipelineKey);
     utility::BytePlayer player;
     const auto schema = player.init(runtime->mcapPath.string());
     const auto datatype = utility::schemaNameToDatatype(schema);
@@ -1770,12 +1949,12 @@ void ReplayMetadataOnly::run() {
             else if(havePrevious)
                 recordedInterval = timing.timestampDevice - previousDevice;
         }
-        checkSnaps(runtime->snaps);
-        const int pass = runtime->count == 0 ? 0 : sent / runtime->count;
-        applyRecorded(buffer, *runtime, timing, pass);
+        recordedInterval = paceInterval(recordedInterval, runtime->nominal);
+        checkCurrentSnap(runtime->snaps, index);
         previousDevice = timing.timestampDevice;
         havePrevious = true;
         if(!pacing.waitToSend(recordedInterval, [this] { return mainLoop(); })) break;
+        applyRecorded(buffer, *runtime, timing);
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(buffer);
