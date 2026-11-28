@@ -750,18 +750,29 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
        && inFrameType == inType)
         return *this;
     prevConfig = newCfgStr;
-    outputOps.clear();
 
     if(srcFrameSpecs.width <= 1 || srcFrameSpecs.height <= 1) {
         throw std::runtime_error("Input image is one dimensional");
     }
 
-    if(newBase.hasWarp(srcFrameSpecs.width, srcFrameSpecs.height)) mode = mode | MODE_WARP;
-    if(newBase.colormap != Colormap::NONE && isSingleChannelu8(inFrameType)) mode = mode | MODE_COLORMAP;
-    if(outType != inFrameType) mode = mode | MODE_CONVERT;
+    // Reset all state derived from a previous configuration
+    mode = 0;
+    outputOps.clear();
+    convertInput = false;
+    srcCorners.clear();
+    matrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    matrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    if(newBase.hasWarp(srcFrameSpecs.width, srcFrameSpecs.height)) mode |= MODE_WARP;
+    if(newBase.colormap != Colormap::NONE && isSingleChannelu8(inFrameType)) mode |= MODE_COLORMAP;
+    if(outType != inFrameType) mode |= MODE_CONVERT;
 
     assert(inFrameType != ImgFrame::Type::NONE);
     base = newBase;
+    if(!(mode & MODE_WARP)) {
+        // Without warp the output keeps the input size. The warp path reads base.outputWidth/outputHeight as the requested size.
+        base.outputWidth = srcFrameSpecs.width;
+        base.outputHeight = srcFrameSpecs.height;
+    }
     outputFrameType = outType;
     inType = inFrameType;
     type = inType;
@@ -795,7 +806,6 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
     const uint32_t inputWidth = srcSpecs.width;
     const uint32_t inputHeight = srcSpecs.height;
     assert(inputWidth > 0 && inputHeight > 0);
-    matrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
 
     if(mode & MODE_WARP) {
         auto [matrix, imageCorners, _srcCorners] = getFullTransform<Container>(base, inputWidth, inputHeight, type, outputFrameType, outputOps);
@@ -826,9 +836,6 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
         warpEngine.build(srcSpecs, getOutputFrameSpecs(type), type, matrix, srcCorners);
         warpEngine.setBackgroundColor(base.backgroundR, base.backgroundG, base.backgroundB);
         clrChange.build(getOutputFrameSpecs(type), getOutputFrameSpecs(outputFrameType), type, outputFrameType);
-    } else {
-        base.outputWidth = inputWidth;
-        base.outputHeight = inputHeight;
     }
     size_t newConvertedSize = getAlignedOutputFrameSize(type, inputWidth, inputHeight);
     size_t newColormapSize = getAlignedOutputFrameSize(type, base.outputWidth, base.outputHeight);
